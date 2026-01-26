@@ -66,16 +66,16 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 
 ## Phase 5: Render Module
 
-- [ ] 5.1 render/tree.rs
+- [x] 5.1 render/tree.rs
   - ツリー描画
   - PR: `feat(render): Implement tree rendering`
 
-- [ ] 5.2 render/preview.rs
+- [x] 5.2 render/preview.rs
   - テキストプレビュー
   - 画像プレビュー（半ブロック）
   - PR: `feat(render): Implement preview rendering`
 
-- [ ] 5.3 render/status.rs
+- [x] 5.3 render/status.rs
   - ステータスバー
   - 入力UI
   - PR: `feat(render): Implement status bar`
@@ -140,11 +140,11 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 | 2. Core | 2 | 2 |
 | 3. Tree | 2 | 2 |
 | 4. Action | 2 | 2 |
-| 5. Render | 3 | 0 |
+| 5. Render | 3 | 3 |
 | 6. Handler | 3 | 0 |
 | 7. Integrate | 2 | 0 |
 | 8. Main & Polish | 3 | 0 |
-| **Total** | **20** | **9** |
+| **Total** | **20** | **12** |
 
 ---
 
