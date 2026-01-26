@@ -3,4 +3,4 @@
 pub mod clipboard;
 pub mod file;
 
-pub use clipboard::Clipboard;
+pub use clipboard::{Clipboard, ClipboardContent};
