@@ -1,0 +1,30 @@
+[package]
+name = "fileview"
+version = "0.1.0"
+edition = "2021"
+description = "A minimal file tree UI for terminal emulators"
+authors = ["Hiro-Chiba"]
+license = "MIT"
+repository = "https://github.com/Hiro-Chiba/fileview"
+keywords = ["tui", "file-browser", "terminal", "cli"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "fv"
+path = "src/main.rs"
+
+[dependencies]
+ratatui = "0.28"
+crossterm = "0.28"
+anyhow = "1.0"
+arboard = "3.4"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = true
+strip = true
+opt-level = "z"
+codegen-units = 1
