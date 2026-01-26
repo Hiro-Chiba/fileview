@@ -155,12 +155,16 @@ fn draw_delete_confirm_popup(frame: &mut Frame, paths: &[std::path::PathBuf]) {
     content.push(Line::from(vec![
         Span::styled(
             "y",
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" to confirm, "),
         Span::styled(
             "n",
-            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Red)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" to cancel"),
     ]));
