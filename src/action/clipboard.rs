@@ -46,6 +46,19 @@ impl Clipboard {
         matches!(self.content, Some(ClipboardContent::Cut(_)))
     }
 
+    /// Get paths in clipboard
+    pub fn paths(&self) -> &[PathBuf] {
+        match &self.content {
+            Some(ClipboardContent::Copy(paths)) | Some(ClipboardContent::Cut(paths)) => paths,
+            None => &[],
+        }
+    }
+
+    /// Check if clipboard is empty
+    pub fn is_empty(&self) -> bool {
+        self.content.is_none()
+    }
+
     /// Clear clipboard
     pub fn clear(&mut self) {
         self.content = None;
