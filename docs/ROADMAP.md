@@ -8,16 +8,16 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 
 ## Phase 1: Foundation
 
-- [ ] 1.1 プロジェクト初期化
+- [x] 1.1 プロジェクト初期化
   - Cargo.toml
   - .gitignore
   - PR: `chore: Initialize Rust project`
 
-- [ ] 1.2 CI設定
+- [x] 1.2 CI設定
   - .github/workflows/ci.yml
   - PR: `chore: Set up GitHub Actions CI`
 
-- [ ] 1.3 モジュール構造作成
+- [x] 1.3 モジュール構造作成
   - src/lib.rs + 各モジュールのmod.rs
   - PR: `chore: Set up module structure`
 
@@ -25,11 +25,11 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 
 ## Phase 2: Core Module
 
-- [ ] 2.1 core/state.rs
+- [x] 2.1 core/state.rs
   - AppState構造体
   - PR: `feat(core): Define AppState`
 
-- [ ] 2.2 core/mode.rs
+- [x] 2.2 core/mode.rs
   - ViewMode enum（状態内包型）
   - InputPurpose, PendingAction
   - PR: `feat(core): Define ViewMode with embedded state`
@@ -38,11 +38,11 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 
 ## Phase 3: Tree Module
 
-- [ ] 3.1 tree/node.rs
+- [x] 3.1 tree/node.rs
   - TreeEntry構造体
   - PR: `feat(tree): Define TreeEntry`
 
-- [ ] 3.2 tree/navigator.rs
+- [x] 3.2 tree/navigator.rs
   - TreeNavigator構造体
   - フラット化（flatten / collect_visible）
   - 展開/折りたたみ
@@ -52,12 +52,12 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 
 ## Phase 4: Action Module
 
-- [ ] 4.1 action/file.rs
+- [x] 4.1 action/file.rs
   - create_file / create_dir
   - rename / delete
   - PR: `feat(action): Implement file operations`
 
-- [ ] 4.2 action/clipboard.rs
+- [x] 4.2 action/clipboard.rs
   - copy / cut / paste
   - Clipboard構造体
   - PR: `feat(action): Implement clipboard operations`
@@ -136,15 +136,15 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 
 | Phase | Items | Completed |
 |-------|-------|-----------|
-| 1. Foundation | 3 | 0 |
-| 2. Core | 2 | 0 |
-| 3. Tree | 2 | 0 |
-| 4. Action | 2 | 0 |
+| 1. Foundation | 3 | 3 |
+| 2. Core | 2 | 2 |
+| 3. Tree | 2 | 2 |
+| 4. Action | 2 | 2 |
 | 5. Render | 3 | 0 |
 | 6. Handler | 3 | 0 |
 | 7. Integrate | 2 | 0 |
 | 8. Main & Polish | 3 | 0 |
-| **Total** | **20** | **0** |
+| **Total** | **20** | **9** |
 
 ---
 
