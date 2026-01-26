@@ -26,7 +26,10 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], 
         })
         .collect();
 
-    let title = format!(" {} ", abbreviate_path(&state.root, area.width as usize - 4));
+    let title = format!(
+        " {} ",
+        abbreviate_path(&state.root, area.width as usize - 4)
+    );
     let list = List::new(items).block(Block::default().borders(Borders::ALL).title(title));
 
     frame.render_widget(list, area);

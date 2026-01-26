@@ -115,9 +115,7 @@ fn draw_delete_confirm_popup(frame: &mut Frame, paths: &[std::path::PathBuf]) {
     if has_directories {
         content.push(Line::from(vec![Span::styled(
             "!! WARNING: FOLDER DELETION !!",
-            Style::default()
-                .fg(Color::Red)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         )]));
         content.push(Line::from(vec![Span::styled(
             "Folders and all contents will be permanently deleted",
@@ -138,17 +136,12 @@ fn draw_delete_confirm_popup(frame: &mut Frame, paths: &[std::path::PathBuf]) {
             .unwrap_or_else(|| path.display().to_string());
 
         let style = if path.is_dir() {
-            Style::default()
-                .fg(Color::Red)
-                .add_modifier(Modifier::BOLD)
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(Color::White)
         };
 
-        content.push(Line::from(vec![
-            Span::raw("  "),
-            Span::styled(name, style),
-        ]));
+        content.push(Line::from(vec![Span::raw("  "), Span::styled(name, style)]));
     }
 
     if has_more {
@@ -162,16 +155,12 @@ fn draw_delete_confirm_popup(frame: &mut Frame, paths: &[std::path::PathBuf]) {
     content.push(Line::from(vec![
         Span::styled(
             "y",
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
         ),
         Span::raw(" to confirm, "),
         Span::styled(
             "n",
-            Style::default()
-                .fg(Color::Red)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         ),
         Span::raw(" to cancel"),
     ]));
@@ -183,9 +172,7 @@ fn draw_delete_confirm_popup(frame: &mut Frame, paths: &[std::path::PathBuf]) {
     };
 
     let title_style = if has_directories {
-        Style::default()
-            .fg(Color::Red)
-            .add_modifier(Modifier::BOLD)
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
     } else {
         Style::default()
     };
