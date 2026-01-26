@@ -3,9 +3,10 @@
 use std::path::PathBuf;
 
 /// Current view/input mode with embedded state
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum ViewMode {
     /// Normal browsing mode
+    #[default]
     Browse,
     /// Search mode with query
     Search { query: String },
@@ -19,12 +20,6 @@ pub enum ViewMode {
     Confirm { action: PendingAction },
     /// Fullscreen preview
     Preview { scroll: usize },
-}
-
-impl Default for ViewMode {
-    fn default() -> Self {
-        Self::Browse
-    }
 }
 
 /// Purpose of text input
