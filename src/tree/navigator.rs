@@ -135,3 +135,111 @@ impl TreeNavigator {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn setup_test_dir() -> TempDir {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir(temp.path().join("dir_a")).unwrap();
+        fs::create_dir(temp.path().join("dir_b")).unwrap();
+        fs::write(temp.path().join("file.txt"), "test").unwrap();
+        fs::write(temp.path().join("dir_a/nested.txt"), "nested").unwrap();
+        fs::create_dir(temp.path().join("dir_a/subdir")).unwrap();
+        temp
+    }
+
+    #[test]
+    fn test_navigator_new() {
+        let temp = setup_test_dir();
+        let nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        // Root should be expanded
+        assert!(nav.root().is_expanded());
+        // Should have 3 children (dir_a, dir_b, file.txt)
+        assert_eq!(nav.root().children().len(), 3);
+    }
+
+    #[test]
+    fn test_visible_entries() {
+        let temp = setup_test_dir();
+        let nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        let visible = nav.visible_entries();
+        // Root + 3 children = 4 entries (children not expanded yet)
+        assert_eq!(visible.len(), 4);
+    }
+
+    #[test]
+    fn test_expand_collapse() {
+        let temp = setup_test_dir();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        let dir_a_path = temp.path().join("dir_a");
+
+        // Initially collapsed
+        let count_before = nav.visible_count();
+
+        // Expand dir_a
+        nav.expand(&dir_a_path).unwrap();
+        let count_after = nav.visible_count();
+
+        // Should have more visible entries now
+        assert!(count_after > count_before);
+
+        // Collapse dir_a
+        nav.collapse(&dir_a_path);
+        assert_eq!(nav.visible_count(), count_before);
+    }
+
+    #[test]
+    fn test_toggle_expand() {
+        let temp = setup_test_dir();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        let dir_a_path = temp.path().join("dir_a");
+        let count_collapsed = nav.visible_count();
+
+        nav.toggle_expand(&dir_a_path).unwrap();
+        let count_expanded = nav.visible_count();
+        assert!(count_expanded > count_collapsed);
+
+        nav.toggle_expand(&dir_a_path).unwrap();
+        assert_eq!(nav.visible_count(), count_collapsed);
+    }
+
+    #[test]
+    fn test_set_show_hidden() {
+        let temp = setup_test_dir();
+        // Create a hidden file
+        fs::write(temp.path().join(".hidden"), "hidden").unwrap();
+
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+        let count_without_hidden = nav.visible_count();
+
+        nav.set_show_hidden(true).unwrap();
+        let count_with_hidden = nav.visible_count();
+
+        assert!(count_with_hidden > count_without_hidden);
+    }
+
+    #[test]
+    fn test_reload() {
+        let temp = setup_test_dir();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        let count_before = nav.visible_count();
+
+        // Add a new file
+        fs::write(temp.path().join("new_file.txt"), "new").unwrap();
+
+        // Reload should pick up the new file
+        nav.reload().unwrap();
+        let count_after = nav.visible_count();
+
+        assert_eq!(count_after, count_before + 1);
+    }
+}
