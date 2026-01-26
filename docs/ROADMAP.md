@@ -84,17 +84,17 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 
 ## Phase 6: Handler Module
 
-- [ ] 6.1 handler/key.rs
+- [x] 6.1 handler/key.rs
   - キーイベント処理
   - モード別ハンドラー
   - PR: `feat(handler): Implement key handling`
 
-- [ ] 6.2 handler/mouse.rs
+- [x] 6.2 handler/mouse.rs
   - マウスイベント処理
   - ダブルクリック検出
   - PR: `feat(handler): Implement mouse handling`
 
-- [ ] 6.3 DropDetector
+- [x] 6.3 DropDetector
   - D&D検出
   - PR: `feat(handler): Implement drag and drop detection`
 
@@ -141,10 +141,10 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 | 3. Tree | 2 | 2 |
 | 4. Action | 2 | 2 |
 | 5. Render | 3 | 3 |
-| 6. Handler | 3 | 0 |
+| 6. Handler | 3 | 3 |
 | 7. Integrate | 2 | 0 |
 | 8. Main & Polish | 3 | 0 |
-| **Total** | **20** | **12** |
+| **Total** | **20** | **15** |
 
 ---
 
