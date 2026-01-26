@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use super::ViewMode;
+use crate::action::Clipboard;
 
 /// Main application state
 pub struct AppState {
@@ -27,6 +28,8 @@ pub struct AppState {
     pub should_quit: bool,
     /// Pick mode (--pick option)
     pub pick_mode: bool,
+    /// Clipboard for copy/cut/paste
+    pub clipboard: Option<Clipboard>,
 }
 
 impl AppState {
@@ -43,6 +46,7 @@ impl AppState {
             show_hidden: false,
             should_quit: false,
             pick_mode: false,
+            clipboard: None,
         }
     }
 
