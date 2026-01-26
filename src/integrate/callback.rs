@@ -174,9 +174,7 @@ mod tests {
 
     #[test]
     fn test_callback_builder() {
-        let callback = Callback::new("test")
-            .background(true)
-            .shell("bash");
+        let callback = Callback::new("test").background(true).shell("bash");
 
         assert!(callback.background);
         assert_eq!(callback.shell, Some("bash".to_string()));

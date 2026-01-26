@@ -5,6 +5,7 @@
 
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 /// Exit codes for pick mode
 pub mod exit_code {
@@ -28,14 +29,15 @@ pub enum OutputFormat {
     Json,
 }
 
-impl OutputFormat {
-    /// Parse from string argument
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for OutputFormat {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "lines" | "line" => Some(Self::Lines),
-            "null" | "nul" | "0" => Some(Self::NullSeparated),
-            "json" => Some(Self::Json),
-            _ => None,
+            "lines" | "line" => Ok(Self::Lines),
+            "null" | "nul" | "0" => Ok(Self::NullSeparated),
+            "json" => Ok(Self::Json),
+            _ => Err(()),
         }
     }
 }
@@ -64,8 +66,7 @@ pub fn output_paths(paths: &[PathBuf], format: OutputFormat) -> io::Result<()> {
             }
         }
         OutputFormat::Json => {
-            let json_paths: Vec<String> =
-                paths.iter().map(|p| p.display().to_string()).collect();
+            let json_paths: Vec<String> = paths.iter().map(|p| p.display().to_string()).collect();
             writeln!(handle, "{}", serde_json_mini(&json_paths))?;
         }
     }
@@ -144,16 +145,16 @@ mod tests {
     fn test_output_format_parse() {
         assert!(matches!(
             OutputFormat::from_str("lines"),
-            Some(OutputFormat::Lines)
+            Ok(OutputFormat::Lines)
         ));
         assert!(matches!(
             OutputFormat::from_str("null"),
-            Some(OutputFormat::NullSeparated)
+            Ok(OutputFormat::NullSeparated)
         ));
         assert!(matches!(
             OutputFormat::from_str("json"),
-            Some(OutputFormat::Json)
+            Ok(OutputFormat::Json)
         ));
-        assert!(OutputFormat::from_str("invalid").is_none());
+        assert!(OutputFormat::from_str("invalid").is_err());
     }
 }
