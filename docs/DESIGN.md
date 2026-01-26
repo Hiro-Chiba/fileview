@@ -5,225 +5,344 @@
 FileViewは、ターミナルエミュレーター上で動作するVSCode風のミニマルファイルツリーUIである。
 Ghostty等のモダンターミナルでの使用を想定し、**軽量・高速・直感操作**を設計思想の中核とする。
 
-### 1.1 設計思想
+### 1.1 myfileとの関係
 
-- **View-First Architecture**: ファイルシステムの「閲覧」を最優先とし、編集機能は補助的位置づけ
-- **Event-Driven Design**: 全操作をイベントとして抽象化し、疎結合な構成を実現
-- **Lazy Evaluation**: 必要になるまでデータを読み込まない遅延評価戦略
-- **Single Source of Truth**: アプリケーション状態を単一のStateオブジェクトで管理
+本プロジェクトは [myfile](../myfile) の設計思想を参考にしている。
+ただし、**構造・命名・モジュール分割は独自に設計**し、別プロジェクトとして成立させる。
 
-## 2. Architecture
+| 観点 | myfile | fileview |
+|------|--------|----------|
+| 参考にする | アルゴリズム、ロジックの考え方 | ← |
+| 変える | - | 構造、命名、モジュール分割 |
+| 追加する | - | パス連携機能 |
+| 削除する | Git統合、外部コマンド | - |
 
+---
+
+## 2. Structural Differences（構造の違い）
+
+### 2.1 ディレクトリ構成
+
+**myfile（フラット構造）:**
 ```
-┌─────────────────────────────────────────────────────┐
-│                    FileView                         │
-├─────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │   View      │  │  Controller │  │    Model    │ │
-│  │  (TUI)      │◄─┤  (Events)   │◄─┤  (State)    │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘ │
-│         │                │                │        │
-│         └────────────────┼────────────────┘        │
-│                          ▼                         │
-│                 ┌─────────────────┐                │
-│                 │   FileSystem    │                │
-│                 │   Abstraction   │                │
-│                 └─────────────────┘                │
-└─────────────────────────────────────────────────────┘
-```
-
-### 2.1 レイヤー構成
-
-| Layer | Responsibility |
-|-------|----------------|
-| View | TUI描画、ユーザー入力受付 |
-| Controller | イベント処理、ビジネスロジック |
-| Model | アプリケーション状態管理 |
-| FileSystem | OS抽象化、ファイル操作 |
-
-## 3. Technology Stack
-
-| Category | Choice | Rationale |
-|----------|--------|-----------|
-| Language | Rust | メモリ安全性、高速性、クロスプラットフォーム |
-| TUI Framework | ratatui | アクティブな開発、豊富なウィジェット |
-| Async Runtime | tokio | 非同期I/O、ファイル監視 |
-| Serialization | serde | 設定ファイル、状態永続化 |
-
-## 4. Core Features
-
-### 4.1 ファイルツリー表示
-
-- 階層構造のインデント表示
-- フォルダ展開/折りたたみ（遅延読み込み）
-- アイコン表示（Nerd Fonts対応）
-- ファイルタイプ別カラーリング
-
-### 4.2 ファイル操作
-
-| Operation | Shortcut | Description |
-|-----------|----------|-------------|
-| Create | `a` | 新規ファイル/フォルダ作成 |
-| Rename | `r` | 名前変更 |
-| Delete | `d` | 削除（確認プロンプト付き） |
-| Copy | `y` | クリップボードにコピー |
-| Paste | `p` | ペースト |
-| Move | `m` | 移動モード |
-
-### 4.3 ドラッグ&ドロップ
-
-- OSC 52エスケープシーケンスによるパス取得
-- ターミナルからのドロップイベント検知
-- コピー先ディレクトリの自動判定
-
-### 4.4 クイックプレビュー
-
-| Type | Preview |
-|------|---------|
-| Text | 先頭N行のシンタックスハイライト表示 |
-| Image | Sixel/Kittyプロトコルによるサムネイル |
-| Binary | ファイルサイズ、MIMEタイプ、先頭バイト |
-
-### 4.5 パス連携
-
-- 選択中アイテムのパスを標準出力/クリップボード/環境変数へエクスポート
-- 外部コマンド実行時のパス展開（`$FILEVIEW_SELECTED`）
-
-## 5. Directory Structure
-
-```
-fileview/
-├── src/
-│   ├── main.rs              # エントリーポイント
-│   ├── app.rs               # アプリケーション状態
-│   ├── event/
-│   │   ├── mod.rs           # イベントモジュール
-│   │   ├── handler.rs       # イベントハンドラー
-│   │   └── key.rs           # キーバインド定義
-│   ├── ui/
-│   │   ├── mod.rs           # UIモジュール
-│   │   ├── tree.rs          # ツリービュー
-│   │   ├── preview.rs       # プレビューパネル
-│   │   └── statusbar.rs     # ステータスバー
-│   ├── fs/
-│   │   ├── mod.rs           # ファイルシステムモジュール
-│   │   ├── entry.rs         # ファイル/ディレクトリエントリ
-│   │   ├── operations.rs    # CRUD操作
-│   │   └── watcher.rs       # ファイル監視
-│   └── config/
-│       ├── mod.rs           # 設定モジュール
-│       └── theme.rs         # テーマ設定
-├── docs/
-│   └── DESIGN.md            # 本ドキュメント
-├── tests/
-│   └── integration/         # 統合テスト
-├── Cargo.toml
-├── CONTRIBUTING.md
-├── LICENSE
-└── README.md
+src/
+├── main.rs
+├── app.rs
+├── file_tree.rs
+├── file_ops.rs
+├── git_status.rs
+├── ui.rs
+└── input.rs
 ```
 
-## 6. State Management
+**fileview（モジュール構造）:**
+```
+src/
+├── main.rs
+├── lib.rs
+├── core/
+│   ├── mod.rs
+│   ├── state.rs        # AppState（myfile: App）
+│   └── mode.rs         # ViewMode（myfile: InputMode）
+├── tree/
+│   ├── mod.rs
+│   ├── node.rs         # TreeEntry（myfile: FileNode）
+│   └── navigator.rs    # TreeNavigator（myfile: FileTree）
+├── action/
+│   ├── mod.rs
+│   ├── file.rs         # ファイル操作
+│   └── clipboard.rs    # クリップボード
+├── render/
+│   ├── mod.rs
+│   ├── tree.rs         # ツリー描画
+│   ├── preview.rs      # プレビュー描画
+│   └── status.rs       # ステータスバー
+├── handler/
+│   ├── mod.rs
+│   ├── key.rs          # キーイベント
+│   └── mouse.rs        # マウスイベント
+└── integrate/
+    ├── mod.rs
+    ├── pick.rs         # --pick モード
+    └── callback.rs     # --on-select
+```
 
+### 2.2 命名規則の違い
+
+| 概念 | myfile | fileview | 理由 |
+|------|--------|----------|------|
+| アプリ状態 | `App` | `AppState` | 状態であることを明示 |
+| 入力モード | `InputMode` | `ViewMode` | 入力だけでなくビュー状態も含む |
+| ツリーノード | `FileNode` | `TreeEntry` | ファイル以外も想定（将来の拡張性） |
+| ツリー本体 | `FileTree` | `TreeNavigator` | ナビゲーション機能を強調 |
+| フラット化リスト | `flat_list` | `visible_entries` | 可視エントリであることを明示 |
+| 選択位置 | `selected` | `focus_index` | フォーカスの概念 |
+| スクロール位置 | `scroll_offset` | `viewport_top` | ビューポートの上端 |
+| マーク済み | `marked` | `selected_paths` | 選択（複数）とフォーカス（単一）を区別 |
+| プレビュー表示 | `quick_preview_enabled` | `preview_visible` | 簡潔に |
+
+### 2.3 モード定義の違い
+
+**myfile:**
 ```rust
-pub struct AppState {
-    // ツリー状態
-    tree: TreeState,
-    // 選択状態
-    selection: SelectionState,
-    // プレビュー状態
-    preview: PreviewState,
-    // 操作モード
-    mode: OperationMode,
-    // 設定
-    config: Config,
-}
-
-pub enum OperationMode {
+pub enum InputMode {
     Normal,
     Search,
     Rename,
+    NewFile,
+    NewDir,
     Confirm(ConfirmAction),
+    Preview,
+    ExternalCommand,
 }
 ```
 
-## 7. Event Flow
+**fileview:**
+```rust
+pub enum ViewMode {
+    Browse,                          // 通常ブラウズ（myfile: Normal）
+    Search { query: String },        // 検索（状態を内包）
+    Input { purpose: InputPurpose }, // 入力（Rename/NewFile/NewDir統合）
+    Confirm { action: PendingAction }, // 確認
+    Preview { scroll: usize },       // プレビュー（スクロール状態を内包）
+}
 
-```
-User Input
-    │
-    ▼
-┌─────────────┐
-│ EventLoop   │ ─── キー/マウスイベント取得
-└─────────────┘
-    │
-    ▼
-┌─────────────┐
-│ Dispatcher  │ ─── イベントをActionに変換
-└─────────────┘
-    │
-    ▼
-┌─────────────┐
-│ Handler     │ ─── Actionに基づき状態更新
-└─────────────┘
-    │
-    ▼
-┌─────────────┐
-│ Renderer    │ ─── 状態からUIを再描画
-└─────────────┘
+pub enum InputPurpose {
+    CreateFile,
+    CreateDir,
+    Rename { original: PathBuf },
+}
+
+pub enum PendingAction {
+    Delete { targets: Vec<PathBuf> },
+}
 ```
 
-## 8. Preview Strategy
+**違い:**
+- 状態をenum variantに内包（myfileは別フィールド）
+- ExternalCommandを削除（--on-selectで代替）
+- Input系を統合
 
-プレビューは**非同期**かつ**キャッシュ付き**で実装する。
+---
 
-```
-Selection Changed
-    │
-    ▼
-Debounce (100ms)
-    │
-    ▼
-Check Cache ──── Hit ───► Render from Cache
-    │
-    Miss
-    │
-    ▼
-Spawn Preview Task
-    │
-    ▼
-Load Content (async)
-    │
-    ▼
-Update Cache & Render
-```
+## 3. Algorithm Reference（参考にするロジック）
 
-## 9. Configuration
+以下のロジックはmyfileの**考え方**を参考にするが、**コードは独自に書き直す**。
 
-`~/.config/fileview/config.toml`:
+### 3.1 ツリーのフラット化
 
-```toml
-[general]
-show_hidden = false
-follow_symlinks = true
+**考え方（myfileと同じ）:**
+- 再帰的にノードを走査
+- 展開されたノードの子のみリストに追加
+- インデックスでO(1)アクセス
 
-[preview]
-enabled = true
-max_lines = 50
-image_protocol = "auto"  # auto | sixel | kitty | none
+**fileviewでの実装:**
+```rust
+impl TreeNavigator {
+    /// ツリーを可視エントリのリストに変換
+    pub fn flatten(&self) -> Vec<&TreeEntry> {
+        let mut entries = Vec::new();
+        self.collect_visible(&self.root, &mut entries);
+        entries
+    }
 
-[theme]
-style = "default"  # default | minimal | colorful
-
-[keybindings]
-quit = "q"
-up = "k"
-down = "j"
+    fn collect_visible<'a>(&'a self, entry: &'a TreeEntry, out: &mut Vec<&'a TreeEntry>) {
+        out.push(entry);
+        if entry.is_expanded() {
+            for child in entry.children() {
+                self.collect_visible(child, out);
+            }
+        }
+    }
+}
 ```
 
-## 10. Future Considerations
+### 3.2 スクロール自動調整
 
-- Git統合（変更ステータス表示）
-- ファジーファインダー統合
-- マルチペイン対応
-- プラグインシステム
+**考え方（myfileと同じ）:**
+- フォーカスが画面外に出たらスクロール
+- 上に出たら上にスクロール、下に出たら下にスクロール
+
+**fileviewでの実装:**
+```rust
+impl AppState {
+    pub fn adjust_viewport(&mut self, visible_height: usize) {
+        if self.focus_index < self.viewport_top {
+            self.viewport_top = self.focus_index;
+        } else if self.focus_index >= self.viewport_top + visible_height {
+            self.viewport_top = self.focus_index - visible_height + 1;
+        }
+    }
+}
+```
+
+### 3.3 ドラッグ&ドロップ検出
+
+**考え方（myfileと同じ）:**
+- 高速な文字入力はD&Dの可能性
+- タイムアウトでバッファを確定
+- パス形式ならD&Dとして処理
+
+**fileviewでの実装:**
+```rust
+pub struct DropDetector {
+    buffer: String,
+    last_input: Instant,
+}
+
+impl DropDetector {
+    const CHAR_TIMEOUT_MS: u128 = 50;
+    const CONFIRM_TIMEOUT_MS: u128 = 100;
+
+    pub fn feed(&mut self, c: char) {
+        let now = Instant::now();
+        if now.duration_since(self.last_input).as_millis() > Self::CHAR_TIMEOUT_MS {
+            self.buffer.clear();
+        }
+        self.buffer.push(c);
+        self.last_input = now;
+    }
+
+    pub fn check(&mut self) -> Option<PathBuf> {
+        if Instant::now().duration_since(self.last_input).as_millis() < Self::CONFIRM_TIMEOUT_MS {
+            return None;
+        }
+        let path = self.buffer.trim();
+        self.buffer.clear();
+        if path.starts_with('/') && Path::new(path).exists() {
+            Some(PathBuf::from(path))
+        } else {
+            None
+        }
+    }
+}
+```
+
+### 3.4 画像の半ブロック描画
+
+**考え方（myfileと同じ）:**
+- 1文字で縦2ピクセル表現（▀）
+- 上ピクセル=前景色、下ピクセル=背景色
+- アスペクト比を保持してリサイズ
+
+**fileviewでの実装:**
+```rust
+pub fn render_image(img: &DynamicImage, width: u32, height: u32) -> Vec<Line<'static>> {
+    let resized = img.resize(width, height * 2, FilterType::Triangle);
+    let mut lines = Vec::new();
+
+    for row in 0..(height as usize) {
+        let mut spans = Vec::new();
+        for col in 0..(width as usize) {
+            let top = resized.get_pixel(col as u32, (row * 2) as u32);
+            let bottom = resized.get_pixel(col as u32, (row * 2 + 1) as u32);
+
+            spans.push(Span::styled(
+                "▀",
+                Style::default()
+                    .fg(Color::Rgb(top[0], top[1], top[2]))
+                    .bg(Color::Rgb(bottom[0], bottom[1], bottom[2])),
+            ));
+        }
+        lines.push(Line::from(spans));
+    }
+    lines
+}
+```
+
+---
+
+## 4. Original Features（fileview独自機能）
+
+### 4.1 --pick モード
+
+```bash
+# 選択したパスを取得
+selected=$(fileview --pick)
+
+# ディレクトリに移動
+cd "$(fileview --pick)"
+```
+
+### 4.2 --on-select コールバック
+
+```bash
+# エディタで開く
+fileview --on-select "nvim {path}"
+
+# 複数選択してアーカイブ
+fileview --on-select "tar -cvf archive.tar {paths}"
+```
+
+### 4.3 終了コード
+
+| Code | 意味 |
+|------|------|
+| 0 | パス選択あり |
+| 1 | キャンセル |
+| 2 | エラー |
+
+---
+
+## 5. Removed Features（削除する機能）
+
+| 機能 | myfile | fileview | 理由 |
+|------|--------|----------|------|
+| Git統合 | あり | **なし** | lazygit等に任せる |
+| 外部コマンド（:） | あり | **なし** | --on-selectで代替 |
+| コマンド履歴 | あり | **なし** | シンプルさ優先 |
+
+---
+
+## 6. Key Bindings
+
+| Key | Action |
+|-----|--------|
+| `j` / `↓` | 下移動 |
+| `k` / `↑` | 上移動 |
+| `l` / `→` / `Enter` | 展開 / 確定 |
+| `h` / `←` | 折りたたみ / 親へ |
+| `g` | 先頭へ |
+| `G` | 末尾へ |
+| `Space` | 選択切替（マルチセレクト） |
+| `y` | コピー |
+| `d` | カット |
+| `p` | ペースト |
+| `D` | 削除 |
+| `r` | リネーム |
+| `a` | 新規ファイル |
+| `A` | 新規フォルダ |
+| `/` | 検索 |
+| `Y` | パスをクリップボードへ |
+| `P` | プレビュー切替 |
+| `o` | フルスクリーンプレビュー |
+| `.` | 隠しファイル切替 |
+| `q` | 終了 |
+
+---
+
+## 7. Technology Stack
+
+| Category | Choice |
+|----------|--------|
+| Language | Rust |
+| TUI | ratatui |
+| Terminal | crossterm |
+| Clipboard | arboard |
+| Image | image |
+| Error | anyhow |
+
+---
+
+## 8. Summary: myfile vs fileview
+
+| Aspect | myfile | fileview |
+|--------|--------|----------|
+| 構造 | フラット（6ファイル） | モジュール階層（6ディレクトリ） |
+| 命名 | 独自 | VSCode寄り |
+| モード管理 | 別フィールド | enum内包 |
+| Git | あり | なし |
+| 外部コマンド | : キー | --on-select |
+| パス連携 | なし | --pick |
+
+**fileviewはmyfileのロジックを参考にしつつ、構造・命名を独自設計した別プロジェクトである。**
