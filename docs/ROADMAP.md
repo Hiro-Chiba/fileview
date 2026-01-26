@@ -102,13 +102,13 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 
 ## Phase 7: Integrate Module（独自機能）
 
-- [ ] 7.1 integrate/pick.rs
+- [x] 7.1 integrate/pick.rs
   - --pick オプション
   - stdout出力
   - 終了コード
   - PR: `feat(integrate): Implement --pick mode`
 
-- [ ] 7.2 integrate/callback.rs
+- [x] 7.2 integrate/callback.rs
   - --on-select オプション
   - プレースホルダー展開
   - PR: `feat(integrate): Implement --on-select callback`
@@ -117,7 +117,7 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 
 ## Phase 8: Main & Polish
 
-- [ ] 8.1 main.rs
+- [x] 8.1 main.rs
   - イベントループ
   - ターミナル初期化/復元
   - PR: `feat: Implement main event loop`
@@ -142,9 +142,9 @@ myfileのロジックを参考にしつつ、**構造・命名を独自設計**�
 | 4. Action | 2 | 2 |
 | 5. Render | 3 | 3 |
 | 6. Handler | 3 | 3 |
-| 7. Integrate | 2 | 0 |
-| 8. Main & Polish | 3 | 0 |
-| **Total** | **20** | **15** |
+| 7. Integrate | 2 | 2 |
+| 8. Main & Polish | 3 | 1 |
+| **Total** | **20** | **18** |
 
 ---
 
