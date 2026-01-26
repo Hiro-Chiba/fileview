@@ -97,3 +97,108 @@ impl TreeEntry {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn setup_test_dir() -> TempDir {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir(temp.path().join("subdir")).unwrap();
+        fs::write(temp.path().join("file.txt"), "test").unwrap();
+        fs::write(temp.path().join(".hidden"), "hidden").unwrap();
+        fs::write(temp.path().join("subdir/nested.txt"), "nested").unwrap();
+        temp
+    }
+
+    #[test]
+    fn test_tree_entry_new_file() {
+        let temp = setup_test_dir();
+        let file_path = temp.path().join("file.txt");
+        let entry = TreeEntry::new(file_path.clone(), 0);
+
+        assert_eq!(entry.name, "file.txt");
+        assert!(!entry.is_dir);
+        assert_eq!(entry.depth, 0);
+        assert!(!entry.expanded);
+        assert!(entry.children().is_empty());
+    }
+
+    #[test]
+    fn test_tree_entry_new_dir() {
+        let temp = setup_test_dir();
+        let dir_path = temp.path().join("subdir");
+        let entry = TreeEntry::new(dir_path.clone(), 1);
+
+        assert_eq!(entry.name, "subdir");
+        assert!(entry.is_dir);
+        assert_eq!(entry.depth, 1);
+        assert!(!entry.expanded);
+    }
+
+    #[test]
+    fn test_toggle_expanded_dir() {
+        let temp = setup_test_dir();
+        let dir_path = temp.path().join("subdir");
+        let mut entry = TreeEntry::new(dir_path, 0);
+
+        assert!(!entry.is_expanded());
+        entry.toggle_expanded();
+        assert!(entry.is_expanded());
+        entry.toggle_expanded();
+        assert!(!entry.is_expanded());
+    }
+
+    #[test]
+    fn test_toggle_expanded_file() {
+        let temp = setup_test_dir();
+        let file_path = temp.path().join("file.txt");
+        let mut entry = TreeEntry::new(file_path, 0);
+
+        assert!(!entry.is_expanded());
+        entry.toggle_expanded(); // Should have no effect on files
+        assert!(!entry.is_expanded());
+    }
+
+    #[test]
+    fn test_load_children() {
+        let temp = setup_test_dir();
+        let mut entry = TreeEntry::new(temp.path().to_path_buf(), 0);
+
+        entry.load_children(false).unwrap();
+
+        // Should have 2 children (subdir and file.txt, not .hidden)
+        assert_eq!(entry.children().len(), 2);
+
+        // Directories should come first
+        assert!(entry.children()[0].is_dir);
+        assert_eq!(entry.children()[0].name, "subdir");
+        assert!(!entry.children()[1].is_dir);
+        assert_eq!(entry.children()[1].name, "file.txt");
+    }
+
+    #[test]
+    fn test_load_children_show_hidden() {
+        let temp = setup_test_dir();
+        let mut entry = TreeEntry::new(temp.path().to_path_buf(), 0);
+
+        entry.load_children(true).unwrap();
+
+        // Should have 3 children (subdir, file.txt, and .hidden)
+        assert_eq!(entry.children().len(), 3);
+    }
+
+    #[test]
+    fn test_set_expanded() {
+        let temp = setup_test_dir();
+        let dir_path = temp.path().join("subdir");
+        let mut entry = TreeEntry::new(dir_path, 0);
+
+        entry.set_expanded(true);
+        assert!(entry.is_expanded());
+        entry.set_expanded(false);
+        assert!(!entry.is_expanded());
+    }
+}

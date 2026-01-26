@@ -91,3 +91,139 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> anyhow::Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_create_file() {
+        let temp = TempDir::new().unwrap();
+        let result = create_file(temp.path(), "test.txt").unwrap();
+
+        assert!(result.exists());
+        assert!(result.is_file());
+        assert_eq!(result.file_name().unwrap(), "test.txt");
+    }
+
+    #[test]
+    fn test_create_file_already_exists() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("test.txt"), "existing").unwrap();
+
+        let result = create_file(temp.path(), "test.txt");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_create_dir() {
+        let temp = TempDir::new().unwrap();
+        let result = create_dir(temp.path(), "subdir").unwrap();
+
+        assert!(result.exists());
+        assert!(result.is_dir());
+        assert_eq!(result.file_name().unwrap(), "subdir");
+    }
+
+    #[test]
+    fn test_rename_file() {
+        let temp = TempDir::new().unwrap();
+        let original = temp.path().join("original.txt");
+        fs::write(&original, "content").unwrap();
+
+        let result = rename(&original, "renamed.txt").unwrap();
+
+        assert!(!original.exists());
+        assert!(result.exists());
+        assert_eq!(result.file_name().unwrap(), "renamed.txt");
+        assert_eq!(fs::read_to_string(&result).unwrap(), "content");
+    }
+
+    #[test]
+    fn test_rename_dir() {
+        let temp = TempDir::new().unwrap();
+        let original = temp.path().join("original_dir");
+        fs::create_dir(&original).unwrap();
+        fs::write(original.join("file.txt"), "content").unwrap();
+
+        let result = rename(&original, "renamed_dir").unwrap();
+
+        assert!(!original.exists());
+        assert!(result.exists());
+        assert!(result.is_dir());
+        assert!(result.join("file.txt").exists());
+    }
+
+    #[test]
+    fn test_delete_file() {
+        let temp = TempDir::new().unwrap();
+        let file = temp.path().join("to_delete.txt");
+        fs::write(&file, "content").unwrap();
+
+        delete(&file).unwrap();
+        assert!(!file.exists());
+    }
+
+    #[test]
+    fn test_delete_dir() {
+        let temp = TempDir::new().unwrap();
+        let dir = temp.path().join("to_delete");
+        fs::create_dir(&dir).unwrap();
+        fs::write(dir.join("file.txt"), "content").unwrap();
+
+        delete(&dir).unwrap();
+        assert!(!dir.exists());
+    }
+
+    #[test]
+    fn test_copy_to_file() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("source.txt");
+        fs::write(&src, "content").unwrap();
+
+        let dest_dir = temp.path().join("dest");
+        fs::create_dir(&dest_dir).unwrap();
+
+        let result = copy_to(&src, &dest_dir).unwrap();
+
+        assert!(src.exists()); // Original still exists
+        assert!(result.exists());
+        assert_eq!(fs::read_to_string(&result).unwrap(), "content");
+    }
+
+    #[test]
+    fn test_copy_to_dir() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("source_dir");
+        fs::create_dir(&src).unwrap();
+        fs::write(src.join("file.txt"), "content").unwrap();
+
+        let dest_dir = temp.path().join("dest");
+        fs::create_dir(&dest_dir).unwrap();
+
+        let result = copy_to(&src, &dest_dir).unwrap();
+
+        assert!(src.exists()); // Original still exists
+        assert!(result.exists());
+        assert!(result.is_dir());
+        assert!(result.join("file.txt").exists());
+    }
+
+    #[test]
+    fn test_copy_to_unique_name() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("file.txt");
+        fs::write(&src, "content").unwrap();
+
+        // Create existing file with same name in dest
+        fs::write(temp.path().join("file.txt"), "existing").unwrap();
+
+        let result = copy_to(&src, temp.path()).unwrap();
+
+        // Should create file_1.txt
+        assert_eq!(result.file_name().unwrap(), "file_1.txt");
+        assert!(result.exists());
+    }
+}
