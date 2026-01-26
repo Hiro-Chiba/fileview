@@ -1,0 +1,156 @@
+# FileView (fv)
+
+A minimal, VSCode-style file tree TUI for modern terminal emulators.
+
+## Features
+
+- Fast file tree navigation with vim-like keybindings
+- Multi-select support for batch operations
+- Text and image preview (half-block rendering)
+- Copy/cut/paste with internal clipboard
+- System clipboard integration (path/filename copy)
+- Pick mode for external tool integration
+- Callback execution on file selection
+- Hidden files toggle
+- Mouse support (click, double-click, scroll)
+
+## Installation
+
+### From source
+
+```bash
+git clone https://github.com/Hiro-Chiba/fileview.git
+cd fileview
+cargo install --path .
+```
+
+### Requirements
+
+- Rust 1.70+
+- A terminal with true color support (recommended: Ghostty, iTerm2, Alacritty)
+- Nerd Font for file icons
+
+## Usage
+
+```bash
+# Open current directory
+fv
+
+# Open specific directory
+fv /path/to/directory
+
+# Pick mode (output selected path to stdout)
+fv --pick
+
+# Pick mode with JSON output
+fv --pick --format json
+
+# Execute command on selection
+fv --on-select "code {path}"
+```
+
+## Keybindings
+
+### Navigation
+
+| Key | Action |
+|-----|--------|
+| `j` / `↓` | Move down |
+| `k` / `↑` | Move up |
+| `g` | Go to top |
+| `G` | Go to bottom |
+
+### Tree Operations
+
+| Key | Action |
+|-----|--------|
+| `l` / `→` / `Tab` | Expand directory |
+| `h` / `←` / `Backspace` | Collapse directory |
+| `Enter` | Toggle expand/collapse |
+| `H` | Collapse all |
+| `L` | Expand all (depth limit: 5) |
+
+### Selection
+
+| Key | Action |
+|-----|--------|
+| `Space` | Toggle mark |
+| `Esc` | Clear all marks |
+
+### File Operations
+
+| Key | Action |
+|-----|--------|
+| `a` | Create new file |
+| `A` | Create new directory |
+| `r` | Rename |
+| `D` / `Delete` | Delete (with confirmation) |
+| `y` | Copy to clipboard |
+| `d` | Cut to clipboard |
+| `p` | Paste |
+
+### Search
+
+| Key | Action |
+|-----|--------|
+| `/` | Start search |
+| `n` | Next search result |
+
+### Preview
+
+| Key | Action |
+|-----|--------|
+| `P` | Toggle preview panel |
+| `o` | Open fullscreen preview |
+
+### Other
+
+| Key | Action |
+|-----|--------|
+| `.` | Toggle hidden files |
+| `R` / `F5` | Refresh |
+| `c` | Copy path to system clipboard |
+| `C` | Copy filename to system clipboard |
+| `?` | Show help |
+| `q` | Quit |
+
+## CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `-p`, `--pick` | Pick mode: output selected path(s) to stdout |
+| `-f`, `--format FMT` | Output format: `lines` (default), `null`, `json` |
+| `--on-select CMD` | Run command when file is selected |
+| `-h`, `--help` | Show help |
+| `-V`, `--version` | Show version |
+
+### Placeholders for `--on-select`
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{path}` | Full path |
+| `{dir}` | Parent directory |
+| `{name}` | Filename with extension |
+| `{stem}` | Filename without extension |
+| `{ext}` | Extension only |
+
+### Examples
+
+```bash
+# Use as file picker for another tool
+selected=$(fv --pick)
+echo "Selected: $selected"
+
+# Open selected file in editor
+fv --on-select "vim {path}"
+
+# Copy selected file path to clipboard (macOS)
+fv --on-select "echo {path} | pbcopy"
+
+# Multiple file selection with JSON output
+fv --pick --format json
+```
+
+## License
+
+MIT
