@@ -3,7 +3,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::path::PathBuf;
 
-use crate::core::{AppState, InputPurpose, PendingAction, ViewMode};
+use crate::core::{AppState, ViewMode};
 
 /// Actions that can result from key handling
 #[derive(Debug, Clone)]
