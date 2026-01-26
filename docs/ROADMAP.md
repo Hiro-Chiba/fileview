@@ -15,7 +15,12 @@
   - .gitignore 追加
   - PR: `chore: Initialize Rust project with dependencies`
 
-- [ ] 1.2 基本ディレクトリ構造
+- [ ] 1.2 CI/CD パイプライン設定
+  - .github/workflows/ci.yml（テスト、lint、format チェック）
+  - PRマージ前の必須チェック設定
+  - PR: `chore: Set up GitHub Actions CI pipeline`
+
+- [ ] 1.3 基本ディレクトリ構造
   - src/main.rs（エントリーポイントスタブ）
   - src/lib.rs（モジュール宣言）
   - 空のモジュールファイル作成
@@ -235,18 +240,13 @@
   - 使用方法、インストール手順
   - PR: `docs: Add README and usage documentation`
 
-- [ ] 10.5 CI/CD 設定
-  - GitHub Actions ワークフロー
-  - 自動テスト、リント
-  - PR: `chore: Set up CI/CD pipeline`
-
 ---
 
 ## Progress Summary
 
 | Phase | Items | Completed |
 |-------|-------|-----------|
-| 1. Foundation | 2 | 0 |
+| 1. Foundation | 3 | 0 |
 | 2. Core Framework | 3 | 0 |
 | 3. File System | 3 | 0 |
 | 4. Tree View | 5 | 0 |
@@ -255,7 +255,7 @@
 | 7. Status & Path | 3 | 0 |
 | 8. Drag & Drop | 2 | 0 |
 | 9. Configuration | 3 | 0 |
-| 10. Polish | 5 | 0 |
+| 10. Polish | 4 | 0 |
 | **Total** | **38** | **0** |
 
 ---
