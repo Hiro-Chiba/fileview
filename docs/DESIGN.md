@@ -5,235 +5,296 @@
 FileViewは、ターミナルエミュレーター上で動作するVSCode風のミニマルファイルツリーUIである。
 Ghostty等のモダンターミナルでの使用を想定し、**軽量・高速・直感操作**を設計思想の中核とする。
 
-### 1.1 ベースプロジェクト
+### 1.1 myfileとの関係
 
-本プロジェクトは [myfile](../myfile) の設計・実装を参考にしている。
-myfileの優れたアーキテクチャをベースに、書き方を変えつつ同等の機能を実現する。
+本プロジェクトは [myfile](../myfile) の設計思想を参考にしている。
+ただし、**構造・命名・モジュール分割は独自に設計**し、別プロジェクトとして成立させる。
 
-### 1.2 myfileから継承する設計
-
-| 要素 | 内容 |
-|------|------|
-| アーキテクチャ | **モード駆動型 State Machine** |
-| ツリー構造 | **フラット化リスト（flat_list）同期** |
-| I/O処理 | **同期処理**（シンプルさ優先） |
-| 画像表示 | **半ブロック文字（▀）** |
-| キーバインド | **Vim風**（j/k/h/l） |
-
-### 1.3 fileviewでの追加・変更
-
-| 要素 | 変更内容 |
-|------|----------|
-| Git統合 | **除外**（ミニマル設計） |
-| 外部コマンド | **除外** → `--pick`/`--on-select`で代替 |
-| パス連携 | **追加**（stdout出力、コールバック） |
-| 書き方 | 変数名・関数名を一部変更 |
+| 観点 | myfile | fileview |
+|------|--------|----------|
+| 参考にする | アルゴリズム、ロジックの考え方 | ← |
+| 変える | - | 構造、命名、モジュール分割 |
+| 追加する | - | パス連携機能 |
+| 削除する | Git統合、外部コマンド | - |
 
 ---
 
-## 2. Architecture（myfileベース）
+## 2. Structural Differences（構造の違い）
 
-### 2.1 モード駆動型 State Machine
+### 2.1 ディレクトリ構成
 
-myfileと同様に、`InputMode` enumで状態を管理する。
+**myfile（フラット構造）:**
+```
+src/
+├── main.rs
+├── app.rs
+├── file_tree.rs
+├── file_ops.rs
+├── git_status.rs
+├── ui.rs
+└── input.rs
+```
 
+**fileview（モジュール構造）:**
+```
+src/
+├── main.rs
+├── lib.rs
+├── core/
+│   ├── mod.rs
+│   ├── state.rs        # AppState（myfile: App）
+│   └── mode.rs         # ViewMode（myfile: InputMode）
+├── tree/
+│   ├── mod.rs
+│   ├── node.rs         # TreeEntry（myfile: FileNode）
+│   └── navigator.rs    # TreeNavigator（myfile: FileTree）
+├── action/
+│   ├── mod.rs
+│   ├── file.rs         # ファイル操作
+│   └── clipboard.rs    # クリップボード
+├── render/
+│   ├── mod.rs
+│   ├── tree.rs         # ツリー描画
+│   ├── preview.rs      # プレビュー描画
+│   └── status.rs       # ステータスバー
+├── handler/
+│   ├── mod.rs
+│   ├── key.rs          # キーイベント
+│   └── mouse.rs        # マウスイベント
+└── integrate/
+    ├── mod.rs
+    ├── pick.rs         # --pick モード
+    └── callback.rs     # --on-select
+```
+
+### 2.2 命名規則の違い
+
+| 概念 | myfile | fileview | 理由 |
+|------|--------|----------|------|
+| アプリ状態 | `App` | `AppState` | 状態であることを明示 |
+| 入力モード | `InputMode` | `ViewMode` | 入力だけでなくビュー状態も含む |
+| ツリーノード | `FileNode` | `TreeEntry` | ファイル以外も想定（将来の拡張性） |
+| ツリー本体 | `FileTree` | `TreeNavigator` | ナビゲーション機能を強調 |
+| フラット化リスト | `flat_list` | `visible_entries` | 可視エントリであることを明示 |
+| 選択位置 | `selected` | `focus_index` | フォーカスの概念 |
+| スクロール位置 | `scroll_offset` | `viewport_top` | ビューポートの上端 |
+| マーク済み | `marked` | `selected_paths` | 選択（複数）とフォーカス（単一）を区別 |
+| プレビュー表示 | `quick_preview_enabled` | `preview_visible` | 簡潔に |
+
+### 2.3 モード定義の違い
+
+**myfile:**
 ```rust
 pub enum InputMode {
-    Normal,           // 通常操作
-    Search,           // インクリメンタル検索
-    Rename,           // ファイル/フォルダ名変更
-    NewFile,          // ファイル作成
-    NewDir,           // フォルダ作成
-    Confirm(ConfirmAction),  // 削除確認
-    Preview,          // フルスクリーンプレビュー
+    Normal,
+    Search,
+    Rename,
+    NewFile,
+    NewDir,
+    Confirm(ConfirmAction),
+    Preview,
+    ExternalCommand,
 }
 ```
 
-### 2.2 フラット化ツリー
-
-myfileと同様に、ツリーをフラット化リストとして管理する。
-
+**fileview:**
 ```rust
-pub struct FileTree {
-    pub root: FileNode,           // ツリー構造
-    pub flat_list: Vec<usize>,    // フラット化インデックス
-    nodes: Vec<FileNode>,         // フラット化ノード
-    pub show_hidden: bool,
+pub enum ViewMode {
+    Browse,                          // 通常ブラウズ（myfile: Normal）
+    Search { query: String },        // 検索（状態を内包）
+    Input { purpose: InputPurpose }, // 入力（Rename/NewFile/NewDir統合）
+    Confirm { action: PendingAction }, // 確認
+    Preview { scroll: usize },       // プレビュー（スクロール状態を内包）
+}
+
+pub enum InputPurpose {
+    CreateFile,
+    CreateDir,
+    Rename { original: PathBuf },
+}
+
+pub enum PendingAction {
+    Delete { targets: Vec<PathBuf> },
 }
 ```
 
-**利点：**
-- O(1) でインデックスアクセス
-- スクロール・選択が高速
-- 実装がシンプル
-
-### 2.3 全体構成
-
-```
-┌─────────────────────────────────────────────────────┐
-│                    FileView                         │
-├─────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │    App      │  │  FileTree   │  │     UI      │ │
-│  │   (State)   │◄─┤  (Data)     │◄─┤  (Render)   │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘ │
-│         │                │                │        │
-│         ▼                ▼                ▼        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │   Input     │  │  FileOps    │  │  Preview    │ │
-│  │  (Events)   │  │  (CRUD)     │  │  (Display)  │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘ │
-└─────────────────────────────────────────────────────┘
-```
+**違い:**
+- 状態をenum variantに内包（myfileは別フィールド）
+- ExternalCommandを削除（--on-selectで代替）
+- Input系を統合
 
 ---
 
-## 3. Technology Stack
+## 3. Algorithm Reference（参考にするロジック）
 
-myfileと同じクレートを使用する。
+以下のロジックはmyfileの**考え方**を参考にするが、**コードは独自に書き直す**。
 
-| Category | Choice | Rationale |
-|----------|--------|-----------|
-| Language | Rust | メモリ安全性、高速性 |
-| TUI Framework | ratatui | myfileと同様 |
-| Terminal Backend | crossterm | myfileと同様 |
-| Clipboard | arboard | myfileと同様 |
-| Image | image | myfileと同様 |
-| Error | anyhow | myfileと同様 |
+### 3.1 ツリーのフラット化
 
----
+**考え方（myfileと同じ）:**
+- 再帰的にノードを走査
+- 展開されたノードの子のみリストに追加
+- インデックスでO(1)アクセス
 
-## 4. Core Data Structures
-
-### 4.1 FileNode（myfileベース）
-
+**fileviewでの実装:**
 ```rust
-pub struct FileNode {
-    pub path: PathBuf,
-    pub name: String,
-    pub is_dir: bool,
-    pub expanded: bool,
-    pub depth: usize,
-    pub children: Vec<FileNode>,
-}
-```
+impl TreeNavigator {
+    /// ツリーを可視エントリのリストに変換
+    pub fn flatten(&self) -> Vec<&TreeEntry> {
+        let mut entries = Vec::new();
+        self.collect_visible(&self.root, &mut entries);
+        entries
+    }
 
-### 4.2 App State（myfileベース）
-
-```rust
-pub struct App {
-    // ツリー・ナビゲーション
-    pub tree: FileTree,
-    pub selected: usize,
-    pub scroll_offset: usize,
-    pub marked: HashSet<PathBuf>,
-
-    // クリップボード
-    pub clipboard: Clipboard,
-
-    // 入力・モード
-    pub input_mode: InputMode,
-    pub input_buffer: String,
-
-    // UI状態
-    pub message: Option<String>,
-    pub quick_preview_enabled: bool,
-    pub preview_scroll: usize,
-
-    // 終了フラグ
-    pub should_quit: bool,
-
-    // ★ 追加: パス連携
-    pub pick_mode: bool,
-    pub selected_path: Option<PathBuf>,
-}
-```
-
----
-
-## 5. Directory Structure
-
-myfileに近い構造を採用する。
-
-```
-fileview/
-├── src/
-│   ├── main.rs           # エントリーポイント・イベントループ
-│   ├── app.rs            # App状態・ビジネスロジック
-│   ├── file_tree.rs      # ツリーデータ構造・操作
-│   ├── file_ops.rs       # ファイル操作・クリップボード
-│   ├── ui.rs             # UI描画・レイアウト
-│   ├── input.rs          # キーボード・マウス入力処理
-│   └── preview.rs        # ★ 追加: プレビュー処理を分離
-├── Cargo.toml
-├── LICENSE
-└── README.md
-```
-
-**myfileとの違い：**
-- `git_status.rs` を削除（Git統合なし）
-- `preview.rs` を追加（プレビュー処理を分離）
-
----
-
-## 6. Key Features（myfileベース）
-
-### 6.1 ファイルツリー管理
-
-myfileと同様のフラット化メカニズム：
-
-```rust
-fn flatten_node(&mut self, node: &FileNode) {
-    self.nodes.push(node.clone());
-    if node.expanded {
-        for child in &node.children {
-            self.flatten_node(child);
+    fn collect_visible<'a>(&'a self, entry: &'a TreeEntry, out: &mut Vec<&'a TreeEntry>) {
+        out.push(entry);
+        if entry.is_expanded() {
+            for child in entry.children() {
+                self.collect_visible(child, out);
+            }
         }
     }
 }
 ```
 
-### 6.2 ファイル操作
+### 3.2 スクロール自動調整
 
-myfileと同様のCRUD操作：
+**考え方（myfileと同じ）:**
+- フォーカスが画面外に出たらスクロール
+- 上に出たら上にスクロール、下に出たら下にスクロール
 
+**fileviewでの実装:**
 ```rust
-pub fn create_file(parent_dir: &Path, name: &str) -> anyhow::Result<PathBuf>
-pub fn create_dir(parent_dir: &Path, name: &str) -> anyhow::Result<PathBuf>
-pub fn rename_file(path: &Path, new_name: &str) -> anyhow::Result<PathBuf>
-pub fn delete_file(path: &Path) -> anyhow::Result<()>
-pub fn copy_file(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf>
+impl AppState {
+    pub fn adjust_viewport(&mut self, visible_height: usize) {
+        if self.focus_index < self.viewport_top {
+            self.viewport_top = self.focus_index;
+        } else if self.focus_index >= self.viewport_top + visible_height {
+            self.viewport_top = self.focus_index - visible_height + 1;
+        }
+    }
+}
 ```
 
-### 6.3 クイックプレビュー
+### 3.3 ドラッグ&ドロップ検出
 
-myfileと同様：
+**考え方（myfileと同じ）:**
+- 高速な文字入力はD&Dの可能性
+- タイムアウトでバッファを確定
+- パス形式ならD&Dとして処理
 
-| Type | Preview |
-|------|---------|
-| Text | 先頭N行表示 |
-| Image | 半ブロック文字（▀）でRGB表示 |
-| Binary | ファイルサイズ表示 |
-
-### 6.4 ドラッグ&ドロップ
-
-myfileと同様のバッファ検出方式：
-
+**fileviewでの実装:**
 ```rust
-pub fn buffer_char(&mut self, c: char) {
-    let now = Instant::now();
-    let elapsed = now.duration_since(self.last_char_time).as_millis();
-    if elapsed > 50 {
-        self.drop_buffer.clear();
+pub struct DropDetector {
+    buffer: String,
+    last_input: Instant,
+}
+
+impl DropDetector {
+    const CHAR_TIMEOUT_MS: u128 = 50;
+    const CONFIRM_TIMEOUT_MS: u128 = 100;
+
+    pub fn feed(&mut self, c: char) {
+        let now = Instant::now();
+        if now.duration_since(self.last_input).as_millis() > Self::CHAR_TIMEOUT_MS {
+            self.buffer.clear();
+        }
+        self.buffer.push(c);
+        self.last_input = now;
     }
-    self.drop_buffer.push(c);
-    self.last_char_time = now;
+
+    pub fn check(&mut self) -> Option<PathBuf> {
+        if Instant::now().duration_since(self.last_input).as_millis() < Self::CONFIRM_TIMEOUT_MS {
+            return None;
+        }
+        let path = self.buffer.trim();
+        self.buffer.clear();
+        if path.starts_with('/') && Path::new(path).exists() {
+            Some(PathBuf::from(path))
+        } else {
+            None
+        }
+    }
+}
+```
+
+### 3.4 画像の半ブロック描画
+
+**考え方（myfileと同じ）:**
+- 1文字で縦2ピクセル表現（▀）
+- 上ピクセル=前景色、下ピクセル=背景色
+- アスペクト比を保持してリサイズ
+
+**fileviewでの実装:**
+```rust
+pub fn render_image(img: &DynamicImage, width: u32, height: u32) -> Vec<Line<'static>> {
+    let resized = img.resize(width, height * 2, FilterType::Triangle);
+    let mut lines = Vec::new();
+
+    for row in 0..(height as usize) {
+        let mut spans = Vec::new();
+        for col in 0..(width as usize) {
+            let top = resized.get_pixel(col as u32, (row * 2) as u32);
+            let bottom = resized.get_pixel(col as u32, (row * 2 + 1) as u32);
+
+            spans.push(Span::styled(
+                "▀",
+                Style::default()
+                    .fg(Color::Rgb(top[0], top[1], top[2]))
+                    .bg(Color::Rgb(bottom[0], bottom[1], bottom[2])),
+            ));
+        }
+        lines.push(Line::from(spans));
+    }
+    lines
 }
 ```
 
 ---
 
-## 7. Key Bindings（myfileベース）
+## 4. Original Features（fileview独自機能）
+
+### 4.1 --pick モード
+
+```bash
+# 選択したパスを取得
+selected=$(fileview --pick)
+
+# ディレクトリに移動
+cd "$(fileview --pick)"
+```
+
+### 4.2 --on-select コールバック
+
+```bash
+# エディタで開く
+fileview --on-select "nvim {path}"
+
+# 複数選択してアーカイブ
+fileview --on-select "tar -cvf archive.tar {paths}"
+```
+
+### 4.3 終了コード
+
+| Code | 意味 |
+|------|------|
+| 0 | パス選択あり |
+| 1 | キャンセル |
+| 2 | エラー |
+
+---
+
+## 5. Removed Features（削除する機能）
+
+| 機能 | myfile | fileview | 理由 |
+|------|--------|----------|------|
+| Git統合 | あり | **なし** | lazygit等に任せる |
+| 外部コマンド（:） | あり | **なし** | --on-selectで代替 |
+| コマンド履歴 | あり | **なし** | シンプルさ優先 |
+
+---
+
+## 6. Key Bindings
 
 | Key | Action |
 |-----|--------|
@@ -243,7 +304,7 @@ pub fn buffer_char(&mut self, c: char) {
 | `h` / `←` | 折りたたみ / 親へ |
 | `g` | 先頭へ |
 | `G` | 末尾へ |
-| `Space` | マーク切替 |
+| `Space` | 選択切替（マルチセレクト） |
 | `y` | コピー |
 | `d` | カット |
 | `p` | ペースト |
@@ -252,108 +313,36 @@ pub fn buffer_char(&mut self, c: char) {
 | `a` | 新規ファイル |
 | `A` | 新規フォルダ |
 | `/` | 検索 |
-| `P` | クイックプレビュー切替 |
+| `Y` | パスをクリップボードへ |
+| `P` | プレビュー切替 |
 | `o` | フルスクリーンプレビュー |
 | `.` | 隠しファイル切替 |
 | `q` | 終了 |
 
 ---
 
-## 8. Path Integration（fileview追加機能）
+## 7. Technology Stack
 
-myfileにはない機能として、外部連携を追加する。
-
-### 8.1 標準出力モード
-
-```bash
-# 選択したパスを取得
-selected=$(fileview --pick)
-cd "$selected"
-
-# パイプで渡す
-fileview --pick | xargs cat
-```
-
-### 8.2 コールバック実行
-
-```bash
-# エディタで開く
-fileview --on-select "nvim {path}"
-
-# 複数選択
-fileview --on-select "tar -cvf archive.tar {paths}"
-```
-
-### 8.3 終了コード
-
-| Code | 意味 |
-|------|------|
-| 0 | 正常終了（パス選択あり） |
-| 1 | キャンセル（q で終了） |
-| 2 | エラー |
+| Category | Choice |
+|----------|--------|
+| Language | Rust |
+| TUI | ratatui |
+| Terminal | crossterm |
+| Clipboard | arboard |
+| Image | image |
+| Error | anyhow |
 
 ---
 
-## 9. What FileView Does NOT Include
-
-myfileから意図的に除外する機能：
-
-| 機能 | 理由 |
-|------|------|
-| Git統合 | コア機能ではない。lazygit等を使用 |
-| 外部コマンド実行（:） | `--on-select`で代替 |
-| コマンド履歴ファイル | シンプルさ優先 |
-
----
-
-## 10. Naming Conventions（書き方の違い）
-
-myfileとは一部異なる命名規則を使用する。
-
-| myfile | fileview | 理由 |
-|--------|----------|------|
-| `FileTree` | `FileTree` | 同じ |
-| `FileNode` | `TreeNode` | より汎用的 |
-| `App` | `AppState` | 役割を明確化 |
-| `flat_list` | `visible_indices` | 意味を明確化 |
-| `selected` | `cursor` | VSCode用語に合わせる |
-| `quick_preview_enabled` | `preview_visible` | 短縮 |
-
----
-
-## 11. Implementation Notes
-
-### 11.1 myfileから流用するロジック
-
-以下のロジックはmyfileを参考に実装する（書き方を変える）：
-
-- フラット化ツリーの構築・更新
-- 展開/折りたたみ処理
-- スクロール自動調整
-- ドラッグ&ドロップ検出
-- 画像の半ブロック描画
-- ファイル操作（TOCTOU対策）
-
-### 11.2 独自実装
-
-以下は新規実装：
-
-- `--pick` モード
-- `--on-select` コールバック
-- プレビュー処理の分離（preview.rs）
-
----
-
-## 12. Summary
+## 8. Summary: myfile vs fileview
 
 | Aspect | myfile | fileview |
 |--------|--------|----------|
-| ベース | - | myfileをベース |
-| アーキテクチャ | State Machine | 同じ |
-| ツリー構造 | flat_list | 同じ |
-| Git統合 | あり | **なし** |
-| 外部コマンド | あり（:） | **なし**（--on-selectで代替） |
-| パス連携 | なし | **--pick, --on-select** |
-| 命名規則 | 独自 | 一部変更 |
+| 構造 | フラット（6ファイル） | モジュール階層（6ディレクトリ） |
+| 命名 | 独自 | VSCode寄り |
+| モード管理 | 別フィールド | enum内包 |
+| Git | あり | なし |
+| 外部コマンド | : キー | --on-select |
+| パス連携 | なし | --pick |
 
-**fileviewはmyfileの設計をベースに、ミニマル化とパス連携機能を追加したツールである。**
+**fileviewはmyfileのロジックを参考にしつつ、構造・命名を独自設計した別プロジェクトである。**

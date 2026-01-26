@@ -2,15 +2,14 @@
 
 ## Overview
 
-本ドキュメントは FileView の実装計画を定義する。
-**myfileの設計をベース**に、書き方を変えつつ実装する。
+myfileのロジックを参考にしつつ、**構造・命名を独自設計**した別プロジェクトとして実装する。
 
 ---
 
-## Phase 1: Project Foundation
+## Phase 1: Foundation
 
 - [ ] 1.1 プロジェクト初期化
-  - Cargo.toml（myfileと同じ依存クレート）
+  - Cargo.toml
   - .gitignore
   - PR: `chore: Initialize Rust project`
 
@@ -18,116 +17,117 @@
   - .github/workflows/ci.yml
   - PR: `chore: Set up GitHub Actions CI`
 
+- [ ] 1.3 モジュール構造作成
+  - src/lib.rs + 各モジュールのmod.rs
+  - PR: `chore: Set up module structure`
+
 ---
 
-## Phase 2: Core Implementation（myfileベース）
+## Phase 2: Core Module
 
-- [ ] 2.1 main.rs
-  - エントリーポイント
-  - イベントループ（myfileベース）
+- [ ] 2.1 core/state.rs
+  - AppState構造体
+  - PR: `feat(core): Define AppState`
+
+- [ ] 2.2 core/mode.rs
+  - ViewMode enum（状態内包型）
+  - InputPurpose, PendingAction
+  - PR: `feat(core): Define ViewMode with embedded state`
+
+---
+
+## Phase 3: Tree Module
+
+- [ ] 3.1 tree/node.rs
+  - TreeEntry構造体
+  - PR: `feat(tree): Define TreeEntry`
+
+- [ ] 3.2 tree/navigator.rs
+  - TreeNavigator構造体
+  - フラット化（flatten / collect_visible）
+  - 展開/折りたたみ
+  - PR: `feat(tree): Implement TreeNavigator with flatten`
+
+---
+
+## Phase 4: Action Module
+
+- [ ] 4.1 action/file.rs
+  - create_file / create_dir
+  - rename / delete
+  - PR: `feat(action): Implement file operations`
+
+- [ ] 4.2 action/clipboard.rs
+  - copy / cut / paste
+  - Clipboard構造体
+  - PR: `feat(action): Implement clipboard operations`
+
+---
+
+## Phase 5: Render Module
+
+- [ ] 5.1 render/tree.rs
+  - ツリー描画
+  - PR: `feat(render): Implement tree rendering`
+
+- [ ] 5.2 render/preview.rs
+  - テキストプレビュー
+  - 画像プレビュー（半ブロック）
+  - PR: `feat(render): Implement preview rendering`
+
+- [ ] 5.3 render/status.rs
+  - ステータスバー
+  - 入力UI
+  - PR: `feat(render): Implement status bar`
+
+---
+
+## Phase 6: Handler Module
+
+- [ ] 6.1 handler/key.rs
+  - キーイベント処理
+  - モード別ハンドラー
+  - PR: `feat(handler): Implement key handling`
+
+- [ ] 6.2 handler/mouse.rs
+  - マウスイベント処理
+  - ダブルクリック検出
+  - PR: `feat(handler): Implement mouse handling`
+
+- [ ] 6.3 DropDetector
+  - D&D検出
+  - PR: `feat(handler): Implement drag and drop detection`
+
+---
+
+## Phase 7: Integrate Module（独自機能）
+
+- [ ] 7.1 integrate/pick.rs
+  - --pick オプション
+  - stdout出力
+  - 終了コード
+  - PR: `feat(integrate): Implement --pick mode`
+
+- [ ] 7.2 integrate/callback.rs
+  - --on-select オプション
+  - プレースホルダー展開
+  - PR: `feat(integrate): Implement --on-select callback`
+
+---
+
+## Phase 8: Main & Polish
+
+- [ ] 8.1 main.rs
+  - イベントループ
   - ターミナル初期化/復元
   - PR: `feat: Implement main event loop`
 
-- [ ] 2.2 file_tree.rs
-  - FileNode構造体（→ TreeNode）
-  - FileTree構造体
-  - フラット化リスト（flat_list → visible_indices）
-  - 展開/折りたたみ
-  - PR: `feat(tree): Implement file tree with flatten`
-
-- [ ] 2.3 app.rs
-  - App構造体（→ AppState）
-  - InputMode enum
-  - 状態管理
-  - PR: `feat(app): Implement application state`
-
-- [ ] 2.4 input.rs
-  - キーイベント処理
-  - マウスイベント処理
-  - モード別ハンドラー
-  - PR: `feat(input): Implement input handling`
-
-- [ ] 2.5 ui.rs
-  - ツリー描画
-  - ステータスバー
-  - 入力UI
-  - PR: `feat(ui): Implement UI rendering`
-
----
-
-## Phase 3: File Operations（myfileベース）
-
-- [ ] 3.1 file_ops.rs - 基本操作
-  - create_file / create_dir
-  - rename_file
-  - delete_file
-  - PR: `feat(ops): Implement basic file operations`
-
-- [ ] 3.2 file_ops.rs - コピー/移動
-  - copy_file
-  - クリップボード管理
-  - PR: `feat(ops): Implement copy and clipboard`
-
-- [ ] 3.3 ドラッグ&ドロップ
-  - バッファ検出（myfileベース）
-  - パス正規化
-  - PR: `feat: Implement drag and drop`
-
----
-
-## Phase 4: Preview（myfileベース）
-
-- [ ] 4.1 preview.rs - テキスト
-  - テキストファイル表示
-  - 行数制限
-  - PR: `feat(preview): Implement text preview`
-
-- [ ] 4.2 preview.rs - 画像
-  - 半ブロック文字描画（myfileベース）
-  - PR: `feat(preview): Implement image preview`
-
-- [ ] 4.3 クイック/フルスクリーン
-  - P キーでトグル
-  - o キーでフルスクリーン
-  - PR: `feat(preview): Add quick and fullscreen modes`
-
----
-
-## Phase 5: Path Integration（fileview独自）
-
-- [ ] 5.1 --pick モード
-  - コマンドライン引数処理
-  - Enter で stdout 出力
-  - 終了コード
-  - PR: `feat: Add --pick mode for path selection`
-
-- [ ] 5.2 --on-select コールバック
-  - プレースホルダー展開（{path}, {paths}）
-  - 外部コマンド実行
-  - PR: `feat: Add --on-select callback option`
-
-- [ ] 5.3 クリップボード連携
-  - Y キーでパスコピー
-  - arboard + OSC 52
-  - PR: `feat: Implement path copy to clipboard`
-
----
-
-## Phase 6: Polish
-
-- [ ] 6.1 エラーハンドリング
-  - ユーザーフレンドリーなメッセージ
-  - PR: `fix: Improve error messages`
-
-- [ ] 6.2 README.md
-  - インストール手順
-  - 使用方法
-  - myfileとの比較
+- [ ] 8.2 README.md
+  - インストール、使用方法
   - PR: `docs: Add README`
 
-- [ ] 6.3 テスト
-  - file_tree テスト
-  - file_ops テスト
+- [ ] 8.3 テスト
+  - tree, action のユニットテスト
   - PR: `test: Add unit tests`
 
 ---
@@ -136,41 +136,52 @@
 
 | Phase | Items | Completed |
 |-------|-------|-----------|
-| 1. Foundation | 2 | 0 |
-| 2. Core | 5 | 0 |
-| 3. File Ops | 3 | 0 |
-| 4. Preview | 3 | 0 |
-| 5. Path Integration | 3 | 0 |
-| 6. Polish | 3 | 0 |
-| **Total** | **19** | **0** |
+| 1. Foundation | 3 | 0 |
+| 2. Core | 2 | 0 |
+| 3. Tree | 2 | 0 |
+| 4. Action | 2 | 0 |
+| 5. Render | 3 | 0 |
+| 6. Handler | 3 | 0 |
+| 7. Integrate | 2 | 0 |
+| 8. Main & Polish | 3 | 0 |
+| **Total** | **20** | **0** |
 
 ---
 
-## myfileから流用するロジック
+## 構造の違い（myfile vs fileview）
 
-| ファイル | 流用内容 | 書き方の変更 |
-|----------|----------|--------------|
-| main.rs | イベントループ | 変数名変更 |
-| file_tree.rs | フラット化、展開/折畳 | 構造体名変更 |
-| app.rs | 状態管理 | フィールド名変更 |
-| input.rs | キー/マウス処理 | 関数名変更 |
-| ui.rs | 描画ロジック | - |
-| file_ops.rs | CRUD操作 | - |
+```
+myfile (フラット)          fileview (モジュール階層)
+─────────────────          ─────────────────────────
+app.rs            →        core/state.rs, core/mode.rs
+file_tree.rs      →        tree/node.rs, tree/navigator.rs
+file_ops.rs       →        action/file.rs, action/clipboard.rs
+ui.rs             →        render/tree.rs, render/preview.rs, render/status.rs
+input.rs          →        handler/key.rs, handler/mouse.rs
+git_status.rs     →        (削除)
+-                 →        integrate/pick.rs, integrate/callback.rs (追加)
+```
 
 ---
 
-## fileview独自実装
+## 命名の違い
 
-| 機能 | 説明 |
-|------|------|
-| --pick | 選択パスを stdout 出力 |
-| --on-select | 選択時にコールバック実行 |
-| preview.rs | プレビュー処理を分離 |
+| myfile | fileview |
+|--------|----------|
+| App | AppState |
+| InputMode | ViewMode |
+| FileNode | TreeEntry |
+| FileTree | TreeNavigator |
+| flat_list | visible_entries |
+| selected | focus_index |
+| scroll_offset | viewport_top |
+| marked | selected_paths |
 
 ---
 
 ## Notes
 
-- Git統合（git_status.rs）は実装しない
-- 外部コマンド実行（:）は --on-select で代替
-- myfileのコードを参考に、書き方を変えて実装
+- ロジックの「考え方」は参考にするが、コードは独自に書く
+- 構造・命名・モジュール分割で「別物」感を出す
+- Git統合は実装しない
+- 外部コマンド（:）は --on-select で代替
