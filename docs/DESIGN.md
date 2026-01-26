@@ -23,8 +23,19 @@ filetreeの優れた点を学びつつ、以下の観点で独自の設計アプ
 
 - **Command Pattern**: 全操作をCommandオブジェクトとして表現し、Undo/Redo対応
 - **Virtualized Rendering**: 大規模ディレクトリでも表示範囲のみ計算・描画
-- **Async-First**: ファイルI/O、プレビュー生成を非同期で実行
+- **Non-Blocking UI**: 重い処理をバックグラウンドで実行し、UIをブロックしない
 - **Minimal Core**: Git等の追加機能は意図的に除外し、コア機能に集中
+
+### 1.3 「軽量・高速」の定義
+
+| 用語 | 意味 | 実現方法 |
+|------|------|----------|
+| **軽量** | メモリ使用量が少ない | 仮想化ツリー（表示範囲のみ保持） |
+| **高速** | 起動・描画が速い | Rust、最適化ビルド、遅延読み込み |
+| **応答性** | UIが固まらない | 非同期I/O（tokio）でプレビュー等をバックグラウンド処理 |
+
+**注意**: 非同期処理は「速度」ではなく「応答性」を向上させる。
+ファイル読み込み自体は同期でも非同期でも同じ速度だが、UIがブロックされないため体感が良くなる。
 
 ---
 
@@ -535,7 +546,70 @@ style = "default"
 
 ---
 
-## 10. What FileView Does NOT Include
+## 10. Path Integration（パス連携）
+
+選択中のパスを外部と連携するための複数の方法を提供する。
+
+### 10.1 クリップボード連携
+
+```
+Y キー → OSC 52 エスケープシーケンス → システムクリップボード
+```
+
+ターミナル経由でクリップボードにコピー。SSH越しでも動作。
+
+### 10.2 標準出力モード
+
+```bash
+# 選択したパスを変数に格納
+selected=$(fileview --pick)
+
+# パイプで他のコマンドに渡す
+fileview --pick | xargs cat
+```
+
+`--pick` オプションで起動すると、Enter確定時に選択パスを stdout に出力して終了。
+
+### 10.3 コールバック実行
+
+```bash
+# 選択確定時にコマンドを実行
+fileview --on-select "code {path}"
+
+# 複数ファイル選択時
+fileview --on-select "tar -cvf archive.tar {paths}"
+```
+
+プレースホルダー:
+- `{path}`: 選択中のパス（単一）
+- `{paths}`: マーク済み全パス（スペース区切り）
+- `{dir}`: 選択中アイテムの親ディレクトリ
+
+### 10.4 終了コード
+
+| Code | 意味 |
+|------|------|
+| 0 | 正常終了（パス選択あり） |
+| 1 | キャンセル（q で終了） |
+| 2 | エラー |
+
+### 10.5 使用例
+
+```bash
+# fzf的な使い方
+cd "$(fileview --pick)"
+
+# エディタとの連携
+fileview --on-select "nvim {path}"
+
+# ファイルピッカーとして
+attachment=$(fileview ~/Documents --pick)
+mail --attach "$attachment" user@example.com
+```
+
+---
+
+## 11. What FileView Does NOT Include
 
 ミニマル設計として、以下の機能は**意図的に除外**する：
 
@@ -548,7 +622,7 @@ style = "default"
 
 ---
 
-## 11. Testing Strategy
+## 12. Testing Strategy
 
 ### 11.1 ユニットテスト
 
@@ -587,7 +661,7 @@ mod tests {
 
 ---
 
-## 12. Summary: filetree vs fileview
+## 13. Summary: filetree vs fileview
 
 | Aspect | filetree | fileview |
 |--------|----------|----------|

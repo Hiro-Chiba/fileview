@@ -182,7 +182,7 @@ filetreeを参考にしつつ、Command Pattern / 仮想化ツリー / 非同期
 
 ---
 
-## Phase 7: Status Bar & Clipboard
+## Phase 7: Status Bar & Path Integration
 
 - [ ] 7.1 ステータスバー
   - src/view/status_view.rs
@@ -190,7 +190,7 @@ filetreeを参考にしつつ、Command Pattern / 仮想化ツリー / 非同期
   - Undo/Redo可否表示
   - PR: `feat(view): Add status bar`
 
-- [ ] 7.2 パスコピー
+- [ ] 7.2 パスコピー（クリップボード）
   - `Y` キーでクリップボードへ
   - OSC 52 エスケープシーケンス
   - PR: `feat(clipboard): Implement path copy`
@@ -199,6 +199,17 @@ filetreeを参考にしつつ、Command Pattern / 仮想化ツリー / 非同期
   - Space でマーク切替
   - マーク済みファイルへのバッチ操作
   - PR: `feat: Implement multi-select with marks`
+
+- [ ] 7.4 標準出力モード ★
+  - `--pick` オプション
+  - Enter確定時にパスを stdout 出力
+  - 終了コード（0=選択, 1=キャンセル, 2=エラー）
+  - PR: `feat: Add --pick mode for stdout integration`
+
+- [ ] 7.5 コールバック実行 ★
+  - `--on-select` オプション
+  - プレースホルダー展開（{path}, {paths}, {dir}）
+  - PR: `feat: Add --on-select callback option`
 
 ---
 
@@ -264,16 +275,16 @@ filetreeを参考にしつつ、Command Pattern / 仮想化ツリー / 非同期
 | Phase | Items | Completed | Key Features |
 |-------|-------|-----------|--------------|
 | 1. Foundation | 3 | 0 | CI/CD |
-| 2. Core Framework | 5 | 0 | Command Pattern, tokio |
+| 2. Core Framework | 5 | 0 | Command Pattern |
 | 3. Tree Structure | 4 | 0 | Virtualized Tree |
 | 4. Tree View | 4 | 0 | Navigation |
 | 5. File Operations | 7 | 0 | Undo/Redo |
-| 6. Preview | 6 | 0 | Async, Sixel/Kitty |
-| 7. Status & Clipboard | 3 | 0 | Multi-select |
+| 6. Preview | 6 | 0 | Non-blocking, Sixel/Kitty |
+| 7. Status & Path | 5 | 0 | --pick, --on-select |
 | 8. Drag & Drop | 2 | 0 | - |
 | 9. Configuration | 3 | 0 | - |
 | 10. Polish | 4 | 0 | Tests |
-| **Total** | **41** | **0** | |
+| **Total** | **43** | **0** | |
 
 ---
 
@@ -284,8 +295,8 @@ filetreeを参考にしつつ、Command Pattern / 仮想化ツリー / 非同期
 | 2 | Command Pattern採用（filetreeはState Machine） |
 | 3 | 仮想化ツリー（filetreeはflat_list同期） |
 | 5 | Undo/Redo対応（filetreeにはない） |
-| 6 | 非同期プレビュー + Sixel/Kitty優先 |
-| 7 | 外部コマンド実行なし（ミニマル設計） |
+| 6 | ノンブロッキングUI + Sixel/Kitty優先 |
+| 7 | --pick/--on-select で外部連携（filetreeは組み込み外部コマンド） |
 
 ---
 
