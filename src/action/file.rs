@@ -38,7 +38,9 @@ pub fn delete(path: &Path) -> anyhow::Result<()> {
 
 /// Copy a file to a destination directory
 pub fn copy_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
-    let file_name = src.file_name().ok_or_else(|| anyhow::anyhow!("Invalid source path"))?;
+    let file_name = src
+        .file_name()
+        .ok_or_else(|| anyhow::anyhow!("Invalid source path"))?;
     let dest = get_unique_path(&dest_dir.join(file_name));
 
     if src.is_dir() {
@@ -56,7 +58,10 @@ fn get_unique_path(path: &Path) -> PathBuf {
     }
 
     let stem = path.file_stem().unwrap_or_default().to_string_lossy();
-    let ext = path.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
+    let ext = path
+        .extension()
+        .map(|e| format!(".{}", e.to_string_lossy()))
+        .unwrap_or_default();
     let parent = path.parent().unwrap_or(Path::new(""));
 
     let mut counter = 1;

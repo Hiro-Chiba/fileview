@@ -51,9 +51,10 @@ impl TreeNavigator {
 
     /// Toggle expand/collapse for entry at path
     pub fn toggle_expand(&mut self, path: &Path) -> anyhow::Result<()> {
+        let show_hidden = self.show_hidden;
         if let Some(entry) = self.find_entry_mut(path) {
             if entry.is_dir && !entry.is_expanded() && entry.children().is_empty() {
-                entry.load_children(self.show_hidden)?;
+                entry.load_children(show_hidden)?;
             }
             entry.toggle_expanded();
         }
@@ -62,9 +63,10 @@ impl TreeNavigator {
 
     /// Expand entry at path
     pub fn expand(&mut self, path: &Path) -> anyhow::Result<()> {
+        let show_hidden = self.show_hidden;
         if let Some(entry) = self.find_entry_mut(path) {
             if entry.is_dir && entry.children().is_empty() {
-                entry.load_children(self.show_hidden)?;
+                entry.load_children(show_hidden)?;
             }
             entry.set_expanded(true);
         }
