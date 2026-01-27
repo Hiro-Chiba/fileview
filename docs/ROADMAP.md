@@ -236,7 +236,8 @@ Total Size:  1.2 MB
 | 10. Code Quality | 3 | 3 |
 | 11. Nerd Fonts Icons | 3 | 3 |
 | 12. Test Improvements | 6 | 6 |
-| **Total** | **35** | **35** |
+| 13. E2E / Behavioral Tests | 4 | 0 |
+| **Total** | **39** | **35** |
 
 ---
 
@@ -255,6 +256,7 @@ Total Size:  1.2 MB
 | v0.4.8 | Constants extraction | ✅ Published |
 | v0.5.0 | Nerd Fonts icons | ✅ Published |
 | v0.6.0 | Test improvements | ✅ Published |
+| v0.6.1 | Bug fixes (preview scroll, Enter key) | ✅ Published |
 
 ---
 
@@ -436,6 +438,72 @@ pub fn get_file_icon(path: &Path, is_dir: bool, expanded: bool) -> &'static str 
 **結果:**
 - テスト数: 125 → 201（+76テスト）
 - カバレッジ: 45% → 70%以上
+
+---
+
+## Phase 13: E2E / Behavioral Tests
+
+**リリース:** v0.7.0
+
+### 背景
+v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作）は、既存のユニットテストでは検出できなかった。
+これは、KeyAction生成とその実行ロジックの統合部分がテストされていなかったため。
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  キー入力       │ -> │  KeyAction      │ -> │  状態変更       │
+│  (テスト済)     │    │  (テスト済)     │    │  (テスト不足)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 13.1 アクションハンドラーの分離
+**優先度:** 高
+
+- [ ] main.rsからアクション実行ロジックを分離
+  - `handler/action.rs` 新規作成
+  - `execute_action(state, navigator, action)` 関数
+- [ ] テスタブルな構造に変更
+  - 副作用（ターミナルI/O）を分離
+  - 状態変更ロジックをテスト可能に
+- [ ] PR: `refactor: Extract action execution logic`
+
+### 13.2 状態遷移テスト
+**優先度:** 高
+
+- [ ] ToggleExpandの動作テスト
+  - ファイル + サイドプレビュー非表示 → フルスクリーンプレビュー
+  - ファイル + サイドプレビュー表示 → サイドプレビュー閉じる
+  - ディレクトリ → 展開/折りたたみ
+- [ ] プレビュースクロール状態テスト
+  - パス変更なし → スクロール位置維持
+  - パス変更あり → スクロール位置リセット
+- [ ] PR: `test: Add state transition tests`
+
+### 13.3 シーケンステスト
+**優先度:** 中
+
+- [ ] 操作シーケンスのテスト
+  - `j` → `j` → `o` → `j` → `j` → `q` (ナビゲーション+プレビュー)
+  - `P` → `Enter` (サイドプレビュー→閉じる)
+  - `/` → `test` → `Enter` → `n` (検索シーケンス)
+- [ ] 複合操作のテスト
+  - 選択 → コピー → 移動 → ペースト
+  - リネーム → キャンセル → リネーム → 確定
+- [ ] PR: `test: Add operation sequence tests`
+
+### 13.4 エッジケーステスト
+**優先度:** 中
+
+- [ ] 空ディレクトリでの操作
+- [ ] 権限のないファイル/ディレクトリ
+- [ ] シンボリックリンク
+- [ ] 非常に深いディレクトリ構造
+- [ ] PR: `test: Add edge case behavioral tests`
+
+**期待される効果:**
+- v0.6.1で発見されたようなバグの早期検出
+- リファクタリング時の回帰テスト
+- 新機能追加時の安全性確保
 
 ---
 
