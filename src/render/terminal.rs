@@ -53,8 +53,9 @@ impl TerminalBrand {
     /// Detection priority:
     /// 1. Terminal-specific environment variables (most reliable)
     /// 2. TERM_PROGRAM environment variable
-    /// 3. TERMINAL environment variable
-    /// 4. TERM environment variable
+    /// 3. KONSOLE_VERSION environment variable
+    /// 4. TERMINAL environment variable
+    /// 5. TERM environment variable
     pub fn detect() -> Self {
         Self::detect_from_env(&EnvReader::Real)
     }
@@ -113,14 +114,19 @@ impl TerminalBrand {
             }
         }
 
-        // 3. TERMINAL environment variable (used by some Linux distros)
+        // 3. KONSOLE_VERSION (Konsole sets this)
+        if env.var("KONSOLE_VERSION").is_ok() {
+            return Self::Konsole;
+        }
+
+        // 4. TERMINAL environment variable (used by some Linux distros)
         if let Ok(terminal) = env.var("TERMINAL") {
             if terminal.to_lowercase().contains("konsole") {
                 return Self::Konsole;
             }
         }
 
-        // 4. TERM environment variable (least specific)
+        // 5. TERM environment variable (least specific)
         if let Ok(term) = env.var("TERM") {
             let term_lower = term.to_lowercase();
 
@@ -344,6 +350,14 @@ mod tests {
         }
 
         #[test]
+        fn detects_konsole_from_konsole_version() {
+            let mut env = MockEnvReader::new();
+            env.set("KONSOLE_VERSION", "211201");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Konsole);
+        }
+
+        #[test]
         fn detects_konsole_from_terminal_env() {
             let mut env = MockEnvReader::new();
             env.set("TERMINAL", "konsole");
@@ -447,12 +461,30 @@ mod tests {
         }
 
         #[test]
-        fn term_program_takes_priority_over_terminal() {
+        fn term_program_takes_priority_over_konsole_version() {
             let mut env = MockEnvReader::new();
             env.set("TERM_PROGRAM", "vscode");
-            env.set("TERMINAL", "konsole"); // Should be ignored
+            env.set("KONSOLE_VERSION", "211201"); // Should be ignored
 
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::VSCode);
+        }
+
+        #[test]
+        fn konsole_version_takes_priority_over_terminal() {
+            let mut env = MockEnvReader::new();
+            env.set("KONSOLE_VERSION", "211201");
+            env.set("TERMINAL", "other-terminal"); // Should be ignored
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Konsole);
+        }
+
+        #[test]
+        fn konsole_version_takes_priority_over_term() {
+            let mut env = MockEnvReader::new();
+            env.set("KONSOLE_VERSION", "211201");
+            env.set("TERM", "foot"); // Should be ignored
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Konsole);
         }
 
         #[test]
@@ -721,6 +753,14 @@ mod tests {
         fn foot_direct_term_match() {
             let mut env = MockEnvReader::new();
             env.set("TERM", "foot-direct");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Foot);
+        }
+
+        #[test]
+        fn footclient_term_match() {
+            let mut env = MockEnvReader::new();
+            env.set("TERM", "footclient");
 
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Foot);
         }
