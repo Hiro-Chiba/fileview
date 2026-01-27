@@ -10,6 +10,15 @@ use ratatui::{
     Frame,
 };
 
+/// Maximum depth for recursive directory size calculation (for performance)
+const MAX_DIR_SIZE_DEPTH: u32 = 3;
+
+/// Maximum bytes to read for hex preview
+const HEX_PREVIEW_MAX_BYTES: usize = 4096;
+
+/// Number of bytes per line in hex preview
+const HEX_BYTES_PER_LINE: usize = 16;
+
 /// Text preview content
 pub struct TextPreview {
     pub lines: Vec<String>,
@@ -112,7 +121,7 @@ impl DirectoryInfo {
 
 /// Calculate total size of a directory (recursive, with depth limit)
 fn calculate_dir_size(path: &Path) -> anyhow::Result<u64> {
-    calculate_dir_size_recursive(path, 0, 3) // Limit depth to 3 for performance
+    calculate_dir_size_recursive(path, 0, MAX_DIR_SIZE_DEPTH as usize)
 }
 
 fn calculate_dir_size_recursive(
@@ -290,7 +299,7 @@ impl HexPreview {
         let size = metadata.len();
 
         let mut file = std::fs::File::open(path)?;
-        let mut bytes = vec![0u8; 4096.min(size as usize)];
+        let mut bytes = vec![0u8; HEX_PREVIEW_MAX_BYTES.min(size as usize)];
         file.read_exact(&mut bytes)?;
 
         Ok(Self {
@@ -302,23 +311,22 @@ impl HexPreview {
 
     /// Get the number of lines in the hex dump
     pub fn line_count(&self) -> usize {
-        self.bytes.len().div_ceil(16)
+        self.bytes.len().div_ceil(HEX_BYTES_PER_LINE)
     }
 }
 
 /// Render hex preview (xxd-style)
 pub fn render_hex_preview(frame: &mut Frame, preview: &HexPreview, area: Rect, title: &str) {
     let visible_height = area.height.saturating_sub(2) as usize;
-    let bytes_per_line = 16;
 
     let lines: Vec<Line> = preview
         .bytes
-        .chunks(bytes_per_line)
+        .chunks(HEX_BYTES_PER_LINE)
         .enumerate()
         .skip(preview.scroll)
         .take(visible_height)
         .map(|(i, chunk)| {
-            let offset = (preview.scroll + i) * bytes_per_line;
+            let offset = (preview.scroll + i) * HEX_BYTES_PER_LINE;
             render_hex_line(offset, chunk)
         })
         .collect();
@@ -366,9 +374,9 @@ fn render_hex_line(offset: usize, bytes: &[u8]) -> Line<'static> {
         }
     }
 
-    // Pad if less than 16 bytes
-    if bytes.len() < 16 {
-        let missing = 16 - bytes.len();
+    // Pad if less than full line
+    if bytes.len() < HEX_BYTES_PER_LINE {
+        let missing = HEX_BYTES_PER_LINE - bytes.len();
         let padding = if bytes.len() <= 8 {
             missing * 3 + 1 // +1 for the extra space at position 8
         } else {
