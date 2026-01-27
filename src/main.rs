@@ -31,9 +31,10 @@ use fileview::handler::{
 };
 use fileview::integrate::{exit_code, Callback, OutputFormat};
 use fileview::render::{
-    is_binary_file, is_image_file, is_text_file, render_directory_info, render_hex_preview,
-    render_image_preview, render_input_popup, render_status_bar, render_text_preview, render_tree,
-    visible_height, DirectoryInfo, HexPreview, ImagePreview, TextPreview,
+    create_image_picker, is_binary_file, is_image_file, is_text_file, render_directory_info,
+    render_hex_preview, render_image_preview, render_input_popup, render_status_bar,
+    render_text_preview, render_tree, visible_height, DirectoryInfo, HexPreview, ImagePreview,
+    Picker, TextPreview,
 };
 use fileview::tree::TreeNavigator;
 
@@ -175,6 +176,10 @@ fn main() -> ExitCode {
 fn run() -> anyhow::Result<i32> {
     let config = Config::from_args()?;
 
+    // Initialize image picker BEFORE entering alternate screen
+    // (terminal capability detection requires normal screen mode)
+    let mut image_picker = create_image_picker();
+
     // Initialize terminal
     terminal::enable_raw_mode()?;
     let mut stdout = stdout();
@@ -189,7 +194,7 @@ fn run() -> anyhow::Result<i32> {
     let mut terminal = Terminal::new(backend)?;
 
     // Run the app
-    let result = run_app(&mut terminal, config);
+    let result = run_app(&mut terminal, config, &mut image_picker);
 
     // Restore terminal
     terminal::disable_raw_mode()?;
@@ -241,6 +246,7 @@ fn handle_file_drop(
 fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     config: Config,
+    image_picker: &mut Option<Picker>,
 ) -> anyhow::Result<i32> {
     let mut state = AppState::new(config.root.clone());
     state.pick_mode = config.pick_mode;
@@ -311,11 +317,13 @@ fn run_app(
                             hex_preview = None;
                         }
                     } else if is_image_file(path) {
-                        if let Ok(img) = ImagePreview::load(path) {
-                            image_preview = Some(img);
-                            text_preview = None;
-                            dir_info = None;
-                            hex_preview = None;
+                        if let Some(ref mut picker) = image_picker {
+                            if let Ok(img) = ImagePreview::load(path, picker) {
+                                image_preview = Some(img);
+                                text_preview = None;
+                                dir_info = None;
+                                hex_preview = None;
+                            }
                         }
                     } else if is_binary_file(path) || path.is_file() {
                         // Binary file or unknown type - show hex preview
@@ -356,7 +364,7 @@ fn run_app(
                     render_directory_info(frame, di, size, false);
                 } else if let Some(ref tp) = text_preview {
                     render_text_preview(frame, tp, size, &title, false);
-                } else if let Some(ref ip) = image_preview {
+                } else if let Some(ref mut ip) = image_preview {
                     render_image_preview(frame, ip, size, &title, false);
                 } else if let Some(ref hp) = hex_preview {
                     render_hex_preview(frame, hp, size, &title, false);
@@ -404,7 +412,7 @@ fn run_app(
                         render_directory_info(frame, di, preview_area, preview_focused);
                     } else if let Some(ref tp) = text_preview {
                         render_text_preview(frame, tp, preview_area, &title, preview_focused);
-                    } else if let Some(ref ip) = image_preview {
+                    } else if let Some(ref mut ip) = image_preview {
                         render_image_preview(frame, ip, preview_area, &title, preview_focused);
                     } else if let Some(ref hp) = hex_preview {
                         render_hex_preview(frame, hp, preview_area, &title, preview_focused);
