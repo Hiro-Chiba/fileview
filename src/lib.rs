@@ -5,6 +5,7 @@
 
 pub mod action;
 pub mod core;
+pub mod git;
 pub mod handler;
 pub mod integrate;
 pub mod render;
