@@ -2133,7 +2133,10 @@ mod tests {
         // Only root should be visible now (plus first level dir)
         let collapsed_entries = create_test_entries(&navigator);
         let no_deep_file = !collapsed_entries.iter().any(|e| e.name == "deep.txt");
-        assert!(no_deep_file, "Deep file should not be visible after collapse");
+        assert!(
+            no_deep_file,
+            "Deep file should not be visible after collapse"
+        );
     }
 
     /// Edge case: Navigation boundary - move up at top
