@@ -239,8 +239,8 @@ Total Size:  1.2 MB
 | 13. E2E / Behavioral Tests | 4 | 3 |
 | 14. Side Preview Focus | 5 | 5 |
 | 15. Image Protocol Support | 5 | 4 |
-| 16. Enhanced Image Preview | 5 | 4 |
-| **Total** | **54** | **51** |
+| 16. Enhanced Image Preview | 5 | 5 |
+| **Total** | **54** | **52** |
 
 **注意:** Phase 15.8（ratatui-image統合）が完了するまでv0.8.0のリリースは行わない。
 自作の画像プロトコル実装は削除し、ratatui-imageに一本化する。
@@ -993,10 +993,10 @@ pub fn create_image_picker() -> Option<Picker> {
 ### 16.5 ドキュメント更新
 **優先度:** 低
 
-- [ ] README更新
+- [x] README更新
   - 対応ターミナル一覧の更新
   - Chafaインストール手順
-- [ ] PR: `docs: Update image preview documentation`
+- [x] PR: `docs: Update image preview documentation`
 
 ### プロトコル品質比較
 
