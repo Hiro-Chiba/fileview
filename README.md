@@ -5,6 +5,8 @@
 
 A minimal, VSCode-style file tree TUI for modern terminal emulators.
 
+English | [日本語](README_ja.md)
+
 ## Features
 
 - Fast file tree navigation with vim-like keybindings
