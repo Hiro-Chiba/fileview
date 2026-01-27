@@ -43,10 +43,13 @@ src/
 │   ├── mod.rs
 │   ├── key.rs          # キーイベント
 │   └── mouse.rs        # マウスイベント
-└── integrate/
+├── integrate/
+│   ├── mod.rs
+│   ├── pick.rs         # --pick モード
+│   └── callback.rs     # --on-select
+└── git/
     ├── mod.rs
-    ├── pick.rs         # --pick モード
-    └── callback.rs     # --on-select
+    └── status.rs       # Git状態管理 (v0.2.0+)
 ```
 
 ### 2.2 モジュール責務
@@ -59,6 +62,7 @@ src/
 | `render` | UI描画 |
 | `handler` | イベント処理 |
 | `integrate` | 外部ツール連携 |
+| `git` | Gitリポジトリ状態の検出と表示 (v0.2.0+) |
 
 ### 2.3 モード定義
 
@@ -234,7 +238,54 @@ fv --on-select "file {path}"
 
 ---
 
-## 5. Key Bindings
+## 5. Git Integration (v0.2.0+)
+
+### 5.1 ファイル状態表示
+
+Gitリポジトリ内のファイル状態をカラーコードで表示する。
+
+| Status | Color | 説明 |
+|--------|-------|------|
+| Modified | Yellow | 変更あり |
+| Added | Green | ステージ済み追加 |
+| Untracked | Green | 未追跡 |
+| Deleted | Red | 削除 |
+| Renamed | Cyan | リネーム |
+| Ignored | DarkGray | .gitignore対象 |
+| Conflict | Magenta | コンフリクト |
+
+### 5.2 ブランチ表示
+
+ステータスバーに現在のブランチ名を表示する。
+
+```
+📁 src/main.rs | 🌿 main | 42 items
+```
+
+### 5.3 設計
+
+```rust
+pub struct GitStatus {
+    repo_root: PathBuf,
+    statuses: HashMap<PathBuf, FileStatus>,
+    branch: Option<String>,
+}
+
+impl GitStatus {
+    /// リポジトリを検出し状態をキャッシュ
+    pub fn detect(path: &Path) -> Option<Self>;
+
+    /// ファイルの状態を取得
+    pub fn get_status(&self, path: &Path) -> FileStatus;
+
+    /// 状態を更新（ファイル操作後）
+    pub fn refresh(&mut self);
+}
+```
+
+---
+
+## 6. Key Bindings
 
 | Key | Action |
 |-----|--------|
@@ -261,7 +312,7 @@ fv --on-select "file {path}"
 
 ---
 
-## 6. Technology Stack
+## 7. Technology Stack
 
 | Category | Choice |
 |----------|--------|
@@ -274,7 +325,7 @@ fv --on-select "file {path}"
 
 ---
 
-## 7. Design Principles
+## 8. Design Principles
 
 1. **シンプルさを保つ**: 機能追加より既存機能の洗練を優先
 2. **型安全性**: Rustの型システムを活用した安全な設計
