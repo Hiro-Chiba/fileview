@@ -24,9 +24,9 @@ use fileview::handler::{
 };
 use fileview::integrate::{exit_code, Callback, OutputFormat, PickResult};
 use fileview::render::{
-    is_image_file, is_text_file, render_directory_info, render_image_preview, render_input_popup,
-    render_status_bar, render_text_preview, render_tree, visible_height, DirectoryInfo,
-    ImagePreview, TextPreview,
+    is_binary_file, is_image_file, is_text_file, render_directory_info, render_hex_preview,
+    render_image_preview, render_input_popup, render_status_bar, render_text_preview, render_tree,
+    visible_height, DirectoryInfo, HexPreview, ImagePreview, TextPreview,
 };
 use fileview::tree::TreeNavigator;
 
@@ -205,6 +205,7 @@ fn run_app(
     let mut text_preview: Option<TextPreview> = None;
     let mut image_preview: Option<ImagePreview> = None;
     let mut dir_info: Option<DirectoryInfo> = None;
+    let mut hex_preview: Option<HexPreview> = None;
 
     loop {
         // Get visible entries and create snapshots
@@ -237,24 +238,36 @@ fn run_app(
                         dir_info = Some(info);
                         text_preview = None;
                         image_preview = None;
+                        hex_preview = None;
                     }
                 } else if is_text_file(path) {
                     if let Ok(content) = std::fs::read_to_string(path) {
                         text_preview = Some(TextPreview::new(&content));
                         image_preview = None;
                         dir_info = None;
+                        hex_preview = None;
                     }
                 } else if is_image_file(path) {
                     if let Ok(img) = ImagePreview::load(path) {
                         image_preview = Some(img);
                         text_preview = None;
                         dir_info = None;
+                        hex_preview = None;
+                    }
+                } else if is_binary_file(path) || path.is_file() {
+                    // Binary file or unknown type - show hex preview
+                    if let Ok(hex) = HexPreview::load(path) {
+                        hex_preview = Some(hex);
+                        text_preview = None;
+                        image_preview = None;
+                        dir_info = None;
                     }
                 } else {
-                    // Unknown file type - clear all previews
+                    // Clear all previews
                     text_preview = None;
                     image_preview = None;
                     dir_info = None;
+                    hex_preview = None;
                 }
             }
         }
@@ -311,6 +324,13 @@ fn run_app(
                         .map(|n| n.to_string_lossy().to_string())
                         .unwrap_or_default();
                     render_image_preview(frame, ip, preview_area, &title);
+                } else if let Some(ref hp) = hex_preview {
+                    let title = focused_path
+                        .as_ref()
+                        .and_then(|p| p.file_name())
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    render_hex_preview(frame, hp, preview_area, &title);
                 } else {
                     let block = Block::default().borders(Borders::ALL).title(" Preview ");
                     let para = Paragraph::new("No preview available").block(block);
