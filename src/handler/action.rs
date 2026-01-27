@@ -76,6 +76,17 @@ pub fn handle_action(
         KeyAction::Quit => {
             state.should_quit = true;
         }
+        KeyAction::QuitAndCd => {
+            // Store the current directory for shell integration
+            if let Some(path) = focused_path {
+                if path.is_dir() {
+                    state.choosedir_path = Some(path.clone());
+                } else if let Some(parent) = path.parent() {
+                    state.choosedir_path = Some(parent.to_path_buf());
+                }
+            }
+            state.should_quit = true;
+        }
         KeyAction::Cancel => {
             match &state.mode {
                 ViewMode::Browse => {
