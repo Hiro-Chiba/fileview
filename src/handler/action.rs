@@ -1608,7 +1608,7 @@ mod tests {
 
         // Refresh entries after paste
         entries = create_test_entries(&navigator);
-        assert!(entries.len() > 0);
+        assert!(!entries.is_empty());
     }
 
     /// Sequence: Start rename → Cancel → Start rename again → Confirm
@@ -1913,7 +1913,7 @@ mod tests {
         let mut text_preview = None;
 
         // Root is always present, so entries should have at least 1
-        assert!(entries.len() >= 1);
+        assert!(!entries.is_empty());
 
         // Move down should not panic
         handle_action(

@@ -86,7 +86,8 @@ pub fn render_image(image: &DynamicImage, config: &ImageRenderConfig) -> ImageRe
             let width = rgb.width();
             let height = rgb.height();
             let pixels: Vec<(u8, u8, u8)> = rgb.pixels().map(|p| (p[0], p[1], p[2])).collect();
-            let lines = render_halfblock(&pixels, width, height, config.max_width, config.max_height);
+            let lines =
+                render_halfblock(&pixels, width, height, config.max_width, config.max_height);
             ImageRenderResult::Widget(lines)
         }
     }
@@ -135,10 +136,14 @@ fn render_halfblock(
             // Calculate source coordinates with area averaging
             let src_x_start = (col as f32 / display_width as f32 * img_width as f32) as u32;
             let src_x_end = ((col + 1) as f32 / display_width as f32 * img_width as f32) as u32;
-            let src_y_top_start = (row as f32 * 2.0 / display_height as f32 * img_height as f32) as u32;
-            let src_y_top_end = ((row as f32 * 2.0 + 1.0) / display_height as f32 * img_height as f32) as u32;
-            let src_y_bottom_start = ((row as f32 * 2.0 + 1.0) / display_height as f32 * img_height as f32) as u32;
-            let src_y_bottom_end = ((row as f32 * 2.0 + 2.0) / display_height as f32 * img_height as f32) as u32;
+            let src_y_top_start =
+                (row as f32 * 2.0 / display_height as f32 * img_height as f32) as u32;
+            let src_y_top_end =
+                ((row as f32 * 2.0 + 1.0) / display_height as f32 * img_height as f32) as u32;
+            let src_y_bottom_start =
+                ((row as f32 * 2.0 + 1.0) / display_height as f32 * img_height as f32) as u32;
+            let src_y_bottom_end =
+                ((row as f32 * 2.0 + 2.0) / display_height as f32 * img_height as f32) as u32;
 
             // Area average for top pixel
             let (r1, g1, b1) = area_average(
@@ -281,7 +286,10 @@ pub fn render_image_preview_unified(
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(format!(" {} ({}x{}) [{}] ", title, width, height, protocol_str))
+            .title(format!(
+                " {} ({}x{}) [{}] ",
+                title, width, height, protocol_str
+            ))
             .border_style(border_style),
     );
 
@@ -406,12 +414,7 @@ mod tests {
 
     #[test]
     fn test_area_average_multiple_pixels() {
-        let pixels = vec![
-            (255, 0, 0),
-            (0, 255, 0),
-            (0, 0, 255),
-            (255, 255, 255),
-        ];
+        let pixels = vec![(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 255)];
         let result = area_average(&pixels, 2, 2, 0, 2, 0, 2);
         // Average of all 4 pixels
         assert_eq!(result, (127, 127, 127)); // (255+0+0+255)/4, etc.

@@ -118,7 +118,7 @@ pub fn encode_sixel(image: &DynamicImage, config: &SixelConfig) -> String {
     let pixels: Vec<Rgba<u8>> = rgba.pixels().cloned().collect();
 
     // Quantize colors
-    let num_colors = config.colors.min(MAX_COLORS).max(2);
+    let num_colors = config.colors.clamp(2, MAX_COLORS);
     let palette = quantize_colors(&pixels, num_colors);
 
     // Map each pixel to palette index
@@ -155,7 +155,7 @@ pub fn encode_sixel(image: &DynamicImage, config: &SixelConfig) -> String {
 
     // Encode image data in Sixel format
     // Sixel encodes 6 vertical pixels at a time
-    let sixel_rows = (height + 5) / 6;
+    let sixel_rows = height.div_ceil(6);
 
     for sixel_row in 0..sixel_rows {
         let y_start = sixel_row * 6;
