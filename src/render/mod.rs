@@ -43,13 +43,13 @@ pub fn create_image_picker() -> Option<Picker> {
                 return try_chafa_picker().or_else(|| Some(Picker::halfblocks()));
             }
             "sixel" => {
-                return try_protocol(ProtocolType::Sixel);
+                return Some(picker_with_protocol(ProtocolType::Sixel));
             }
             "kitty" => {
-                return try_protocol(ProtocolType::Kitty);
+                return Some(picker_with_protocol(ProtocolType::Kitty));
             }
             "iterm2" | "iterm" => {
-                return try_protocol(ProtocolType::Iterm2);
+                return Some(picker_with_protocol(ProtocolType::Iterm2));
             }
             _ => {} // "auto" or unknown, continue with auto-detection
         }
@@ -59,19 +59,13 @@ pub fn create_image_picker() -> Option<Picker> {
     let terminal = TerminalBrand::detect();
     match terminal.recommended_protocol() {
         RecommendedProtocol::Kitty => {
-            if let Some(picker) = try_protocol(ProtocolType::Kitty) {
-                return Some(picker);
-            }
+            return Some(picker_with_protocol(ProtocolType::Kitty));
         }
         RecommendedProtocol::Iterm2 => {
-            if let Some(picker) = try_protocol(ProtocolType::Iterm2) {
-                return Some(picker);
-            }
+            return Some(picker_with_protocol(ProtocolType::Iterm2));
         }
         RecommendedProtocol::Sixel => {
-            if let Some(picker) = try_protocol(ProtocolType::Sixel) {
-                return Some(picker);
-            }
+            return Some(picker_with_protocol(ProtocolType::Sixel));
         }
         RecommendedProtocol::Chafa => {
             // Terminals like VSCode/Alacritty prefer Chafa
@@ -95,11 +89,11 @@ pub fn create_image_picker() -> Option<Picker> {
     try_chafa_picker().or_else(|| Some(Picker::halfblocks()))
 }
 
-/// Try to create a picker with a specific protocol type
-fn try_protocol(protocol_type: ratatui_image::picker::ProtocolType) -> Option<Picker> {
+/// Create a picker with a specific protocol type
+fn picker_with_protocol(protocol_type: ratatui_image::picker::ProtocolType) -> Picker {
     let mut picker = Picker::halfblocks();
     picker.set_protocol_type(protocol_type);
-    Some(picker)
+    picker
 }
 
 /// Try to create a Chafa picker
