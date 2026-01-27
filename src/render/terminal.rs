@@ -145,14 +145,14 @@ pub fn best_protocol_for_terminal(terminal: TerminalKind) -> ImageProtocol {
         TerminalKind::Foot => ImageProtocol::Sixel,
         TerminalKind::Mlterm => ImageProtocol::Sixel,
         TerminalKind::Xterm => ImageProtocol::Sixel, // May not work if not compiled with Sixel
+        TerminalKind::VSCode => ImageProtocol::Sixel, // Requires terminal.integrated.enableImages
 
         // Kitty protocol
         TerminalKind::Kitty => ImageProtocol::Kitty,
 
         // Fallback to half-block
-        TerminalKind::VSCode => ImageProtocol::HalfBlock,
         TerminalKind::TerminalApp => ImageProtocol::HalfBlock,
-        TerminalKind::WindowsTerminal => ImageProtocol::HalfBlock,
+        TerminalKind::WindowsTerminal => ImageProtocol::HalfBlock, // TODO: Check if Sixel works
         TerminalKind::Alacritty => ImageProtocol::HalfBlock,
         TerminalKind::Unknown => ImageProtocol::HalfBlock,
     }
@@ -176,6 +176,7 @@ pub fn is_protocol_supported(protocol: ImageProtocol) -> bool {
                 | TerminalKind::Foot
                 | TerminalKind::Mlterm
                 | TerminalKind::Xterm
+                | TerminalKind::VSCode
         ),
         ImageProtocol::Kitty => matches!(terminal, TerminalKind::Kitty),
         ImageProtocol::ITerm2 => {
@@ -216,7 +217,7 @@ mod tests {
         assert_eq!(best_protocol_for_terminal(TerminalKind::Kitty), ImageProtocol::Kitty);
         assert_eq!(best_protocol_for_terminal(TerminalKind::ITerm2), ImageProtocol::Sixel);
         assert_eq!(best_protocol_for_terminal(TerminalKind::WezTerm), ImageProtocol::Sixel);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::VSCode), ImageProtocol::HalfBlock);
+        assert_eq!(best_protocol_for_terminal(TerminalKind::VSCode), ImageProtocol::Sixel);
         assert_eq!(best_protocol_for_terminal(TerminalKind::Unknown), ImageProtocol::HalfBlock);
     }
 

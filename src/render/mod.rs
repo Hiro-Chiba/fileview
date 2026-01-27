@@ -2,6 +2,7 @@
 
 pub mod icons;
 pub mod preview;
+pub mod sixel;
 pub mod status;
 pub mod terminal;
 pub mod tree;
@@ -12,6 +13,7 @@ pub use preview::{
     render_image_preview, render_text_preview, DirectoryInfo, HexPreview, ImagePreview,
     TextPreview,
 };
+pub use sixel::{encode_sixel, render_sixel_image, write_sixel, SixelConfig};
 pub use status::{render_input_popup, render_status_bar};
 pub use terminal::{detect_best_protocol, detect_terminal, ImageProtocol, TerminalKind};
 pub use tree::{render_tree, visible_height};
