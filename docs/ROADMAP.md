@@ -239,7 +239,8 @@ Total Size:  1.2 MB
 | 13. E2E / Behavioral Tests | 4 | 3 |
 | 14. Side Preview Focus | 5 | 5 |
 | 15. Image Protocol Support | 5 | 4 |
-| **Total** | **49** | **47** |
+| 16. Enhanced Image Preview | 5 | 0 |
+| **Total** | **54** | **47** |
 
 **注意:** Phase 15.8（ratatui-image統合）が完了するまでv0.8.0のリリースは行わない。
 自作の画像プロトコル実装は削除し、ratatui-imageに一本化する。
@@ -262,6 +263,8 @@ Total Size:  1.2 MB
 | v0.5.0 | Nerd Fonts icons | ✅ Published |
 | v0.6.0 | Test improvements | ✅ Published |
 | v0.6.1 | Bug fixes (preview scroll, Enter key) | ✅ Published |
+| v0.8.0 | ratatui-image integration | 🚧 In Progress |
+| v0.9.0 | Enhanced image preview (yazi-inspired) | 📋 Planned |
 
 ---
 
@@ -842,7 +845,8 @@ src/
 │   ├── tree.rs      # ツリー描画
 │   ├── preview.rs   # プレビュー（v0.8.0でratatui-image統合予定）
 │   ├── status.rs    # ステータスバー
-│   └── icons.rs     # Nerd Fontsアイコン (v0.5.0)
+│   ├── icons.rs     # Nerd Fontsアイコン (v0.5.0)
+│   └── terminal.rs  # ターミナル検出 (v0.9.0)
 ├── handler/
 │   ├── key.rs       # キーイベント
 │   ├── mouse.rs     # マウスイベント
@@ -855,4 +859,173 @@ src/
 
 # 外部依存（v0.8.0）
 # - ratatui-image: 画像プロトコル（Sixel/Kitty/iTerm2/Halfblocks）
+# 外部依存（v0.9.0）
+# - ratatui-image (chafa-dyn): Chafaフォールバック追加
 ```
+
+---
+
+## Phase 16: Enhanced Image Preview (yazi-inspired)
+
+**リリース:** v0.9.0
+
+### 背景
+現在の画像プレビューは`Picker::from_query_stdio()`のみに依存しており、ターミナル固有の最適化が不足。
+yaziを参考に、環境変数ベースのターミナル検出を強化し、Chafaフォールバックにより表示品質を向上させる。
+
+### 現状の問題
+- プロトコル検出が`Picker::from_query_stdio()`のみに依存
+- VSCode以外のターミナル固有対応なし
+- フォールバックがHalfblocks（低解像度）
+
+### 16.1 ターミナル検出モジュール作成
+**優先度:** 高
+
+- [ ] `src/render/terminal.rs` 新規作成
+  - `TerminalBrand` enum
+    - Kitty, Ghostty, WezTerm, ITerm2, Konsole, Foot, VSCode, Warp, Alacritty, WindowsTerminal, Tmux, Unknown
+  - `RecommendedProtocol` enum
+    - Kitty, Iterm2, Sixel, ChafaPreferred, QueryTerminal
+- [ ] 環境変数ベースのターミナル検出
+  - `KITTY_WINDOW_ID` → Kitty
+  - `GHOSTTY_RESOURCES_DIR` → Ghostty
+  - `WEZTERM_EXECUTABLE` → WezTerm
+  - `TERM_PROGRAM=iTerm` → iTerm2
+  - `TERM_PROGRAM=Warp` → Warp
+  - `TERM_PROGRAM=vscode` → VSCode
+  - `TERM_PROGRAM=Alacritty` → Alacritty
+  - `TERMINAL=konsole` → Konsole
+  - `TERM=foot` → Foot
+  - `WT_SESSION` → Windows Terminal
+  - `TMUX` → Tmux
+- [ ] ターミナル→プロトコル対応表の実装
+- [ ] PR: `feat: Add terminal brand detection module`
+
+**ターミナル→プロトコル対応表:**
+
+| ターミナル | 環境変数 | 推奨プロトコル |
+|-----------|---------|---------------|
+| Kitty | KITTY_WINDOW_ID | Kitty |
+| Ghostty | GHOSTTY_RESOURCES_DIR | Kitty |
+| WezTerm | WEZTERM_EXECUTABLE | iTerm2 |
+| iTerm2 | TERM_PROGRAM=iTerm | iTerm2 |
+| Warp | TERM_PROGRAM=Warp | iTerm2 |
+| VSCode | TERM_PROGRAM=vscode | Chafa |
+| Foot | TERM=foot | Sixel |
+| Windows Terminal | WT_SESSION | Sixel |
+| Alacritty | TERM_PROGRAM=Alacritty | Chafa |
+| Konsole | TERMINAL=konsole | Kitty |
+| Tmux | TMUX | Query |
+
+### 16.2 Chafa機能有効化
+**優先度:** 高
+
+- [ ] `Cargo.toml` にchafa-dyn feature追加
+  ```toml
+  ratatui-image = { version = "10.0.4", default-features = false, features = [
+      "image-defaults",
+      "crossterm",
+      "chafa-dyn"  # Chafaフォールバック
+  ] }
+  ```
+- [ ] Chafaが利用不可の場合のHalfblocksへのフォールバック
+- [ ] PR: `feat: Enable Chafa fallback for image preview`
+
+**トレードオフ:**
+- `chafa-dyn`: 動的リンク（実行時にlibchafa必要）
+- `chafa-static`: 静的リンク（バイナリサイズ+2-5MB、ポータブル）
+- 依存なし: Halfblocksのみ
+
+**推奨:** `chafa-dyn`をデフォルト
+
+### 16.3 create_image_picker()リファクタリング
+**優先度:** 高
+
+- [ ] `src/render/mod.rs` の`create_image_picker()`改修
+  - 検出優先順位:
+    1. `FILEVIEW_IMAGE_PROTOCOL` 環境変数（既存、維持）
+    2. ターミナル検出 → 最適プロトコル選択（新規）
+    3. `Picker::from_query_stdio()` クエリ（既存）
+    4. Chafa → Halfblocks フォールバック（改善）
+- [ ] PR: `refactor: Improve image picker with terminal detection`
+
+**擬似コード:**
+```rust
+pub fn create_image_picker() -> Option<Picker> {
+    // 1. 環境変数オーバーライド（既存機能維持）
+    if let Ok(protocol) = std::env::var("FILEVIEW_IMAGE_PROTOCOL") {
+        // halfblocks, chafa, sixel, kitty, iterm2 をサポート
+    }
+
+    // 2. ターミナル検出（新規）
+    let terminal = TerminalBrand::detect();
+    match terminal.recommended_protocol() {
+        Kitty => try_protocol(ProtocolType::Kitty),
+        Iterm2 => try_protocol(ProtocolType::Iterm2),
+        Sixel => try_protocol(ProtocolType::Sixel),
+        ChafaPreferred => try_chafa_picker(),
+        QueryTerminal => Picker::from_query_stdio(),
+    }
+
+    // 3. クエリフォールバック
+    // 4. Chafa → Halfblocks
+}
+```
+
+### 16.4 テスト
+**優先度:** 中
+
+- [ ] ターミナル検出テスト
+  - 各環境変数パターンの検出テスト
+  - 優先順位テスト（複数環境変数が設定された場合）
+- [ ] プロトコル選択テスト
+  - 各ターミナルブランドに対する推奨プロトコルテスト
+- [ ] フォールバックテスト
+  - Chafa利用不可時のHalfblocksフォールバック
+- [ ] PR: `test: Add terminal detection tests`
+
+### 16.5 ドキュメント更新
+**優先度:** 低
+
+- [ ] README更新
+  - 対応ターミナル一覧の更新
+  - Chafaインストール手順
+- [ ] PR: `docs: Update image preview documentation`
+
+### プロトコル品質比較
+
+| プロトコル | 品質 | 色数 | 互換性 |
+|-----------|-----|------|-------|
+| Kitty | 最高 | True color | Kitty, Ghostty, Konsole |
+| iTerm2 | 最高 | True color | iTerm2, WezTerm, Warp |
+| Sixel | 良好 | 256色 | Foot, Windows Terminal |
+| **Chafa** | **良好** | **True color** | **全ターミナル** |
+| Halfblocks | 普通 | True color | 全ターミナル |
+
+### 検証方法
+
+```bash
+# ビルド
+cargo build
+
+# 各ターミナルでテスト
+fv ~/Pictures  # 画像ファイルを含むディレクトリ
+
+# プロトコル指定テスト
+FILEVIEW_IMAGE_PROTOCOL=halfblocks fv ~/Pictures
+FILEVIEW_IMAGE_PROTOCOL=chafa fv ~/Pictures
+FILEVIEW_IMAGE_PROTOCOL=kitty fv ~/Pictures
+
+# デバッグ出力（検出されたターミナル確認）
+RUST_LOG=debug fv ~/Pictures
+```
+
+### 変更ファイル一覧
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `Cargo.toml` | chafa-dyn feature追加 |
+| `src/render/mod.rs` | create_image_picker()改修、terminal module追加 |
+| `src/render/terminal.rs` | 新規: ターミナル検出ロジック |
+
+---
