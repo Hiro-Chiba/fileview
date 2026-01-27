@@ -1,5 +1,8 @@
 # FileView (fv)
 
+[![Crates.io](https://img.shields.io/crates/v/fileview.svg)](https://crates.io/crates/fileview)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A minimal, VSCode-style file tree TUI for modern terminal emulators.
 
 ## Features
@@ -16,6 +19,12 @@ A minimal, VSCode-style file tree TUI for modern terminal emulators.
 
 ## Installation
 
+### From crates.io (Recommended)
+
+```bash
+cargo install fileview
+```
+
 ### From source
 
 ```bash
@@ -28,7 +37,6 @@ cargo install --path .
 
 - Rust 1.70+
 - A terminal with true color support (recommended: Ghostty, iTerm2, Alacritty)
-- Nerd Font for file icons
 
 ## Usage
 
