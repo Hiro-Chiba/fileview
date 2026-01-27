@@ -8,7 +8,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::core::AppState;
+use crate::core::{AppState, FocusTarget};
 use crate::git::FileStatus;
 use crate::render::icons;
 use crate::tree::TreeEntry;
@@ -32,7 +32,20 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], 
         " {} ",
         abbreviate_path(&state.root, area.width as usize - 4)
     );
-    let list = List::new(items).block(Block::default().borders(Borders::ALL).title(title));
+
+    // Highlight border when tree has focus (and preview is visible)
+    let border_style = if state.preview_visible && state.focus_target == FocusTarget::Tree {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default()
+    };
+
+    let list = List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .border_style(border_style),
+    );
 
     frame.render_widget(list, area);
 }
