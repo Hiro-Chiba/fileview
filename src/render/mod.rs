@@ -1,6 +1,7 @@
 //! Render module - UI rendering
 
 pub mod icons;
+pub mod image;
 pub mod iterm2;
 pub mod kitty;
 pub mod preview;
@@ -10,6 +11,10 @@ pub mod terminal;
 pub mod tree;
 
 pub use icons::get_icon;
+pub use image::{
+    get_active_protocol, render_image, render_image_preview_unified, ImageRenderConfig,
+    ImageRenderResult,
+};
 pub use iterm2::{encode_iterm2, render_iterm2_image, write_iterm2, ITerm2Config};
 pub use kitty::{
     clear_kitty_images, delete_kitty_image, encode_kitty, render_kitty_image, write_kitty,
