@@ -134,8 +134,7 @@
 
 ## Phase 9: Enhanced Features
 
-### 9.1 Git ステータス表示 ⭐⭐⭐
-
+### 9.1 Git ステータス表示
 **優先度:** 高
 **リリース:** v0.2.0
 
@@ -176,8 +175,7 @@ pub enum FileStatus {
 
 ---
 
-### 9.2 ディレクトリ情報表示 ⭐⭐
-
+### 9.2 ディレクトリ情報表示
 **優先度:** 中
 **リリース:** v0.3.0
 
@@ -202,8 +200,7 @@ Total Size:  1.2 MB
 
 ---
 
-### 9.3 Hex プレビュー ⭐⭐
-
+### 9.3 Hex プレビュー
 **優先度:** 中
 **リリース:** v0.4.0
 
@@ -237,7 +234,8 @@ Total Size:  1.2 MB
 | 8. Main & Polish | 3 | 3 |
 | 9. Enhanced Features | 3 | 3 |
 | 10. Code Quality | 3 | 3 |
-| **Total** | **26** | **26** |
+| 11. Nerd Fonts Icons | 3 | 0 |
+| **Total** | **29** | **26** |
 
 ---
 
@@ -251,7 +249,10 @@ Total Size:  1.2 MB
 | v0.4.0 | Hex preview | ✅ Published |
 | v0.4.4 | Ghostty drag-drop fix | ✅ Published |
 | v0.4.5 | PathBuffer refactoring | ✅ Published |
-| v0.4.6 | Code quality & DRY | 🚧 Planned |
+| v0.4.6 | DRY improvements | ✅ Published |
+| v0.4.7 | Error handling | ✅ Published |
+| v0.4.8 | Constants extraction | ✅ Published |
+| v0.5.0 | Nerd Fonts icons | 🚧 Planned |
 
 ---
 
@@ -259,8 +260,7 @@ Total Size:  1.2 MB
 
 **リリース:** v0.4.6
 
-### 10.1 DRY改善 ⭐⭐⭐
-
+### 10.1 DRY改善
 **優先度:** 高
 
 - [x] ファイルドロップ処理の統合
@@ -274,8 +274,7 @@ Total Size:  1.2 MB
   - 解決: `get_filename_str()` ユーティリティ関数
 - [x] PR: `refactor: Extract common helper functions (DRY)`
 
-### 10.2 エラーハンドリング強化 ⭐⭐
-
+### 10.2 エラーハンドリング強化
 **優先度:** 中
 
 - [x] サイレント失敗の修正
@@ -285,8 +284,7 @@ Total Size:  1.2 MB
   - 既存の `unwrap_or_else` パターンは適切
 - [x] PR: `refactor: Improve error handling and user feedback`
 
-### 10.3 定数化 ⭐
-
+### 10.3 定数化
 **優先度:** 低
 
 - [x] preview.rs のマジックナンバー
@@ -294,6 +292,87 @@ Total Size:  1.2 MB
   - `HEX_PREVIEW_MAX_BYTES = 4096`
   - `HEX_BYTES_PER_LINE = 16`
 - [x] PR: `refactor: Extract magic numbers to constants`
+
+---
+
+## Phase 11: Nerd Fonts Icons
+
+**リリース:** v0.5.0
+
+### 11.1 アイコンマッピング
+**優先度:** 高
+
+- [ ] render/icons.rs 新規作成
+  - ファイル拡張子→アイコンのマッピング
+  - ディレクトリ用アイコン（展開/折りたたみ）
+  - 特殊ディレクトリ（.git, node_modules, src等）
+- [ ] 主要な拡張子サポート
+  - プログラミング言語: rs, py, js, ts, go, java, c, cpp, etc.
+  - 設定ファイル: json, yaml, toml, xml, etc.
+  - ドキュメント: md, txt, pdf, etc.
+  - メディア: png, jpg, mp3, mp4, etc.
+- [ ] PR: `feat(render): Add icon mapping module`
+
+### 11.2 ツリー描画への統合
+**優先度:** 高
+
+- [ ] render/tree.rs 拡張
+  - TreeEntryにアイコン表示を追加
+  - Git状態アイコンとの共存
+- [ ] アイコン表示位置
+  - `📁 dirname/` または ` dirname/`
+  - ` filename.rs` または ` filename.py`
+- [ ] PR: `feat(render): Integrate icons into tree view`
+
+### 11.3 設定オプション
+**優先度:** 中
+
+- [ ] CLIオプション追加
+  - `--icons` / `-i`: アイコン表示を有効化
+  - `--no-icons`: アイコン表示を無効化（デフォルト）
+- [ ] 環境変数サポート
+  - `FILEVIEW_ICONS=1` でデフォルト有効化
+- [ ] Nerd Font未インストール時のフォールバック
+  - Unicode絵文字または記号にフォールバック
+- [ ] PR: `feat(cli): Add icon display options`
+
+**実装詳細:**
+```rust
+// render/icons.rs
+pub fn get_file_icon(path: &Path, is_dir: bool, expanded: bool) -> &'static str {
+    if is_dir {
+        if expanded { "" } else { "" }
+    } else {
+        match path.extension().and_then(|e| e.to_str()) {
+            Some("rs") => "",
+            Some("py") => "",
+            Some("js") => "",
+            Some("ts") => "",
+            Some("json") => "",
+            Some("md") => "",
+            Some("git") => "",
+            _ => "",
+        }
+    }
+}
+```
+
+**アイコン一覧（予定）:**
+
+| カテゴリ | 拡張子 | アイコン |
+|---------|--------|---------|
+| Rust | .rs | `` |
+| Python | .py | `` |
+| JavaScript | .js | `` |
+| TypeScript | .ts | `` |
+| Go | .go | `` |
+| JSON | .json | `` |
+| YAML | .yaml, .yml | `` |
+| TOML | .toml | `` |
+| Markdown | .md | `` |
+| Git | .git/ | `` |
+| Directory | (folder) | `` / `` |
+| Default | (other) | `` |
 
 ---
 
