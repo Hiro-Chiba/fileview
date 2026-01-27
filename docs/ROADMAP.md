@@ -238,8 +238,8 @@ Total Size:  1.2 MB
 | 12. Test Improvements | 6 | 6 |
 | 13. E2E / Behavioral Tests | 4 | 3 |
 | 14. Side Preview Focus | 5 | 5 |
-| 15. Image Protocol Support | 2 | 0 |
-| **Total** | **46** | **43** |
+| 15. Image Protocol Support | 5 | 2 |
+| **Total** | **49** | **45** |
 
 **注意:** Phase 15.8（ratatui-image統合）が完了するまでv0.8.0のリリースは行わない。
 自作の画像プロトコル実装は削除し、ratatui-imageに一本化する。
@@ -735,7 +735,7 @@ ratauiとの画像プロトコル統合を既に解決していることが判�
   - ratatui-imageを使用することを決定
   - 自作実装は削除
 
-- [ ] 15.8.2 ratatui-image導入 & 自作コード削除
+- [x] 15.8.2 ratatui-image導入 & 自作コード削除
   - `cargo add ratatui-image`
   - 以下のファイルを削除:
     - `src/render/sixel.rs`
@@ -746,7 +746,7 @@ ratauiとの画像プロトコル統合を既に解決していることが判�
   - `src/render/mod.rs` の関連エクスポートを削除
   - `tests/integration.rs` の関連テストを削除
   - `base64` 依存を削除（ratatui-imageが内包）
-  - PR: `refactor: Replace custom image protocols with ratatui-image`
+  - PR #46: `refactor: Replace custom image protocols with ratatui-image`
 
 - [ ] 15.8.3 画像プレビューの置き換え
   - `render_image_preview()` をratatui-image版に書き換え
