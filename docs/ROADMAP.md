@@ -236,8 +236,8 @@ Total Size:  1.2 MB
 | 10. Code Quality | 3 | 3 |
 | 11. Nerd Fonts Icons | 3 | 3 |
 | 12. Test Improvements | 6 | 6 |
-| 13. E2E / Behavioral Tests | 4 | 0 |
-| **Total** | **39** | **35** |
+| 13. E2E / Behavioral Tests | 4 | 2 |
+| **Total** | **39** | **37** |
 
 ---
 
@@ -459,25 +459,25 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
 ### 13.1 アクションハンドラーの分離
 **優先度:** 高
 
-- [ ] main.rsからアクション実行ロジックを分離
+- [x] main.rsからアクション実行ロジックを分離
   - `handler/action.rs` 新規作成
-  - `execute_action(state, navigator, action)` 関数
-- [ ] テスタブルな構造に変更
+  - `handle_action(state, navigator, action, ...)` 関数
+- [x] テスタブルな構造に変更
   - 副作用（ターミナルI/O）を分離
   - 状態変更ロジックをテスト可能に
-- [ ] PR: `refactor: Extract action execution logic`
+- [x] PR: `refactor: Extract action execution logic` (#37)
 
 ### 13.2 状態遷移テスト
 **優先度:** 高
 
-- [ ] ToggleExpandの動作テスト
+- [x] ToggleExpandの動作テスト
   - ファイル + サイドプレビュー非表示 → フルスクリーンプレビュー
   - ファイル + サイドプレビュー表示 → サイドプレビュー閉じる
   - ディレクトリ → 展開/折りたたみ
-- [ ] プレビュースクロール状態テスト
-  - パス変更なし → スクロール位置維持
-  - パス変更あり → スクロール位置リセット
-- [ ] PR: `test: Add state transition tests`
+- [x] プレビュースクロール状態テスト
+  - スクロール増減の動作確認
+  - 境界値（0でのサチュレーション）
+- [x] PR: `test: Add state transition tests`
 
 ### 13.3 シーケンステスト
 **優先度:** 中
