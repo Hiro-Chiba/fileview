@@ -12,10 +12,10 @@ const INPUT_TIMEOUT_MS: u64 = 100;
 #[derive(Debug, Clone)]
 pub enum MouseAction {
     None,
-    Click { row: u16 },
-    DoubleClick { row: u16 },
-    ScrollUp(usize),
-    ScrollDown(usize),
+    Click { row: u16, col: u16 },
+    DoubleClick { row: u16, col: u16 },
+    ScrollUp { amount: usize, col: u16 },
+    ScrollDown { amount: usize, col: u16 },
     FileDrop { paths: Vec<PathBuf> },
 }
 
@@ -248,14 +248,21 @@ pub fn handle_mouse_event(
     match event.kind {
         MouseEventKind::Down(MouseButton::Left) if event.row > tree_area_top => {
             let row = event.row - tree_area_top - 1;
+            let col = event.column;
             if click_detector.click(row) {
-                MouseAction::DoubleClick { row }
+                MouseAction::DoubleClick { row, col }
             } else {
-                MouseAction::Click { row }
+                MouseAction::Click { row, col }
             }
         }
-        MouseEventKind::ScrollUp => MouseAction::ScrollUp(3),
-        MouseEventKind::ScrollDown => MouseAction::ScrollDown(3),
+        MouseEventKind::ScrollUp => MouseAction::ScrollUp {
+            amount: 3,
+            col: event.column,
+        },
+        MouseEventKind::ScrollDown => MouseAction::ScrollDown {
+            amount: 3,
+            col: event.column,
+        },
         _ => MouseAction::None,
     }
 }

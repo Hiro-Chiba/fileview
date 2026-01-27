@@ -3,7 +3,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::path::PathBuf;
 
-use crate::core::{AppState, ViewMode};
+use crate::core::{AppState, FocusTarget, ViewMode};
 
 /// Actions that can result from key handling
 #[derive(Debug, Clone)]
@@ -86,6 +86,8 @@ pub enum KeyAction {
     PickSelect,
     /// Show help message
     ShowHelp,
+    /// Toggle focus between tree and preview (side preview mode)
+    ToggleFocus,
 }
 
 /// Handle key event and return the resulting action
@@ -111,23 +113,78 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
         KeyCode::Esc => {
-            if !state.selected_paths.is_empty() {
+            if state.focus_target == FocusTarget::Preview {
+                // Esc returns focus to tree when on preview
+                KeyAction::ToggleFocus
+            } else if !state.selected_paths.is_empty() {
                 KeyAction::ClearMarks
             } else {
                 KeyAction::Cancel
             }
         }
 
-        // Navigation
-        KeyCode::Up | KeyCode::Char('k') => KeyAction::MoveUp,
-        KeyCode::Down | KeyCode::Char('j') => KeyAction::MoveDown,
-        KeyCode::Char('g') => KeyAction::MoveToTop,
-        KeyCode::Char('G') => KeyAction::MoveToBottom,
+        // Navigation (focus-aware: Tree navigates files, Preview scrolls content)
+        KeyCode::Up | KeyCode::Char('k') => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewScrollUp
+            } else {
+                KeyAction::MoveUp
+            }
+        }
+        KeyCode::Down | KeyCode::Char('j') => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewScrollDown
+            } else {
+                KeyAction::MoveDown
+            }
+        }
+        KeyCode::Char('g') => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewToTop
+            } else {
+                KeyAction::MoveToTop
+            }
+        }
+        KeyCode::Char('G') => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewToBottom
+            } else {
+                KeyAction::MoveToBottom
+            }
+        }
+        // Page scroll (only when focus is on preview)
+        KeyCode::PageUp => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewPageUp
+            } else {
+                KeyAction::None
+            }
+        }
+        KeyCode::PageDown => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewPageDown
+            } else {
+                KeyAction::None
+            }
+        }
+        KeyCode::Char('b') if state.focus_target == FocusTarget::Preview => {
+            KeyAction::PreviewPageUp
+        }
+        KeyCode::Char('f') if state.focus_target == FocusTarget::Preview => {
+            KeyAction::PreviewPageDown
+        }
 
         // Expand/Collapse
         KeyCode::Right | KeyCode::Char('l') => KeyAction::Expand,
         KeyCode::Left | KeyCode::Char('h') | KeyCode::Backspace => KeyAction::Collapse,
-        KeyCode::Tab => KeyAction::ToggleExpand,
+        KeyCode::Tab => {
+            // Tab toggles focus when side preview is visible, otherwise toggles expand
+            if state.preview_visible {
+                KeyAction::ToggleFocus
+            } else {
+                KeyAction::ToggleExpand
+            }
+        }
         KeyCode::Char('H') => KeyAction::CollapseAll,
         KeyCode::Char('L') => KeyAction::ExpandAll,
 

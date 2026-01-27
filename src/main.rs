@@ -20,7 +20,7 @@ use ratatui::prelude::*;
 use ratatui::widgets::{Block, Borders, Paragraph};
 
 use fileview::action::file as file_ops;
-use fileview::core::{AppState, ViewMode};
+use fileview::core::{AppState, FocusTarget, ViewMode};
 use fileview::handler::{
     action::{
         get_filename_str, get_target_directory, handle_action, ActionContext, ActionResult,
@@ -344,7 +344,7 @@ fn run_app(
             let is_fullscreen_preview = matches!(state.mode, ViewMode::Preview { .. });
 
             if is_fullscreen_preview {
-                // Fullscreen preview mode - render preview only
+                // Fullscreen preview mode - render preview only (always focused)
                 let filename = get_filename_str(focused_path.as_ref());
                 let title = if filename.is_empty() {
                     " Preview (press o or q to close) ".to_string()
@@ -353,13 +353,13 @@ fn run_app(
                 };
 
                 if let Some(ref di) = dir_info {
-                    render_directory_info(frame, di, size);
+                    render_directory_info(frame, di, size, false);
                 } else if let Some(ref tp) = text_preview {
-                    render_text_preview(frame, tp, size, &title);
+                    render_text_preview(frame, tp, size, &title, false);
                 } else if let Some(ref ip) = image_preview {
-                    render_image_preview(frame, ip, size, &title);
+                    render_image_preview(frame, ip, size, &title, false);
                 } else if let Some(ref hp) = hex_preview {
-                    render_hex_preview(frame, hp, size, &title);
+                    render_hex_preview(frame, hp, size, &title, false);
                 } else {
                     let block = Block::default().borders(Borders::ALL).title(title);
                     let para = Paragraph::new("No preview available").block(block);
@@ -399,16 +399,25 @@ fn run_app(
                 if state.preview_visible && main_chunks.len() > 1 {
                     let preview_area = main_chunks[1];
                     let title = get_filename_str(focused_path.as_ref());
+                    let preview_focused = state.focus_target == FocusTarget::Preview;
                     if let Some(ref di) = dir_info {
-                        render_directory_info(frame, di, preview_area);
+                        render_directory_info(frame, di, preview_area, preview_focused);
                     } else if let Some(ref tp) = text_preview {
-                        render_text_preview(frame, tp, preview_area, &title);
+                        render_text_preview(frame, tp, preview_area, &title, preview_focused);
                     } else if let Some(ref ip) = image_preview {
-                        render_image_preview(frame, ip, preview_area, &title);
+                        render_image_preview(frame, ip, preview_area, &title, preview_focused);
                     } else if let Some(ref hp) = hex_preview {
-                        render_hex_preview(frame, hp, preview_area, &title);
+                        render_hex_preview(frame, hp, preview_area, &title, preview_focused);
                     } else {
-                        let block = Block::default().borders(Borders::ALL).title(" Preview ");
+                        let border_style = if preview_focused {
+                            Style::default().fg(Color::Cyan)
+                        } else {
+                            Style::default()
+                        };
+                        let block = Block::default()
+                            .borders(Borders::ALL)
+                            .title(" Preview ")
+                            .border_style(border_style);
                         let para = Paragraph::new("No preview available").block(block);
                         frame.render_widget(para, preview_area);
                     }
@@ -510,30 +519,73 @@ fn run_app(
                     let tree_top = 0; // Assuming tree starts at row 0
                     let action = handle_mouse_event(mouse, &mut click_detector, tree_top);
 
+                    // Calculate preview boundary for focus switching
+                    let preview_boundary = if state.preview_visible {
+                        crossterm::terminal::size()
+                            .map(|(w, _)| w / 2)
+                            .unwrap_or(u16::MAX)
+                    } else {
+                        u16::MAX // No preview, all clicks go to tree
+                    };
+
                     match action {
-                        MouseAction::Click { row } => {
-                            let idx = state.viewport_top + row as usize;
-                            if idx < snapshots.len() {
-                                state.focus_index = idx;
+                        MouseAction::Click { row, col } => {
+                            // Set focus based on click position
+                            if state.preview_visible {
+                                if col >= preview_boundary {
+                                    state.set_focus(FocusTarget::Preview);
+                                } else {
+                                    state.set_focus(FocusTarget::Tree);
+                                    // Only update file selection when clicking on tree
+                                    let idx = state.viewport_top + row as usize;
+                                    if idx < snapshots.len() {
+                                        state.focus_index = idx;
+                                    }
+                                }
+                            } else {
+                                let idx = state.viewport_top + row as usize;
+                                if idx < snapshots.len() {
+                                    state.focus_index = idx;
+                                }
                             }
                         }
-                        MouseAction::DoubleClick { row } => {
-                            let idx = state.viewport_top + row as usize;
-                            if idx < snapshots.len() {
-                                state.focus_index = idx;
-                                if let Some(entry) = snapshots.get(idx) {
-                                    if entry.is_dir {
-                                        let _ = navigator.toggle_expand(&entry.path);
+                        MouseAction::DoubleClick { row, col } => {
+                            // Double-click on tree area
+                            if col < preview_boundary {
+                                state.set_focus(FocusTarget::Tree);
+                                let idx = state.viewport_top + row as usize;
+                                if idx < snapshots.len() {
+                                    state.focus_index = idx;
+                                    if let Some(entry) = snapshots.get(idx) {
+                                        if entry.is_dir {
+                                            let _ = navigator.toggle_expand(&entry.path);
+                                        }
                                     }
                                 }
                             }
                         }
-                        MouseAction::ScrollUp(n) => {
-                            state.focus_index = state.focus_index.saturating_sub(n);
+                        MouseAction::ScrollUp { amount, col } => {
+                            if state.preview_visible && col >= preview_boundary {
+                                // Scroll preview
+                                if let Some(ref mut tp) = text_preview {
+                                    tp.scroll = tp.scroll.saturating_sub(amount);
+                                }
+                            } else {
+                                // Scroll file list
+                                state.focus_index = state.focus_index.saturating_sub(amount);
+                            }
                         }
-                        MouseAction::ScrollDown(n) => {
-                            state.focus_index =
-                                (state.focus_index + n).min(snapshots.len().saturating_sub(1));
+                        MouseAction::ScrollDown { amount, col } => {
+                            if state.preview_visible && col >= preview_boundary {
+                                // Scroll preview
+                                if let Some(ref mut tp) = text_preview {
+                                    tp.scroll += amount;
+                                }
+                            } else {
+                                // Scroll file list
+                                state.focus_index = (state.focus_index + amount)
+                                    .min(snapshots.len().saturating_sub(1));
+                            }
                         }
                         MouseAction::FileDrop { paths } => {
                             let root = state.root.clone();
