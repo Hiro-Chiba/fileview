@@ -236,8 +236,8 @@ Total Size:  1.2 MB
 | 10. Code Quality | 3 | 3 |
 | 11. Nerd Fonts Icons | 3 | 3 |
 | 12. Test Improvements | 6 | 6 |
-| 13. E2E / Behavioral Tests | 4 | 2 |
-| **Total** | **39** | **37** |
+| 13. E2E / Behavioral Tests | 4 | 3 |
+| **Total** | **39** | **38** |
 
 ---
 
@@ -482,14 +482,17 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
 ### 13.3 シーケンステスト
 **優先度:** 中
 
-- [ ] 操作シーケンスのテスト
+- [x] 操作シーケンスのテスト
   - `j` → `j` → `o` → `j` → `j` → `q` (ナビゲーション+プレビュー)
   - `P` → `Enter` (サイドプレビュー→閉じる)
   - `/` → `test` → `Enter` → `n` (検索シーケンス)
-- [ ] 複合操作のテスト
+- [x] 複合操作のテスト
   - 選択 → コピー → 移動 → ペースト
   - リネーム → キャンセル → リネーム → 確定
-- [ ] PR: `test: Add operation sequence tests`
+  - 作成 → 削除
+  - 展開 → ナビゲート → 全折りたたみ
+  - カット → ペースト（移動）
+- [x] PR: `test: Add operation sequence tests`
 
 ### 13.4 エッジケーステスト
 **優先度:** 中
