@@ -10,14 +10,34 @@ English | [日本語](README_ja.md)
 ## Features
 
 - Fast file tree navigation with vim-like keybindings
+- **Git integration** - color-coded file status and branch display
 - Multi-select support for batch operations
-- Text and image preview (half-block rendering)
+- **Preview panel** with support for:
+  - Text files (syntax highlighting by extension)
+  - Images (half-block rendering)
+  - Directories (file count, size statistics)
+  - Binary files (hex dump view)
 - Copy/cut/paste with internal clipboard
 - System clipboard integration (path/filename copy)
 - Pick mode for external tool integration
 - Callback execution on file selection
 - Hidden files toggle
 - Mouse support (click, double-click, scroll)
+
+## Git Status Colors
+
+When inside a git repository, files are color-coded by their status:
+
+| Color | Status |
+|-------|--------|
+| Yellow | Modified |
+| Green | Added / Untracked |
+| Red | Deleted |
+| Cyan | Renamed |
+| Gray | Ignored |
+| Magenta | Conflict |
+
+The current branch name is displayed in the status bar.
 
 ## Installation
 
