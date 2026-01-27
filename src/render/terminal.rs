@@ -150,9 +150,8 @@ impl TerminalBrand {
             Self::Foot => RecommendedProtocol::Sixel,
             Self::WindowsTerminal => RecommendedProtocol::Sixel,
 
-            // VS Code supports iTerm2 inline images protocol
-            Self::VSCode => RecommendedProtocol::Iterm2,
-            // Alacritty has no native image protocol support
+            // VS Code/Alacritty: no reliable native protocol, use Chafa/Halfblocks
+            Self::VSCode => RecommendedProtocol::Chafa,
             Self::Alacritty => RecommendedProtocol::Chafa,
 
             // Query terminal or fallback
@@ -613,10 +612,10 @@ mod tests {
         }
 
         #[test]
-        fn vscode_recommends_iterm2() {
+        fn vscode_recommends_chafa() {
             assert_eq!(
                 TerminalBrand::VSCode.recommended_protocol(),
-                RecommendedProtocol::Iterm2
+                RecommendedProtocol::Chafa
             );
         }
 
@@ -838,7 +837,7 @@ mod tests {
             let protocol = brand.recommended_protocol();
 
             assert_eq!(brand, TerminalBrand::VSCode);
-            assert_eq!(protocol, RecommendedProtocol::Iterm2);
+            assert_eq!(protocol, RecommendedProtocol::Chafa);
         }
 
         #[test]
