@@ -42,10 +42,10 @@ impl AppState {
     pub fn new(root: PathBuf) -> Self {
         let git_status = GitStatus::detect(&root);
 
-        // Check environment variable for default icons setting
+        // Check environment variable for icons setting (default: enabled)
         let icons_enabled = std::env::var("FILEVIEW_ICONS")
-            .map(|v| v == "1" || v.to_lowercase() == "true")
-            .unwrap_or(false);
+            .map(|v| v != "0" && v.to_lowercase() != "false")
+            .unwrap_or(true);
 
         Self {
             root,
