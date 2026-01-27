@@ -15,8 +15,8 @@ name = "fv"
 path = "src/main.rs"
 
 [dependencies]
-ratatui = "0.28"
-crossterm = "0.28"
+ratatui = "0.30"
+crossterm = "0.29"
 anyhow = "1.0"
 arboard = "3.4"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
