@@ -1176,179 +1176,179 @@ mod file_operations_tests {
 // =============================================================================
 
 mod drag_and_drop_tests {
-    use fileview::handler::mouse::DropDetector;
+    use fileview::handler::mouse::PathBuffer;
     use std::fs;
     use tempfile::TempDir;
 
     #[test]
-    fn test_drop_detector_with_real_file() {
+    fn test_path_buffer_with_real_file() {
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("test_file.txt");
         fs::write(&file_path, "test content").unwrap();
 
-        let mut detector = DropDetector::new();
-        detector.push_char('/'); // Start path
+        let mut detector = PathBuffer::new();
+        detector.push('/'); // Start path
 
         // Simulate rapid input of file path
         let path_str = file_path.display().to_string();
         for c in path_str.chars().skip(1) {
-            detector.push_char(c);
+            detector.push(c);
         }
 
-        let paths = detector.extract_paths();
+        let paths = detector.take_paths();
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0], file_path);
     }
 
     #[test]
-    fn test_drop_detector_with_real_directory() {
+    fn test_path_buffer_with_real_directory() {
         let temp = TempDir::new().unwrap();
         let dir_path = temp.path().join("test_dir");
         fs::create_dir(&dir_path).unwrap();
 
-        let mut detector = DropDetector::new();
+        let mut detector = PathBuffer::new();
         let path_str = dir_path.display().to_string();
         for c in path_str.chars() {
-            detector.push_char(c);
+            detector.push(c);
         }
 
-        let paths = detector.extract_paths();
+        let paths = detector.take_paths();
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0], dir_path);
     }
 
     #[test]
-    fn test_drop_detector_file_url_format() {
+    fn test_path_buffer_file_url_format() {
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("test.txt");
         fs::write(&file_path, "content").unwrap();
 
-        let mut detector = DropDetector::new();
+        let mut detector = PathBuffer::new();
         // Simulate file:// URL format
         let url = format!("file://{}", file_path.display());
         for c in url.chars() {
-            detector.push_char(c);
+            detector.push(c);
         }
 
-        let paths = detector.extract_paths();
+        let paths = detector.take_paths();
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0], file_path);
     }
 
     #[test]
-    fn test_drop_detector_url_encoded_spaces() {
+    fn test_path_buffer_url_encoded_spaces() {
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("file with spaces.txt");
         fs::write(&file_path, "content").unwrap();
 
-        let mut detector = DropDetector::new();
+        let mut detector = PathBuffer::new();
         // Simulate URL-encoded path with %20 for spaces
         let path_str = file_path.display().to_string().replace(' ', "%20");
         for c in path_str.chars() {
-            detector.push_char(c);
+            detector.push(c);
         }
 
-        let paths = detector.extract_paths();
+        let paths = detector.take_paths();
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0], file_path);
     }
 
     #[test]
-    fn test_drop_detector_backslash_escaped_spaces() {
+    fn test_path_buffer_backslash_escaped_spaces() {
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("file with spaces.txt");
         fs::write(&file_path, "content").unwrap();
 
-        let mut detector = DropDetector::new();
+        let mut detector = PathBuffer::new();
         // Simulate backslash-escaped path (macOS terminal style)
         let path_str = file_path.display().to_string().replace(' ', "\\ ");
         for c in path_str.chars() {
-            detector.push_char(c);
+            detector.push(c);
         }
 
-        let paths = detector.extract_paths();
+        let paths = detector.take_paths();
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0], file_path);
     }
 
     #[test]
-    fn test_drop_detector_multiple_files() {
+    fn test_path_buffer_multiple_files() {
         let temp = TempDir::new().unwrap();
         let file1 = temp.path().join("file1.txt");
         let file2 = temp.path().join("file2.txt");
         fs::write(&file1, "content1").unwrap();
         fs::write(&file2, "content2").unwrap();
 
-        let mut detector = DropDetector::new();
+        let mut detector = PathBuffer::new();
         // Simulate multiple paths separated by newline
         let paths_str = format!("{}\n{}", file1.display(), file2.display());
         for c in paths_str.chars() {
-            detector.push_char(c);
+            detector.push(c);
         }
 
-        let paths = detector.extract_paths();
+        let paths = detector.take_paths();
         assert_eq!(paths.len(), 2);
         assert!(paths.contains(&file1));
         assert!(paths.contains(&file2));
     }
 
     #[test]
-    fn test_drop_detector_nonexistent_path_filtered() {
-        let mut detector = DropDetector::new();
+    fn test_path_buffer_nonexistent_path_filtered() {
+        let mut detector = PathBuffer::new();
         // Path that doesn't exist should be filtered out
         let fake_path = "/nonexistent/path/to/file.txt";
         for c in fake_path.chars() {
-            detector.push_char(c);
+            detector.push(c);
         }
 
-        let paths = detector.extract_paths();
+        let paths = detector.take_paths();
         assert!(paths.is_empty());
     }
 
     #[test]
-    fn test_drop_detector_mixed_existing_nonexisting() {
+    fn test_path_buffer_mixed_existing_nonexisting() {
         let temp = TempDir::new().unwrap();
         let existing = temp.path().join("existing.txt");
         fs::write(&existing, "content").unwrap();
 
-        let mut detector = DropDetector::new();
+        let mut detector = PathBuffer::new();
         // Mix of existing and non-existing paths
         let paths_str = format!("{}\n/nonexistent/path.txt", existing.display());
         for c in paths_str.chars() {
-            detector.push_char(c);
+            detector.push(c);
         }
 
-        let paths = detector.extract_paths();
+        let paths = detector.take_paths();
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0], existing);
     }
 
     #[test]
-    fn test_drop_detector_quoted_path_with_spaces() {
+    fn test_path_buffer_quoted_path_with_spaces() {
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("file with spaces.txt");
         fs::write(&file_path, "content").unwrap();
 
-        let mut detector = DropDetector::new();
+        let mut detector = PathBuffer::new();
         // Simulate quoted path
         let quoted = format!("\"{}\"", file_path.display());
         for c in quoted.chars() {
-            detector.push_char(c);
+            detector.push(c);
         }
 
-        let paths = detector.extract_paths();
+        let paths = detector.take_paths();
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0], file_path);
     }
 
     #[test]
-    fn test_drop_detector_clear() {
-        let mut detector = DropDetector::new();
-        detector.push_char('/');
-        detector.push_char('t');
-        detector.push_char('e');
-        detector.push_char('s');
-        detector.push_char('t');
+    fn test_path_buffer_clear() {
+        let mut detector = PathBuffer::new();
+        detector.push('/');
+        detector.push('t');
+        detector.push('e');
+        detector.push('s');
+        detector.push('t');
 
         assert!(!detector.is_empty());
         detector.clear();
