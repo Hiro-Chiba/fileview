@@ -240,7 +240,8 @@ Total Size:  1.2 MB
 | 14. Side Preview Focus | 5 | 5 |
 | 15. Image Protocol Support | 5 | 4 |
 | 16. Enhanced Image Preview | 5 | 5 |
-| **Total** | **54** | **52** |
+| 17. Zero-Config UX | 5 | 0 |
+| **Total** | **59** | **52** |
 
 **注意:** Phase 15.8（ratatui-image統合）が完了するまでv0.8.0のリリースは行わない。
 自作の画像プロトコル実装は削除し、ratatui-imageに一本化する。
@@ -263,8 +264,11 @@ Total Size:  1.2 MB
 | v0.5.0 | Nerd Fonts icons | ✅ Published |
 | v0.6.0 | Test improvements | ✅ Published |
 | v0.6.1 | Bug fixes (preview scroll, Enter key) | ✅ Published |
-| v0.8.0 | ratatui-image integration | 🚧 In Progress |
-| v0.9.0 | Enhanced image preview (yazi-inspired) | 📋 Planned |
+| v0.8.0 | ratatui-image integration | ✅ Published |
+| v0.9.0 | Enhanced image preview (yazi-inspired) | ✅ Published |
+| v0.9.1 | Image preview fit fix | ✅ Published |
+| v0.10.0 | Shell integration (cd on exit) | 📋 Planned |
+| v0.11.0 | Built-in fuzzy finder | 📋 Planned |
 
 ---
 
@@ -1033,5 +1037,106 @@ RUST_LOG=debug fv ~/Pictures
 | `Cargo.toml` | chafa-dyn feature追加 |
 | `src/render/mod.rs` | create_image_picker()改修、terminal module追加 |
 | `src/render/terminal.rs` | 新規: ターミナル検出ロジック |
+
+---
+
+## Phase 17: Zero-Config UX
+
+**リリース:** v0.10.0 〜 v0.11.0
+
+### 背景
+
+yaziは「パワーユーザー向けの多機能ツール」として発展している。
+fileviewは**逆方向**、「Zero-config、設定不要ですぐ使える」を強みとする。
+
+```
+yazi     = Vim（高機能、設定が必要、学習曲線あり）
+fileview = nano（シンプル、設定不要、すぐ使える）
+```
+
+### 17.1 シェル連携（cd on exit）
+**優先度:** 高
+**リリース:** v0.10.0
+
+fileviewを終了時に、選択したディレクトリにcdできる機能。
+
+- [ ] `--print-cwd` オプション追加
+  - 終了時に現在のディレクトリパスを標準出力
+- [ ] `--last-dir FILE` オプション追加
+  - 終了時に現在のディレクトリパスをファイルに書き込み
+- [ ] シェル関数のサンプル作成
+  ```bash
+  # .bashrc / .zshrc に追加
+  fvcd() {
+    local tmp=$(mktemp)
+    fv --last-dir "$tmp" "$@"
+    if [ -f "$tmp" ]; then
+      local dir=$(cat "$tmp")
+      rm -f "$tmp"
+      [ -d "$dir" ] && cd "$dir"
+    fi
+  }
+  ```
+- [ ] README にシェル連携セクション追加
+- [ ] PR: `feat: Add shell integration (cd on exit)`
+
+### 17.2 組み込みFuzzy Finder
+**優先度:** 高
+**リリース:** v0.11.0
+
+fzfなしでファイル検索できる組み込み機能。
+
+**UIイメージ:**
+```
+┌─ Fuzzy Find ─────────────────────┐
+│ > src/ren                        │
+├──────────────────────────────────┤
+│   src/render/mod.rs              │
+│   src/render/preview.rs          │
+│   src/render/terminal.rs         │
+│   src/render/tree.rs             │
+└──────────────────────────────────┘
+```
+
+- [ ] `nucleo` または `fuzzy-matcher` クレート追加
+  - `nucleo`: helixエディタが使用、高速
+  - `fuzzy-matcher`: シンプル、軽量
+- [ ] `Ctrl+P` キーバインド追加
+- [ ] FuzzyFinder UIコンポーネント作成
+  - 入力フィールド
+  - マッチ結果リスト（スコア順）
+  - ハイライト表示（マッチ部分）
+- [ ] ファイルパス収集（現在のツリーから）
+- [ ] 選択時にツリーでそのファイルにジャンプ
+- [ ] PR: `feat: Add built-in fuzzy finder`
+
+### 17.3 クイックブックマーク（検討中）
+**優先度:** 中
+**リリース:** 未定
+
+設定ファイル不要で、よく使うディレクトリを記憶。
+
+- [ ] `m` + 数字キーでブックマーク登録
+- [ ] `'` + 数字キーでブックマークジャンプ
+- [ ] XDGディレクトリにブックマーク保存（~/.local/share/fileview/bookmarks）
+
+### 17.4 セッション記憶（検討中）
+**優先度:** 低
+**リリース:** 未定
+
+前回終了時の場所を記憶して、次回起動時に復元。
+
+- [ ] 最後に開いていたディレクトリを保存
+- [ ] `--no-restore` で無効化可能
+
+### 差別化戦略
+
+| 特徴 | yazi | fileview |
+|------|------|----------|
+| 設定ファイル | 必要（toml） | 不要 |
+| プラグイン | Lua対応 | なし（シンプル） |
+| 外部依存 | fzf, fd等推奨 | 単体で完結 |
+| 学習曲線 | 中〜高 | 低 |
+| ターゲット | パワーユーザー | 全ユーザー |
 
 ---
