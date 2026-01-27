@@ -10,6 +10,7 @@ use ratatui::{
 
 use crate::core::AppState;
 use crate::git::FileStatus;
+use crate::render::icons;
 use crate::tree::TreeEntry;
 
 /// Render the file tree widget
@@ -40,14 +41,16 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], 
 fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'static> {
     let indent = "  ".repeat(entry.depth);
 
-    let icon = if entry.is_dir {
+    let icon = if state.icons_enabled {
+        icons::get_icon(&entry.path, entry.is_dir, entry.is_expanded())
+    } else if entry.is_dir {
         if entry.is_expanded() {
-            "\u{f07c}" // Open folder icon
+            "▼"
         } else {
-            "\u{f07b}" // Closed folder icon
+            "▶"
         }
     } else {
-        get_file_icon(&entry.name)
+        " "
     };
 
     let is_focused = index == state.focus_index;
@@ -140,32 +143,6 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
         }
     } else {
         result
-    }
-}
-
-/// Get file icon based on extension
-fn get_file_icon(name: &str) -> &'static str {
-    let ext = name.rsplit('.').next().unwrap_or("");
-    match ext.to_lowercase().as_str() {
-        "rs" => "",
-        "py" => "",
-        "js" | "jsx" => "",
-        "ts" | "tsx" => "",
-        "html" => "",
-        "css" | "scss" | "sass" => "",
-        "json" => "",
-        "toml" | "yaml" | "yml" => "",
-        "md" => "",
-        "txt" => "",
-        "gitignore" => "",
-        "lock" => "",
-        "png" | "jpg" | "jpeg" | "gif" | "svg" | "ico" | "webp" => "",
-        "mp3" | "wav" | "flac" => "",
-        "mp4" | "mkv" | "avi" => "",
-        "zip" | "tar" | "gz" | "rar" => "",
-        "pdf" => "",
-        "sh" | "bash" | "zsh" => "",
-        _ => "",
     }
 }
 
