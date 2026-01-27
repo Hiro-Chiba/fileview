@@ -111,13 +111,13 @@ OPTIONS:
     -p, --pick          Pick mode: output selected path(s) to stdout
     -f, --format FMT    Output format for pick mode: lines, null, json
     --on-select CMD     Run command when file is selected (use {{path}}, {{name}}, etc.)
-    -i, --icons         Enable Nerd Fonts icons
-    --no-icons          Disable icons (default)
+    -i, --icons         Enable Nerd Fonts icons (default)
+    --no-icons          Disable icons
     -h, --help          Show this help message
     -V, --version       Show version
 
 ENVIRONMENT:
-    FILEVIEW_ICONS=1    Enable icons by default
+    FILEVIEW_ICONS=0    Disable icons by default
 
 KEYBINDINGS:
     j/↓         Move down

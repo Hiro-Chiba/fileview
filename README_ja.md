@@ -152,8 +152,8 @@ fv --on-select "code {path}"
 | `-p`, `--pick` | Pickモード: 選択したパスを標準出力 |
 | `-f`, `--format FMT` | 出力形式: `lines`（デフォルト）, `null`, `json` |
 | `--on-select CMD` | ファイル選択時に実行するコマンド |
-| `-i`, `--icons` | Nerd Fontsアイコンを有効化 |
-| `--no-icons` | アイコンを無効化（デフォルト） |
+| `-i`, `--icons` | Nerd Fontsアイコンを有効化（デフォルト） |
+| `--no-icons` | アイコンを無効化 |
 | `-h`, `--help` | ヘルプ表示 |
 | `-V`, `--version` | バージョン表示 |
 
@@ -161,7 +161,7 @@ fv --on-select "code {path}"
 
 | 変数 | 説明 |
 |------|------|
-| `FILEVIEW_ICONS=1` | デフォルトでアイコンを有効化 |
+| `FILEVIEW_ICONS=0` | デフォルトでアイコンを無効化 |
 
 ### `--on-select` のプレースホルダー
 
