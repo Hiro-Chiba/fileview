@@ -381,8 +381,38 @@ fn run_app(
         // Drop the entries borrow before event handling
         drop(entries);
 
+        // Check drop buffer timeout (for file drop detection via rapid key input)
+        if drop_detector.check_timeout() {
+            let paths = drop_detector.extract_paths();
+            if !paths.is_empty() {
+                // Valid paths detected - copy files
+                if let Some(focused) = &focused_path {
+                    let dest = if focused.is_dir() {
+                        focused.clone()
+                    } else {
+                        focused.parent().unwrap_or(&state.root).to_path_buf()
+                    };
+                    for src in &paths {
+                        let _ = file_ops::copy_to(src, &dest);
+                    }
+                    navigator.reload()?;
+                    state.refresh_git_status();
+                    state.set_message(format!("Dropped {} file(s)", paths.len()));
+                }
+            } else {
+                // Not valid paths - check if it starts with '/' for search
+                let buffer = drop_detector.take_buffer();
+                if let Some(rest) = buffer.strip_prefix('/') {
+                    // Treat as search command
+                    state.mode = ViewMode::Search {
+                        query: rest.to_string(),
+                    };
+                }
+            }
+        }
+
         // Handle events
-        if event::poll(Duration::from_millis(100))? {
+        if event::poll(Duration::from_millis(50))? {
             match event::read()? {
                 Event::Key(key) => {
                     // Handle input buffer updates first
@@ -407,6 +437,24 @@ fn run_app(
                         if let Some((new_buf, _)) = update_input_buffer(key, query, query.len()) {
                             state.mode = ViewMode::Search { query: new_buf };
                             continue;
+                        }
+                    }
+
+                    // Buffer characters for potential file drop detection (Ghostty, etc.)
+                    // Only in Browse mode to avoid interfering with text input
+                    if matches!(state.mode, ViewMode::Browse) {
+                        if let crossterm::event::KeyCode::Char(c) = key.code {
+                            // Start buffering on path-like characters
+                            if matches!(c, '/' | '\'' | '"' | '\\') {
+                                drop_detector.push_char(c);
+                                continue;
+                            }
+
+                            // Continue buffering if we already have content
+                            if !drop_detector.is_empty() {
+                                drop_detector.push_char(c);
+                                continue;
+                            }
                         }
                     }
 

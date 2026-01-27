@@ -63,6 +63,7 @@ pub struct DropDetector {
     buffer: String,
     last_char_time: Option<Instant>,
     char_threshold: Duration,
+    timeout: Duration,
 }
 
 impl Default for DropDetector {
@@ -77,76 +78,208 @@ impl DropDetector {
             buffer: String::new(),
             last_char_time: None,
             char_threshold: Duration::from_millis(50),
+            timeout: Duration::from_millis(100),
         }
     }
 
     /// Add a character to the buffer
-    /// Returns true if this looks like a file drop (rapid character input)
-    pub fn push_char(&mut self, c: char) -> bool {
+    /// Call this for each character input
+    pub fn push_char(&mut self, c: char) {
         let now = Instant::now();
-
-        // Check if this is rapid input (potential drop)
-        let is_rapid = self
+        let elapsed = self
             .last_char_time
-            .map(|t| now.duration_since(t) < self.char_threshold)
-            .unwrap_or(false);
+            .map(|t| now.duration_since(t))
+            .unwrap_or(Duration::MAX);
 
-        self.last_char_time = Some(now);
-
-        if is_rapid || self.buffer.is_empty() {
-            self.buffer.push(c);
-            true
-        } else {
-            // Too slow, reset buffer
+        // If more than 50ms since last char, start new buffer
+        if elapsed > self.char_threshold {
             self.buffer.clear();
-            self.buffer.push(c);
-            false
         }
+
+        self.buffer.push(c);
+        self.last_char_time = Some(now);
+    }
+
+    /// Check if buffer has timed out and should be processed
+    /// Returns true if there's buffered content that has timed out
+    pub fn check_timeout(&self) -> bool {
+        if self.buffer.is_empty() {
+            return false;
+        }
+
+        self.last_char_time
+            .map(|t| t.elapsed() >= self.timeout)
+            .unwrap_or(false)
     }
 
     /// Check if buffer contains valid paths and extract them
+    /// Clears the buffer after extraction
     pub fn extract_paths(&mut self) -> Vec<PathBuf> {
         if self.buffer.is_empty() {
             return Vec::new();
         }
 
         let content = std::mem::take(&mut self.buffer);
-        let paths: Vec<PathBuf> = content
-            .lines()
-            .flat_map(|line| {
-                // Handle various path formats
-                let mut path = line.trim().trim_matches('"').trim_matches('\'');
+        self.last_char_time = None;
 
-                // Handle file:// URLs (Unix: file:///path, Windows: file:///C:/path)
-                if let Some(stripped) = path.strip_prefix("file://") {
-                    path = stripped;
-                    // Windows file URLs have extra slash: file:///C:/...
-                    // After stripping "file://", we have "/C:/..." - need to remove leading /
-                    if path.len() > 2 && path.starts_with('/') && path.chars().nth(2) == Some(':') {
-                        path = &path[1..];
+        Self::parse_paths(&content)
+    }
+
+    /// Take the buffer content without parsing as paths
+    /// Used for fallback processing (e.g., treating as search query)
+    pub fn take_buffer(&mut self) -> String {
+        self.last_char_time = None;
+        std::mem::take(&mut self.buffer)
+    }
+
+    /// Normalize a dropped path by removing quotes and unescaping backslashes
+    fn normalize_path(text: &str) -> String {
+        let text = text.trim();
+
+        // Remove surrounding quotes if present
+        let text = if (text.starts_with('\'') && text.ends_with('\''))
+            || (text.starts_with('"') && text.ends_with('"'))
+        {
+            &text[1..text.len().saturating_sub(1)]
+        } else {
+            text
+        };
+
+        // Unescape backslash-escaped characters
+        let mut result = String::with_capacity(text.len());
+        let mut chars = text.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                if let Some(&next) = chars.peek() {
+                    // Common escaped characters in shell paths
+                    if matches!(
+                        next,
+                        ' ' | '\''
+                            | '"'
+                            | '\\'
+                            | '('
+                            | ')'
+                            | '['
+                            | ']'
+                            | '&'
+                            | ';'
+                            | '!'
+                            | '$'
+                            | '`'
+                    ) {
+                        result.push(chars.next().unwrap());
+                        continue;
                     }
                 }
+            }
+            result.push(c);
+        }
 
-                // URL decode common characters
-                let decoded = path
-                    .replace("%20", " ")
-                    .replace("%23", "#")
-                    .replace("%25", "%")
-                    .replace("%5B", "[")
-                    .replace("%5D", "]");
+        // URL decode common characters
+        result
+            .replace("%20", " ")
+            .replace("%23", "#")
+            .replace("%25", "%")
+            .replace("%5B", "[")
+            .replace("%5D", "]")
+    }
 
-                if decoded.is_empty() {
-                    None
-                } else {
-                    let path_buf = PathBuf::from(&decoded);
-                    if path_buf.exists() {
-                        Some(path_buf)
+    /// Parse text content into valid file paths
+    fn parse_paths(content: &str) -> Vec<PathBuf> {
+        let content = content.trim();
+
+        // Try newline-separated first (multiple files)
+        if content.contains('\n') {
+            return content
+                .lines()
+                .filter_map(|line| {
+                    let normalized = Self::normalize_path(line);
+                    if normalized.is_empty() {
+                        return None;
+                    }
+
+                    // Handle file:// URLs
+                    let path_str = if let Some(stripped) = normalized.strip_prefix("file://") {
+                        let mut s = stripped.to_string();
+                        // Windows file URLs: file:///C:/...
+                        if s.len() > 2 && s.starts_with('/') && s.chars().nth(2) == Some(':') {
+                            s = s[1..].to_string();
+                        }
+                        s
+                    } else {
+                        normalized
+                    };
+
+                    let path = PathBuf::from(&path_str);
+                    if path.is_absolute() && path.exists() {
+                        Some(path)
                     } else {
                         None
                     }
+                })
+                .collect();
+        }
+
+        // Single path or space-separated paths with quote handling
+        let mut paths = Vec::new();
+        let mut chars = content.chars().peekable();
+        let mut current = String::new();
+        let mut in_quote = false;
+        let mut quote_char: Option<char> = None;
+
+        while let Some(c) = chars.next() {
+            match c {
+                '"' | '\'' => {
+                    if in_quote && Some(c) == quote_char {
+                        in_quote = false;
+                        quote_char = None;
+                    } else if !in_quote {
+                        in_quote = true;
+                        quote_char = Some(c);
+                    } else {
+                        current.push(c);
+                    }
                 }
-            })
-            .collect();
+                '\\' if !in_quote => {
+                    if let Some(next) = chars.next() {
+                        current.push(next);
+                    }
+                }
+                ' ' if !in_quote => {
+                    if !current.is_empty() {
+                        let normalized = Self::normalize_path(&current);
+                        let path = PathBuf::from(&normalized);
+                        if path.is_absolute() && path.exists() {
+                            paths.push(path);
+                        }
+                        current.clear();
+                    }
+                }
+                _ => {
+                    current.push(c);
+                }
+            }
+        }
+
+        if !current.is_empty() {
+            let normalized = Self::normalize_path(&current);
+
+            // Handle file:// URLs
+            let path_str = if let Some(stripped) = normalized.strip_prefix("file://") {
+                let mut s = stripped.to_string();
+                if s.len() > 2 && s.starts_with('/') && s.chars().nth(2) == Some(':') {
+                    s = s[1..].to_string();
+                }
+                s
+            } else {
+                normalized
+            };
+
+            let path = PathBuf::from(&path_str);
+            if path.is_absolute() && path.exists() {
+                paths.push(path);
+            }
+        }
 
         paths
     }
@@ -249,5 +382,72 @@ mod tests {
         detector.buffer = "\"/path/to/file with spaces.txt\"".to_string();
         let _ = detector.extract_paths();
         assert!(detector.is_empty());
+    }
+
+    #[test]
+    fn test_drop_detector_backslash_escaped_path() {
+        let mut detector = DropDetector::new();
+        // macOS terminal drag-and-drop format with backslash-escaped spaces
+        detector.buffer = "/path/to/file\\ with\\ spaces.txt".to_string();
+        // Note: extract_paths checks if path exists, so we just verify it doesn't panic
+        let _ = detector.extract_paths();
+        assert!(detector.is_empty()); // Buffer should be cleared
+    }
+
+    #[test]
+    fn test_drop_detector_backslash_escaped_special_chars() {
+        let mut detector = DropDetector::new();
+        // macOS terminal drag-and-drop format with various escaped characters
+        detector.buffer = "/path/to/file\\(1\\).txt".to_string();
+        let _ = detector.extract_paths();
+        assert!(detector.is_empty());
+    }
+
+    #[test]
+    fn test_drop_detector_with_existing_path() {
+        use std::env;
+        let mut detector = DropDetector::new();
+        // Use current directory which should always exist
+        let current_dir = env::current_dir().unwrap();
+        detector.buffer = current_dir.display().to_string();
+        let paths = detector.extract_paths();
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths[0], current_dir);
+    }
+
+    #[test]
+    fn test_drop_detector_push_char() {
+        let mut detector = DropDetector::new();
+        // Push a character
+        detector.push_char('/');
+        assert!(!detector.is_empty());
+        assert_eq!(detector.buffer(), "/");
+    }
+
+    #[test]
+    fn test_drop_detector_timeout() {
+        let mut detector = DropDetector::new();
+        // Initially no timeout
+        assert!(!detector.check_timeout());
+
+        // Push some chars
+        detector.push_char('/');
+        detector.push_char('t');
+        detector.push_char('e');
+
+        // Immediately after push, should not timeout yet
+        // (timeout is 100ms, we just pushed)
+        assert!(!detector.check_timeout());
+    }
+
+    #[test]
+    fn test_drop_detector_multiple_paths() {
+        use std::env;
+        let mut detector = DropDetector::new();
+        let current_dir = env::current_dir().unwrap();
+        // Simulate multiple paths separated by newlines
+        detector.buffer = format!("{}\n{}", current_dir.display(), current_dir.display());
+        let paths = detector.extract_paths();
+        assert_eq!(paths.len(), 2);
     }
 }
