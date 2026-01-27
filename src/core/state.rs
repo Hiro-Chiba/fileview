@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use super::ViewMode;
+use super::{FocusTarget, ViewMode};
 use crate::action::Clipboard;
 use crate::git::GitStatus;
 
@@ -23,6 +23,8 @@ pub struct AppState {
     pub message: Option<String>,
     /// Preview panel visibility
     pub preview_visible: bool,
+    /// Focus target for split view (Tree or Preview)
+    pub focus_target: FocusTarget,
     /// Whether to show hidden files
     pub show_hidden: bool,
     /// Exit flag
@@ -55,6 +57,7 @@ impl AppState {
             mode: ViewMode::Browse,
             message: None,
             preview_visible: false,
+            focus_target: FocusTarget::Tree,
             show_hidden: false,
             should_quit: false,
             pick_mode: false,
@@ -88,5 +91,27 @@ impl AppState {
     /// Clear status message
     pub fn clear_message(&mut self) {
         self.message = None;
+    }
+
+    /// Toggle focus between Tree and Preview (only effective when preview is visible)
+    pub fn toggle_focus(&mut self) {
+        if self.preview_visible {
+            self.focus_target = match self.focus_target {
+                FocusTarget::Tree => FocusTarget::Preview,
+                FocusTarget::Preview => FocusTarget::Tree,
+            };
+        }
+    }
+
+    /// Set focus target (automatically resets to Tree if preview is not visible)
+    pub fn set_focus(&mut self, target: FocusTarget) {
+        if self.preview_visible || target == FocusTarget::Tree {
+            self.focus_target = target;
+        }
+    }
+
+    /// Reset focus to Tree (call when closing preview)
+    pub fn reset_focus(&mut self) {
+        self.focus_target = FocusTarget::Tree;
     }
 }

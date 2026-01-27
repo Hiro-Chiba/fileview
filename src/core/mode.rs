@@ -2,6 +2,16 @@
 
 use std::path::PathBuf;
 
+/// Focus target for split view (side preview mode)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FocusTarget {
+    /// Focus on file tree (default)
+    #[default]
+    Tree,
+    /// Focus on preview panel
+    Preview,
+}
+
 /// Current view/input mode with embedded state
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum ViewMode {
