@@ -451,6 +451,30 @@ pub fn handle_action(
         KeyAction::ToggleFocus => {
             state.toggle_focus();
         }
+        KeyAction::OpenFuzzyFinder => {
+            state.mode = ViewMode::FuzzyFinder {
+                query: String::new(),
+                selected: 0,
+            };
+        }
+        KeyAction::FuzzyUp => {
+            if let ViewMode::FuzzyFinder { selected, .. } = &mut state.mode {
+                *selected = selected.saturating_sub(1);
+            }
+        }
+        KeyAction::FuzzyDown => {
+            if let ViewMode::FuzzyFinder { selected, .. } = &mut state.mode {
+                *selected += 1;
+                // Upper bound will be enforced by the render function
+            }
+        }
+        KeyAction::FuzzyConfirm { path } => {
+            if !path.as_os_str().is_empty() {
+                // Jump to the selected path in the tree
+                state.fuzzy_jump_target = Some(path);
+            }
+            state.mode = ViewMode::Browse;
+        }
     }
 
     Ok(ActionResult::Continue)

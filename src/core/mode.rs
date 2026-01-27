@@ -30,6 +30,13 @@ pub enum ViewMode {
     Confirm { action: PendingAction },
     /// Fullscreen preview
     Preview { scroll: usize },
+    /// Fuzzy finder mode
+    FuzzyFinder {
+        /// Search query
+        query: String,
+        /// Index of selected item in results
+        selected: usize,
+    },
 }
 
 /// Purpose of text input
