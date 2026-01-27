@@ -2,7 +2,7 @@
 
 use std::env;
 use std::io::{self, stdout};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::str::FromStr;
 use std::time::Duration;
@@ -199,6 +199,51 @@ struct EntrySnapshot {
     depth: usize,
 }
 
+/// Get the target directory for file operations.
+/// If the focused path is a directory, use it directly.
+/// Otherwise, use its parent directory or fall back to root.
+fn get_target_directory(focused: Option<&PathBuf>, root: &Path) -> PathBuf {
+    focused
+        .and_then(|p| {
+            if p.is_dir() {
+                Some(p.clone())
+            } else {
+                p.parent().map(|pp| pp.to_path_buf())
+            }
+        })
+        .unwrap_or_else(|| root.to_path_buf())
+}
+
+/// Get the filename from a path as a string for display purposes.
+fn get_filename_str(path: Option<&PathBuf>) -> String {
+    path.and_then(|p| p.file_name())
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default()
+}
+
+/// Handle file drop operation - copy files to target directory.
+/// Returns the number of files successfully processed.
+fn handle_file_drop(
+    paths: &[PathBuf],
+    focused_path: Option<&PathBuf>,
+    root: &Path,
+    navigator: &mut TreeNavigator,
+    state: &mut AppState,
+) -> anyhow::Result<usize> {
+    if paths.is_empty() {
+        return Ok(0);
+    }
+
+    let dest = get_target_directory(focused_path, root);
+    for src in paths {
+        let _ = file_ops::copy_to(src, &dest);
+    }
+    navigator.reload()?;
+    state.refresh_git_status();
+    state.set_message(format!("Dropped {} file(s)", paths.len()));
+    Ok(paths.len())
+}
+
 fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     config: Config,
@@ -291,11 +336,12 @@ fn run_app(
 
             if is_fullscreen_preview {
                 // Fullscreen preview mode - render preview only
-                let title = focused_path
-                    .as_ref()
-                    .and_then(|p| p.file_name())
-                    .map(|n| format!(" {} (press o or q to close) ", n.to_string_lossy()))
-                    .unwrap_or_else(|| " Preview (press o or q to close) ".to_string());
+                let filename = get_filename_str(focused_path.as_ref());
+                let title = if filename.is_empty() {
+                    " Preview (press o or q to close) ".to_string()
+                } else {
+                    format!(" {} (press o or q to close) ", filename)
+                };
 
                 if let Some(ref di) = dir_info {
                     render_directory_info(frame, di, size);
@@ -343,28 +389,14 @@ fn run_app(
                 // Render preview if visible
                 if state.preview_visible && main_chunks.len() > 1 {
                     let preview_area = main_chunks[1];
+                    let title = get_filename_str(focused_path.as_ref());
                     if let Some(ref di) = dir_info {
                         render_directory_info(frame, di, preview_area);
                     } else if let Some(ref tp) = text_preview {
-                        let title = focused_path
-                            .as_ref()
-                            .and_then(|p| p.file_name())
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_default();
                         render_text_preview(frame, tp, preview_area, &title);
                     } else if let Some(ref ip) = image_preview {
-                        let title = focused_path
-                            .as_ref()
-                            .and_then(|p| p.file_name())
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_default();
                         render_image_preview(frame, ip, preview_area, &title);
                     } else if let Some(ref hp) = hex_preview {
-                        let title = focused_path
-                            .as_ref()
-                            .and_then(|p| p.file_name())
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_default();
                         render_hex_preview(frame, hp, preview_area, &title);
                     } else {
                         let block = Block::default().borders(Borders::ALL).title(" Preview ");
@@ -385,25 +417,18 @@ fn run_app(
         if path_buffer.is_ready() {
             let paths = path_buffer.take_paths();
             if !paths.is_empty() {
-                // Valid paths detected - copy files
-                if let Some(focused) = &focused_path {
-                    let dest = if focused.is_dir() {
-                        focused.clone()
-                    } else {
-                        focused.parent().unwrap_or(&state.root).to_path_buf()
-                    };
-                    for src in &paths {
-                        let _ = file_ops::copy_to(src, &dest);
-                    }
-                    navigator.reload()?;
-                    state.refresh_git_status();
-                    state.set_message(format!("Dropped {} file(s)", paths.len()));
-                }
+                let root = state.root.clone();
+                handle_file_drop(
+                    &paths,
+                    focused_path.as_ref(),
+                    &root,
+                    &mut navigator,
+                    &mut state,
+                )?;
             } else {
                 // Not valid paths - check if it starts with '/' for search
                 let buffer = path_buffer.take_raw();
                 if let Some(rest) = buffer.strip_prefix('/') {
-                    // Treat as search command
                     state.mode = ViewMode::Search {
                         query: rest.to_string(),
                     };
@@ -502,20 +527,14 @@ fn run_app(
                                 (state.focus_index + n).min(snapshots.len().saturating_sub(1));
                         }
                         MouseAction::FileDrop { paths } => {
-                            // Handle dropped files - copy them to current directory
-                            if let Some(focused) = &focused_path {
-                                let dest = if focused.is_dir() {
-                                    focused.clone()
-                                } else {
-                                    focused.parent().unwrap_or(&state.root).to_path_buf()
-                                };
-                                for src in &paths {
-                                    let _ = file_ops::copy_to(src, &dest);
-                                }
-                                navigator.reload()?;
-                                state.refresh_git_status();
-                                state.set_message(format!("Dropped {} file(s)", paths.len()));
-                            }
+                            let root = state.root.clone();
+                            handle_file_drop(
+                                &paths,
+                                focused_path.as_ref(),
+                                &root,
+                                &mut navigator,
+                                &mut state,
+                            )?;
                         }
                         MouseAction::None => {}
                     }
@@ -527,19 +546,14 @@ fn run_app(
                     }
                     let paths = path_buffer.take_paths();
                     if !paths.is_empty() {
-                        if let Some(focused) = &focused_path {
-                            let dest = if focused.is_dir() {
-                                focused.clone()
-                            } else {
-                                focused.parent().unwrap_or(&state.root).to_path_buf()
-                            };
-                            for src in &paths {
-                                let _ = file_ops::copy_to(src, &dest);
-                            }
-                            navigator.reload()?;
-                            state.refresh_git_status();
-                            state.set_message(format!("Dropped {} file(s)", paths.len()));
-                        }
+                        let root = state.root.clone();
+                        handle_file_drop(
+                            &paths,
+                            focused_path.as_ref(),
+                            &root,
+                            &mut navigator,
+                            &mut state,
+                        )?;
                     }
                     path_buffer.clear();
                 }
@@ -682,16 +696,7 @@ fn handle_action(
         KeyAction::Paste => {
             if let Some(ref mut clipboard) = state.clipboard {
                 if let Some(content) = clipboard.take() {
-                    let dest = focused_path
-                        .as_ref()
-                        .and_then(|p| {
-                            if p.is_dir() {
-                                Some(p.clone())
-                            } else {
-                                p.parent().map(|pp| pp.to_path_buf())
-                            }
-                        })
-                        .unwrap_or_else(|| state.root.clone());
+                    let dest = get_target_directory(focused_path.as_ref(), &state.root);
 
                     match content {
                         ClipboardContent::Copy(paths) => {
@@ -740,10 +745,7 @@ fn handle_action(
         }
         KeyAction::StartRename => {
             if let Some(path) = focused_path {
-                let name = path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_default();
+                let name = get_filename_str(Some(path));
                 state.mode = ViewMode::Input {
                     purpose: InputPurpose::Rename {
                         original: path.clone(),
@@ -814,10 +816,7 @@ fn handle_action(
         KeyAction::CopyFilename => {
             if let Some(path) = focused_path {
                 if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                    let name = path
-                        .file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_default();
+                    let name = get_filename_str(Some(path));
                     let _ = clipboard.set_text(&name);
                     state.set_message("Filename copied to clipboard");
                 }
@@ -836,34 +835,15 @@ fn handle_action(
         KeyAction::ConfirmInput { value } => {
             match &state.mode {
                 ViewMode::Input { purpose, .. } => {
+                    let parent = get_target_directory(focused_path.as_ref(), &state.root);
                     match purpose {
                         InputPurpose::CreateFile => {
-                            let parent = focused_path
-                                .as_ref()
-                                .and_then(|p| {
-                                    if p.is_dir() {
-                                        Some(p.clone())
-                                    } else {
-                                        p.parent().map(|pp| pp.to_path_buf())
-                                    }
-                                })
-                                .unwrap_or_else(|| state.root.clone());
                             file_ops::create_file(&parent, &value)?;
                             navigator.reload()?;
                             state.refresh_git_status();
                             state.set_message(format!("Created file: {}", value));
                         }
                         InputPurpose::CreateDir => {
-                            let parent = focused_path
-                                .as_ref()
-                                .and_then(|p| {
-                                    if p.is_dir() {
-                                        Some(p.clone())
-                                    } else {
-                                        p.parent().map(|pp| pp.to_path_buf())
-                                    }
-                                })
-                                .unwrap_or_else(|| state.root.clone());
                             file_ops::create_dir(&parent, &value)?;
                             navigator.reload()?;
                             state.refresh_git_status();
