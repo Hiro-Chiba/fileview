@@ -236,8 +236,8 @@ Total Size:  1.2 MB
 | 7. Integrate | 2 | 2 |
 | 8. Main & Polish | 3 | 3 |
 | 9. Enhanced Features | 3 | 3 |
-| 10. Code Quality | 3 | 2 |
-| **Total** | **26** | **25** |
+| 10. Code Quality | 3 | 3 |
+| **Total** | **26** | **26** |
 
 ---
 
@@ -289,11 +289,11 @@ Total Size:  1.2 MB
 
 **優先度:** 低
 
-- [ ] preview.rs のマジックナンバー
+- [x] preview.rs のマジックナンバー
   - `MAX_DIR_SIZE_DEPTH = 3`
   - `HEX_PREVIEW_MAX_BYTES = 4096`
   - `HEX_BYTES_PER_LINE = 16`
-- [ ] PR: `refactor: Extract magic numbers to constants`
+- [x] PR: `refactor: Extract magic numbers to constants`
 
 ---
 
