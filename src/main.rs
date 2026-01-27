@@ -235,13 +235,24 @@ fn handle_file_drop(
     }
 
     let dest = get_target_directory(focused_path, root);
+    let mut success_count = 0;
+    let mut fail_count = 0;
     for src in paths {
-        let _ = file_ops::copy_to(src, &dest);
+        match file_ops::copy_to(src, &dest) {
+            Ok(_) => success_count += 1,
+            Err(_) => fail_count += 1,
+        }
     }
     navigator.reload()?;
     state.refresh_git_status();
-    state.set_message(format!("Dropped {} file(s)", paths.len()));
-    Ok(paths.len())
+
+    let message = if fail_count == 0 {
+        format!("Dropped {} file(s)", success_count)
+    } else {
+        format!("Dropped {} file(s), {} failed", success_count, fail_count)
+    };
+    state.set_message(message);
+    Ok(success_count)
 }
 
 fn run_app(
@@ -806,19 +817,20 @@ fn handle_action(
         }
         KeyAction::CopyPath => {
             if let Some(path) = focused_path {
-                if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                    let path_str = path.display().to_string();
-                    let _ = clipboard.set_text(&path_str);
-                    state.set_message("Path copied to clipboard");
+                match arboard::Clipboard::new()
+                    .and_then(|mut cb| cb.set_text(path.display().to_string()))
+                {
+                    Ok(_) => state.set_message("Path copied to clipboard"),
+                    Err(_) => state.set_message("Failed to copy path to clipboard"),
                 }
             }
         }
         KeyAction::CopyFilename => {
             if let Some(path) = focused_path {
-                if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                    let name = get_filename_str(Some(path));
-                    let _ = clipboard.set_text(&name);
-                    state.set_message("Filename copied to clipboard");
+                let name = get_filename_str(Some(path));
+                match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(name)) {
+                    Ok(_) => state.set_message("Filename copied to clipboard"),
+                    Err(_) => state.set_message("Failed to copy filename to clipboard"),
                 }
             }
         }
