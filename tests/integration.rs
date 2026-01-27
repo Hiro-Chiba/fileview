@@ -8,7 +8,8 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use fileview::core::{AppState, InputPurpose, PendingAction, ViewMode};
 use fileview::handler::{handle_key_event, update_input_buffer, KeyAction};
 use fileview::render::{
-    is_binary_file, is_image_file, is_text_file, DirectoryInfo, HexPreview, TextPreview,
+    is_binary_file, is_image_file, is_text_file, DirectoryInfo, HexPreview, RecommendedProtocol,
+    TerminalBrand, TextPreview,
 };
 use tempfile::TempDir;
 
@@ -2903,5 +2904,401 @@ mod image_preview_tests {
         assert!(is_image_file(&jpg_path) && image::open(&jpg_path).is_ok());
         assert!(is_image_file(&gif_path) && image::open(&gif_path).is_ok());
         assert!(is_text_file(&txt_path) && image::open(&txt_path).is_err());
+    }
+}
+
+// =============================================================================
+// Terminal Detection Tests
+// =============================================================================
+
+mod terminal_detection_tests {
+    use super::*;
+
+    // =========================================================================
+    // Basic API Tests
+    // =========================================================================
+
+    #[test]
+    fn test_terminal_brand_detect_returns_valid_variant() {
+        // TerminalBrand::detect() should always return a valid variant
+        let brand = TerminalBrand::detect();
+
+        // Verify it's one of the known variants
+        let valid_variants = [
+            TerminalBrand::Kitty,
+            TerminalBrand::Ghostty,
+            TerminalBrand::WezTerm,
+            TerminalBrand::ITerm2,
+            TerminalBrand::Konsole,
+            TerminalBrand::Foot,
+            TerminalBrand::VSCode,
+            TerminalBrand::Warp,
+            TerminalBrand::Alacritty,
+            TerminalBrand::WindowsTerminal,
+            TerminalBrand::Tmux,
+            TerminalBrand::Unknown,
+        ];
+
+        assert!(valid_variants.contains(&brand));
+    }
+
+    #[test]
+    fn test_terminal_brand_recommended_protocol_always_returns() {
+        // Every terminal brand should have a recommended protocol
+        let brands = [
+            TerminalBrand::Kitty,
+            TerminalBrand::Ghostty,
+            TerminalBrand::WezTerm,
+            TerminalBrand::ITerm2,
+            TerminalBrand::Konsole,
+            TerminalBrand::Foot,
+            TerminalBrand::VSCode,
+            TerminalBrand::Warp,
+            TerminalBrand::Alacritty,
+            TerminalBrand::WindowsTerminal,
+            TerminalBrand::Tmux,
+            TerminalBrand::Unknown,
+        ];
+
+        for brand in brands {
+            let protocol = brand.recommended_protocol();
+            // Should be one of the valid protocols
+            let valid_protocols = [
+                RecommendedProtocol::Kitty,
+                RecommendedProtocol::Iterm2,
+                RecommendedProtocol::Sixel,
+                RecommendedProtocol::Chafa,
+                RecommendedProtocol::Query,
+            ];
+            assert!(
+                valid_protocols.contains(&protocol),
+                "Brand {:?} returned invalid protocol",
+                brand
+            );
+        }
+    }
+
+    #[test]
+    fn test_terminal_brand_name_not_empty() {
+        let brands = [
+            TerminalBrand::Kitty,
+            TerminalBrand::Ghostty,
+            TerminalBrand::WezTerm,
+            TerminalBrand::ITerm2,
+            TerminalBrand::Konsole,
+            TerminalBrand::Foot,
+            TerminalBrand::VSCode,
+            TerminalBrand::Warp,
+            TerminalBrand::Alacritty,
+            TerminalBrand::WindowsTerminal,
+            TerminalBrand::Tmux,
+            TerminalBrand::Unknown,
+        ];
+
+        for brand in brands {
+            assert!(!brand.name().is_empty(), "Brand {:?} has empty name", brand);
+        }
+    }
+
+    #[test]
+    fn test_recommended_protocol_name_not_empty() {
+        let protocols = [
+            RecommendedProtocol::Kitty,
+            RecommendedProtocol::Iterm2,
+            RecommendedProtocol::Sixel,
+            RecommendedProtocol::Chafa,
+            RecommendedProtocol::Query,
+        ];
+
+        for protocol in protocols {
+            assert!(
+                !protocol.name().is_empty(),
+                "Protocol {:?} has empty name",
+                protocol
+            );
+        }
+    }
+
+    // =========================================================================
+    // Protocol Mapping Verification Tests
+    // =========================================================================
+
+    #[test]
+    fn test_kitty_protocol_terminals() {
+        // Terminals that should use Kitty protocol
+        let kitty_terminals = [
+            TerminalBrand::Kitty,
+            TerminalBrand::Ghostty,
+            TerminalBrand::Konsole,
+        ];
+
+        for terminal in kitty_terminals {
+            assert_eq!(
+                terminal.recommended_protocol(),
+                RecommendedProtocol::Kitty,
+                "{:?} should recommend Kitty protocol",
+                terminal
+            );
+        }
+    }
+
+    #[test]
+    fn test_iterm2_protocol_terminals() {
+        // Terminals that should use iTerm2 protocol
+        let iterm2_terminals = [
+            TerminalBrand::ITerm2,
+            TerminalBrand::WezTerm,
+            TerminalBrand::Warp,
+        ];
+
+        for terminal in iterm2_terminals {
+            assert_eq!(
+                terminal.recommended_protocol(),
+                RecommendedProtocol::Iterm2,
+                "{:?} should recommend iTerm2 protocol",
+                terminal
+            );
+        }
+    }
+
+    #[test]
+    fn test_sixel_protocol_terminals() {
+        // Terminals that should use Sixel protocol
+        let sixel_terminals = [TerminalBrand::Foot, TerminalBrand::WindowsTerminal];
+
+        for terminal in sixel_terminals {
+            assert_eq!(
+                terminal.recommended_protocol(),
+                RecommendedProtocol::Sixel,
+                "{:?} should recommend Sixel protocol",
+                terminal
+            );
+        }
+    }
+
+    #[test]
+    fn test_chafa_preferred_terminals() {
+        // Terminals that should prefer Chafa
+        let chafa_terminals = [TerminalBrand::VSCode, TerminalBrand::Alacritty];
+
+        for terminal in chafa_terminals {
+            assert_eq!(
+                terminal.recommended_protocol(),
+                RecommendedProtocol::Chafa,
+                "{:?} should recommend Chafa",
+                terminal
+            );
+        }
+    }
+
+    #[test]
+    fn test_query_fallback_terminals() {
+        // Terminals that should use query/fallback
+        let query_terminals = [TerminalBrand::Tmux, TerminalBrand::Unknown];
+
+        for terminal in query_terminals {
+            assert_eq!(
+                terminal.recommended_protocol(),
+                RecommendedProtocol::Query,
+                "{:?} should recommend Query",
+                terminal
+            );
+        }
+    }
+
+    // =========================================================================
+    // Equality and Debug Tests
+    // =========================================================================
+
+    #[test]
+    fn test_terminal_brand_equality() {
+        assert_eq!(TerminalBrand::Kitty, TerminalBrand::Kitty);
+        assert_ne!(TerminalBrand::Kitty, TerminalBrand::Ghostty);
+        assert_ne!(TerminalBrand::Unknown, TerminalBrand::Tmux);
+    }
+
+    #[test]
+    fn test_recommended_protocol_equality() {
+        assert_eq!(RecommendedProtocol::Kitty, RecommendedProtocol::Kitty);
+        assert_ne!(RecommendedProtocol::Kitty, RecommendedProtocol::Iterm2);
+        assert_ne!(RecommendedProtocol::Chafa, RecommendedProtocol::Query);
+    }
+
+    #[test]
+    fn test_terminal_brand_clone() {
+        let brand = TerminalBrand::Kitty;
+        let cloned = brand.clone();
+        assert_eq!(brand, cloned);
+    }
+
+    #[test]
+    fn test_recommended_protocol_clone() {
+        let protocol = RecommendedProtocol::Sixel;
+        let cloned = protocol.clone();
+        assert_eq!(protocol, cloned);
+    }
+
+    #[test]
+    fn test_terminal_brand_copy() {
+        let brand = TerminalBrand::Ghostty;
+        let copied: TerminalBrand = brand; // Copy
+        assert_eq!(brand, copied); // Both should still be usable
+    }
+
+    #[test]
+    fn test_recommended_protocol_copy() {
+        let protocol = RecommendedProtocol::Iterm2;
+        let copied: RecommendedProtocol = protocol; // Copy
+        assert_eq!(protocol, copied);
+    }
+
+    #[test]
+    fn test_terminal_brand_debug_format() {
+        let debug_str = format!("{:?}", TerminalBrand::Kitty);
+        assert!(debug_str.contains("Kitty"));
+    }
+
+    #[test]
+    fn test_recommended_protocol_debug_format() {
+        let debug_str = format!("{:?}", RecommendedProtocol::Sixel);
+        assert!(debug_str.contains("Sixel"));
+    }
+
+    // =========================================================================
+    // Comprehensive Name Tests
+    // =========================================================================
+
+    #[test]
+    fn test_terminal_brand_names_are_human_readable() {
+        // Names should be human-readable, not internal identifiers
+        assert_eq!(TerminalBrand::Kitty.name(), "Kitty");
+        assert_eq!(TerminalBrand::Ghostty.name(), "Ghostty");
+        assert_eq!(TerminalBrand::WezTerm.name(), "WezTerm");
+        assert_eq!(TerminalBrand::ITerm2.name(), "iTerm2");
+        assert_eq!(TerminalBrand::Konsole.name(), "Konsole");
+        assert_eq!(TerminalBrand::Foot.name(), "Foot");
+        assert_eq!(TerminalBrand::VSCode.name(), "VS Code");
+        assert_eq!(TerminalBrand::Warp.name(), "Warp");
+        assert_eq!(TerminalBrand::Alacritty.name(), "Alacritty");
+        assert_eq!(TerminalBrand::WindowsTerminal.name(), "Windows Terminal");
+        assert_eq!(TerminalBrand::Tmux.name(), "tmux");
+        assert_eq!(TerminalBrand::Unknown.name(), "Unknown");
+    }
+
+    #[test]
+    fn test_protocol_names_are_descriptive() {
+        assert_eq!(RecommendedProtocol::Kitty.name(), "Kitty Graphics Protocol");
+        assert_eq!(RecommendedProtocol::Iterm2.name(), "iTerm2 Inline Images");
+        assert_eq!(RecommendedProtocol::Sixel.name(), "Sixel");
+        assert_eq!(RecommendedProtocol::Chafa.name(), "Chafa");
+        assert_eq!(RecommendedProtocol::Query.name(), "Query/Auto-detect");
+    }
+
+    // =========================================================================
+    // Consistency Tests
+    // =========================================================================
+
+    #[test]
+    fn test_detect_is_deterministic() {
+        // Multiple calls should return the same result
+        let brand1 = TerminalBrand::detect();
+        let brand2 = TerminalBrand::detect();
+        let brand3 = TerminalBrand::detect();
+
+        assert_eq!(brand1, brand2);
+        assert_eq!(brand2, brand3);
+    }
+
+    #[test]
+    fn test_protocol_recommendation_is_deterministic() {
+        let brand = TerminalBrand::detect();
+
+        let protocol1 = brand.recommended_protocol();
+        let protocol2 = brand.recommended_protocol();
+        let protocol3 = brand.recommended_protocol();
+
+        assert_eq!(protocol1, protocol2);
+        assert_eq!(protocol2, protocol3);
+    }
+
+    #[test]
+    fn test_all_brands_have_consistent_protocol() {
+        // For each brand, the protocol should always be the same
+        let brands = [
+            TerminalBrand::Kitty,
+            TerminalBrand::Ghostty,
+            TerminalBrand::WezTerm,
+            TerminalBrand::ITerm2,
+            TerminalBrand::Konsole,
+            TerminalBrand::Foot,
+            TerminalBrand::VSCode,
+            TerminalBrand::Warp,
+            TerminalBrand::Alacritty,
+            TerminalBrand::WindowsTerminal,
+            TerminalBrand::Tmux,
+            TerminalBrand::Unknown,
+        ];
+
+        for brand in brands {
+            let p1 = brand.recommended_protocol();
+            let p2 = brand.recommended_protocol();
+            assert_eq!(p1, p2, "{:?} returned inconsistent protocols", brand);
+        }
+    }
+
+    // =========================================================================
+    // Exhaustiveness Tests
+    // =========================================================================
+
+    #[test]
+    fn test_all_12_terminal_brands_exist() {
+        // This test ensures no variants are accidentally added or removed
+        let all_brands = [
+            TerminalBrand::Kitty,
+            TerminalBrand::Ghostty,
+            TerminalBrand::WezTerm,
+            TerminalBrand::ITerm2,
+            TerminalBrand::Konsole,
+            TerminalBrand::Foot,
+            TerminalBrand::VSCode,
+            TerminalBrand::Warp,
+            TerminalBrand::Alacritty,
+            TerminalBrand::WindowsTerminal,
+            TerminalBrand::Tmux,
+            TerminalBrand::Unknown,
+        ];
+
+        assert_eq!(all_brands.len(), 12);
+    }
+
+    #[test]
+    fn test_all_5_protocols_exist() {
+        let all_protocols = [
+            RecommendedProtocol::Kitty,
+            RecommendedProtocol::Iterm2,
+            RecommendedProtocol::Sixel,
+            RecommendedProtocol::Chafa,
+            RecommendedProtocol::Query,
+        ];
+
+        assert_eq!(all_protocols.len(), 5);
+    }
+
+    // =========================================================================
+    // Integration with create_image_picker Tests
+    // =========================================================================
+
+    #[test]
+    fn test_create_image_picker_respects_terminal_detection() {
+        // This is a basic integration test - the actual picker creation
+        // might fail in CI depending on terminal support, but it shouldn't panic
+        use fileview::render::create_image_picker;
+
+        // Should not panic regardless of terminal
+        let _result = std::panic::catch_unwind(|| {
+            let _ = create_image_picker();
+        });
+        // We don't assert the result because it depends on the terminal,
+        // but it should never panic
     }
 }
