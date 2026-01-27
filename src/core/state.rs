@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use super::ViewMode;
 use crate::action::Clipboard;
+use crate::git::GitStatus;
 
 /// Main application state
 pub struct AppState {
@@ -30,11 +31,15 @@ pub struct AppState {
     pub pick_mode: bool,
     /// Clipboard for copy/cut/paste
     pub clipboard: Option<Clipboard>,
+    /// Git repository status
+    pub git_status: Option<GitStatus>,
 }
 
 impl AppState {
     /// Create new application state
     pub fn new(root: PathBuf) -> Self {
+        let git_status = GitStatus::detect(&root);
+
         Self {
             root,
             focus_index: 0,
@@ -47,6 +52,14 @@ impl AppState {
             should_quit: false,
             pick_mode: false,
             clipboard: None,
+            git_status,
+        }
+    }
+
+    /// Refresh git status (call after file operations)
+    pub fn refresh_git_status(&mut self) {
+        if let Some(ref mut git) = self.git_status {
+            git.refresh();
         }
     }
 

@@ -17,9 +17,20 @@ pub fn render_status_bar(frame: &mut Frame, state: &AppState, total_entries: usi
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    // Left: message or help hint
+    // Left: message or help hint, with git branch
+    let branch_info = state
+        .git_status
+        .as_ref()
+        .and_then(|g| g.branch())
+        .map(|b| format!(" \u{e0a0} {} |", b)) // Git branch icon
+        .unwrap_or_default();
+
     let message = state.message.as_deref().unwrap_or("? for help");
-    let msg_widget = Paragraph::new(message).block(Block::default().borders(Borders::ALL));
+    let left_content = Line::from(vec![
+        Span::styled(branch_info, Style::default().fg(Color::Green)),
+        Span::raw(format!(" {}", message)),
+    ]);
+    let msg_widget = Paragraph::new(left_content).block(Block::default().borders(Borders::ALL));
     frame.render_widget(msg_widget, chunks[0]);
 
     // Right: stats
