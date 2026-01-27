@@ -1,8 +1,10 @@
-//! Preview rendering (text and images)
+//! Preview rendering (text, images, and directory info)
+
+use std::path::Path;
 
 use ratatui::{
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
     Frame,
@@ -43,6 +45,123 @@ impl ImagePreview {
             height,
             pixels,
         })
+    }
+}
+
+/// Directory information for preview
+#[derive(Debug, Clone)]
+pub struct DirectoryInfo {
+    /// Directory name
+    pub name: String,
+    /// Number of files
+    pub file_count: usize,
+    /// Number of subdirectories
+    pub dir_count: usize,
+    /// Number of hidden items
+    pub hidden_count: usize,
+    /// Total size in bytes
+    pub total_size: u64,
+}
+
+impl DirectoryInfo {
+    /// Compute directory info from path
+    pub fn from_path(path: &Path) -> anyhow::Result<Self> {
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.display().to_string());
+
+        let mut file_count = 0;
+        let mut dir_count = 0;
+        let mut hidden_count = 0;
+        let mut total_size = 0u64;
+
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let entry_name = entry.file_name().to_string_lossy().to_string();
+                let is_hidden = entry_name.starts_with('.');
+
+                if is_hidden {
+                    hidden_count += 1;
+                }
+
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.is_file() {
+                        file_count += 1;
+                        total_size += metadata.len();
+                    } else if metadata.is_dir() {
+                        dir_count += 1;
+                        // Optionally calculate subdirectory size (can be slow for large dirs)
+                        if let Ok(dir_size) = calculate_dir_size(&entry.path()) {
+                            total_size += dir_size;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(Self {
+            name,
+            file_count,
+            dir_count,
+            hidden_count,
+            total_size,
+        })
+    }
+}
+
+/// Calculate total size of a directory (recursive, with depth limit)
+fn calculate_dir_size(path: &Path) -> anyhow::Result<u64> {
+    calculate_dir_size_recursive(path, 0, 3) // Limit depth to 3 for performance
+}
+
+fn calculate_dir_size_recursive(
+    path: &Path,
+    depth: usize,
+    max_depth: usize,
+) -> anyhow::Result<u64> {
+    if depth > max_depth {
+        return Ok(0);
+    }
+
+    let mut total = 0u64;
+
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.flatten() {
+            if let Ok(metadata) = entry.metadata() {
+                if metadata.is_file() {
+                    total += metadata.len();
+                } else if metadata.is_dir() {
+                    if let Ok(sub_size) =
+                        calculate_dir_size_recursive(&entry.path(), depth + 1, max_depth)
+                    {
+                        total += sub_size;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(total)
+}
+
+/// Format bytes as human-readable string
+fn format_size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+    const TB: u64 = GB * 1024;
+
+    if bytes >= TB {
+        format!("{:.1} TB", bytes as f64 / TB as f64)
+    } else if bytes >= GB {
+        format!("{:.1} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} B", bytes)
     }
 }
 
@@ -88,6 +207,65 @@ pub fn render_image_preview(frame: &mut Frame, img: &ImagePreview, area: Rect, t
         Block::default()
             .borders(Borders::ALL)
             .title(format!(" {} ({}x{}) ", title, img.width, img.height)),
+    );
+
+    frame.render_widget(widget, area);
+}
+
+/// Render directory info preview
+pub fn render_directory_info(frame: &mut Frame, info: &DirectoryInfo, area: Rect) {
+    let separator = "─".repeat(area.width.saturating_sub(4) as usize);
+
+    let lines = vec![
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            format!("  \u{f07b} {}", info.name), // Folder icon
+            Style::default()
+                .fg(Color::Blue)
+                .add_modifier(Modifier::BOLD),
+        )]),
+        Line::from(vec![Span::styled(
+            format!("  {}", separator),
+            Style::default().fg(Color::DarkGray),
+        )]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Files:        ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{}", info.file_count),
+                Style::default().fg(Color::White),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("  Directories:  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{}", info.dir_count),
+                Style::default().fg(Color::Blue),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("  Hidden:       ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{}", info.hidden_count),
+                Style::default().fg(Color::Yellow),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Total Size:   ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format_size(info.total_size),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]),
+    ];
+
+    let widget = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Directory Info "),
     );
 
     frame.render_widget(widget, area);

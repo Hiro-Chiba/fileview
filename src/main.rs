@@ -24,8 +24,9 @@ use fileview::handler::{
 };
 use fileview::integrate::{exit_code, Callback, OutputFormat, PickResult};
 use fileview::render::{
-    is_image_file, is_text_file, render_image_preview, render_input_popup, render_status_bar,
-    render_text_preview, render_tree, visible_height, ImagePreview, TextPreview,
+    is_image_file, is_text_file, render_directory_info, render_image_preview, render_input_popup,
+    render_status_bar, render_text_preview, render_tree, visible_height, DirectoryInfo,
+    ImagePreview, TextPreview,
 };
 use fileview::tree::TreeNavigator;
 
@@ -203,6 +204,7 @@ fn run_app(
     // Preview cache
     let mut text_preview: Option<TextPreview> = None;
     let mut image_preview: Option<ImagePreview> = None;
+    let mut dir_info: Option<DirectoryInfo> = None;
 
     loop {
         // Get visible entries and create snapshots
@@ -229,18 +231,30 @@ fn run_app(
         // Update preview if needed
         if state.preview_visible {
             if let Some(path) = &focused_path {
-                if !path.is_dir() {
-                    if is_text_file(path) {
-                        if let Ok(content) = std::fs::read_to_string(path) {
-                            text_preview = Some(TextPreview::new(&content));
-                            image_preview = None;
-                        }
-                    } else if is_image_file(path) {
-                        if let Ok(img) = ImagePreview::load(path) {
-                            image_preview = Some(img);
-                            text_preview = None;
-                        }
+                if path.is_dir() {
+                    // Load directory info
+                    if let Ok(info) = DirectoryInfo::from_path(path) {
+                        dir_info = Some(info);
+                        text_preview = None;
+                        image_preview = None;
                     }
+                } else if is_text_file(path) {
+                    if let Ok(content) = std::fs::read_to_string(path) {
+                        text_preview = Some(TextPreview::new(&content));
+                        image_preview = None;
+                        dir_info = None;
+                    }
+                } else if is_image_file(path) {
+                    if let Ok(img) = ImagePreview::load(path) {
+                        image_preview = Some(img);
+                        text_preview = None;
+                        dir_info = None;
+                    }
+                } else {
+                    // Unknown file type - clear all previews
+                    text_preview = None;
+                    image_preview = None;
+                    dir_info = None;
                 }
             }
         }
@@ -281,7 +295,9 @@ fn run_app(
             // Render preview if visible
             if state.preview_visible && main_chunks.len() > 1 {
                 let preview_area = main_chunks[1];
-                if let Some(ref tp) = text_preview {
+                if let Some(ref di) = dir_info {
+                    render_directory_info(frame, di, preview_area);
+                } else if let Some(ref tp) = text_preview {
                     let title = focused_path
                         .as_ref()
                         .and_then(|p| p.file_name())

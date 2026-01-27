@@ -181,14 +181,14 @@ pub enum FileStatus {
 **優先度:** 中
 **リリース:** v0.3.0
 
-- [ ] render/preview.rs 拡張
+- [x] render/preview.rs 拡張
   - ディレクトリ選択時の情報表示
     - ファイル数
     - サブディレクトリ数
     - 隠しファイル数
     - 合計サイズ（human-readable: KB, MB, GB）
-  - 非同期サイズ計算（大きいディレクトリでもUIブロックしない）
-- [ ] PR: `feat(preview): Add directory info display`
+  - 深さ制限付きサイズ計算（depth=3でパフォーマンス確保）
+- [x] PR: `feat(preview): Add directory info display`
 
 **表示例:**
 ```
@@ -235,8 +235,8 @@ Total Size:  1.2 MB
 | 6. Handler | 3 | 3 |
 | 7. Integrate | 2 | 2 |
 | 8. Main & Polish | 3 | 3 |
-| 9. Enhanced Features | 3 | 1 |
-| **Total** | **23** | **21** |
+| 9. Enhanced Features | 3 | 2 |
+| **Total** | **23** | **22** |
 
 ---
 
