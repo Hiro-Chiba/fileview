@@ -238,8 +238,10 @@ Total Size:  1.2 MB
 | 12. Test Improvements | 6 | 6 |
 | 13. E2E / Behavioral Tests | 4 | 3 |
 | 14. Side Preview Focus | 5 | 5 |
-| 15. Image Protocol Support | 7 | 6 |
-| **Total** | **51** | **49** |
+| 15. Image Protocol Support | 8 | 6 |
+| **Total** | **52** | **49** |
+
+**注意:** Phase 15.8（main.rs統合）が完了するまでv0.8.0のリリースは行わない。
 
 ---
 
@@ -692,6 +694,82 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
   - デフォルト: auto
 - [ ] PR: `docs: Add image protocol documentation`
 
+### 15.8 main.rs統合（リリースブロッカー）
+**優先度:** 最高
+**リリース:** v0.8.0
+
+現在、画像プロトコル実装（Sixel/Kitty/iTerm2）はライブラリとして存在するが、
+main.rsでは使用されていない。この統合が完了するまでcrates.ioへのリリースは行わない。
+
+#### 技術的課題
+
+ratauiはエスケープシーケンスの直接出力に対応していないため、
+画像プロトコルの出力には特別な対応が必要。
+
+**アプローチ案:**
+1. **ratauiバイパス方式** - 画像領域のみstdoutに直接出力
+2. **カスタムWidget方式** - ratauiのWidgetトレイトを実装
+3. **レンダリング後出力方式** - frame.render()後に画像を重ねて出力
+
+#### タスク
+
+- [ ] 15.8.1 出力方式の調査・決定
+  - 各方式のPros/Consを検証
+  - Ghostty/Kitty/iTerm2での実機テスト
+  - PR: `research: Image protocol output strategy`
+
+- [ ] 15.8.2 プロトコル自動選択の統合
+  - 起動時にターミナル検出を実行
+  - AppStateにImageProtocolを保持
+  - PR: `feat: Integrate terminal detection on startup`
+
+- [ ] 15.8.3 画像プレビューの置き換え
+  - `render_image_preview()` → 新実装に切り替え
+  - フルスクリーンプレビュー対応
+  - サイドプレビュー対応
+  - PR: `feat: Replace image preview with protocol-aware renderer`
+
+- [ ] 15.8.4 CLIオプション実装
+  - `--image-protocol` オプション追加
+  - 環境変数 `FILEVIEW_IMAGE_PROTOCOL` サポート
+  - PR: `feat: Add --image-protocol CLI option`
+
+- [ ] 15.8.5 統合テスト・E2Eテスト
+  - 各ターミナルでの動作確認
+  - フォールバック動作テスト
+  - PR: `test: Add image protocol integration tests`
+
+- [ ] 15.8.6 リリース準備
+  - CHANGELOG更新
+  - README更新（対応ターミナル一覧）
+  - バージョンをv0.8.0に更新
+  - PR: `release: v0.8.0 with image protocol support`
+
+#### 依存関係
+
+```
+15.8.1 (調査)
+    ↓
+15.8.2 (検出統合) → 15.8.4 (CLIオプション)
+    ↓
+15.8.3 (プレビュー置き換え)
+    ↓
+15.8.5 (テスト)
+    ↓
+15.8.6 (リリース)
+```
+
+#### リリース判定基準
+
+以下がすべて満たされた場合にv0.8.0をリリース:
+- [ ] Ghosttyで高品質画像プレビューが表示される
+- [ ] Kittyで高品質画像プレビューが表示される
+- [ ] Terminal.app/Alacrittyで半ブロックフォールバックが動作する
+- [ ] `--image-protocol halfblock` で強制的に半ブロックに切り替えられる
+- [ ] 全テストがパス
+
+---
+
 ### 対応ターミナル一覧
 
 | ターミナル | OS | Sixel | Kitty | iTerm2 | フォールバック | 備考 |
@@ -734,10 +812,17 @@ src/
 ├── render/
 │   ├── tree.rs      # ツリー描画
 │   ├── preview.rs   # プレビュー
-│   └── status.rs    # ステータスバー
+│   ├── status.rs    # ステータスバー
+│   ├── icons.rs     # Nerd Fontsアイコン (v0.5.0)
+│   ├── terminal.rs  # ターミナル検出 (v0.8.0)
+│   ├── sixel.rs     # Sixelプロトコル (v0.8.0)
+│   ├── kitty.rs     # Kittyプロトコル (v0.8.0)
+│   ├── iterm2.rs    # iTerm2プロトコル (v0.8.0)
+│   └── image.rs     # 統合画像レンダラー (v0.8.0)
 ├── handler/
 │   ├── key.rs       # キーイベント
-│   └── mouse.rs     # マウスイベント
+│   ├── mouse.rs     # マウスイベント
+│   └── action.rs    # アクション実行 (v0.7.0)
 ├── integrate/
 │   ├── pick.rs      # --pick モード
 │   └── callback.rs  # --on-select
