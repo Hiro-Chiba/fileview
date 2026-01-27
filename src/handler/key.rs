@@ -204,7 +204,9 @@ fn handle_confirm_mode(key: KeyEvent) -> KeyAction {
 /// Handle keys in preview mode
 fn handle_preview_mode(key: KeyEvent) -> KeyAction {
     match key.code {
-        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('o') => KeyAction::Cancel,
+        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('o') | KeyCode::Enter => {
+            KeyAction::Cancel
+        }
         KeyCode::Up | KeyCode::Char('k') => KeyAction::PreviewScrollUp,
         KeyCode::Down | KeyCode::Char('j') => KeyAction::PreviewScrollDown,
         KeyCode::PageUp | KeyCode::Char('b') => KeyAction::PreviewPageUp,

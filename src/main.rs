@@ -284,6 +284,7 @@ fn run_app(
     let mut image_preview: Option<ImagePreview> = None;
     let mut dir_info: Option<DirectoryInfo> = None;
     let mut hex_preview: Option<HexPreview> = None;
+    let mut last_preview_path: Option<PathBuf> = None;
 
     loop {
         // Get visible entries and create snapshots
@@ -310,43 +311,48 @@ fn run_app(
         // Update preview if needed (side panel or fullscreen mode)
         let needs_preview = state.preview_visible || matches!(state.mode, ViewMode::Preview { .. });
         if needs_preview {
-            if let Some(path) = &focused_path {
-                if path.is_dir() {
-                    // Load directory info
-                    if let Ok(info) = DirectoryInfo::from_path(path) {
-                        dir_info = Some(info);
+            // Only reload preview if the path changed
+            let path_changed = focused_path != last_preview_path;
+            if path_changed {
+                last_preview_path = focused_path.clone();
+                if let Some(path) = &focused_path {
+                    if path.is_dir() {
+                        // Load directory info
+                        if let Ok(info) = DirectoryInfo::from_path(path) {
+                            dir_info = Some(info);
+                            text_preview = None;
+                            image_preview = None;
+                            hex_preview = None;
+                        }
+                    } else if is_text_file(path) {
+                        if let Ok(content) = std::fs::read_to_string(path) {
+                            text_preview = Some(TextPreview::new(&content));
+                            image_preview = None;
+                            dir_info = None;
+                            hex_preview = None;
+                        }
+                    } else if is_image_file(path) {
+                        if let Ok(img) = ImagePreview::load(path) {
+                            image_preview = Some(img);
+                            text_preview = None;
+                            dir_info = None;
+                            hex_preview = None;
+                        }
+                    } else if is_binary_file(path) || path.is_file() {
+                        // Binary file or unknown type - show hex preview
+                        if let Ok(hex) = HexPreview::load(path) {
+                            hex_preview = Some(hex);
+                            text_preview = None;
+                            image_preview = None;
+                            dir_info = None;
+                        }
+                    } else {
+                        // Clear all previews
                         text_preview = None;
-                        image_preview = None;
-                        hex_preview = None;
-                    }
-                } else if is_text_file(path) {
-                    if let Ok(content) = std::fs::read_to_string(path) {
-                        text_preview = Some(TextPreview::new(&content));
                         image_preview = None;
                         dir_info = None;
                         hex_preview = None;
                     }
-                } else if is_image_file(path) {
-                    if let Ok(img) = ImagePreview::load(path) {
-                        image_preview = Some(img);
-                        text_preview = None;
-                        dir_info = None;
-                        hex_preview = None;
-                    }
-                } else if is_binary_file(path) || path.is_file() {
-                    // Binary file or unknown type - show hex preview
-                    if let Ok(hex) = HexPreview::load(path) {
-                        hex_preview = Some(hex);
-                        text_preview = None;
-                        image_preview = None;
-                        dir_info = None;
-                    }
-                } else {
-                    // Clear all previews
-                    text_preview = None;
-                    image_preview = None;
-                    dir_info = None;
-                    hex_preview = None;
                 }
             }
         }
@@ -651,8 +657,16 @@ fn handle_action(
             }
         }
         KeyAction::ToggleExpand => {
-            if let Some(path) = focused_path {
-                navigator.toggle_expand(path)?;
+            if state.preview_visible {
+                // Close side preview panel
+                state.preview_visible = false;
+            } else if let Some(ref path) = focused_path {
+                if path.is_dir() {
+                    navigator.toggle_expand(path)?;
+                } else {
+                    // File: open fullscreen preview
+                    state.mode = ViewMode::Preview { scroll: 0 };
+                }
             }
         }
         KeyAction::CollapseAll => {
