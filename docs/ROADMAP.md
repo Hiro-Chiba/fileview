@@ -238,10 +238,11 @@ Total Size:  1.2 MB
 | 12. Test Improvements | 6 | 6 |
 | 13. E2E / Behavioral Tests | 4 | 3 |
 | 14. Side Preview Focus | 5 | 5 |
-| 15. Image Protocol Support | 8 | 6 |
-| **Total** | **52** | **49** |
+| 15. Image Protocol Support | 2 | 0 |
+| **Total** | **46** | **43** |
 
-**注意:** Phase 15.8（main.rs統合）が完了するまでv0.8.0のリリースは行わない。
+**注意:** Phase 15.8（ratatui-image統合）が完了するまでv0.8.0のリリースは行わない。
+自作の画像プロトコル実装は削除し、ratatui-imageに一本化する。
 
 ---
 
@@ -590,8 +591,15 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
 | **iTerm2** | iTerm2, WezTerm | 中 |
 | **半ブロック** | 全ターミナル（フォールバック） | 必須 |
 
+### 15.1〜15.6 自作実装（削除予定）
+
+> **⚠️ 注意:** Phase 15.1〜15.6で実装したコードは、Phase 15.8で`ratatui-image`に
+> 置き換えられ、削除されます。ratauiとの統合が困難であり、成熟した外部クレートを
+> 使用する方がバグリスクが低いため。
+
 ### 15.1 ターミナル検出システム
 **優先度:** 高
+**状態:** ~~実装済み~~ → 削除予定
 
 - [x] ターミナル検出モジュール作成
   - `render/terminal.rs` 新規作成
@@ -611,6 +619,7 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
 
 ### 15.2 Sixelプロトコル実装
 **優先度:** 高
+**状態:** ~~実装済み~~ → 削除予定
 
 - [x] Sixelエンコーダー実装
   - 依存: なし（手動実装）
@@ -624,6 +633,7 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
 
 ### 15.3 Kittyプロトコル実装
 **優先度:** 中
+**状態:** ~~実装済み~~ → 削除予定
 
 - [x] Kittyグラフィックスプロトコル実装
   - Base64エンコード
@@ -637,6 +647,7 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
 
 ### 15.4 iTerm2プロトコル実装
 **優先度:** 中
+**状態:** ~~実装済み~~ → 削除予定
 
 - [x] iTerm2インラインイメージ実装
   - Base64エンコード
@@ -648,6 +659,7 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
 
 ### 15.5 統合・自動切り替え
 **優先度:** 高
+**状態:** ~~実装済み~~ → 削除予定
 
 - [x] 統合レンダラー実装
   - `render/image.rs` - 統合画像レンダリングモジュール
@@ -661,6 +673,7 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
 
 ### 15.6 テスト
 **優先度:** 高
+**状態:** ~~実装済み~~ → 削除予定
 
 - [x] ターミナル検出テスト
   - 各環境変数パターンのテスト
@@ -694,69 +707,75 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
   - デフォルト: auto
 - [ ] PR: `docs: Add image protocol documentation`
 
-### 15.8 main.rs統合（リリースブロッカー）
+### 15.8 ratatui-image統合（リリースブロッカー）
 **優先度:** 最高
 **リリース:** v0.8.0
 
-現在、画像プロトコル実装（Sixel/Kitty/iTerm2）はライブラリとして存在するが、
-main.rsでは使用されていない。この統合が完了するまでcrates.ioへのリリースは行わない。
+#### 方針変更（2025-01-28）
 
-#### 技術的課題
+調査の結果、[ratatui-image](https://crates.io/crates/ratatui-image) (v10.0.4) が
+ratauiとの画像プロトコル統合を既に解決していることが判明。
 
-ratauiはエスケープシーケンスの直接出力に対応していないため、
-画像プロトコルの出力には特別な対応が必要。
+**決定事項:**
+- `ratatui-image` クレートを使用
+- 自作実装（sixel.rs, kitty.rs, iterm2.rs, terminal.rs, image.rs）を削除
+- コードの一本化によりバグリスクを低減
 
-**アプローチ案:**
-1. **ratauiバイパス方式** - 画像領域のみstdoutに直接出力
-2. **カスタムWidget方式** - ratauiのWidgetトレイトを実装
-3. **レンダリング後出力方式** - frame.render()後に画像を重ねて出力
+#### ratatui-imageの利点
+
+1. **成熟** - v10.0.4、269+ GitHub stars
+2. **プロトコル検出** - 環境変数 + 制御シーケンスで自動検出
+3. **set_skip対応** - ratauiが画像領域を上書きしない仕組み
+4. **フォントサイズ検出** - ピクセル→文字セルの正確なマッピング
+5. **全プロトコル対応** - Sixel, Kitty, iTerm2, Halfblocks
 
 #### タスク
 
-- [ ] 15.8.1 出力方式の調査・決定
-  - 各方式のPros/Consを検証
-  - Ghostty/Kitty/iTerm2での実機テスト
-  - PR: `research: Image protocol output strategy`
+- [x] 15.8.1 出力方式の調査・決定
+  - ratatui-imageを使用することを決定
+  - 自作実装は削除
 
-- [ ] 15.8.2 プロトコル自動選択の統合
-  - 起動時にターミナル検出を実行
-  - AppStateにImageProtocolを保持
-  - PR: `feat: Integrate terminal detection on startup`
+- [ ] 15.8.2 ratatui-image導入 & 自作コード削除
+  - `cargo add ratatui-image`
+  - 以下のファイルを削除:
+    - `src/render/sixel.rs`
+    - `src/render/kitty.rs`
+    - `src/render/iterm2.rs`
+    - `src/render/terminal.rs`
+    - `src/render/image.rs`
+  - `src/render/mod.rs` の関連エクスポートを削除
+  - `tests/integration.rs` の関連テストを削除
+  - `base64` 依存を削除（ratatui-imageが内包）
+  - PR: `refactor: Replace custom image protocols with ratatui-image`
 
 - [ ] 15.8.3 画像プレビューの置き換え
-  - `render_image_preview()` → 新実装に切り替え
-  - フルスクリーンプレビュー対応
-  - サイドプレビュー対応
-  - PR: `feat: Replace image preview with protocol-aware renderer`
+  - `render_image_preview()` をratatui-image版に書き換え
+  - `Picker` でプロトコル自動検出
+  - `StatefulImage` ウィジェットでレンダリング
+  - フルスクリーン・サイドプレビュー両対応
+  - PR: `feat: Integrate ratatui-image for high-quality preview`
 
-- [ ] 15.8.4 CLIオプション実装
-  - `--image-protocol` オプション追加
-  - 環境変数 `FILEVIEW_IMAGE_PROTOCOL` サポート
-  - PR: `feat: Add --image-protocol CLI option`
+- [ ] 15.8.4 テスト・動作確認
+  - Ghostty, Kitty, iTerm2, Terminal.appで実機テスト
+  - フォールバック動作確認
+  - PR: `test: Verify image preview on multiple terminals`
 
-- [ ] 15.8.5 統合テスト・E2Eテスト
-  - 各ターミナルでの動作確認
-  - フォールバック動作テスト
-  - PR: `test: Add image protocol integration tests`
-
-- [ ] 15.8.6 リリース準備
+- [ ] 15.8.5 リリース準備
   - CHANGELOG更新
   - README更新（対応ターミナル一覧）
   - バージョンをv0.8.0に更新
-  - PR: `release: v0.8.0 with image protocol support`
+  - PR: `release: v0.8.0 with ratatui-image integration`
 
 #### 依存関係
 
 ```
-15.8.1 (調査)
-    ↓
-15.8.2 (検出統合) → 15.8.4 (CLIオプション)
+15.8.2 (ratatui-image導入 & 削除)
     ↓
 15.8.3 (プレビュー置き換え)
     ↓
-15.8.5 (テスト)
+15.8.4 (テスト)
     ↓
-15.8.6 (リリース)
+15.8.5 (リリース)
 ```
 
 #### リリース判定基準
@@ -765,7 +784,6 @@ ratauiはエスケープシーケンスの直接出力に対応していない�
 - [ ] Ghosttyで高品質画像プレビューが表示される
 - [ ] Kittyで高品質画像プレビューが表示される
 - [ ] Terminal.app/Alacrittyで半ブロックフォールバックが動作する
-- [ ] `--image-protocol halfblock` で強制的に半ブロックに切り替えられる
 - [ ] 全テストがパス
 
 ---
@@ -811,14 +829,9 @@ src/
 │   └── clipboard.rs # クリップボード
 ├── render/
 │   ├── tree.rs      # ツリー描画
-│   ├── preview.rs   # プレビュー
+│   ├── preview.rs   # プレビュー（v0.8.0でratatui-image統合予定）
 │   ├── status.rs    # ステータスバー
-│   ├── icons.rs     # Nerd Fontsアイコン (v0.5.0)
-│   ├── terminal.rs  # ターミナル検出 (v0.8.0)
-│   ├── sixel.rs     # Sixelプロトコル (v0.8.0)
-│   ├── kitty.rs     # Kittyプロトコル (v0.8.0)
-│   ├── iterm2.rs    # iTerm2プロトコル (v0.8.0)
-│   └── image.rs     # 統合画像レンダラー (v0.8.0)
+│   └── icons.rs     # Nerd Fontsアイコン (v0.5.0)
 ├── handler/
 │   ├── key.rs       # キーイベント
 │   ├── mouse.rs     # マウスイベント
@@ -828,4 +841,7 @@ src/
 │   └── callback.rs  # --on-select
 └── git/
     └── status.rs    # Git状態管理 (v0.2.0)
+
+# 外部依存（v0.8.0）
+# - ratatui-image: 画像プロトコル（Sixel/Kitty/iTerm2/Halfblocks）
 ```
