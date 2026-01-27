@@ -535,24 +535,39 @@ fn render_image_to_lines(
     let term_rows = display_height / 2;
     let mut lines = Vec::new();
 
+    // Calculate scale factors for area averaging
+    let scale_x = img.width as f32 / display_width as f32;
+    let scale_y = img.height as f32 / display_height as f32;
+
     for row in 0..term_rows {
         let mut spans = Vec::new();
 
         for col in 0..display_width {
-            let src_x = ((col as f32 / display_width as f32) * img.width as f32) as u32;
-            let src_y_top = ((row as f32 * 2.0 / display_height as f32) * img.height as f32) as u32;
-            let src_y_bottom =
-                (((row as f32 * 2.0 + 1.0) / display_height as f32) * img.height as f32) as u32;
+            // Calculate source area for top half of character
+            let src_x_start = (col as f32 * scale_x) as u32;
+            let src_x_end = ((col + 1) as f32 * scale_x) as u32;
+            let src_y_top_start = (row as f32 * 2.0 * scale_y) as u32;
+            let src_y_top_end = ((row as f32 * 2.0 + 1.0) * scale_y) as u32;
+            let src_y_bottom_start = ((row as f32 * 2.0 + 1.0) * scale_y) as u32;
+            let src_y_bottom_end = ((row as f32 * 2.0 + 2.0) * scale_y) as u32;
 
-            let src_x = src_x.min(img.width - 1);
-            let src_y_top = src_y_top.min(img.height - 1);
-            let src_y_bottom = src_y_bottom.min(img.height - 1);
+            // Area average for top pixel
+            let (r1, g1, b1) = area_average(
+                img,
+                src_x_start.min(img.width - 1),
+                src_y_top_start.min(img.height - 1),
+                src_x_end.min(img.width),
+                src_y_top_end.min(img.height),
+            );
 
-            let idx_top = (src_y_top * img.width + src_x) as usize;
-            let idx_bottom = (src_y_bottom * img.width + src_x) as usize;
-
-            let (r1, g1, b1) = img.pixels.get(idx_top).copied().unwrap_or((0, 0, 0));
-            let (r2, g2, b2) = img.pixels.get(idx_bottom).copied().unwrap_or((0, 0, 0));
+            // Area average for bottom pixel
+            let (r2, g2, b2) = area_average(
+                img,
+                src_x_start.min(img.width - 1),
+                src_y_bottom_start.min(img.height - 1),
+                src_x_end.min(img.width),
+                src_y_bottom_end.min(img.height),
+            );
 
             // Upper half block: foreground = top pixel, background = bottom pixel
             spans.push(Span::styled(
@@ -567,6 +582,41 @@ fn render_image_to_lines(
     }
 
     lines
+}
+
+/// Calculate area average color for a region of the image
+fn area_average(img: &ImagePreview, x1: u32, y1: u32, x2: u32, y2: u32) -> (u8, u8, u8) {
+    let x2 = x2.max(x1 + 1);
+    let y2 = y2.max(y1 + 1);
+
+    let mut r_sum: u32 = 0;
+    let mut g_sum: u32 = 0;
+    let mut b_sum: u32 = 0;
+    let mut count: u32 = 0;
+
+    for y in y1..y2 {
+        for x in x1..x2 {
+            if x < img.width && y < img.height {
+                let idx = (y * img.width + x) as usize;
+                if let Some(&(r, g, b)) = img.pixels.get(idx) {
+                    r_sum += r as u32;
+                    g_sum += g as u32;
+                    b_sum += b as u32;
+                    count += 1;
+                }
+            }
+        }
+    }
+
+    if count == 0 {
+        return (0, 0, 0);
+    }
+
+    (
+        (r_sum / count) as u8,
+        (g_sum / count) as u8,
+        (b_sum / count) as u8,
+    )
 }
 
 /// Check if a file is likely a text file
