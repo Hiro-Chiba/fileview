@@ -236,7 +236,8 @@ Total Size:  1.2 MB
 | 7. Integrate | 2 | 2 |
 | 8. Main & Polish | 3 | 3 |
 | 9. Enhanced Features | 3 | 3 |
-| **Total** | **23** | **23** |
+| 10. Code Quality | 3 | 0 |
+| **Total** | **26** | **23** |
 
 ---
 
@@ -248,6 +249,51 @@ Total Size:  1.2 MB
 | v0.2.0 | Git status display | ✅ Published |
 | v0.3.0 | Directory info | ✅ Published |
 | v0.4.0 | Hex preview | ✅ Published |
+| v0.4.4 | Ghostty drag-drop fix | ✅ Published |
+| v0.4.5 | PathBuffer refactoring | ✅ Published |
+| v0.4.6 | Code quality & DRY | 🚧 Planned |
+
+---
+
+## Phase 10: Code Quality & Refactoring
+
+**リリース:** v0.4.6
+
+### 10.1 DRY改善 ⭐⭐⭐
+
+**優先度:** 高
+
+- [ ] ファイルドロップ処理の統合
+  - 現状: main.rs内で3箇所に重複
+  - 解決: `handle_file_drop()` 関数に抽出
+- [ ] 宛先ディレクトリ計算の共通化
+  - 現状: 6箇所で同じパターン
+  - 解決: `get_target_directory()` ヘルパー関数
+- [ ] プレビュータイトル取得の共通化
+  - 現状: 4箇所で重複
+  - 解決: `get_filename_str()` ユーティリティ関数
+- [ ] PR: `refactor: Extract common helper functions (DRY)`
+
+### 10.2 エラーハンドリング強化 ⭐⭐
+
+**優先度:** 中
+
+- [ ] サイレント失敗の修正
+  - ファイルコピー失敗時のユーザー通知
+  - クリップボード操作失敗時のフィードバック
+- [ ] パス操作のエラー処理改善
+  - `unwrap_or` → `ok_or_else` への変換
+- [ ] PR: `refactor: Improve error handling and user feedback`
+
+### 10.3 定数化 ⭐
+
+**優先度:** 低
+
+- [ ] preview.rs のマジックナンバー
+  - `MAX_DIR_SIZE_DEPTH = 3`
+  - `HEX_PREVIEW_MAX_BYTES = 4096`
+  - `HEX_BYTES_PER_LINE = 16`
+- [ ] PR: `refactor: Extract magic numbers to constants`
 
 ---
 
