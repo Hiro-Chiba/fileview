@@ -22,7 +22,7 @@ English | [日本語](README_ja.md)
 - Pick mode for external tool integration
 - Callback execution on file selection
 - Hidden files toggle
-- Mouse support (click, double-click, scroll)
+- Mouse support (click, double-click, scroll, drag-and-drop)
 
 ## Git Status Colors
 
