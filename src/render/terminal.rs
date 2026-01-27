@@ -107,9 +107,8 @@ pub fn detect_terminal() -> TerminalKind {
 
     // Check LC_TERMINAL (used by some terminals)
     if let Ok(lc_terminal) = env::var("LC_TERMINAL") {
-        match lc_terminal.to_lowercase().as_str() {
-            "iterm2" => return TerminalKind::ITerm2,
-            _ => {}
+        if lc_terminal.to_lowercase().as_str() == "iterm2" {
+            return TerminalKind::ITerm2;
         }
     }
 
@@ -158,7 +157,7 @@ pub fn best_protocol_for_terminal(terminal: TerminalKind) -> ImageProtocol {
 
         // No native image protocol support - use half-block fallback
         TerminalKind::TerminalApp => ImageProtocol::HalfBlock, // macOS Terminal.app - no Sixel
-        TerminalKind::Alacritty => ImageProtocol::HalfBlock, // No plans to add Sixel support
+        TerminalKind::Alacritty => ImageProtocol::HalfBlock,   // No plans to add Sixel support
         TerminalKind::Unknown => ImageProtocol::HalfBlock,
     }
 }
@@ -206,36 +205,96 @@ mod tests {
 
     #[test]
     fn test_image_protocol_from_str() {
-        assert_eq!("sixel".parse::<ImageProtocol>().unwrap(), ImageProtocol::Sixel);
-        assert_eq!("SIXEL".parse::<ImageProtocol>().unwrap(), ImageProtocol::Sixel);
-        assert_eq!("kitty".parse::<ImageProtocol>().unwrap(), ImageProtocol::Kitty);
-        assert_eq!("iterm2".parse::<ImageProtocol>().unwrap(), ImageProtocol::ITerm2);
-        assert_eq!("halfblock".parse::<ImageProtocol>().unwrap(), ImageProtocol::HalfBlock);
-        assert_eq!("half-block".parse::<ImageProtocol>().unwrap(), ImageProtocol::HalfBlock);
-        assert_eq!("block".parse::<ImageProtocol>().unwrap(), ImageProtocol::HalfBlock);
-        assert_eq!("auto".parse::<ImageProtocol>().unwrap(), ImageProtocol::HalfBlock);
+        assert_eq!(
+            "sixel".parse::<ImageProtocol>().unwrap(),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            "SIXEL".parse::<ImageProtocol>().unwrap(),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            "kitty".parse::<ImageProtocol>().unwrap(),
+            ImageProtocol::Kitty
+        );
+        assert_eq!(
+            "iterm2".parse::<ImageProtocol>().unwrap(),
+            ImageProtocol::ITerm2
+        );
+        assert_eq!(
+            "halfblock".parse::<ImageProtocol>().unwrap(),
+            ImageProtocol::HalfBlock
+        );
+        assert_eq!(
+            "half-block".parse::<ImageProtocol>().unwrap(),
+            ImageProtocol::HalfBlock
+        );
+        assert_eq!(
+            "block".parse::<ImageProtocol>().unwrap(),
+            ImageProtocol::HalfBlock
+        );
+        assert_eq!(
+            "auto".parse::<ImageProtocol>().unwrap(),
+            ImageProtocol::HalfBlock
+        );
         assert!("invalid".parse::<ImageProtocol>().is_err());
     }
 
     #[test]
     fn test_best_protocol_for_terminal() {
         // Sixel-capable terminals
-        assert_eq!(best_protocol_for_terminal(TerminalKind::Ghostty), ImageProtocol::Sixel);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::ITerm2), ImageProtocol::Sixel);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::WezTerm), ImageProtocol::Sixel);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::Foot), ImageProtocol::Sixel);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::Mlterm), ImageProtocol::Sixel);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::Xterm), ImageProtocol::Sixel);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::VSCode), ImageProtocol::Sixel);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::WindowsTerminal), ImageProtocol::Sixel);
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::Ghostty),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::ITerm2),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::WezTerm),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::Foot),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::Mlterm),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::Xterm),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::VSCode),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::WindowsTerminal),
+            ImageProtocol::Sixel
+        );
 
         // Kitty protocol
-        assert_eq!(best_protocol_for_terminal(TerminalKind::Kitty), ImageProtocol::Kitty);
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::Kitty),
+            ImageProtocol::Kitty
+        );
 
         // HalfBlock fallback
-        assert_eq!(best_protocol_for_terminal(TerminalKind::TerminalApp), ImageProtocol::HalfBlock);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::Alacritty), ImageProtocol::HalfBlock);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::Unknown), ImageProtocol::HalfBlock);
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::TerminalApp),
+            ImageProtocol::HalfBlock
+        );
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::Alacritty),
+            ImageProtocol::HalfBlock
+        );
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::Unknown),
+            ImageProtocol::HalfBlock
+        );
     }
 
     #[test]
