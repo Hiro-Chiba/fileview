@@ -229,8 +229,9 @@ fn run_app(
         // Get focused entry path
         let focused_path = snapshots.get(state.focus_index).map(|e| e.path.clone());
 
-        // Update preview if needed
-        if state.preview_visible {
+        // Update preview if needed (side panel or fullscreen mode)
+        let needs_preview = state.preview_visible || matches!(state.mode, ViewMode::Preview { .. });
+        if needs_preview {
             if let Some(path) = &focused_path {
                 if path.is_dir() {
                     // Load directory info
