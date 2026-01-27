@@ -198,6 +198,7 @@ fv --on-select "code {path}"
 | `C` | ファイル名をシステムクリップボードにコピー |
 | `?` | ヘルプ表示 |
 | `q` | 終了 |
+| `Q` | 終了して現在のディレクトリにcd（`--choosedir`使用時） |
 
 ## CLIオプション
 
@@ -206,6 +207,7 @@ fv --on-select "code {path}"
 | `-p`, `--pick` | Pickモード: 選択したパスを標準出力 |
 | `-f`, `--format FMT` | 出力形式: `lines`（デフォルト）, `null`, `json` |
 | `--on-select CMD` | ファイル選択時に実行するコマンド |
+| `--choosedir` | 終了時にディレクトリパスを出力（シェルcd連携用） |
 | `-i`, `--icons` | Nerd Fontsアイコンを有効化（デフォルト） |
 | `--no-icons` | アイコンを無効化 |
 | `-h`, `--help` | ヘルプ表示 |
@@ -227,6 +229,27 @@ fv --on-select "code {path}"
 | `{name}` | 拡張子付きファイル名 |
 | `{stem}` | 拡張子なしファイル名 |
 | `{ext}` | 拡張子のみ |
+
+### シェル連携
+
+fileviewでディレクトリを移動し、選択した場所にcdする:
+
+```bash
+# .bashrc または .zshrc に追加
+fvcd() {
+  local dir
+  dir=$(fv --choosedir "$@")
+  if [ -n "$dir" ] && [ -d "$dir" ]; then
+    cd "$dir"
+  fi
+}
+```
+
+使い方:
+- `fvcd` でfileviewを起動
+- 目的のディレクトリに移動
+- `Q` で終了してそこにcd
+- `q` でディレクトリ移動なしで終了
 
 ### 使用例
 
