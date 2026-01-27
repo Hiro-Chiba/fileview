@@ -14,6 +14,12 @@ categories = ["command-line-utilities"]
 name = "fv"
 path = "src/main.rs"
 
+[features]
+default = []
+# Enable Chafa fallback for better image quality on terminals without native protocol support
+# Requires libchafa (>= 1.8.0) to be installed: brew install chafa (macOS) or apt install libchafa-dev (Linux)
+chafa = ["ratatui-image/chafa-dyn"]
+
 [dependencies]
 ratatui = "0.30"
 crossterm = "0.29"

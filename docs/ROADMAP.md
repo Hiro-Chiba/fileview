@@ -239,8 +239,8 @@ Total Size:  1.2 MB
 | 13. E2E / Behavioral Tests | 4 | 3 |
 | 14. Side Preview Focus | 5 | 5 |
 | 15. Image Protocol Support | 5 | 4 |
-| 16. Enhanced Image Preview | 5 | 0 |
-| **Total** | **54** | **47** |
+| 16. Enhanced Image Preview | 5 | 4 |
+| **Total** | **54** | **51** |
 
 **注意:** Phase 15.8（ratatui-image統合）が完了するまでv0.8.0のリリースは行わない。
 自作の画像プロトコル実装は削除し、ratatui-imageに一本化する。
@@ -881,12 +881,12 @@ yaziを参考に、環境変数ベースのターミナル検出を強化し、C
 ### 16.1 ターミナル検出モジュール作成
 **優先度:** 高
 
-- [ ] `src/render/terminal.rs` 新規作成
+- [x] `src/render/terminal.rs` 新規作成
   - `TerminalBrand` enum
     - Kitty, Ghostty, WezTerm, ITerm2, Konsole, Foot, VSCode, Warp, Alacritty, WindowsTerminal, Tmux, Unknown
   - `RecommendedProtocol` enum
-    - Kitty, Iterm2, Sixel, ChafaPreferred, QueryTerminal
-- [ ] 環境変数ベースのターミナル検出
+    - Kitty, Iterm2, Sixel, Chafa, Query
+- [x] 環境変数ベースのターミナル検出
   - `KITTY_WINDOW_ID` → Kitty
   - `GHOSTTY_RESOURCES_DIR` → Ghostty
   - `WEZTERM_EXECUTABLE` → WezTerm
@@ -898,8 +898,8 @@ yaziを参考に、環境変数ベースのターミナル検出を強化し、C
   - `TERM=foot` → Foot
   - `WT_SESSION` → Windows Terminal
   - `TMUX` → Tmux
-- [ ] ターミナル→プロトコル対応表の実装
-- [ ] PR: `feat: Add terminal brand detection module`
+- [x] ターミナル→プロトコル対応表の実装
+- [x] PR: `feat: Add terminal brand detection module`
 
 **ターミナル→プロトコル対応表:**
 
@@ -920,34 +920,35 @@ yaziを参考に、環境変数ベースのターミナル検出を強化し、C
 ### 16.2 Chafa機能有効化
 **優先度:** 高
 
-- [ ] `Cargo.toml` にchafa-dyn feature追加
+- [x] `Cargo.toml` にオプショナルな `chafa` feature追加
   ```toml
-  ratatui-image = { version = "10.0.4", default-features = false, features = [
-      "image-defaults",
-      "crossterm",
-      "chafa-dyn"  # Chafaフォールバック
-  ] }
+  [features]
+  default = []
+  chafa = ["ratatui-image/chafa-dyn"]
   ```
-- [ ] Chafaが利用不可の場合のHalfblocksへのフォールバック
-- [ ] PR: `feat: Enable Chafa fallback for image preview`
+- [x] Chafaが利用不可の場合のHalfblocksへのフォールバック
+- [x] 条件付きコンパイルで `chafa` feature有効時のみChafa使用
+- [x] PR: `feat: Enable Chafa fallback for image preview`
+
+**変更点（計画からの変更）:**
+- `chafa-dyn`はビルド時にlibchafaが必要なため、オプショナルfeatureとして実装
+- デフォルトビルドはlibchafa不要（CI対応）
+- ユーザーが`cargo install fileview --features chafa`でChafa有効化可能
 
 **トレードオフ:**
-- `chafa-dyn`: 動的リンク（実行時にlibchafa必要）
-- `chafa-static`: 静的リンク（バイナリサイズ+2-5MB、ポータブル）
-- 依存なし: Halfblocksのみ
-
-**推奨:** `chafa-dyn`をデフォルト
+- `--features chafa`: libchafaが必要だが高品質フォールバック
+- デフォルト: libchafa不要、Halfblocksフォールバック
 
 ### 16.3 create_image_picker()リファクタリング
 **優先度:** 高
 
-- [ ] `src/render/mod.rs` の`create_image_picker()`改修
+- [x] `src/render/mod.rs` の`create_image_picker()`改修
   - 検出優先順位:
     1. `FILEVIEW_IMAGE_PROTOCOL` 環境変数（既存、維持）
     2. ターミナル検出 → 最適プロトコル選択（新規）
     3. `Picker::from_query_stdio()` クエリ（既存）
     4. Chafa → Halfblocks フォールバック（改善）
-- [ ] PR: `refactor: Improve image picker with terminal detection`
+- [x] PR: `refactor: Improve image picker with terminal detection`
 
 **擬似コード:**
 ```rust
@@ -975,14 +976,19 @@ pub fn create_image_picker() -> Option<Picker> {
 ### 16.4 テスト
 **優先度:** 中
 
-- [ ] ターミナル検出テスト
-  - 各環境変数パターンの検出テスト
-  - 優先順位テスト（複数環境変数が設定された場合）
-- [ ] プロトコル選択テスト
+- [x] ターミナル検出テスト（61テスト）
+  - 各環境変数パターンの検出テスト（13テスト）
+  - 優先順位テスト（8テスト）
+  - エッジケーステスト（6テスト）
+  - 名前・網羅性テスト（6テスト）
+  - 統合テスト（3テスト）
+- [x] プロトコル選択テスト（12テスト）
   - 各ターミナルブランドに対する推奨プロトコルテスト
-- [ ] フォールバックテスト
-  - Chafa利用不可時のHalfblocksフォールバック
-- [ ] PR: `test: Add terminal detection tests`
+- [x] 統合テストでのAPI検証（25テスト）
+  - 決定性テスト
+  - 等価性・Clone・Copy・Debugテスト
+  - 網羅性テスト
+- [x] PR: `test: Add terminal detection tests`
 
 ### 16.5 ドキュメント更新
 **優先度:** 低
