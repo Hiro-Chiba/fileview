@@ -241,7 +241,9 @@ pub fn render_image_preview(
     frame.render_widget(block, area);
 
     // Render image using ratatui-image's StatefulImage widget
-    let image_widget = StatefulImage::default().resize(Resize::Fit(None));
+    // Use Resize::Scale to ensure the image fills the entire preview area
+    // (Resize::Fit doesn't scale up images smaller than the area in cell-space)
+    let image_widget = StatefulImage::default().resize(Resize::Scale(None));
     frame.render_stateful_widget(image_widget, inner_area, &mut img.protocol);
 }
 
