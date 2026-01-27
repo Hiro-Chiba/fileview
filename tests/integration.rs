@@ -2034,3 +2034,670 @@ mod drag_and_drop_tests {
         assert!(detector.is_empty());
     }
 }
+
+// =============================================================================
+// Image Protocol Integration Tests (Phase 15)
+// =============================================================================
+
+mod image_protocol_tests {
+    use fileview::render::{
+        detect_best_protocol, detect_terminal, get_active_protocol, render_image, ImageProtocol,
+        ImageRenderConfig, ImageRenderResult, TerminalKind,
+    };
+    use image::{DynamicImage, Rgb, RgbImage, Rgba, RgbaImage};
+
+    // Helper to create test images
+    fn create_rgb_image(width: u32, height: u32, color: Rgb<u8>) -> DynamicImage {
+        let img = RgbImage::from_fn(width, height, |_, _| color);
+        DynamicImage::ImageRgb8(img)
+    }
+
+    fn create_rgba_image(width: u32, height: u32, color: Rgba<u8>) -> DynamicImage {
+        let img = RgbaImage::from_fn(width, height, |_, _| color);
+        DynamicImage::ImageRgba8(img)
+    }
+
+    // -------------------------------------------------------------------------
+    // Terminal Detection Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_terminal_detection_returns_valid_kind() {
+        let terminal = detect_terminal();
+        // Should return a valid TerminalKind (not panic)
+        assert!(matches!(
+            terminal,
+            TerminalKind::Ghostty
+                | TerminalKind::Kitty
+                | TerminalKind::ITerm2
+                | TerminalKind::WezTerm
+                | TerminalKind::VSCode
+                | TerminalKind::TerminalApp
+                | TerminalKind::WindowsTerminal
+                | TerminalKind::Alacritty
+                | TerminalKind::Foot
+                | TerminalKind::Mlterm
+                | TerminalKind::Xterm
+                | TerminalKind::Unknown
+        ));
+    }
+
+    #[test]
+    fn test_detect_best_protocol_returns_valid_protocol() {
+        let protocol = detect_best_protocol();
+        assert!(matches!(
+            protocol,
+            ImageProtocol::Sixel
+                | ImageProtocol::Kitty
+                | ImageProtocol::ITerm2
+                | ImageProtocol::HalfBlock
+        ));
+    }
+
+    #[test]
+    fn test_terminal_kind_equality() {
+        assert_eq!(TerminalKind::Ghostty, TerminalKind::Ghostty);
+        assert_ne!(TerminalKind::Ghostty, TerminalKind::Kitty);
+    }
+
+    #[test]
+    fn test_image_protocol_equality() {
+        assert_eq!(ImageProtocol::Sixel, ImageProtocol::Sixel);
+        assert_ne!(ImageProtocol::Sixel, ImageProtocol::Kitty);
+    }
+
+    // -------------------------------------------------------------------------
+    // Protocol Selection Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_get_active_protocol_auto() {
+        let config = ImageRenderConfig::default();
+        let protocol = get_active_protocol(&config);
+        // Should return the auto-detected protocol
+        assert!(matches!(
+            protocol,
+            ImageProtocol::Sixel
+                | ImageProtocol::Kitty
+                | ImageProtocol::ITerm2
+                | ImageProtocol::HalfBlock
+        ));
+    }
+
+    #[test]
+    fn test_get_active_protocol_forced_sixel() {
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Sixel),
+            ..Default::default()
+        };
+        assert_eq!(get_active_protocol(&config), ImageProtocol::Sixel);
+    }
+
+    #[test]
+    fn test_get_active_protocol_forced_kitty() {
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Kitty),
+            ..Default::default()
+        };
+        assert_eq!(get_active_protocol(&config), ImageProtocol::Kitty);
+    }
+
+    #[test]
+    fn test_get_active_protocol_forced_iterm2() {
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::ITerm2),
+            ..Default::default()
+        };
+        assert_eq!(get_active_protocol(&config), ImageProtocol::ITerm2);
+    }
+
+    #[test]
+    fn test_get_active_protocol_forced_halfblock() {
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::HalfBlock),
+            ..Default::default()
+        };
+        assert_eq!(get_active_protocol(&config), ImageProtocol::HalfBlock);
+    }
+
+    // -------------------------------------------------------------------------
+    // Sixel Encoding Integration Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_sixel_encoding_small_image() {
+        let img = create_rgb_image(10, 10, Rgb([255, 0, 0]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Sixel),
+            max_width: 100,
+            max_height: 100,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                assert!(seq.starts_with("\x1bPq"), "Sixel should start with DCS");
+                assert!(seq.ends_with("\x1b\\"), "Sixel should end with ST");
+                assert!(seq.contains("#"), "Sixel should contain color definitions");
+            }
+            _ => panic!("Expected EscapeSequence for Sixel"),
+        }
+    }
+
+    #[test]
+    fn test_sixel_encoding_large_image_scales_down() {
+        let img = create_rgb_image(2000, 1500, Rgb([0, 255, 0]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Sixel),
+            max_width: 200,
+            max_height: 200,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                assert!(!seq.is_empty());
+                assert!(seq.starts_with("\x1bPq"));
+            }
+            _ => panic!("Expected EscapeSequence for Sixel"),
+        }
+    }
+
+    #[test]
+    fn test_sixel_encoding_with_transparency() {
+        let img = create_rgba_image(20, 20, Rgba([255, 0, 0, 128]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Sixel),
+            max_width: 100,
+            max_height: 100,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                assert!(seq.starts_with("\x1bPq"));
+            }
+            _ => panic!("Expected EscapeSequence for Sixel"),
+        }
+    }
+
+    #[test]
+    fn test_sixel_encoding_multicolor() {
+        // Create image with multiple colors
+        let mut img = RgbImage::new(30, 12);
+        for x in 0..10 {
+            for y in 0..12 {
+                img.put_pixel(x, y, Rgb([255, 0, 0])); // Red
+            }
+        }
+        for x in 10..20 {
+            for y in 0..12 {
+                img.put_pixel(x, y, Rgb([0, 255, 0])); // Green
+            }
+        }
+        for x in 20..30 {
+            for y in 0..12 {
+                img.put_pixel(x, y, Rgb([0, 0, 255])); // Blue
+            }
+        }
+        let dyn_img = DynamicImage::ImageRgb8(img);
+
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Sixel),
+            max_width: 100,
+            max_height: 100,
+        };
+        let result = render_image(&dyn_img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                // Should have multiple color definitions
+                let color_count = seq.matches("#").count();
+                assert!(color_count >= 3, "Should have at least 3 colors defined");
+            }
+            _ => panic!("Expected EscapeSequence for Sixel"),
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Kitty Protocol Integration Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_kitty_encoding_small_image() {
+        let img = create_rgb_image(10, 10, Rgb([0, 0, 255]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Kitty),
+            max_width: 100,
+            max_height: 100,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                assert!(seq.starts_with("\x1b_G"), "Kitty should start with APC");
+                assert!(seq.ends_with("\x1b\\"), "Kitty should end with ST");
+                assert!(
+                    seq.contains("a=T"),
+                    "Kitty should have transmit+display action"
+                );
+                assert!(seq.contains("f=32"), "Kitty should have RGBA format");
+            }
+            _ => panic!("Expected EscapeSequence for Kitty"),
+        }
+    }
+
+    #[test]
+    fn test_kitty_encoding_large_image_scales_down() {
+        let img = create_rgb_image(3000, 2000, Rgb([128, 128, 128]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Kitty),
+            max_width: 300,
+            max_height: 300,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                assert!(!seq.is_empty());
+                assert!(seq.starts_with("\x1b_G"));
+            }
+            _ => panic!("Expected EscapeSequence for Kitty"),
+        }
+    }
+
+    #[test]
+    fn test_kitty_encoding_contains_base64() {
+        let img = create_rgb_image(5, 5, Rgb([100, 150, 200]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Kitty),
+            max_width: 50,
+            max_height: 50,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                // Kitty protocol uses base64 encoded data after the semicolon
+                assert!(seq.contains(';'), "Should have data separator");
+            }
+            _ => panic!("Expected EscapeSequence for Kitty"),
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // iTerm2 Protocol Integration Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_iterm2_encoding_small_image() {
+        let img = create_rgb_image(10, 10, Rgb([255, 255, 0]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::ITerm2),
+            max_width: 100,
+            max_height: 100,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                assert!(
+                    seq.starts_with("\x1b]1337;File="),
+                    "iTerm2 should start with OSC 1337"
+                );
+                assert!(seq.ends_with("\x07"), "iTerm2 should end with BEL");
+                assert!(seq.contains("inline=1"), "iTerm2 should be inline");
+                assert!(seq.contains("size="), "iTerm2 should have size");
+            }
+            _ => panic!("Expected EscapeSequence for iTerm2"),
+        }
+    }
+
+    #[test]
+    fn test_iterm2_encoding_large_image_scales_down() {
+        let img = create_rgb_image(4000, 3000, Rgb([64, 64, 64]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::ITerm2),
+            max_width: 400,
+            max_height: 400,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                assert!(!seq.is_empty());
+                assert!(seq.starts_with("\x1b]1337;File="));
+            }
+            _ => panic!("Expected EscapeSequence for iTerm2"),
+        }
+    }
+
+    #[test]
+    fn test_iterm2_encoding_contains_base64_data() {
+        let img = create_rgb_image(8, 8, Rgb([200, 100, 50]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::ITerm2),
+            max_width: 100,
+            max_height: 100,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                // iTerm2 has base64 data after colon
+                assert!(seq.contains(':'), "Should have data separator");
+            }
+            _ => panic!("Expected EscapeSequence for iTerm2"),
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // HalfBlock Rendering Integration Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_halfblock_rendering_small_image() {
+        let img = create_rgb_image(20, 20, Rgb([255, 0, 255]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::HalfBlock),
+            max_width: 40,
+            max_height: 40,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::Widget(lines) => {
+                assert!(!lines.is_empty(), "Should produce lines");
+            }
+            _ => panic!("Expected Widget for HalfBlock"),
+        }
+    }
+
+    #[test]
+    fn test_halfblock_rendering_preserves_aspect_ratio() {
+        // Tall image
+        let img = create_rgb_image(10, 100, Rgb([0, 128, 255]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::HalfBlock),
+            max_width: 50,
+            max_height: 50,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::Widget(lines) => {
+                assert!(!lines.is_empty());
+            }
+            _ => panic!("Expected Widget for HalfBlock"),
+        }
+    }
+
+    #[test]
+    fn test_halfblock_rendering_wide_image() {
+        // Wide image
+        let img = create_rgb_image(100, 10, Rgb([128, 0, 128]));
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::HalfBlock),
+            max_width: 50,
+            max_height: 50,
+        };
+        let result = render_image(&img, &config);
+
+        match result {
+            ImageRenderResult::Widget(lines) => {
+                assert!(!lines.is_empty());
+            }
+            _ => panic!("Expected Widget for HalfBlock"),
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Edge Case Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_render_1x1_image() {
+        let img = create_rgb_image(1, 1, Rgb([255, 255, 255]));
+
+        for protocol in [
+            ImageProtocol::Sixel,
+            ImageProtocol::Kitty,
+            ImageProtocol::ITerm2,
+            ImageProtocol::HalfBlock,
+        ] {
+            let config = ImageRenderConfig {
+                force_protocol: Some(protocol),
+                max_width: 100,
+                max_height: 100,
+            };
+            let result = render_image(&img, &config);
+
+            // All protocols should handle 1x1 without panic
+            match result {
+                ImageRenderResult::Widget(_) | ImageRenderResult::EscapeSequence(_) => {}
+            }
+        }
+    }
+
+    #[test]
+    fn test_render_very_small_dimensions() {
+        let img = create_rgb_image(100, 100, Rgb([50, 100, 150]));
+
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::HalfBlock),
+            max_width: 2,
+            max_height: 2,
+        };
+        let result = render_image(&img, &config);
+
+        // Should handle small target dimensions
+        match result {
+            ImageRenderResult::Widget(lines) => {
+                assert!(!lines.is_empty());
+            }
+            _ => panic!("Expected Widget for HalfBlock"),
+        }
+    }
+
+    #[test]
+    fn test_image_render_config_default() {
+        let config = ImageRenderConfig::default();
+        assert_eq!(config.max_width, 800);
+        assert_eq!(config.max_height, 600);
+        assert!(config.force_protocol.is_none());
+    }
+
+    #[test]
+    fn test_render_grayscale_image() {
+        // Create grayscale-like image
+        let img = create_rgb_image(20, 20, Rgb([128, 128, 128]));
+
+        for protocol in [
+            ImageProtocol::Sixel,
+            ImageProtocol::Kitty,
+            ImageProtocol::ITerm2,
+            ImageProtocol::HalfBlock,
+        ] {
+            let config = ImageRenderConfig {
+                force_protocol: Some(protocol),
+                max_width: 100,
+                max_height: 100,
+            };
+            let result = render_image(&img, &config);
+
+            match result {
+                ImageRenderResult::Widget(_) | ImageRenderResult::EscapeSequence(_) => {}
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Protocol String Conversion Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_image_protocol_display() {
+        assert_eq!(format!("{}", ImageProtocol::Sixel), "sixel");
+        assert_eq!(format!("{}", ImageProtocol::Kitty), "kitty");
+        assert_eq!(format!("{}", ImageProtocol::ITerm2), "iterm2");
+        assert_eq!(format!("{}", ImageProtocol::HalfBlock), "halfblock");
+    }
+
+    #[test]
+    fn test_image_protocol_from_str() {
+        use std::str::FromStr;
+
+        assert_eq!(
+            ImageProtocol::from_str("sixel").unwrap(),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            ImageProtocol::from_str("SIXEL").unwrap(),
+            ImageProtocol::Sixel
+        );
+        assert_eq!(
+            ImageProtocol::from_str("kitty").unwrap(),
+            ImageProtocol::Kitty
+        );
+        assert_eq!(
+            ImageProtocol::from_str("iterm2").unwrap(),
+            ImageProtocol::ITerm2
+        );
+        assert_eq!(
+            ImageProtocol::from_str("halfblock").unwrap(),
+            ImageProtocol::HalfBlock
+        );
+        assert_eq!(
+            ImageProtocol::from_str("half-block").unwrap(),
+            ImageProtocol::HalfBlock
+        );
+        assert_eq!(
+            ImageProtocol::from_str("block").unwrap(),
+            ImageProtocol::HalfBlock
+        );
+        assert!(ImageProtocol::from_str("invalid").is_err());
+    }
+
+    // -------------------------------------------------------------------------
+    // Terminal-Protocol Mapping Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_sixel_terminals_mapping() {
+        use fileview::render::best_protocol_for_terminal;
+
+        // All these terminals should use Sixel
+        let sixel_terminals = [
+            TerminalKind::Ghostty,
+            TerminalKind::ITerm2,
+            TerminalKind::WezTerm,
+            TerminalKind::Foot,
+            TerminalKind::Mlterm,
+            TerminalKind::Xterm,
+            TerminalKind::VSCode,
+            TerminalKind::WindowsTerminal,
+        ];
+
+        for terminal in sixel_terminals {
+            assert_eq!(
+                best_protocol_for_terminal(terminal),
+                ImageProtocol::Sixel,
+                "{:?} should use Sixel",
+                terminal
+            );
+        }
+    }
+
+    #[test]
+    fn test_kitty_terminal_mapping() {
+        use fileview::render::best_protocol_for_terminal;
+
+        assert_eq!(
+            best_protocol_for_terminal(TerminalKind::Kitty),
+            ImageProtocol::Kitty
+        );
+    }
+
+    #[test]
+    fn test_fallback_terminals_mapping() {
+        use fileview::render::best_protocol_for_terminal;
+
+        // Terminals without native image support
+        let fallback_terminals = [
+            TerminalKind::TerminalApp,
+            TerminalKind::Alacritty,
+            TerminalKind::Unknown,
+        ];
+
+        for terminal in fallback_terminals {
+            assert_eq!(
+                best_protocol_for_terminal(terminal),
+                ImageProtocol::HalfBlock,
+                "{:?} should use HalfBlock",
+                terminal
+            );
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Real Image File Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_render_png_from_memory() {
+        use image::ImageFormat;
+        use std::io::Cursor;
+
+        // Create a PNG in memory
+        let img = create_rgb_image(32, 32, Rgb([255, 128, 64]));
+        let mut png_bytes = Vec::new();
+        img.write_to(&mut Cursor::new(&mut png_bytes), ImageFormat::Png)
+            .unwrap();
+
+        // Load it back
+        let loaded = image::load_from_memory(&png_bytes).unwrap();
+
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Sixel),
+            max_width: 100,
+            max_height: 100,
+        };
+        let result = render_image(&loaded, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                assert!(seq.starts_with("\x1bPq"));
+            }
+            _ => panic!("Expected EscapeSequence"),
+        }
+    }
+
+    #[test]
+    fn test_render_jpeg_from_memory() {
+        use image::ImageFormat;
+        use std::io::Cursor;
+
+        // Create a JPEG in memory
+        let img = create_rgb_image(32, 32, Rgb([64, 128, 255]));
+        let mut jpeg_bytes = Vec::new();
+        img.write_to(&mut Cursor::new(&mut jpeg_bytes), ImageFormat::Jpeg)
+            .unwrap();
+
+        // Load it back
+        let loaded = image::load_from_memory(&jpeg_bytes).unwrap();
+
+        let config = ImageRenderConfig {
+            force_protocol: Some(ImageProtocol::Kitty),
+            max_width: 100,
+            max_height: 100,
+        };
+        let result = render_image(&loaded, &config);
+
+        match result {
+            ImageRenderResult::EscapeSequence(seq) => {
+                assert!(seq.starts_with("\x1b_G"));
+            }
+            _ => panic!("Expected EscapeSequence"),
+        }
+    }
+}
