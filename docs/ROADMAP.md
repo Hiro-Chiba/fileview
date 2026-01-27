@@ -235,7 +235,8 @@ Total Size:  1.2 MB
 | 9. Enhanced Features | 3 | 3 |
 | 10. Code Quality | 3 | 3 |
 | 11. Nerd Fonts Icons | 3 | 3 |
-| **Total** | **29** | **29** |
+| 12. Test Improvements | 6 | 0 |
+| **Total** | **35** | **29** |
 
 ---
 
@@ -252,7 +253,8 @@ Total Size:  1.2 MB
 | v0.4.6 | DRY improvements | ✅ Published |
 | v0.4.7 | Error handling | ✅ Published |
 | v0.4.8 | Constants extraction | ✅ Published |
-| v0.5.0 | Nerd Fonts icons | 🚧 Planned |
+| v0.5.0 | Nerd Fonts icons | ✅ Published |
+| v0.6.0 | Test improvements | 🚧 Planned |
 
 ---
 
@@ -373,6 +375,67 @@ pub fn get_file_icon(path: &Path, is_dir: bool, expanded: bool) -> &'static str 
 | Git | .git/ | `` |
 | Directory | (folder) | `` / `` |
 | Default | (other) | `` |
+
+---
+
+## Phase 12: Test Improvements
+
+**リリース:** v0.6.0
+
+### 12.1 CLI引数解析テスト
+**優先度:** 高
+
+- [ ] 基本オプションテスト
+  - `--pick`, `--format`, `--on-select`
+  - `--icons`, `--no-icons`
+- [ ] パス解決テスト
+  - ディレクトリ指定、ファイル指定、引数なし
+- [ ] 環境変数テスト
+  - `FILEVIEW_ICONS` の動作確認
+- [ ] PR: `test: Add CLI argument parsing tests`
+
+### 12.2 アイコンテスト拡充
+**優先度:** 高
+
+- [ ] 主要言語アイコン（JS, TS, Go, Java, C, C++）
+- [ ] 特殊ディレクトリ（node_modules, target, tests, docs）
+- [ ] 特殊ファイル（package.json, Dockerfile, .gitignore）
+- [ ] エッジケース（大文字小文字、拡張子なし）
+- [ ] PR: `test: Expand icon mapping tests`
+
+### 12.3 ファイル操作エッジケース
+**優先度:** 中
+
+- [ ] ユニークパス生成（競合時の連番）
+- [ ] 特殊文字（スペース、Unicode）
+- [ ] エラーハンドリング（存在しないファイル削除等）
+- [ ] PR: `test: Add file operation edge case tests`
+
+### 12.4 Pick出力フォーマット
+**優先度:** 中
+
+- [ ] lines/null/json 各形式の出力テスト
+- [ ] 複数ファイル選択時の出力
+- [ ] 特殊文字エスケープ
+- [ ] PR: `test: Add pick output format tests`
+
+### 12.5 Gitエラーハンドリング
+**優先度:** 中
+
+- [ ] 非Gitディレクトリの処理
+- [ ] ブランチ名の特殊ケース（スラッシュ含む等）
+- [ ] PR: `test: Add git error handling tests`
+
+### 12.6 ツリーレンダリング
+**優先度:** 低
+
+- [ ] パス省略ロジック
+- [ ] 可視高さ計算
+- [ ] PR: `test: Add tree rendering tests`
+
+**目標:**
+- テスト数: 64 → 127（+63テスト）
+- カバレッジ: 45% → 70%以上
 
 ---
 
