@@ -14,7 +14,7 @@
 - 複数選択によるバッチ操作
 - **プレビューパネル**（以下に対応）:
   - テキストファイル（拡張子による構文ハイライト）
-  - 画像（半ブロック描画）
+  - 画像（Kitty/iTerm2/Sixelプロトコル、自動検出対応）
   - ディレクトリ（ファイル数、サイズ統計）
   - バイナリファイル（Hexダンプ表示）
 - 内部クリップボードによるコピー/カット/ペースト
@@ -40,6 +40,26 @@ Gitリポジトリ内では、ファイルの状態に応じて色分け表示�
 
 ステータスバーに現在のブランチ名が表示されます。
 
+## 画像プレビュー
+
+FileViewはターミナルを自動検出し、最適な画像プロトコルを選択します：
+
+| ターミナル | プロトコル | 品質 |
+|-----------|----------|------|
+| Kitty | Kitty Graphics | 最高 |
+| Ghostty | Kitty Graphics | 最高 |
+| Konsole | Kitty Graphics | 最高 |
+| iTerm2 | iTerm2 Inline | 最高 |
+| WezTerm | iTerm2 Inline | 最高 |
+| Warp | iTerm2 Inline | 最高 |
+| Foot | Sixel | 良好 |
+| Windows Terminal | Sixel | 良好 |
+| VS Code | Halfblocks | 基本 |
+| Alacritty | Halfblocks | 基本 |
+| その他 | 自動検出 | 可変 |
+
+`FILEVIEW_IMAGE_PROTOCOL` 環境変数でオーバーライド可能です（下記参照）。
+
 ## インストール
 
 ### crates.io から（推奨）
@@ -48,12 +68,31 @@ Gitリポジトリ内では、ファイルの状態に応じて色分け表示�
 cargo install fileview
 ```
 
+### Chafaサポート付き（オプション）
+
+ネイティブ画像プロトコル非対応のターミナルで高品質な画像プレビューを利用する場合：
+
+```bash
+# 先にlibchafaをインストール
+# macOS:
+brew install chafa
+
+# Ubuntu/Debian:
+sudo apt install libchafa-dev
+
+# その後、chafa featureを有効にしてインストール
+cargo install fileview --features chafa
+```
+
 ### ソースから
 
 ```bash
 git clone https://github.com/Hiro-Chiba/fileview.git
 cd fileview
 cargo install --path .
+
+# Chafaサポート付き:
+cargo install --path . --features chafa
 ```
 
 ### 動作要件
@@ -177,6 +216,7 @@ fv --on-select "code {path}"
 | 変数 | 説明 |
 |------|------|
 | `FILEVIEW_ICONS=0` | デフォルトでアイコンを無効化 |
+| `FILEVIEW_IMAGE_PROTOCOL` | 画像プロトコルを指定: `auto`, `halfblocks`, `chafa`, `sixel`, `kitty`, `iterm2` |
 
 ### `--on-select` のプレースホルダー
 
