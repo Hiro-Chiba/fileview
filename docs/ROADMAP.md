@@ -207,12 +207,12 @@ Total Size:  1.2 MB
 **優先度:** 中
 **リリース:** v0.4.0
 
-- [ ] render/preview.rs 拡張
+- [x] render/preview.rs 拡張
   - バイナリファイル検出
   - xxd形式のHexダンプ表示
     - オフセット | Hex (16バイト) | ASCII
   - テキスト/バイナリ自動判定
-- [ ] PR: `feat(preview): Add hex preview for binary files`
+- [x] PR: `feat(preview): Add hex preview for binary files`
 
 **表示例:**
 ```
@@ -235,8 +235,8 @@ Total Size:  1.2 MB
 | 6. Handler | 3 | 3 |
 | 7. Integrate | 2 | 2 |
 | 8. Main & Polish | 3 | 3 |
-| 9. Enhanced Features | 3 | 2 |
-| **Total** | **23** | **22** |
+| 9. Enhanced Features | 3 | 3 |
+| **Total** | **23** | **23** |
 
 ---
 
