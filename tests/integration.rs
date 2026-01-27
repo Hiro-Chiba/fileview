@@ -2041,8 +2041,8 @@ mod drag_and_drop_tests {
 
 mod image_protocol_tests {
     use fileview::render::{
-        detect_best_protocol, detect_terminal, get_active_protocol, render_image,
-        ImageProtocol, ImageRenderConfig, ImageRenderResult, TerminalKind,
+        detect_best_protocol, detect_terminal, get_active_protocol, render_image, ImageProtocol,
+        ImageRenderConfig, ImageRenderResult, TerminalKind,
     };
     use image::{DynamicImage, Rgb, RgbImage, Rgba, RgbaImage};
 
@@ -2277,7 +2277,10 @@ mod image_protocol_tests {
             ImageRenderResult::EscapeSequence(seq) => {
                 assert!(seq.starts_with("\x1b_G"), "Kitty should start with APC");
                 assert!(seq.ends_with("\x1b\\"), "Kitty should end with ST");
-                assert!(seq.contains("a=T"), "Kitty should have transmit+display action");
+                assert!(
+                    seq.contains("a=T"),
+                    "Kitty should have transmit+display action"
+                );
                 assert!(seq.contains("f=32"), "Kitty should have RGBA format");
             }
             _ => panic!("Expected EscapeSequence for Kitty"),
