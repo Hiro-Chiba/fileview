@@ -136,6 +136,11 @@ pub fn detect_terminal() -> TerminalKind {
 }
 
 /// Get the best image protocol for a terminal
+///
+/// Note: Some terminals require specific versions or settings:
+/// - Windows Terminal: Requires v1.22+ (stable Feb 2025)
+/// - VS Code: Requires `terminal.integrated.enableImages: true`
+/// - xterm: Must be compiled with Sixel support
 pub fn best_protocol_for_terminal(terminal: TerminalKind) -> ImageProtocol {
     match terminal {
         // Sixel-capable terminals
@@ -146,14 +151,14 @@ pub fn best_protocol_for_terminal(terminal: TerminalKind) -> ImageProtocol {
         TerminalKind::Mlterm => ImageProtocol::Sixel,
         TerminalKind::Xterm => ImageProtocol::Sixel, // May not work if not compiled with Sixel
         TerminalKind::VSCode => ImageProtocol::Sixel, // Requires terminal.integrated.enableImages
+        TerminalKind::WindowsTerminal => ImageProtocol::Sixel, // Requires v1.22+ (Feb 2025)
 
         // Kitty protocol
         TerminalKind::Kitty => ImageProtocol::Kitty,
 
-        // Fallback to half-block
-        TerminalKind::TerminalApp => ImageProtocol::HalfBlock,
-        TerminalKind::WindowsTerminal => ImageProtocol::HalfBlock, // TODO: Check if Sixel works
-        TerminalKind::Alacritty => ImageProtocol::HalfBlock,
+        // No native image protocol support - use half-block fallback
+        TerminalKind::TerminalApp => ImageProtocol::HalfBlock, // macOS Terminal.app - no Sixel
+        TerminalKind::Alacritty => ImageProtocol::HalfBlock, // No plans to add Sixel support
         TerminalKind::Unknown => ImageProtocol::HalfBlock,
     }
 }
@@ -177,6 +182,7 @@ pub fn is_protocol_supported(protocol: ImageProtocol) -> bool {
                 | TerminalKind::Mlterm
                 | TerminalKind::Xterm
                 | TerminalKind::VSCode
+                | TerminalKind::WindowsTerminal
         ),
         ImageProtocol::Kitty => matches!(terminal, TerminalKind::Kitty),
         ImageProtocol::ITerm2 => {
@@ -213,17 +219,71 @@ mod tests {
 
     #[test]
     fn test_best_protocol_for_terminal() {
+        // Sixel-capable terminals
         assert_eq!(best_protocol_for_terminal(TerminalKind::Ghostty), ImageProtocol::Sixel);
-        assert_eq!(best_protocol_for_terminal(TerminalKind::Kitty), ImageProtocol::Kitty);
         assert_eq!(best_protocol_for_terminal(TerminalKind::ITerm2), ImageProtocol::Sixel);
         assert_eq!(best_protocol_for_terminal(TerminalKind::WezTerm), ImageProtocol::Sixel);
+        assert_eq!(best_protocol_for_terminal(TerminalKind::Foot), ImageProtocol::Sixel);
+        assert_eq!(best_protocol_for_terminal(TerminalKind::Mlterm), ImageProtocol::Sixel);
+        assert_eq!(best_protocol_for_terminal(TerminalKind::Xterm), ImageProtocol::Sixel);
         assert_eq!(best_protocol_for_terminal(TerminalKind::VSCode), ImageProtocol::Sixel);
+        assert_eq!(best_protocol_for_terminal(TerminalKind::WindowsTerminal), ImageProtocol::Sixel);
+
+        // Kitty protocol
+        assert_eq!(best_protocol_for_terminal(TerminalKind::Kitty), ImageProtocol::Kitty);
+
+        // HalfBlock fallback
+        assert_eq!(best_protocol_for_terminal(TerminalKind::TerminalApp), ImageProtocol::HalfBlock);
+        assert_eq!(best_protocol_for_terminal(TerminalKind::Alacritty), ImageProtocol::HalfBlock);
         assert_eq!(best_protocol_for_terminal(TerminalKind::Unknown), ImageProtocol::HalfBlock);
     }
 
     #[test]
     fn test_halfblock_always_supported() {
         assert!(is_protocol_supported(ImageProtocol::HalfBlock));
+    }
+
+    #[test]
+    fn test_sixel_capable_terminals() {
+        // All Sixel-capable terminals should return Sixel
+        let sixel_terminals = [
+            TerminalKind::Ghostty,
+            TerminalKind::ITerm2,
+            TerminalKind::WezTerm,
+            TerminalKind::Foot,
+            TerminalKind::Mlterm,
+            TerminalKind::Xterm,
+            TerminalKind::VSCode,
+            TerminalKind::WindowsTerminal,
+        ];
+
+        for terminal in sixel_terminals {
+            assert_eq!(
+                best_protocol_for_terminal(terminal),
+                ImageProtocol::Sixel,
+                "Terminal {:?} should support Sixel",
+                terminal
+            );
+        }
+    }
+
+    #[test]
+    fn test_fallback_terminals() {
+        // Terminals without native image support
+        let fallback_terminals = [
+            TerminalKind::TerminalApp,
+            TerminalKind::Alacritty,
+            TerminalKind::Unknown,
+        ];
+
+        for terminal in fallback_terminals {
+            assert_eq!(
+                best_protocol_for_terminal(terminal),
+                ImageProtocol::HalfBlock,
+                "Terminal {:?} should use HalfBlock fallback",
+                terminal
+            );
+        }
     }
 
     #[test]
