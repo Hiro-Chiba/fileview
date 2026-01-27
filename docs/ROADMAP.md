@@ -237,7 +237,9 @@ Total Size:  1.2 MB
 | 11. Nerd Fonts Icons | 3 | 3 |
 | 12. Test Improvements | 6 | 6 |
 | 13. E2E / Behavioral Tests | 4 | 3 |
-| **Total** | **39** | **38** |
+| 14. Side Preview Focus | 5 | 5 |
+| 15. Image Protocol Support | 7 | 6 |
+| **Total** | **51** | **49** |
 
 ---
 
@@ -565,6 +567,152 @@ v0.6.1で修正したバグ（プレビュースクロール、Enterキー動作
 - [x] フォーカス切り替えテスト（8件）
 - [x] キー操作のフォーカス対応テスト（8件）
 - [x] PR: `feat: Add side preview focus management` (#41)
+
+---
+
+## Phase 15: Terminal Image Protocol Support
+
+**リリース:** v0.8.0
+
+### 背景
+現在の半ブロック文字による画像プレビューは解像度が低く、スクリーンショットなどの
+細かいディテールがある画像がモザイク状に表示される。モダンなターミナルは高品質な
+画像プロトコルをサポートしており、これらに対応することで大幅な品質向上が可能。
+
+### 対応プロトコル
+
+| プロトコル | 対応ターミナル | 優先度 |
+|-----------|---------------|--------|
+| **Sixel** | Ghostty, iTerm2, WezTerm, mlterm, foot, xterm | 高 |
+| **Kitty** | Kitty | 中 |
+| **iTerm2** | iTerm2, WezTerm | 中 |
+| **半ブロック** | 全ターミナル（フォールバック） | 必須 |
+
+### 15.1 ターミナル検出システム
+**優先度:** 高
+
+- [x] ターミナル検出モジュール作成
+  - `render/terminal.rs` 新規作成
+  - `TerminalKind` enum: Ghostty, Kitty, ITerm2, WezTerm, VSCode, WindowsTerminal, TerminalApp, Alacritty, Foot, Mlterm, Xterm, Unknown
+  - `ImageProtocol` enum: Sixel, Kitty, ITerm2, HalfBlock
+- [x] 環境変数による検出
+  - `TERM_PROGRAM`: iTerm.app, vscode, etc.
+  - `GHOSTTY_RESOURCES_DIR`: Ghostty検出
+  - `KITTY_WINDOW_ID`: Kitty検出
+  - `WEZTERM_EXECUTABLE`: WezTerm検出
+  - `WT_SESSION`: Windows Terminal検出
+  - `TERM`: xterm-256color, foot, mlterm, etc.
+- [x] 最適なプロトコル選択ロジック
+  - ターミナルごとに最適なプロトコルを返す
+  - 未知のターミナルは半ブロックにフォールバック
+- [x] PR: `feat: Add terminal detection system` (#43)
+
+### 15.2 Sixelプロトコル実装
+**優先度:** 高
+
+- [x] Sixelエンコーダー実装
+  - 依存: なし（手動実装）
+  - 画像をSixelシーケンスに変換
+  - パレット最適化（256色制限）
+  - RLEエンコーディング
+- [x] Sixelレンダリング関数
+  - `encode_sixel()`, `render_sixel_image()`, `write_sixel()`
+- [x] サイズ調整・アスペクト比維持
+- [x] PR: `feat: Implement Sixel image protocol` (#43)
+
+### 15.3 Kittyプロトコル実装
+**優先度:** 中
+
+- [x] Kittyグラフィックスプロトコル実装
+  - Base64エンコード
+  - チャンク分割送信
+  - 画像配置制御
+  - RGB/RGBA/PNG形式サポート
+- [x] Kittyレンダリング関数
+  - `encode_kitty()`, `render_kitty_image()`, `write_kitty()`
+  - `delete_kitty_image()`, `clear_kitty_images()`
+- [x] PR: `feat: Implement Kitty image protocol` (#43)
+
+### 15.4 iTerm2プロトコル実装
+**優先度:** 中
+
+- [x] iTerm2インラインイメージ実装
+  - Base64エンコード
+  - OSCエスケープシーケンス
+  - PNG/JPEG形式サポート
+- [x] iTerm2レンダリング関数
+  - `encode_iterm2()`, `render_iterm2_image()`, `write_iterm2()`
+- [x] PR: `feat: Implement iTerm2 image protocol` (#43)
+
+### 15.5 統合・自動切り替え
+**優先度:** 高
+
+- [x] 統合レンダラー実装
+  - `render/image.rs` - 統合画像レンダリングモジュール
+  - `ImageRenderResult` enum: Widget (HalfBlock), EscapeSequence (Sixel/Kitty/iTerm2)
+  - `render_image()` - プロトコル自動選択
+- [x] プロトコル自動選択
+  - アプリ起動時にターミナル検出
+  - 最適なレンダラーを選択
+  - `force_protocol` オプションで上書き可能
+- [x] PR: `feat: Integrate image protocol auto-switching` (#43)
+
+### 15.6 テスト
+**優先度:** 高
+
+- [x] ターミナル検出テスト
+  - 各環境変数パターンのテスト
+  - フォールバック動作テスト
+- [x] Sixelエンコードテスト
+  - 基本的なエンコードテスト
+  - パレット生成テスト
+  - 境界値テスト（極小/極大画像）
+  - マルチカラーテスト
+- [x] Kittyプロトコルテスト
+  - エンコードテスト
+  - チャンク分割テスト
+  - RGB/RGBA/PNG形式テスト
+- [x] iTerm2プロトコルテスト
+  - エンコードテスト
+  - Base64データ検証
+- [x] 統合テスト
+  - プロトコル選択テスト
+  - フォールバックテスト
+  - エッジケース（1x1画像、大画像スケーリング）
+- [x] PR: `test: Add image protocol tests` (#43)
+
+### 15.7 ドキュメント・CLI
+**優先度:** 中
+
+- [ ] README更新
+  - 対応ターミナル一覧
+  - 画像プロトコル説明
+- [ ] CLIオプション追加
+  - `--image-protocol <auto|sixel|kitty|iterm2|halfblock>`
+  - デフォルト: auto
+- [ ] PR: `docs: Add image protocol documentation`
+
+### 対応ターミナル一覧
+
+| ターミナル | OS | Sixel | Kitty | iTerm2 | フォールバック | 備考 |
+|-----------|-----|-------|-------|--------|--------------|------|
+| Ghostty | macOS/Linux | ✅ | ❌ | ❌ | ✅ | |
+| Kitty | macOS/Linux | ❌ | ✅ | ❌ | ✅ | |
+| iTerm2 | macOS | ✅ | ❌ | ✅ | ✅ | |
+| WezTerm | 全OS | ✅ | ❌ | ✅ | ✅ | |
+| VS Code | 全OS | ✅ | ❌ | ❌ | ✅ | `terminal.integrated.enableImages: true` 必要 |
+| Terminal.app | macOS | ❌ | ❌ | ❌ | ✅ | Sixel非対応 |
+| Windows Terminal | Windows | ✅ | ❌ | ❌ | ✅ | v1.22+（2025年2月〜） |
+| Alacritty | 全OS | ❌ | ❌ | ❌ | ✅ | Sixel対応予定なし |
+| foot | Linux | ✅ | ❌ | ❌ | ✅ | |
+| mlterm | 全OS | ✅ | ❌ | ❌ | ✅ | |
+| xterm | 全OS | ✅* | ❌ | ❌ | ✅ | *コンパイルオプションによる |
+
+### 期待される効果
+- Sixel対応ターミナルで高品質な画像プレビュー
+- Kittyユーザーへの最高品質プレビュー提供
+- 非対応ターミナルでも動作保証（フォールバック）
+- ユーザーが手動でプロトコル選択可能
 
 ---
 
