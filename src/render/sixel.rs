@@ -6,6 +6,7 @@
 //! Supported terminals: Ghostty, iTerm2, WezTerm, foot, mlterm, xterm (with sixel)
 
 use image::{DynamicImage, GenericImageView, Rgba};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Write};
 
@@ -36,9 +37,12 @@ impl Default for SixelConfig {
     }
 }
 
-/// Quantize colors to a fixed palette using median cut algorithm
+/// Quantize colors to a fixed palette using frequency-based selection
+///
+/// This is a simple quantization that groups similar colors and selects
+/// the most frequently occurring colors in the image.
 fn quantize_colors(pixels: &[Rgba<u8>], max_colors: usize) -> Vec<Rgba<u8>> {
-    // Simple color quantization using a hash map to find unique colors
+    // Color quantization using a hash map to find unique colors and their frequency
     let mut color_counts: HashMap<[u8; 4], usize> = HashMap::new();
 
     for pixel in pixels {
@@ -90,21 +94,27 @@ fn find_closest_color(pixel: Rgba<u8>, palette: &[Rgba<u8>]) -> usize {
 
 /// Encode an image as Sixel data
 pub fn encode_sixel(image: &DynamicImage, config: &SixelConfig) -> String {
-    // Scale image if needed
     let (orig_w, orig_h) = image.dimensions();
+
+    // Early return for empty images
+    if orig_w == 0 || orig_h == 0 {
+        return String::new();
+    }
+
+    // Scale image if needed (use Cow to avoid unnecessary clone)
     let scale = f64::min(
         config.max_width as f64 / orig_w as f64,
         config.max_height as f64 / orig_h as f64,
     );
 
-    let img = if scale < 1.0 {
-        image.resize(
+    let img: Cow<DynamicImage> = if scale < 1.0 {
+        Cow::Owned(image.resize(
             (orig_w as f64 * scale) as u32,
             (orig_h as f64 * scale) as u32,
             image::imageops::FilterType::Lanczos3,
-        )
+        ))
     } else {
-        image.clone()
+        Cow::Borrowed(image)
     };
 
     let rgba = img.to_rgba8();

@@ -7,6 +7,7 @@
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use image::{DynamicImage, GenericImageView, ImageEncoder};
+use std::borrow::Cow;
 use std::io::{self, Write};
 
 /// Kitty graphics protocol action types
@@ -122,25 +123,27 @@ fn build_control_string(params: &[(&str, String)], data: Option<&str>, more: boo
 
 /// Encode an image using Kitty graphics protocol
 pub fn encode_kitty(image: &DynamicImage, config: &KittyConfig) -> String {
-    // Scale image if needed
     let (orig_w, orig_h) = image.dimensions();
+
+    // Early return for empty images
     if orig_w == 0 || orig_h == 0 {
         return String::new();
     }
 
+    // Scale image if needed (use Cow to avoid unnecessary clone)
     let scale = f64::min(
         config.max_width as f64 / orig_w as f64,
         config.max_height as f64 / orig_h as f64,
     );
 
-    let img = if scale < 1.0 {
-        image.resize(
+    let img: Cow<DynamicImage> = if scale < 1.0 {
+        Cow::Owned(image.resize(
             (orig_w as f64 * scale) as u32,
             (orig_h as f64 * scale) as u32,
             image::imageops::FilterType::Lanczos3,
-        )
+        ))
     } else {
-        image.clone()
+        Cow::Borrowed(image)
     };
 
     let (width, height) = img.dimensions();
