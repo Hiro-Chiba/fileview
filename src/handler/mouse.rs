@@ -115,16 +115,30 @@ impl DropDetector {
             .lines()
             .flat_map(|line| {
                 // Handle various path formats
-                let path = line
-                    .trim()
-                    .trim_matches('"')
-                    .trim_matches('\'')
-                    .trim_start_matches("file://");
+                let mut path = line.trim().trim_matches('"').trim_matches('\'');
 
-                if path.is_empty() {
+                // Handle file:// URLs (Unix: file:///path, Windows: file:///C:/path)
+                if let Some(stripped) = path.strip_prefix("file://") {
+                    path = stripped;
+                    // Windows file URLs have extra slash: file:///C:/...
+                    // After stripping "file://", we have "/C:/..." - need to remove leading /
+                    if path.len() > 2 && path.starts_with('/') && path.chars().nth(2) == Some(':') {
+                        path = &path[1..];
+                    }
+                }
+
+                // URL decode common characters
+                let decoded = path
+                    .replace("%20", " ")
+                    .replace("%23", "#")
+                    .replace("%25", "%")
+                    .replace("%5B", "[")
+                    .replace("%5D", "]");
+
+                if decoded.is_empty() {
                     None
                 } else {
-                    let path_buf = PathBuf::from(path);
+                    let path_buf = PathBuf::from(&decoded);
                     if path_buf.exists() {
                         Some(path_buf)
                     } else {
@@ -207,6 +221,33 @@ mod tests {
     #[test]
     fn test_drop_detector_empty() {
         let detector = DropDetector::new();
+        assert!(detector.is_empty());
+    }
+
+    #[test]
+    fn test_drop_detector_url_decode() {
+        let mut detector = DropDetector::new();
+        // Simulate path with spaces (URL encoded)
+        detector.buffer = "file:///path/with%20spaces/file.txt".to_string();
+        // Note: extract_paths checks if path exists, so we just verify it doesn't panic
+        let _ = detector.extract_paths();
+        assert!(detector.is_empty()); // Buffer should be cleared
+    }
+
+    #[test]
+    fn test_drop_detector_windows_file_url() {
+        let mut detector = DropDetector::new();
+        // Windows file URL format: file:///C:/Users/...
+        detector.buffer = "file:///C:/Users/test/file.txt".to_string();
+        let _ = detector.extract_paths();
+        assert!(detector.is_empty()); // Buffer should be cleared
+    }
+
+    #[test]
+    fn test_drop_detector_quoted_path() {
+        let mut detector = DropDetector::new();
+        detector.buffer = "\"/path/to/file with spaces.txt\"".to_string();
+        let _ = detector.extract_paths();
         assert!(detector.is_empty());
     }
 }
