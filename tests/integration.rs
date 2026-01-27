@@ -1470,8 +1470,14 @@ mod git_status_tests {
 
         let status = status.unwrap();
         // Use canonicalize to handle macOS /var -> /private/var symlink
-        let expected = temp.path().canonicalize().unwrap_or(temp.path().to_path_buf());
-        let actual = status.repo_root().canonicalize().unwrap_or(status.repo_root().to_path_buf());
+        let expected = temp
+            .path()
+            .canonicalize()
+            .unwrap_or(temp.path().to_path_buf());
+        let actual = status
+            .repo_root()
+            .canonicalize()
+            .unwrap_or(status.repo_root().to_path_buf());
         assert_eq!(actual, expected);
     }
 

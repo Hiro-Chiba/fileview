@@ -488,10 +488,7 @@ mod tests {
     #[test]
     fn test_multiple_dots_in_filename() {
         // Should use the last extension
-        assert_eq!(
-            get_icon(&PathBuf::from("file.test.js"), false, false),
-            ""
-        );
+        assert_eq!(get_icon(&PathBuf::from("file.test.js"), false, false), "");
         assert_eq!(
             get_icon(&PathBuf::from("app.config.json"), false, false),
             ""
