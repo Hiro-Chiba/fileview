@@ -23,7 +23,7 @@ use fileview::action::{file as file_ops, Clipboard, ClipboardContent};
 use fileview::core::{AppState, InputPurpose, PendingAction, ViewMode};
 use fileview::handler::{
     key::{create_delete_targets, handle_key_event, update_input_buffer, KeyAction},
-    mouse::{handle_mouse_event, ClickDetector, DropDetector, MouseAction},
+    mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer},
 };
 use fileview::integrate::{exit_code, Callback, OutputFormat, PickResult};
 use fileview::render::{
@@ -208,7 +208,7 @@ fn run_app(
 
     let mut navigator = TreeNavigator::new(&config.root, state.show_hidden)?;
     let mut click_detector = ClickDetector::new();
-    let mut drop_detector = DropDetector::new();
+    let mut path_buffer = PathBuffer::new();
 
     // Preview cache
     let mut text_preview: Option<TextPreview> = None;
@@ -382,8 +382,8 @@ fn run_app(
         drop(entries);
 
         // Check drop buffer timeout (for file drop detection via rapid key input)
-        if drop_detector.check_timeout() {
-            let paths = drop_detector.extract_paths();
+        if path_buffer.is_ready() {
+            let paths = path_buffer.take_paths();
             if !paths.is_empty() {
                 // Valid paths detected - copy files
                 if let Some(focused) = &focused_path {
@@ -401,7 +401,7 @@ fn run_app(
                 }
             } else {
                 // Not valid paths - check if it starts with '/' for search
-                let buffer = drop_detector.take_buffer();
+                let buffer = path_buffer.take_raw();
                 if let Some(rest) = buffer.strip_prefix('/') {
                     // Treat as search command
                     state.mode = ViewMode::Search {
@@ -446,13 +446,13 @@ fn run_app(
                         if let crossterm::event::KeyCode::Char(c) = key.code {
                             // Start buffering on path-like characters
                             if matches!(c, '/' | '\'' | '"' | '\\') {
-                                drop_detector.push_char(c);
+                                path_buffer.push(c);
                                 continue;
                             }
 
                             // Continue buffering if we already have content
-                            if !drop_detector.is_empty() {
-                                drop_detector.push_char(c);
+                            if !path_buffer.is_empty() {
+                                path_buffer.push(c);
                                 continue;
                             }
                         }
@@ -523,9 +523,9 @@ fn run_app(
                 Event::Paste(text) => {
                     // Handle terminal paste - might be file drop
                     for c in text.chars() {
-                        drop_detector.push_char(c);
+                        path_buffer.push(c);
                     }
-                    let paths = drop_detector.extract_paths();
+                    let paths = path_buffer.take_paths();
                     if !paths.is_empty() {
                         if let Some(focused) = &focused_path {
                             let dest = if focused.is_dir() {
@@ -541,7 +541,7 @@ fn run_app(
                             state.set_message(format!("Dropped {} file(s)", paths.len()));
                         }
                     }
-                    drop_detector.clear();
+                    path_buffer.clear();
                 }
                 _ => {}
             }
