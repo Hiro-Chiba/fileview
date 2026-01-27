@@ -276,70 +276,96 @@ fn run_app(
         terminal.draw(|frame| {
             let size = frame.area();
 
-            // Layout: tree (left), preview (right, optional)
-            let main_chunks = if state.preview_visible {
-                Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                    .split(size)
-            } else {
-                Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([Constraint::Percentage(100)])
-                    .split(size)
-            };
+            // Check if fullscreen preview mode is active
+            let is_fullscreen_preview = matches!(state.mode, ViewMode::Preview { .. });
 
-            // Tree area with status bar
-            let tree_chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Min(0), Constraint::Length(3)])
-                .split(main_chunks[0]);
+            if is_fullscreen_preview {
+                // Fullscreen preview mode - render preview only
+                let title = focused_path
+                    .as_ref()
+                    .and_then(|p| p.file_name())
+                    .map(|n| format!(" {} (press o or q to close) ", n.to_string_lossy()))
+                    .unwrap_or_else(|| " Preview (press o or q to close) ".to_string());
 
-            // Adjust viewport
-            let vis_height = visible_height(tree_chunks[0]);
-            state.adjust_viewport(vis_height);
-
-            // Render tree
-            render_tree(frame, &state, &entries, tree_chunks[0]);
-
-            // Render status bar
-            render_status_bar(frame, &state, total_entries, tree_chunks[1]);
-
-            // Render preview if visible
-            if state.preview_visible && main_chunks.len() > 1 {
-                let preview_area = main_chunks[1];
                 if let Some(ref di) = dir_info {
-                    render_directory_info(frame, di, preview_area);
+                    render_directory_info(frame, di, size);
                 } else if let Some(ref tp) = text_preview {
-                    let title = focused_path
-                        .as_ref()
-                        .and_then(|p| p.file_name())
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    render_text_preview(frame, tp, preview_area, &title);
+                    render_text_preview(frame, tp, size, &title);
                 } else if let Some(ref ip) = image_preview {
-                    let title = focused_path
-                        .as_ref()
-                        .and_then(|p| p.file_name())
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    render_image_preview(frame, ip, preview_area, &title);
+                    render_image_preview(frame, ip, size, &title);
                 } else if let Some(ref hp) = hex_preview {
-                    let title = focused_path
-                        .as_ref()
-                        .and_then(|p| p.file_name())
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    render_hex_preview(frame, hp, preview_area, &title);
+                    render_hex_preview(frame, hp, size, &title);
                 } else {
-                    let block = Block::default().borders(Borders::ALL).title(" Preview ");
+                    let block = Block::default().borders(Borders::ALL).title(title);
                     let para = Paragraph::new("No preview available").block(block);
-                    frame.render_widget(para, preview_area);
+                    frame.render_widget(para, size);
                 }
-            }
+            } else {
+                // Normal mode - tree with optional side preview
+                let main_chunks = if state.preview_visible {
+                    Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                        .split(size)
+                } else {
+                    Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints([Constraint::Percentage(100)])
+                        .split(size)
+                };
 
-            // Render input popup if needed
-            render_input_popup(frame, &state);
+                // Tree area with status bar
+                let tree_chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(3)])
+                    .split(main_chunks[0]);
+
+                // Adjust viewport
+                let vis_height = visible_height(tree_chunks[0]);
+                state.adjust_viewport(vis_height);
+
+                // Render tree
+                render_tree(frame, &state, &entries, tree_chunks[0]);
+
+                // Render status bar
+                render_status_bar(frame, &state, total_entries, tree_chunks[1]);
+
+                // Render preview if visible
+                if state.preview_visible && main_chunks.len() > 1 {
+                    let preview_area = main_chunks[1];
+                    if let Some(ref di) = dir_info {
+                        render_directory_info(frame, di, preview_area);
+                    } else if let Some(ref tp) = text_preview {
+                        let title = focused_path
+                            .as_ref()
+                            .and_then(|p| p.file_name())
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        render_text_preview(frame, tp, preview_area, &title);
+                    } else if let Some(ref ip) = image_preview {
+                        let title = focused_path
+                            .as_ref()
+                            .and_then(|p| p.file_name())
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        render_image_preview(frame, ip, preview_area, &title);
+                    } else if let Some(ref hp) = hex_preview {
+                        let title = focused_path
+                            .as_ref()
+                            .and_then(|p| p.file_name())
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        render_hex_preview(frame, hp, preview_area, &title);
+                    } else {
+                        let block = Block::default().borders(Borders::ALL).title(" Preview ");
+                        let para = Paragraph::new("No preview available").block(block);
+                        frame.render_widget(para, preview_area);
+                    }
+                }
+
+                // Render input popup if needed
+                render_input_popup(frame, &state);
+            }
         })?;
 
         // Drop the entries borrow before event handling
