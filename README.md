@@ -23,6 +23,7 @@ English | [日本語](README_ja.md)
 - Callback execution on file selection
 - Hidden files toggle
 - Mouse support (click, double-click, scroll, drag-and-drop)
+- **Nerd Fonts icons** (optional, enable with `--icons`)
 
 ## Git Status Colors
 
@@ -151,8 +152,16 @@ fv --on-select "code {path}"
 | `-p`, `--pick` | Pick mode: output selected path(s) to stdout |
 | `-f`, `--format FMT` | Output format: `lines` (default), `null`, `json` |
 | `--on-select CMD` | Run command when file is selected |
+| `-i`, `--icons` | Enable Nerd Fonts icons |
+| `--no-icons` | Disable icons (default) |
 | `-h`, `--help` | Show help |
 | `-V`, `--version` | Show version |
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `FILEVIEW_ICONS=1` | Enable icons by default |
 
 ### Placeholders for `--on-select`
 
