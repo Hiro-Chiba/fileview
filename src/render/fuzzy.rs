@@ -100,12 +100,14 @@ pub fn render_fuzzy_finder(
     selected: usize,
     area: Rect,
 ) {
-    // Calculate popup dimensions
-    let popup_width = (area.width * 70 / 100).min(80).max(40);
-    let popup_height = (MAX_RESULTS as u16 + 4).min(area.height - 4);
+    // Calculate popup dimensions (handle very small terminals)
+    let popup_width = (area.width * 70 / 100).min(80).max(40).min(area.width.saturating_sub(2));
+    let popup_height = (MAX_RESULTS as u16 + 4)
+        .min(area.height.saturating_sub(4))
+        .max(6); // Minimum height for usability
 
-    let popup_x = (area.width - popup_width) / 2;
-    let popup_y = (area.height - popup_height) / 3; // Slightly above center
+    let popup_x = (area.width.saturating_sub(popup_width)) / 2;
+    let popup_y = (area.height.saturating_sub(popup_height)) / 3; // Slightly above center
 
     let popup_area = Rect::new(popup_x, popup_y, popup_width, popup_height);
 
@@ -175,19 +177,14 @@ pub fn render_fuzzy_finder(
 }
 
 /// Create spans with matched characters highlighted
-fn create_highlighted_spans(text: &str, indices: &[usize], is_selected: bool) -> Vec<Span<'static>> {
+fn create_highlighted_spans(text: &str, indices: &[usize], _is_selected: bool) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     let chars: Vec<char> = text.chars().collect();
 
-    let match_style = if is_selected {
-        Style::default()
-            .fg(Color::Yellow)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default()
-            .fg(Color::Yellow)
-            .add_modifier(Modifier::BOLD)
-    };
+    // Match highlight style (yellow bold for both selected and unselected)
+    let match_style = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
 
     let normal_style = Style::default();
 
