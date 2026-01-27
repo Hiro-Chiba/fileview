@@ -54,7 +54,7 @@ FileViewはターミナルを自動検出し、最適な画像プロトコルを
 | Warp | iTerm2 Inline | 最高 |
 | Foot | Sixel | 良好 |
 | Windows Terminal | Sixel | 良好 |
-| VS Code | iTerm2 Inline | 最高 |
+| VS Code | Halfblocks | 基本 |
 | Alacritty | Halfblocks | 基本 |
 | その他 | 自動検出 | 可変 |
 
