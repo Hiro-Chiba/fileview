@@ -3,6 +3,7 @@
 pub mod icons;
 pub mod preview;
 pub mod status;
+pub mod terminal;
 pub mod tree;
 
 pub use icons::get_icon;
@@ -12,4 +13,5 @@ pub use preview::{
     TextPreview,
 };
 pub use status::{render_input_popup, render_status_bar};
+pub use terminal::{detect_best_protocol, detect_terminal, ImageProtocol, TerminalKind};
 pub use tree::{render_tree, visible_height};
