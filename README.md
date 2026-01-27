@@ -14,7 +14,7 @@ English | [日本語](README_ja.md)
 - Multi-select support for batch operations
 - **Preview panel** with support for:
   - Text files (syntax highlighting by extension)
-  - Images (half-block rendering)
+  - Images (Kitty/iTerm2/Sixel protocols with auto-detection)
   - Directories (file count, size statistics)
   - Binary files (hex dump view)
 - Copy/cut/paste with internal clipboard
@@ -40,6 +40,26 @@ When inside a git repository, files are color-coded by their status:
 
 The current branch name is displayed in the status bar.
 
+## Image Preview
+
+FileView automatically detects your terminal and selects the optimal image protocol:
+
+| Terminal | Protocol | Quality |
+|----------|----------|---------|
+| Kitty | Kitty Graphics | Highest |
+| Ghostty | Kitty Graphics | Highest |
+| Konsole | Kitty Graphics | Highest |
+| iTerm2 | iTerm2 Inline | Highest |
+| WezTerm | iTerm2 Inline | Highest |
+| Warp | iTerm2 Inline | Highest |
+| Foot | Sixel | Good |
+| Windows Terminal | Sixel | Good |
+| VS Code | Halfblocks | Basic |
+| Alacritty | Halfblocks | Basic |
+| Other | Auto-detect | Varies |
+
+Override with `FILEVIEW_IMAGE_PROTOCOL` environment variable (see below).
+
 ## Installation
 
 ### From crates.io (Recommended)
@@ -48,12 +68,31 @@ The current branch name is displayed in the status bar.
 cargo install fileview
 ```
 
+### With Chafa support (optional)
+
+For better image quality on terminals without native image protocol support:
+
+```bash
+# Install libchafa first
+# macOS:
+brew install chafa
+
+# Ubuntu/Debian:
+sudo apt install libchafa-dev
+
+# Then install with chafa feature
+cargo install fileview --features chafa
+```
+
 ### From source
 
 ```bash
 git clone https://github.com/Hiro-Chiba/fileview.git
 cd fileview
 cargo install --path .
+
+# Or with chafa:
+cargo install --path . --features chafa
 ```
 
 ### Requirements
@@ -177,6 +216,7 @@ When the side preview panel is open, press `Tab` to switch focus:
 | Variable | Description |
 |----------|-------------|
 | `FILEVIEW_ICONS=0` | Disable icons by default |
+| `FILEVIEW_IMAGE_PROTOCOL` | Force image protocol: `auto`, `halfblocks`, `chafa`, `sixel`, `kitty`, `iterm2` |
 
 ### Placeholders for `--on-select`
 
