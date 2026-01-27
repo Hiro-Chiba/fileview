@@ -139,21 +139,21 @@
 **優先度:** 高
 **リリース:** v0.2.0
 
-- [ ] git/status.rs
+- [x] git/status.rs
   - Gitリポジトリ検出
   - ファイル状態取得（Modified, Added, Untracked, Deleted, Renamed, Ignored）
   - ディレクトリ状態の伝播（子ファイルの状態を親に反映）
   - キャッシュ機構（パフォーマンス最適化）
-- [ ] render/tree.rs 拡張
+- [x] render/tree.rs 拡張
   - 状態別カラー表示
     - Modified: Yellow
     - Added/Untracked: Green
     - Deleted: Red
     - Renamed: Cyan
     - Ignored: DarkGray
-- [ ] render/status.rs 拡張
+- [x] render/status.rs 拡張
   - 現在のブランチ名表示
-- [ ] PR: `feat(git): Add git status display`
+- [x] PR: `feat(git): Add git status display`
 
 **実装詳細:**
 ```rust
@@ -235,8 +235,8 @@ Total Size:  1.2 MB
 | 6. Handler | 3 | 3 |
 | 7. Integrate | 2 | 2 |
 | 8. Main & Polish | 3 | 3 |
-| 9. Enhanced Features | 3 | 0 |
-| **Total** | **23** | **20** |
+| 9. Enhanced Features | 3 | 1 |
+| **Total** | **23** | **21** |
 
 ---
 

@@ -393,6 +393,7 @@ fn run_app(
                                     let _ = file_ops::copy_to(src, &dest);
                                 }
                                 navigator.reload()?;
+                                state.refresh_git_status();
                                 state.set_message(format!("Dropped {} file(s)", paths.len()));
                             }
                         }
@@ -416,6 +417,7 @@ fn run_app(
                                 let _ = file_ops::copy_to(src, &dest);
                             }
                             navigator.reload()?;
+                            state.refresh_git_status();
                             state.set_message(format!("Dropped {} file(s)", paths.len()));
                         }
                     }
@@ -589,6 +591,7 @@ fn handle_action(
                         }
                     }
                     navigator.reload()?;
+                    state.refresh_git_status();
                 }
             }
         }
@@ -612,6 +615,7 @@ fn handle_action(
                 state.selected_paths.clear();
                 state.mode = ViewMode::Browse;
                 navigator.reload()?;
+                state.refresh_git_status();
             }
         }
         KeyAction::StartRename => {
@@ -666,6 +670,7 @@ fn handle_action(
         }
         KeyAction::Refresh => {
             navigator.reload()?;
+            state.refresh_git_status();
             state.set_message("Refreshed");
         }
         KeyAction::ToggleHidden => {
@@ -725,6 +730,7 @@ fn handle_action(
                                 .unwrap_or_else(|| state.root.clone());
                             file_ops::create_file(&parent, &value)?;
                             navigator.reload()?;
+                            state.refresh_git_status();
                             state.set_message(format!("Created file: {}", value));
                         }
                         InputPurpose::CreateDir => {
@@ -740,11 +746,13 @@ fn handle_action(
                                 .unwrap_or_else(|| state.root.clone());
                             file_ops::create_dir(&parent, &value)?;
                             navigator.reload()?;
+                            state.refresh_git_status();
                             state.set_message(format!("Created directory: {}", value));
                         }
                         InputPurpose::Rename { original } => {
                             file_ops::rename(original, &value)?;
                             navigator.reload()?;
+                            state.refresh_git_status();
                             state.set_message(format!("Renamed to: {}", value));
                         }
                     }

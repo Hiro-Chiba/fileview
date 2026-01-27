@@ -9,6 +9,7 @@ use ratatui::{
 };
 
 use crate::core::AppState;
+use crate::git::FileStatus;
 use crate::tree::TreeEntry;
 
 /// Render the file tree widget
@@ -58,14 +59,40 @@ fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'
 
     let mark_indicator = if is_selected { "*" } else { " " };
 
+    // Get git status color
+    let git_status = state
+        .git_status
+        .as_ref()
+        .map(|g| g.get_status(&entry.path))
+        .unwrap_or(FileStatus::Clean);
+
     let mut style = Style::default();
-    if is_focused {
-        style = style.bg(Color::DarkGray).add_modifier(Modifier::BOLD);
-    }
+
+    // Apply git status color first
+    style = match git_status {
+        FileStatus::Modified => style.fg(Color::Yellow),
+        FileStatus::Added | FileStatus::Untracked => style.fg(Color::Green),
+        FileStatus::Deleted => style.fg(Color::Red),
+        FileStatus::Renamed => style.fg(Color::Cyan),
+        FileStatus::Ignored => style.fg(Color::DarkGray),
+        FileStatus::Conflict => style.fg(Color::Magenta),
+        FileStatus::Clean => {
+            if entry.is_dir {
+                style.fg(Color::Blue)
+            } else {
+                style
+            }
+        }
+    };
+
+    // Override with cut style if applicable
     if is_cut {
         style = style.fg(Color::DarkGray);
-    } else if entry.is_dir {
-        style = style.fg(Color::Blue);
+    }
+
+    // Apply focus style
+    if is_focused {
+        style = style.bg(Color::DarkGray).add_modifier(Modifier::BOLD);
     }
 
     let line = Line::from(vec![
