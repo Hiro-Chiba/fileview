@@ -252,27 +252,13 @@ pub fn render_image_preview_unified(
 
     let active_protocol = get_active_protocol(&config);
 
-    // For escape sequence protocols, we need special handling
-    // Currently, we fall back to HalfBlock for widget rendering
-    // TODO: Implement direct escape sequence output
-    let lines = match active_protocol {
-        ImageProtocol::HalfBlock => {
-            let rgb = image.to_rgb8();
-            let width = rgb.width();
-            let height = rgb.height();
-            let pixels: Vec<(u8, u8, u8)> = rgb.pixels().map(|p| (p[0], p[1], p[2])).collect();
-            render_halfblock(&pixels, width, height, img_width, img_height)
-        }
-        _ => {
-            // For now, use HalfBlock for ratatui widget rendering
-            // The escape sequence protocols will be used when outputting directly
-            let rgb = image.to_rgb8();
-            let width = rgb.width();
-            let height = rgb.height();
-            let pixels: Vec<(u8, u8, u8)> = rgb.pixels().map(|p| (p[0], p[1], p[2])).collect();
-            render_halfblock(&pixels, width, height, img_width, img_height)
-        }
-    };
+    // For escape sequence protocols (Sixel/Kitty/iTerm2), we need special handling.
+    // Currently, we use HalfBlock for ratatui widget rendering.
+    // The escape sequence protocols are available via render_image() for direct output.
+    let rgb = image.to_rgb8();
+    let (width, height) = (rgb.width(), rgb.height());
+    let pixels: Vec<(u8, u8, u8)> = rgb.pixels().map(|p| (p[0], p[1], p[2])).collect();
+    let lines = render_halfblock(&pixels, width, height, img_width, img_height);
 
     let border_style = if focused {
         Style::default().fg(Color::Cyan)
@@ -280,15 +266,15 @@ pub fn render_image_preview_unified(
         Style::default()
     };
 
-    let (width, height) = image.dimensions();
-    let protocol_str = format!("{}", active_protocol);
+    let (img_dim_w, img_dim_h) = image.dimensions();
+    let protocol_str = active_protocol.to_string();
 
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
             .title(format!(
                 " {} ({}x{}) [{}] ",
-                title, width, height, protocol_str
+                title, img_dim_w, img_dim_h, protocol_str
             ))
             .border_style(border_style),
     );
