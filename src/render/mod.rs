@@ -11,5 +11,14 @@ pub use preview::{
     render_image_preview, render_text_preview, DirectoryInfo, HexPreview, ImagePreview,
     TextPreview,
 };
+pub use ratatui_image::picker::Picker;
 pub use status::{render_input_popup, render_status_bar};
 pub use tree::{render_tree, visible_height};
+
+/// Create an image picker for protocol detection
+///
+/// This should be called BEFORE entering alternate screen mode.
+/// Returns None if terminal capability detection fails.
+pub fn create_image_picker() -> Option<Picker> {
+    Picker::from_query_stdio().ok()
+}

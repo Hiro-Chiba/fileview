@@ -238,8 +238,8 @@ Total Size:  1.2 MB
 | 12. Test Improvements | 6 | 6 |
 | 13. E2E / Behavioral Tests | 4 | 3 |
 | 14. Side Preview Focus | 5 | 5 |
-| 15. Image Protocol Support | 5 | 2 |
-| **Total** | **49** | **45** |
+| 15. Image Protocol Support | 5 | 3 |
+| **Total** | **49** | **46** |
 
 **注意:** Phase 15.8（ratatui-image統合）が完了するまでv0.8.0のリリースは行わない。
 自作の画像プロトコル実装は削除し、ratatui-imageに一本化する。
@@ -748,12 +748,13 @@ ratauiとの画像プロトコル統合を既に解決していることが判�
   - `base64` 依存を削除（ratatui-imageが内包）
   - PR #46: `refactor: Replace custom image protocols with ratatui-image`
 
-- [ ] 15.8.3 画像プレビューの置き換え
+- [x] 15.8.3 画像プレビューの置き換え
   - `render_image_preview()` をratatui-image版に書き換え
   - `Picker` でプロトコル自動検出
   - `StatefulImage` ウィジェットでレンダリング
   - フルスクリーン・サイドプレビュー両対応
-  - PR: `feat: Integrate ratatui-image for high-quality preview`
+  - ratatui 0.28 → 0.30, crossterm 0.28 → 0.29 にアップグレード
+  - PR #47: `feat: Integrate ratatui-image for high-quality preview`
 
 - [ ] 15.8.4 テスト・動作確認
   - Ghostty, Kitty, iTerm2, Terminal.appで実機テスト
