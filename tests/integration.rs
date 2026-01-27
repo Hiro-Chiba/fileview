@@ -557,6 +557,184 @@ mod key_handler_tests {
             KeyAction::ClearMarks
         ));
     }
+
+    // Focus-aware key handling tests
+
+    #[test]
+    fn test_tab_toggles_focus_when_preview_visible() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = true;
+
+        // Tab should toggle focus when preview is visible
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Tab)),
+            KeyAction::ToggleFocus
+        ));
+    }
+
+    #[test]
+    fn test_tab_toggles_expand_when_preview_not_visible() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = false;
+
+        // Tab should toggle expand when preview is not visible
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Tab)),
+            KeyAction::ToggleExpand
+        ));
+    }
+
+    #[test]
+    fn test_navigation_keys_scroll_preview_when_focus_on_preview() {
+        use fileview::core::FocusTarget;
+
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Preview;
+
+        // j should scroll preview
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('j'))),
+            KeyAction::PreviewScrollDown
+        ));
+
+        // k should scroll preview
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('k'))),
+            KeyAction::PreviewScrollUp
+        ));
+
+        // Down arrow should scroll preview
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Down)),
+            KeyAction::PreviewScrollDown
+        ));
+
+        // Up arrow should scroll preview
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Up)),
+            KeyAction::PreviewScrollUp
+        ));
+    }
+
+    #[test]
+    fn test_navigation_keys_move_files_when_focus_on_tree() {
+        use fileview::core::FocusTarget;
+
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Tree;
+
+        // j should move down
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('j'))),
+            KeyAction::MoveDown
+        ));
+
+        // k should move up
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('k'))),
+            KeyAction::MoveUp
+        ));
+    }
+
+    #[test]
+    fn test_escape_returns_focus_to_tree_when_on_preview() {
+        use fileview::core::FocusTarget;
+
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Preview;
+
+        // Esc should toggle focus back to tree
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Esc)),
+            KeyAction::ToggleFocus
+        ));
+    }
+
+    #[test]
+    fn test_page_scroll_in_preview_focus() {
+        use fileview::core::FocusTarget;
+
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Preview;
+
+        // PageDown should page scroll
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::PageDown)),
+            KeyAction::PreviewPageDown
+        ));
+
+        // PageUp should page scroll
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::PageUp)),
+            KeyAction::PreviewPageUp
+        ));
+
+        // b should page up
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('b'))),
+            KeyAction::PreviewPageUp
+        ));
+
+        // f should page down
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('f'))),
+            KeyAction::PreviewPageDown
+        ));
+    }
+
+    #[test]
+    fn test_g_and_shift_g_in_preview_focus() {
+        use fileview::core::FocusTarget;
+
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Preview;
+
+        // g should go to top
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('g'))),
+            KeyAction::PreviewToTop
+        ));
+
+        // G should go to bottom
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('G'))),
+            KeyAction::PreviewToBottom
+        ));
+    }
+
+    #[test]
+    fn test_g_and_shift_g_in_tree_focus() {
+        use fileview::core::FocusTarget;
+
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Tree;
+
+        // g should go to top of file list
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('g'))),
+            KeyAction::MoveToTop
+        ));
+
+        // G should go to bottom of file list
+        assert!(matches!(
+            handle_key_event(&state, key_event(KeyCode::Char('G'))),
+            KeyAction::MoveToBottom
+        ));
+    }
 }
 
 // =============================================================================
