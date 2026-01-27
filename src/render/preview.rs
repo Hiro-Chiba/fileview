@@ -175,7 +175,13 @@ fn format_size(bytes: u64) -> String {
 }
 
 /// Render text preview
-pub fn render_text_preview(frame: &mut Frame, preview: &TextPreview, area: Rect, title: &str) {
+pub fn render_text_preview(
+    frame: &mut Frame,
+    preview: &TextPreview,
+    area: Rect,
+    title: &str,
+    focused: bool,
+) {
     let visible_height = area.height.saturating_sub(2) as usize;
 
     let lines: Vec<Line> = preview
@@ -196,33 +202,53 @@ pub fn render_text_preview(frame: &mut Frame, preview: &TextPreview, area: Rect,
         })
         .collect();
 
+    let border_style = if focused {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default()
+    };
+
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(format!(" {} ", title)),
+            .title(format!(" {} ", title))
+            .border_style(border_style),
     );
 
     frame.render_widget(widget, area);
 }
 
 /// Render image preview using half-block characters
-pub fn render_image_preview(frame: &mut Frame, img: &ImagePreview, area: Rect, title: &str) {
+pub fn render_image_preview(
+    frame: &mut Frame,
+    img: &ImagePreview,
+    area: Rect,
+    title: &str,
+    focused: bool,
+) {
     let img_width = area.width.saturating_sub(2) as u32;
     let img_height = (area.height.saturating_sub(2) * 2) as u32;
 
     let lines = render_image_to_lines(img, img_width, img_height);
 
+    let border_style = if focused {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default()
+    };
+
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(format!(" {} ({}x{}) ", title, img.width, img.height)),
+            .title(format!(" {} ({}x{}) ", title, img.width, img.height))
+            .border_style(border_style),
     );
 
     frame.render_widget(widget, area);
 }
 
 /// Render directory info preview
-pub fn render_directory_info(frame: &mut Frame, info: &DirectoryInfo, area: Rect) {
+pub fn render_directory_info(frame: &mut Frame, info: &DirectoryInfo, area: Rect, focused: bool) {
     let separator = "─".repeat(area.width.saturating_sub(4) as usize);
 
     let lines = vec![
@@ -271,10 +297,17 @@ pub fn render_directory_info(frame: &mut Frame, info: &DirectoryInfo, area: Rect
         ]),
     ];
 
+    let border_style = if focused {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default()
+    };
+
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" Directory Info "),
+            .title(" Directory Info ")
+            .border_style(border_style),
     );
 
     frame.render_widget(widget, area);
@@ -316,7 +349,13 @@ impl HexPreview {
 }
 
 /// Render hex preview (xxd-style)
-pub fn render_hex_preview(frame: &mut Frame, preview: &HexPreview, area: Rect, title: &str) {
+pub fn render_hex_preview(
+    frame: &mut Frame,
+    preview: &HexPreview,
+    area: Rect,
+    title: &str,
+    focused: bool,
+) {
     let visible_height = area.height.saturating_sub(2) as usize;
 
     let lines: Vec<Line> = preview
@@ -331,11 +370,18 @@ pub fn render_hex_preview(frame: &mut Frame, preview: &HexPreview, area: Rect, t
         })
         .collect();
 
+    let border_style = if focused {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default()
+    };
+
     let size_str = format_size(preview.size);
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(format!(" {} ({}) ", title, size_str)),
+            .title(format!(" {} ({}) ", title, size_str))
+            .border_style(border_style),
     );
 
     frame.render_widget(widget, area);
