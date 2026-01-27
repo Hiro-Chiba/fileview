@@ -2041,9 +2041,7 @@ mod drag_and_drop_tests {
 
 mod image_preview_tests {
     use super::*;
-    use fileview::render::{
-        create_image_picker, render_image_preview, ImagePreview, Picker,
-    };
+    use fileview::render::{create_image_picker, render_image_preview, ImagePreview, Picker};
     use std::fs;
 
     // =========================================================================
@@ -2053,10 +2051,9 @@ mod image_preview_tests {
     /// Create a test image with specified dimensions and format
     fn create_test_image(path: &std::path::Path, width: u32, height: u32) {
         use image::{ImageBuffer, Rgb};
-        let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
-            ImageBuffer::from_fn(width, height, |x, y| {
-                Rgb([(x % 256) as u8, (y % 256) as u8, ((x + y) % 256) as u8])
-            });
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_fn(width, height, |x, y| {
+            Rgb([(x % 256) as u8, (y % 256) as u8, ((x + y) % 256) as u8])
+        });
         img.save(path).unwrap();
     }
 
@@ -2113,8 +2110,13 @@ mod image_preview_tests {
     #[test]
     fn test_image_detection_all_supported_formats() {
         let supported = [
-            "image.png", "image.jpg", "image.jpeg", "image.gif",
-            "image.webp", "image.bmp", "image.ico",
+            "image.png",
+            "image.jpg",
+            "image.jpeg",
+            "image.gif",
+            "image.webp",
+            "image.bmp",
+            "image.ico",
         ];
 
         for filename in supported {
@@ -2201,13 +2203,13 @@ mod image_preview_tests {
 
     #[test]
     fn test_image_detection_similar_but_invalid_extensions() {
-        assert!(!is_image_file(&PathBuf::from("file.pn")));    // Not .png
-        assert!(!is_image_file(&PathBuf::from("file.jp")));    // Not .jpg
-        assert!(!is_image_file(&PathBuf::from("file.pngg")));  // Extra char
-        assert!(!is_image_file(&PathBuf::from("file.jpgg")));  // Extra char
-        assert!(!is_image_file(&PathBuf::from("file.gi")));    // Not .gif
-        assert!(!is_image_file(&PathBuf::from("file.web")));   // Not .webp
-        assert!(!is_image_file(&PathBuf::from("filepng")));    // No dot
+        assert!(!is_image_file(&PathBuf::from("file.pn"))); // Not .png
+        assert!(!is_image_file(&PathBuf::from("file.jp"))); // Not .jpg
+        assert!(!is_image_file(&PathBuf::from("file.pngg"))); // Extra char
+        assert!(!is_image_file(&PathBuf::from("file.jpgg"))); // Extra char
+        assert!(!is_image_file(&PathBuf::from("file.gi"))); // Not .gif
+        assert!(!is_image_file(&PathBuf::from("file.web"))); // Not .webp
+        assert!(!is_image_file(&PathBuf::from("filepng"))); // No dot
     }
 
     #[test]
@@ -2325,7 +2327,11 @@ mod image_preview_tests {
         create_test_png_rgba(&path);
 
         let result = image::open(&path);
-        assert!(result.is_ok(), "Failed to open RGBA PNG: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to open RGBA PNG: {:?}",
+            result.err()
+        );
 
         let img = result.unwrap();
         assert_eq!(img.width(), 2);
@@ -2350,16 +2356,8 @@ mod image_preview_tests {
             let path = temp.path().join(filename);
             creator(&path);
 
-            assert!(
-                image::open(&path).is_ok(),
-                "Failed to open {}",
-                filename
-            );
-            assert!(
-                is_image_file(&path),
-                "{} not detected as image",
-                filename
-            );
+            assert!(image::open(&path).is_ok(), "Failed to open {}", filename);
+            assert!(is_image_file(&path), "{} not detected as image", filename);
         }
     }
 
@@ -2435,7 +2433,9 @@ mod image_preview_tests {
         let err_string = err.to_string();
         // Verify error indicates file not found
         assert!(
-            err_string.contains("No such file") || err_string.contains("not found") || err_string.contains("IoError"),
+            err_string.contains("No such file")
+                || err_string.contains("not found")
+                || err_string.contains("IoError"),
             "Unexpected error message: {}",
             err_string
         );
@@ -2453,11 +2453,11 @@ mod image_preview_tests {
         // Verify error is related to image format/decoding (various possible messages)
         let err_str = result.unwrap_err().to_string().to_lowercase();
         assert!(
-            err_str.contains("format") ||
-            err_str.contains("decode") ||
-            err_str.contains("invalid") ||
-            err_str.contains("png") ||
-            err_str.contains("signature"),
+            err_str.contains("format")
+                || err_str.contains("decode")
+                || err_str.contains("invalid")
+                || err_str.contains("png")
+                || err_str.contains("signature"),
             "Expected format/decode error, got: {}",
             err_str
         );
@@ -2499,12 +2499,21 @@ mod image_preview_tests {
 
         // image::open uses extension to determine format, so it may fail
         // But we can use ImageReader with guessed format to read by magic bytes
-        let reader = image::ImageReader::open(&txt_path).unwrap().with_guessed_format().unwrap();
+        let reader = image::ImageReader::open(&txt_path)
+            .unwrap()
+            .with_guessed_format()
+            .unwrap();
         let result = reader.decode();
-        assert!(result.is_ok(), "ImageReader with guessed format should work");
+        assert!(
+            result.is_ok(),
+            "ImageReader with guessed format should work"
+        );
 
         // Our is_image_file checks extension only
-        assert!(!is_image_file(&txt_path), "is_image_file should check extension");
+        assert!(
+            !is_image_file(&txt_path),
+            "is_image_file should check extension"
+        );
     }
 
     // =========================================================================
@@ -2555,11 +2564,15 @@ mod image_preview_tests {
         let path = temp.path().join("test.png");
         create_test_png(&path);
 
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
-        assert!(result.is_ok(), "ImagePreview::load failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "ImagePreview::load failed: {:?}",
+            result.err()
+        );
 
         let preview = result.unwrap();
         assert_eq!(preview.width, 1);
@@ -2573,8 +2586,8 @@ mod image_preview_tests {
         let path = temp.path().join("test.jpg");
         create_test_jpeg(&path);
 
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for JPEG");
@@ -2587,8 +2600,8 @@ mod image_preview_tests {
         let path = temp.path().join("test.gif");
         create_test_gif(&path);
 
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for GIF");
@@ -2601,8 +2614,8 @@ mod image_preview_tests {
         let path = temp.path().join("test.webp");
         create_test_webp(&path);
 
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for WebP");
@@ -2615,8 +2628,8 @@ mod image_preview_tests {
         let path = temp.path().join("test.bmp");
         create_test_bmp(&path);
 
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for BMP");
@@ -2629,8 +2642,8 @@ mod image_preview_tests {
         let path = temp.path().join("large.png");
         create_test_image(&path, 2000, 2000);
 
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for large image");
@@ -2643,8 +2656,8 @@ mod image_preview_tests {
     #[test]
     #[ignore = "Requires terminal with image protocol support"]
     fn test_image_preview_load_nonexistent_error() {
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&PathBuf::from("/nonexistent/image.png"), &mut picker);
         assert!(result.is_err());
@@ -2657,8 +2670,8 @@ mod image_preview_tests {
         let path = temp.path().join("invalid.png");
         fs::write(&path, "not an image").unwrap();
 
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_err(), "Should fail for invalid image");
@@ -2677,8 +2690,8 @@ mod image_preview_tests {
         let path = temp.path().join("test.png");
         create_test_png(&path);
 
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let mut preview = ImagePreview::load(&path, &mut picker).unwrap();
 
@@ -2705,8 +2718,8 @@ mod image_preview_tests {
         let path = temp.path().join("test.png");
         create_test_png(&path);
 
-        let mut picker = create_image_picker()
-            .expect("This test requires a terminal with image support");
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let mut preview = ImagePreview::load(&path, &mut picker).unwrap();
 
@@ -2806,7 +2819,8 @@ mod image_preview_tests {
     #[test]
     fn test_render_module_exports() {
         // Verify public API exports
-        let _: fn(&std::path::Path, &mut Picker) -> anyhow::Result<ImagePreview> = ImagePreview::load;
+        let _: fn(&std::path::Path, &mut Picker) -> anyhow::Result<ImagePreview> =
+            ImagePreview::load;
         let _: fn() -> Option<Picker> = create_image_picker;
         let _: fn(&std::path::Path) -> bool = is_image_file;
         let _: fn(&std::path::Path) -> bool = is_text_file;
@@ -2850,13 +2864,13 @@ mod image_preview_tests {
         let temp = TempDir::new().unwrap();
 
         let ratios = [
-            (1, 1),     // Square
-            (16, 9),    // Widescreen
-            (9, 16),    // Portrait
-            (4, 3),     // Classic
-            (21, 9),    // Ultrawide
-            (1, 100),   // Very tall
-            (100, 1),   // Very wide
+            (1, 1),   // Square
+            (16, 9),  // Widescreen
+            (9, 16),  // Portrait
+            (4, 3),   // Classic
+            (21, 9),  // Ultrawide
+            (1, 100), // Very tall
+            (100, 1), // Very wide
         ];
 
         for (w, h) in ratios {
