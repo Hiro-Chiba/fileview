@@ -3411,3 +3411,233 @@ mod terminal_detection_tests {
         }
     }
 }
+
+// =============================================================================
+// Shell Integration Tests (Phase 17.1)
+// =============================================================================
+
+mod shell_integration_tests {
+    use super::*;
+    use fileview::core::FocusTarget;
+    use std::fs;
+
+    // =========================================================================
+    // KeyAction Tests
+    // =========================================================================
+
+    #[test]
+    fn test_quit_and_cd_action_exists() {
+        // Verify QuitAndCd action variant exists
+        let action = KeyAction::QuitAndCd;
+        assert!(matches!(action, KeyAction::QuitAndCd));
+    }
+
+    #[test]
+    fn test_uppercase_q_triggers_quit_and_cd() {
+        let temp = TempDir::new().unwrap();
+        let state = AppState::new(temp.path().to_path_buf());
+
+        // Q (uppercase) should trigger QuitAndCd
+        let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::QuitAndCd),
+            "Q should trigger QuitAndCd, got {:?}",
+            action
+        );
+    }
+
+    #[test]
+    fn test_lowercase_q_triggers_quit_not_cd() {
+        let temp = TempDir::new().unwrap();
+        let state = AppState::new(temp.path().to_path_buf());
+
+        // q (lowercase) should trigger regular Quit, not QuitAndCd
+        let key = key_event(KeyCode::Char('q'));
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::Quit),
+            "q should trigger Quit, got {:?}",
+            action
+        );
+    }
+
+    // =========================================================================
+    // AppState Tests
+    // =========================================================================
+
+    #[test]
+    fn test_choosedir_path_initial_none() {
+        let temp = TempDir::new().unwrap();
+        let state = AppState::new(temp.path().to_path_buf());
+
+        assert!(
+            state.choosedir_path.is_none(),
+            "choosedir_path should be None initially"
+        );
+    }
+
+    #[test]
+    fn test_choosedir_path_can_be_set() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        let test_path = PathBuf::from("/some/test/path");
+        state.choosedir_path = Some(test_path.clone());
+
+        assert_eq!(state.choosedir_path, Some(test_path));
+    }
+
+    // =========================================================================
+    // Pick Mode vs Shell Integration
+    // =========================================================================
+
+    #[test]
+    fn test_q_in_pick_mode_cancels_not_quits() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.pick_mode = true;
+
+        let key = key_event(KeyCode::Char('q'));
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::Cancel),
+            "q in pick mode should Cancel, got {:?}",
+            action
+        );
+    }
+
+    #[test]
+    fn test_shift_q_in_pick_mode_still_quits_and_cd() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.pick_mode = true;
+
+        // Q should still trigger QuitAndCd even in pick mode
+        let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::QuitAndCd),
+            "Q should trigger QuitAndCd even in pick mode, got {:?}",
+            action
+        );
+    }
+
+    // =========================================================================
+    // Focus Target Tests
+    // =========================================================================
+
+    #[test]
+    fn test_quit_and_cd_works_when_preview_focused() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Preview;
+
+        let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::QuitAndCd),
+            "Q should trigger QuitAndCd even when preview is focused"
+        );
+    }
+
+    // =========================================================================
+    // Directory Path Tests
+    // =========================================================================
+
+    #[test]
+    fn test_choosedir_path_stores_directory() {
+        let temp = TempDir::new().unwrap();
+        let subdir = temp.path().join("subdir");
+        fs::create_dir(&subdir).unwrap();
+
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.choosedir_path = Some(subdir.clone());
+
+        assert_eq!(state.choosedir_path.as_ref().unwrap(), &subdir);
+        assert!(state.choosedir_path.as_ref().unwrap().is_dir());
+    }
+
+    #[test]
+    fn test_choosedir_path_can_store_file_parent() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.path().join("test.txt");
+        fs::write(&file_path, "test").unwrap();
+
+        let mut state = AppState::new(temp.path().to_path_buf());
+        // Simulate storing the parent directory of a file
+        let parent = file_path.parent().unwrap().to_path_buf();
+        state.choosedir_path = Some(parent.clone());
+
+        assert_eq!(state.choosedir_path.as_ref().unwrap(), &parent);
+    }
+
+    // =========================================================================
+    // Integration with Other Modes
+    // =========================================================================
+
+    #[test]
+    fn test_quit_and_cd_not_triggered_in_input_mode() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.mode = ViewMode::Input {
+            purpose: InputPurpose::Rename {
+                original: PathBuf::from("test"),
+            },
+            buffer: String::new(),
+            cursor: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        // In input mode, Q should not trigger QuitAndCd
+        assert!(
+            !matches!(action, KeyAction::QuitAndCd),
+            "Q should not trigger QuitAndCd in input mode"
+        );
+    }
+
+    #[test]
+    fn test_quit_and_cd_not_triggered_in_confirm_mode() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.mode = ViewMode::Confirm {
+            action: PendingAction::Delete {
+                targets: vec![PathBuf::from("test")],
+            },
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        // In confirm mode, Q should not trigger QuitAndCd
+        assert!(
+            !matches!(action, KeyAction::QuitAndCd),
+            "Q should not trigger QuitAndCd in confirm mode"
+        );
+    }
+
+    // =========================================================================
+    // Determinism Tests
+    // =========================================================================
+
+    #[test]
+    fn test_quit_and_cd_deterministic() {
+        let temp = TempDir::new().unwrap();
+        let state = AppState::new(temp.path().to_path_buf());
+
+        // Multiple calls should produce same result
+        for _ in 0..10 {
+            let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
+            let action = handle_key_event(&state, key);
+            assert!(matches!(action, KeyAction::QuitAndCd));
+        }
+    }
+}

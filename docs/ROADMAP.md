@@ -240,8 +240,8 @@ Total Size:  1.2 MB
 | 14. Side Preview Focus | 5 | 5 |
 | 15. Image Protocol Support | 5 | 4 |
 | 16. Enhanced Image Preview | 5 | 5 |
-| 17. Zero-Config UX | 5 | 0 |
-| **Total** | **59** | **52** |
+| 17. Zero-Config UX | 6 | 5 |
+| **Total** | **60** | **57** |
 
 **注意:** Phase 15.8（ratatui-image統合）が完了するまでv0.8.0のリリースは行わない。
 自作の画像プロトコル実装は削除し、ratatui-imageに一本化する。
@@ -1060,24 +1060,23 @@ fileview = nano（シンプル、設定不要、すぐ使える）
 
 fileviewを終了時に、選択したディレクトリにcdできる機能。
 
-- [ ] `--print-cwd` オプション追加
+- [x] `--choosedir` オプション追加
   - 終了時に現在のディレクトリパスを標準出力
-- [ ] `--last-dir FILE` オプション追加
-  - 終了時に現在のディレクトリパスをファイルに書き込み
-- [ ] シェル関数のサンプル作成
+- [x] `Q` キーバインド追加
+  - 現在のディレクトリを記憶して終了
+- [x] シェル関数のサンプル作成
   ```bash
   # .bashrc / .zshrc に追加
   fvcd() {
-    local tmp=$(mktemp)
-    fv --last-dir "$tmp" "$@"
-    if [ -f "$tmp" ]; then
-      local dir=$(cat "$tmp")
-      rm -f "$tmp"
-      [ -d "$dir" ] && cd "$dir"
+    local dir
+    dir=$(fv --choosedir "$@")
+    if [ -n "$dir" ] && [ -d "$dir" ]; then
+      cd "$dir"
     fi
   }
   ```
-- [ ] README にシェル連携セクション追加
+- [x] README にシェル連携セクション追加
+- [x] 統合テスト追加（13件）
 - [ ] PR: `feat: Add shell integration (cd on exit)`
 
 ### 17.2 組み込みFuzzy Finder

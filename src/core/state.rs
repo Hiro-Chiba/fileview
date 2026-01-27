@@ -37,6 +37,8 @@ pub struct AppState {
     pub git_status: Option<GitStatus>,
     /// Whether to show Nerd Fonts icons
     pub icons_enabled: bool,
+    /// Directory path to cd on exit (shell integration)
+    pub choosedir_path: Option<PathBuf>,
 }
 
 impl AppState {
@@ -64,6 +66,7 @@ impl AppState {
             clipboard: None,
             git_status,
             icons_enabled,
+            choosedir_path: None,
         }
     }
 
