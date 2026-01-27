@@ -45,6 +45,8 @@ struct Config {
     output_format: OutputFormat,
     callback: Option<Callback>,
     icons_enabled: Option<bool>,
+    /// Shell integration: output directory path on exit (for cd)
+    choosedir_mode: bool,
 }
 
 impl Config {
@@ -55,10 +57,12 @@ impl Config {
         let mut output_format = OutputFormat::default();
         let mut callback: Option<Callback> = None;
         let mut icons_enabled: Option<bool> = None;
+        let mut choosedir_mode = false;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--pick" | "-p" => pick_mode = true,
+                "--choosedir" => choosedir_mode = true,
                 "--icons" | "-i" => icons_enabled = Some(true),
                 "--no-icons" => icons_enabled = Some(false),
                 "--format" | "-f" => {
@@ -101,6 +105,7 @@ impl Config {
             output_format,
             callback,
             icons_enabled,
+            choosedir_mode,
         })
     }
 }
@@ -116,6 +121,7 @@ OPTIONS:
     -p, --pick          Pick mode: output selected path(s) to stdout
     -f, --format FMT    Output format for pick mode: lines, null, json
     --on-select CMD     Run command when file is selected (use {{path}}, {{name}}, etc.)
+    --choosedir         Output directory path on exit (press Q to cd there)
     -i, --icons         Enable Nerd Fonts icons (default)
     --no-icons          Disable icons
     -h, --help          Show this help message
@@ -151,6 +157,7 @@ KEYBINDINGS:
     c           Copy path to system clipboard
     C           Copy filename to system clipboard
     q/Esc       Quit (or cancel in pick mode)
+    Q           Quit and cd to current directory (with --choosedir)
     ?           Show help
 
 PLACEHOLDERS for --on-select:
@@ -194,6 +201,7 @@ fn run() -> anyhow::Result<i32> {
     let mut terminal = Terminal::new(backend)?;
 
     // Run the app
+    let choosedir_mode = config.choosedir_mode;
     let result = run_app(&mut terminal, config, &mut image_picker);
 
     // Restore terminal
@@ -206,7 +214,18 @@ fn run() -> anyhow::Result<i32> {
         cursor::Show
     )?;
 
-    result
+    // Handle result and output choosedir path if requested
+    match result {
+        Ok(app_result) => {
+            if choosedir_mode {
+                if let Some(path) = app_result.choosedir_path {
+                    println!("{}", path.display());
+                }
+            }
+            Ok(app_result.exit_code)
+        }
+        Err(e) => Err(e),
+    }
 }
 
 /// Handle file drop operation - copy files to target directory.
@@ -243,11 +262,17 @@ fn handle_file_drop(
     Ok(success_count)
 }
 
+/// Result of running the app
+struct AppResult {
+    exit_code: i32,
+    choosedir_path: Option<PathBuf>,
+}
+
 fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     config: Config,
     image_picker: &mut Option<Picker>,
-) -> anyhow::Result<i32> {
+) -> anyhow::Result<AppResult> {
     let mut state = AppState::new(config.root.clone());
     state.pick_mode = config.pick_mode;
     if let Some(icons) = config.icons_enabled {
@@ -520,7 +545,12 @@ fn run_app(
                         &mut text_preview,
                     )? {
                         ActionResult::Continue => {}
-                        ActionResult::Quit(code) => return Ok(code),
+                        ActionResult::Quit(code) => {
+                            return Ok(AppResult {
+                                exit_code: code,
+                                choosedir_path: state.choosedir_path.clone(),
+                            })
+                        }
                     }
                 }
                 Event::Mouse(mouse) => {
@@ -632,7 +662,10 @@ fn run_app(
 
         // Check quit flag
         if state.should_quit {
-            return Ok(exit_code::SUCCESS);
+            return Ok(AppResult {
+                exit_code: exit_code::SUCCESS,
+                choosedir_path: state.choosedir_path.clone(),
+            });
         }
     }
 }
