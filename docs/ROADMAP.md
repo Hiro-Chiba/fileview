@@ -234,8 +234,8 @@ Total Size:  1.2 MB
 | 8. Main & Polish | 3 | 3 |
 | 9. Enhanced Features | 3 | 3 |
 | 10. Code Quality | 3 | 3 |
-| 11. Nerd Fonts Icons | 3 | 0 |
-| **Total** | **29** | **26** |
+| 11. Nerd Fonts Icons | 3 | 3 |
+| **Total** | **29** | **29** |
 
 ---
 
@@ -302,39 +302,39 @@ Total Size:  1.2 MB
 ### 11.1 アイコンマッピング
 **優先度:** 高
 
-- [ ] render/icons.rs 新規作成
+- [x] render/icons.rs 新規作成
   - ファイル拡張子→アイコンのマッピング
   - ディレクトリ用アイコン（展開/折りたたみ）
   - 特殊ディレクトリ（.git, node_modules, src等）
-- [ ] 主要な拡張子サポート
+- [x] 主要な拡張子サポート
   - プログラミング言語: rs, py, js, ts, go, java, c, cpp, etc.
   - 設定ファイル: json, yaml, toml, xml, etc.
   - ドキュメント: md, txt, pdf, etc.
   - メディア: png, jpg, mp3, mp4, etc.
-- [ ] PR: `feat(render): Add icon mapping module`
+- [x] PR: `feat(render): Add icon mapping module`
 
 ### 11.2 ツリー描画への統合
 **優先度:** 高
 
-- [ ] render/tree.rs 拡張
+- [x] render/tree.rs 拡張
   - TreeEntryにアイコン表示を追加
   - Git状態アイコンとの共存
-- [ ] アイコン表示位置
+- [x] アイコン表示位置
   - `📁 dirname/` または ` dirname/`
   - ` filename.rs` または ` filename.py`
-- [ ] PR: `feat(render): Integrate icons into tree view`
+- [x] PR: `feat(render): Integrate icons into tree view`
 
 ### 11.3 設定オプション
 **優先度:** 中
 
-- [ ] CLIオプション追加
+- [x] CLIオプション追加
   - `--icons` / `-i`: アイコン表示を有効化
   - `--no-icons`: アイコン表示を無効化（デフォルト）
-- [ ] 環境変数サポート
+- [x] 環境変数サポート
   - `FILEVIEW_ICONS=1` でデフォルト有効化
 - [ ] Nerd Font未インストール時のフォールバック
   - Unicode絵文字または記号にフォールバック
-- [ ] PR: `feat(cli): Add icon display options`
+- [x] PR: `feat(cli): Add icon display options`
 
 **実装詳細:**
 ```rust

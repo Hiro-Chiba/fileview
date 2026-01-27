@@ -33,12 +33,19 @@ pub struct AppState {
     pub clipboard: Option<Clipboard>,
     /// Git repository status
     pub git_status: Option<GitStatus>,
+    /// Whether to show Nerd Fonts icons
+    pub icons_enabled: bool,
 }
 
 impl AppState {
     /// Create new application state
     pub fn new(root: PathBuf) -> Self {
         let git_status = GitStatus::detect(&root);
+
+        // Check environment variable for icons setting (default: enabled)
+        let icons_enabled = std::env::var("FILEVIEW_ICONS")
+            .map(|v| v != "0" && v.to_lowercase() != "false")
+            .unwrap_or(true);
 
         Self {
             root,
@@ -53,6 +60,7 @@ impl AppState {
             pick_mode: false,
             clipboard: None,
             git_status,
+            icons_enabled,
         }
     }
 
