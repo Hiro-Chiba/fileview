@@ -131,8 +131,23 @@ fv --on-select "code {path}"
 
 | Key | Action |
 |-----|--------|
-| `P` | Toggle preview panel |
+| `P` | Toggle side preview panel |
 | `o` | Open fullscreen preview |
+| `Tab` | Toggle focus between tree and preview (when preview visible) |
+
+#### Side Preview Focus Mode
+
+When the side preview panel is open, press `Tab` to switch focus:
+
+| Focus | j/k/↑/↓ | g/G | b/f |
+|-------|---------|-----|-----|
+| Tree | Navigate files | Top/Bottom of list | - |
+| Preview | Scroll content | Top/Bottom of preview | Page scroll |
+
+- Click on a panel to switch focus
+- Scroll wheel works on the focused panel
+- `Esc` returns focus to tree
+- Focused panel has cyan border highlight
 
 ### Other
 
