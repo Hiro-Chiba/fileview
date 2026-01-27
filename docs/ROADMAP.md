@@ -236,8 +236,8 @@ Total Size:  1.2 MB
 | 7. Integrate | 2 | 2 |
 | 8. Main & Polish | 3 | 3 |
 | 9. Enhanced Features | 3 | 3 |
-| 10. Code Quality | 3 | 0 |
-| **Total** | **26** | **23** |
+| 10. Code Quality | 3 | 1 |
+| **Total** | **26** | **24** |
 
 ---
 
@@ -263,16 +263,16 @@ Total Size:  1.2 MB
 
 **優先度:** 高
 
-- [ ] ファイルドロップ処理の統合
+- [x] ファイルドロップ処理の統合
   - 現状: main.rs内で3箇所に重複
   - 解決: `handle_file_drop()` 関数に抽出
-- [ ] 宛先ディレクトリ計算の共通化
+- [x] 宛先ディレクトリ計算の共通化
   - 現状: 6箇所で同じパターン
   - 解決: `get_target_directory()` ヘルパー関数
-- [ ] プレビュータイトル取得の共通化
+- [x] プレビュータイトル取得の共通化
   - 現状: 4箇所で重複
   - 解決: `get_filename_str()` ユーティリティ関数
-- [ ] PR: `refactor: Extract common helper functions (DRY)`
+- [x] PR: `refactor: Extract common helper functions (DRY)`
 
 ### 10.2 エラーハンドリング強化 ⭐⭐
 
