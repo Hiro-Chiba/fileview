@@ -198,6 +198,7 @@ When the side preview panel is open, press `Tab` to switch focus:
 | `C` | Copy filename to system clipboard |
 | `?` | Show help |
 | `q` | Quit |
+| `Q` | Quit and cd to current directory (with `--choosedir`) |
 
 ## CLI Options
 
@@ -206,6 +207,7 @@ When the side preview panel is open, press `Tab` to switch focus:
 | `-p`, `--pick` | Pick mode: output selected path(s) to stdout |
 | `-f`, `--format FMT` | Output format: `lines` (default), `null`, `json` |
 | `--on-select CMD` | Run command when file is selected |
+| `--choosedir` | Output directory path on exit (for shell cd integration) |
 | `-i`, `--icons` | Enable Nerd Fonts icons (default) |
 | `--no-icons` | Disable icons |
 | `-h`, `--help` | Show help |
@@ -227,6 +229,27 @@ When the side preview panel is open, press `Tab` to switch focus:
 | `{name}` | Filename with extension |
 | `{stem}` | Filename without extension |
 | `{ext}` | Extension only |
+
+### Shell Integration
+
+Navigate directories with fileview and cd to the selected location:
+
+```bash
+# Add to your .bashrc or .zshrc
+fvcd() {
+  local dir
+  dir=$(fv --choosedir "$@")
+  if [ -n "$dir" ] && [ -d "$dir" ]; then
+    cd "$dir"
+  fi
+}
+```
+
+Usage:
+- Run `fvcd` to open fileview
+- Navigate to your target directory
+- Press `Q` to quit and cd there
+- Press `q` to quit without changing directory
 
 ### Examples
 

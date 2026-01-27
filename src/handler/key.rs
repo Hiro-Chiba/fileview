@@ -12,6 +12,8 @@ pub enum KeyAction {
     None,
     /// Quit the application
     Quit,
+    /// Quit and change directory (shell integration)
+    QuitAndCd,
     /// Move focus up
     MoveUp,
     /// Move focus down
@@ -112,6 +114,8 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
                 KeyAction::Quit
             }
         }
+        // Quit and cd (shell integration)
+        KeyCode::Char('Q') => KeyAction::QuitAndCd,
         KeyCode::Esc => {
             if state.focus_target == FocusTarget::Preview {
                 // Esc returns focus to tree when on preview
