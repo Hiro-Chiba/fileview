@@ -68,7 +68,9 @@ impl std::str::FromStr for ImageProtocol {
             "kitty" => Ok(ImageProtocol::Kitty),
             "iterm2" => Ok(ImageProtocol::ITerm2),
             "halfblock" | "half-block" | "block" => Ok(ImageProtocol::HalfBlock),
-            "auto" => Ok(ImageProtocol::HalfBlock), // Will be resolved later
+            // "auto" defaults to HalfBlock here, but callers should use detect_best_protocol()
+            // for actual auto-detection at runtime
+            "auto" => Ok(ImageProtocol::HalfBlock),
             _ => Err(format!("Unknown image protocol: {}", s)),
         }
     }
