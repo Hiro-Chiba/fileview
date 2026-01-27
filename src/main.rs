@@ -26,15 +26,15 @@ use fileview::handler::{
         get_filename_str, get_target_directory, handle_action, ActionContext, ActionResult,
         EntrySnapshot,
     },
-    key::{handle_key_event, update_input_buffer},
+    key::{handle_key_event, update_input_buffer, KeyAction},
     mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer},
 };
 use fileview::integrate::{exit_code, Callback, OutputFormat};
 use fileview::render::{
-    create_image_picker, is_binary_file, is_image_file, is_text_file, render_directory_info,
-    render_hex_preview, render_image_preview, render_input_popup, render_status_bar,
-    render_text_preview, render_tree, visible_height, DirectoryInfo, HexPreview, ImagePreview,
-    Picker, TextPreview,
+    collect_paths, create_image_picker, fuzzy_match, is_binary_file, is_image_file, is_text_file,
+    render_directory_info, render_fuzzy_finder, render_hex_preview, render_image_preview,
+    render_input_popup, render_status_bar, render_text_preview, render_tree, visible_height,
+    DirectoryInfo, FuzzyMatch, HexPreview, ImagePreview, Picker, TextPreview,
 };
 use fileview::tree::TreeNavigator;
 
@@ -150,6 +150,7 @@ KEYBINDINGS:
     r           Rename
     /           Search
     n           Next search result
+    Ctrl+P      Fuzzy finder
     .           Toggle hidden files
     R/F5        Refresh
     o           Open preview
@@ -295,6 +296,10 @@ fn run_app(
     let mut dir_info: Option<DirectoryInfo> = None;
     let mut hex_preview: Option<HexPreview> = None;
     let mut last_preview_path: Option<PathBuf> = None;
+
+    // Fuzzy finder state
+    let mut fuzzy_paths: Vec<PathBuf> = Vec::new();
+    let mut fuzzy_results: Vec<FuzzyMatch> = Vec::new();
 
     loop {
         // Get visible entries and create snapshots
@@ -458,6 +463,17 @@ fn run_app(
 
                 // Render input popup if needed
                 render_input_popup(frame, &state);
+
+                // Render fuzzy finder if in FuzzyFinder mode
+                if let ViewMode::FuzzyFinder { query, selected } = &state.mode {
+                    // Bound selected index to results length
+                    let bounded_selected = if fuzzy_results.is_empty() {
+                        0
+                    } else {
+                        (*selected).min(fuzzy_results.len() - 1)
+                    };
+                    render_fuzzy_finder(frame, query, &fuzzy_results, bounded_selected, size);
+                }
             }
         })?;
 
@@ -516,6 +532,19 @@ fn run_app(
                         }
                     }
 
+                    // Handle fuzzy finder text input
+                    if let ViewMode::FuzzyFinder { query, .. } = &state.mode {
+                        if let Some((new_buf, _)) = update_input_buffer(key, query, query.len()) {
+                            // Refresh results when query changes
+                            fuzzy_results = fuzzy_match(&new_buf, &fuzzy_paths, &state.root);
+                            state.mode = ViewMode::FuzzyFinder {
+                                query: new_buf,
+                                selected: 0, // Reset selection on query change
+                            };
+                            continue;
+                        }
+                    }
+
                     // Buffer characters for potential file drop detection (Ghostty, etc.)
                     // Only in Browse mode to avoid interfering with text input
                     if matches!(state.mode, ViewMode::Browse) {
@@ -534,7 +563,27 @@ fn run_app(
                         }
                     }
 
-                    let action = handle_key_event(&state, key);
+                    let mut action = handle_key_event(&state, key);
+
+                    // Handle fuzzy finder special actions
+                    if matches!(action, KeyAction::OpenFuzzyFinder) {
+                        // Collect paths when fuzzy finder opens
+                        fuzzy_paths = collect_paths(&state.root, state.show_hidden);
+                        fuzzy_results = fuzzy_match("", &fuzzy_paths, &state.root);
+                    }
+
+                    // Fill in actual path for FuzzyConfirm
+                    if matches!(action, KeyAction::FuzzyConfirm { .. }) {
+                        if let ViewMode::FuzzyFinder { selected, .. } = &state.mode {
+                            let actual_selected = (*selected).min(fuzzy_results.len().saturating_sub(1));
+                            if let Some(result) = fuzzy_results.get(actual_selected) {
+                                action = KeyAction::FuzzyConfirm {
+                                    path: result.path.clone(),
+                                };
+                            }
+                        }
+                    }
+
                     match handle_action(
                         action,
                         &mut state,
@@ -550,6 +599,20 @@ fn run_app(
                                 exit_code: code,
                                 choosedir_path: state.choosedir_path.clone(),
                             })
+                        }
+                    }
+
+                    // Handle fuzzy finder jump target
+                    if let Some(target) = state.fuzzy_jump_target.take() {
+                        // Expand parent directories to make the target visible
+                        if let Err(e) = navigator.reveal_path(&target) {
+                            state.set_message(format!("Failed to reveal path: {}", e));
+                        } else {
+                            // Find the target in visible entries and set focus
+                            let entries = navigator.visible_entries();
+                            if let Some(idx) = entries.iter().position(|e| e.path == target) {
+                                state.focus_index = idx;
+                            }
                         }
                     }
                 }
