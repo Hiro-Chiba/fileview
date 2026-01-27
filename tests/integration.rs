@@ -2034,4 +2034,3 @@ mod drag_and_drop_tests {
         assert!(detector.is_empty());
     }
 }
-
