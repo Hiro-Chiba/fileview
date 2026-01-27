@@ -132,6 +132,97 @@
 
 ---
 
+## Phase 9: Enhanced Features
+
+### 9.1 Git ステータス表示 ⭐⭐⭐
+
+**優先度:** 高
+**リリース:** v0.2.0
+
+- [ ] git/status.rs
+  - Gitリポジトリ検出
+  - ファイル状態取得（Modified, Added, Untracked, Deleted, Renamed, Ignored）
+  - ディレクトリ状態の伝播（子ファイルの状態を親に反映）
+  - キャッシュ機構（パフォーマンス最適化）
+- [ ] render/tree.rs 拡張
+  - 状態別カラー表示
+    - Modified: Yellow
+    - Added/Untracked: Green
+    - Deleted: Red
+    - Renamed: Cyan
+    - Ignored: DarkGray
+- [ ] render/status.rs 拡張
+  - 現在のブランチ名表示
+- [ ] PR: `feat(git): Add git status display`
+
+**実装詳細:**
+```rust
+pub struct GitStatus {
+    repo_root: PathBuf,
+    statuses: HashMap<PathBuf, FileStatus>,
+}
+
+pub enum FileStatus {
+    Modified,
+    Added,
+    Untracked,
+    Deleted,
+    Renamed,
+    Ignored,
+    Conflict,
+    Clean,
+}
+```
+
+---
+
+### 9.2 ディレクトリ情報表示 ⭐⭐
+
+**優先度:** 中
+**リリース:** v0.3.0
+
+- [ ] render/preview.rs 拡張
+  - ディレクトリ選択時の情報表示
+    - ファイル数
+    - サブディレクトリ数
+    - 隠しファイル数
+    - 合計サイズ（human-readable: KB, MB, GB）
+  - 非同期サイズ計算（大きいディレクトリでもUIブロックしない）
+- [ ] PR: `feat(preview): Add directory info display`
+
+**表示例:**
+```
+📁 src/
+────────────────────
+Files:        42
+Directories:   8
+Hidden:        2
+Total Size:  1.2 MB
+```
+
+---
+
+### 9.3 Hex プレビュー ⭐⭐
+
+**優先度:** 中
+**リリース:** v0.4.0
+
+- [ ] render/preview.rs 拡張
+  - バイナリファイル検出
+  - xxd形式のHexダンプ表示
+    - オフセット | Hex (16バイト) | ASCII
+  - テキスト/バイナリ自動判定
+- [ ] PR: `feat(preview): Add hex preview for binary files`
+
+**表示例:**
+```
+00000000: 7f45 4c46 0201 0100 0000 0000 0000 0000  .ELF............
+00000010: 0300 3e00 0100 0000 1010 0000 0000 0000  ..>.............
+00000020: 4000 0000 0000 0000 9019 0000 0000 0000  @...............
+```
+
+---
+
 ## Progress Summary
 
 | Phase | Items | Completed |
@@ -144,7 +235,19 @@
 | 6. Handler | 3 | 3 |
 | 7. Integrate | 2 | 2 |
 | 8. Main & Polish | 3 | 3 |
-| **Total** | **20** | **20** |
+| 9. Enhanced Features | 3 | 0 |
+| **Total** | **23** | **20** |
+
+---
+
+## Release Plan
+
+| Version | Feature | Status |
+|---------|---------|--------|
+| v0.1.x | Initial release | ✅ Published |
+| v0.2.0 | Git status display | 🔲 Planned |
+| v0.3.0 | Directory info | 🔲 Planned |
+| v0.4.0 | Hex preview | 🔲 Planned |
 
 ---
 
@@ -170,7 +273,9 @@ src/
 ├── handler/
 │   ├── key.rs       # キーイベント
 │   └── mouse.rs     # マウスイベント
-└── integrate/
-    ├── pick.rs      # --pick モード
-    └── callback.rs  # --on-select
+├── integrate/
+│   ├── pick.rs      # --pick モード
+│   └── callback.rs  # --on-select
+└── git/
+    └── status.rs    # Git状態管理 (v0.2.0)
 ```
