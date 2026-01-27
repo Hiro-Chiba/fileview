@@ -54,7 +54,7 @@ FileView automatically detects your terminal and selects the optimal image proto
 | Warp | iTerm2 Inline | Highest |
 | Foot | Sixel | Good |
 | Windows Terminal | Sixel | Good |
-| VS Code | Halfblocks | Basic |
+| VS Code | iTerm2 Inline | Highest |
 | Alacritty | Halfblocks | Basic |
 | Other | Auto-detect | Varies |
 

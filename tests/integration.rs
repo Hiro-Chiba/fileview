@@ -3078,8 +3078,8 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_chafa_preferred_terminals() {
-        // Terminals that should prefer Chafa
-        let chafa_terminals = [TerminalBrand::VSCode, TerminalBrand::Alacritty];
+        // Terminals that should prefer Chafa (no native image protocol support)
+        let chafa_terminals = [TerminalBrand::Alacritty];
 
         for terminal in chafa_terminals {
             assert_eq!(
@@ -3089,6 +3089,16 @@ mod terminal_detection_tests {
                 terminal
             );
         }
+    }
+
+    #[test]
+    fn test_vscode_supports_iterm2() {
+        // VS Code supports iTerm2 inline images protocol
+        assert_eq!(
+            TerminalBrand::VSCode.recommended_protocol(),
+            RecommendedProtocol::Iterm2,
+            "VS Code should recommend iTerm2 protocol"
+        );
     }
 
     #[test]
