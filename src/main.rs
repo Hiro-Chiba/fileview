@@ -39,6 +39,7 @@ struct Config {
     pick_mode: bool,
     output_format: OutputFormat,
     callback: Option<Callback>,
+    icons_enabled: Option<bool>,
 }
 
 impl Config {
@@ -48,10 +49,13 @@ impl Config {
         let mut pick_mode = false;
         let mut output_format = OutputFormat::default();
         let mut callback: Option<Callback> = None;
+        let mut icons_enabled: Option<bool> = None;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--pick" | "-p" => pick_mode = true,
+                "--icons" | "-i" => icons_enabled = Some(true),
+                "--no-icons" => icons_enabled = Some(false),
                 "--format" | "-f" => {
                     if let Some(fmt) = args.next() {
                         output_format = OutputFormat::from_str(&fmt).unwrap_or_default();
@@ -91,6 +95,7 @@ impl Config {
             pick_mode,
             output_format,
             callback,
+            icons_enabled,
         })
     }
 }
@@ -106,8 +111,13 @@ OPTIONS:
     -p, --pick          Pick mode: output selected path(s) to stdout
     -f, --format FMT    Output format for pick mode: lines, null, json
     --on-select CMD     Run command when file is selected (use {{path}}, {{name}}, etc.)
+    -i, --icons         Enable Nerd Fonts icons (default)
+    --no-icons          Disable icons
     -h, --help          Show this help message
     -V, --version       Show version
+
+ENVIRONMENT:
+    FILEVIEW_ICONS=0    Disable icons by default
 
 KEYBINDINGS:
     j/↓         Move down
@@ -261,6 +271,9 @@ fn run_app(
 ) -> anyhow::Result<i32> {
     let mut state = AppState::new(config.root.clone());
     state.pick_mode = config.pick_mode;
+    if let Some(icons) = config.icons_enabled {
+        state.icons_enabled = icons;
+    }
 
     let mut navigator = TreeNavigator::new(&config.root, state.show_hidden)?;
     let mut click_detector = ClickDetector::new();
