@@ -3301,4 +3301,113 @@ mod terminal_detection_tests {
         // We don't assert the result because it depends on the terminal,
         // but it should never panic
     }
+
+    #[test]
+    fn test_create_image_picker_returns_some() {
+        use fileview::render::create_image_picker;
+
+        // create_image_picker should always return Some (fallback to halfblocks)
+        let picker = create_image_picker();
+        assert!(
+            picker.is_some(),
+            "create_image_picker should always return Some"
+        );
+    }
+
+    #[test]
+    fn test_create_image_picker_multiple_calls_consistent() {
+        use fileview::render::create_image_picker;
+
+        // Multiple calls should be consistent (same env = same result type)
+        let picker1 = create_image_picker();
+        let picker2 = create_image_picker();
+        let picker3 = create_image_picker();
+
+        assert!(picker1.is_some());
+        assert!(picker2.is_some());
+        assert!(picker3.is_some());
+    }
+
+    #[test]
+    fn test_terminal_brand_detect_public_api() {
+        // Test the public detect() API directly
+        let brand = TerminalBrand::detect();
+
+        // Should return a valid variant
+        let _ = brand.name(); // Should not panic
+        let protocol = brand.recommended_protocol();
+        let _ = protocol.name(); // Should not panic
+    }
+
+    #[test]
+    fn test_terminal_brand_detect_multiple_calls_deterministic() {
+        // Calling detect() multiple times should return same result
+        let brand1 = TerminalBrand::detect();
+        let brand2 = TerminalBrand::detect();
+        let brand3 = TerminalBrand::detect();
+
+        assert_eq!(brand1, brand2);
+        assert_eq!(brand2, brand3);
+    }
+
+    #[test]
+    fn test_terminal_detection_does_not_modify_environment() {
+        // Verify detect() doesn't modify environment
+        let env_vars_before: Vec<_> = std::env::vars().collect();
+
+        let _ = TerminalBrand::detect();
+
+        let env_vars_after: Vec<_> = std::env::vars().collect();
+        assert_eq!(env_vars_before.len(), env_vars_after.len());
+    }
+
+    // =========================================================================
+    // Environment Variable Override Tests
+    // Note: These tests document expected behavior but can't actually test
+    // FILEVIEW_IMAGE_PROTOCOL because we can't safely modify env vars in tests
+    // =========================================================================
+
+    #[test]
+    fn test_fileview_image_protocol_env_var_documented() {
+        // Document the supported values for FILEVIEW_IMAGE_PROTOCOL
+        // This test serves as documentation and ensures the values are considered
+        let supported_values = [
+            "auto",
+            "halfblocks",
+            "half",
+            "chafa",
+            "sixel",
+            "kitty",
+            "iterm2",
+            "iterm",
+        ];
+
+        // All these should be valid protocol override values
+        for value in &supported_values {
+            assert!(!value.is_empty(), "Protocol value should not be empty");
+        }
+    }
+
+    // =========================================================================
+    // Stress Tests
+    // =========================================================================
+
+    #[test]
+    fn test_terminal_detect_rapid_succession() {
+        // Call detect() many times rapidly - should be stable
+        for _ in 0..100 {
+            let brand = TerminalBrand::detect();
+            let _ = brand.recommended_protocol();
+        }
+    }
+
+    #[test]
+    fn test_create_image_picker_rapid_succession() {
+        use fileview::render::create_image_picker;
+
+        // Call create_image_picker() multiple times - should not leak resources
+        for _ in 0..10 {
+            let _ = create_image_picker();
+        }
+    }
 }

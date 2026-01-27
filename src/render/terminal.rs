@@ -474,6 +474,70 @@ mod tests {
 
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Kitty);
         }
+
+        #[test]
+        fn kitty_and_ghostty_both_set_kitty_wins() {
+            // Edge case: both Kitty and Ghostty vars set
+            // Kitty is checked first, so it wins
+            let mut env = MockEnvReader::new();
+            env.set("KITTY_WINDOW_ID", "1");
+            env.set("GHOSTTY_RESOURCES_DIR", "/path");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Kitty);
+        }
+
+        #[test]
+        fn ghostty_and_wezterm_both_set_ghostty_wins() {
+            let mut env = MockEnvReader::new();
+            env.set("GHOSTTY_RESOURCES_DIR", "/path");
+            env.set("WEZTERM_EXECUTABLE", "/bin/wezterm");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Ghostty);
+        }
+
+        #[test]
+        fn wezterm_and_windows_terminal_both_set_wezterm_wins() {
+            let mut env = MockEnvReader::new();
+            env.set("WEZTERM_EXECUTABLE", "/bin/wezterm");
+            env.set("WT_SESSION", "guid");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::WezTerm);
+        }
+
+        #[test]
+        fn all_terminal_specific_vars_set_kitty_wins() {
+            // Extreme edge case: all vars set
+            let mut env = MockEnvReader::new();
+            env.set("KITTY_WINDOW_ID", "1");
+            env.set("GHOSTTY_RESOURCES_DIR", "/path");
+            env.set("WEZTERM_EXECUTABLE", "/bin/wezterm");
+            env.set("WT_SESSION", "guid");
+            env.set("TMUX", "/tmp/tmux");
+            env.set("TERM_PROGRAM", "vscode");
+            env.set("TERMINAL", "konsole");
+            env.set("TERM", "foot");
+
+            // First check wins
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Kitty);
+        }
+
+        #[test]
+        fn ghostty_inside_tmux_detects_ghostty() {
+            let mut env = MockEnvReader::new();
+            env.set("GHOSTTY_RESOURCES_DIR", "/path");
+            env.set("TMUX", "/tmp/tmux");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Ghostty);
+        }
+
+        #[test]
+        fn wezterm_inside_tmux_detects_wezterm() {
+            let mut env = MockEnvReader::new();
+            env.set("WEZTERM_EXECUTABLE", "/bin/wezterm");
+            env.set("TMUX", "/tmp/tmux");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::WezTerm);
+        }
     }
 
     // =========================================================================
@@ -668,6 +732,76 @@ mod tests {
 
             // xterm should not match foot
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Unknown);
+        }
+
+        #[test]
+        fn very_long_env_var_value() {
+            let mut env = MockEnvReader::new();
+            let long_value = "a".repeat(10000);
+            env.set("KITTY_WINDOW_ID", &long_value);
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Kitty);
+        }
+
+        #[test]
+        fn term_program_with_path_separators() {
+            let mut env = MockEnvReader::new();
+            env.set(
+                "TERM_PROGRAM",
+                "/Applications/iTerm.app/Contents/MacOS/iTerm2",
+            );
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::ITerm2);
+        }
+
+        #[test]
+        fn term_program_not_iterm_false_positive() {
+            let mut env = MockEnvReader::new();
+            env.set("TERM_PROGRAM", "not-iterm-terminal");
+
+            // Contains "iterm" so will match - this is expected behavior
+            // documenting this edge case
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::ITerm2);
+        }
+
+        #[test]
+        fn newline_in_env_var() {
+            let mut env = MockEnvReader::new();
+            env.set("TERM_PROGRAM", "vscode\n");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::VSCode);
+        }
+
+        #[test]
+        fn tab_in_env_var() {
+            let mut env = MockEnvReader::new();
+            env.set("TERM_PROGRAM", "\tvscode\t");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::VSCode);
+        }
+
+        #[test]
+        fn unicode_in_env_var() {
+            let mut env = MockEnvReader::new();
+            env.set("TERM_PROGRAM", "日本語vscode日本語");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::VSCode);
+        }
+
+        #[test]
+        fn only_numbers_in_kitty_window_id() {
+            let mut env = MockEnvReader::new();
+            env.set("KITTY_WINDOW_ID", "12345678901234567890");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Kitty);
+        }
+
+        #[test]
+        fn special_characters_in_tmux() {
+            let mut env = MockEnvReader::new();
+            env.set("TMUX", "/tmp/tmux-1000/default,12345,0\x00extra");
+
+            assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Tmux);
         }
     }
 
