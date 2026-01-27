@@ -657,7 +657,10 @@ fn handle_action(
             }
         }
         KeyAction::ToggleExpand => {
-            if let Some(ref path) = focused_path {
+            if state.preview_visible {
+                // Close side preview panel
+                state.preview_visible = false;
+            } else if let Some(ref path) = focused_path {
                 if path.is_dir() {
                     navigator.toggle_expand(path)?;
                 } else {
