@@ -247,7 +247,7 @@ Total Size:  1.2 MB
 | v0.1.x | Initial release | ✅ Published |
 | v0.2.0 | Git status display | ✅ Published |
 | v0.3.0 | Directory info | ✅ Published |
-| v0.4.0 | Hex preview | 🔲 Planned |
+| v0.4.0 | Hex preview | ✅ Published |
 
 ---
 
