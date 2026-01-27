@@ -240,8 +240,8 @@ Total Size:  1.2 MB
 | 14. Side Preview Focus | 5 | 5 |
 | 15. Image Protocol Support | 5 | 4 |
 | 16. Enhanced Image Preview | 5 | 5 |
-| 17. Zero-Config UX | 6 | 5 |
-| **Total** | **60** | **57** |
+| 17. Zero-Config UX | 6 | 6 |
+| **Total** | **60** | **58** |
 
 **注意:** Phase 15.8（ratatui-image統合）が完了するまでv0.8.0のリリースは行わない。
 自作の画像プロトコル実装は削除し、ratatui-imageに一本化する。
@@ -267,8 +267,8 @@ Total Size:  1.2 MB
 | v0.8.0 | ratatui-image integration | ✅ Published |
 | v0.9.0 | Enhanced image preview (yazi-inspired) | ✅ Published |
 | v0.9.1 | Image preview fit fix | ✅ Published |
-| v0.10.0 | Shell integration (cd on exit) | 📋 Planned |
-| v0.11.0 | Built-in fuzzy finder | 📋 Planned |
+| v0.10.0 | Shell integration (cd on exit) | ✅ Published |
+| v0.11.0 | Built-in fuzzy finder | 📋 Ready |
 
 ---
 
@@ -1087,7 +1087,7 @@ fzfなしでファイル検索できる組み込み機能。
 
 **UIイメージ:**
 ```
-┌─ Fuzzy Find ─────────────────────┐
+┌─ Fuzzy Find (Ctrl+P) ────────────┐
 │ > src/ren                        │
 ├──────────────────────────────────┤
 │   src/render/mod.rs              │
@@ -1097,16 +1097,19 @@ fzfなしでファイル検索できる組み込み機能。
 └──────────────────────────────────┘
 ```
 
-- [ ] `nucleo` または `fuzzy-matcher` クレート追加
-  - `nucleo`: helixエディタが使用、高速
-  - `fuzzy-matcher`: シンプル、軽量
-- [ ] `Ctrl+P` キーバインド追加
-- [ ] FuzzyFinder UIコンポーネント作成
-  - 入力フィールド
-  - マッチ結果リスト（スコア順）
-  - ハイライト表示（マッチ部分）
-- [ ] ファイルパス収集（現在のツリーから）
-- [ ] 選択時にツリーでそのファイルにジャンプ
+- [x] `nucleo-matcher` クレート追加
+  - helixエディタと同じライブラリ（高速、6-10x faster than fuzzy-matcher）
+  - Smith-Watermanアルゴリズムベース
+- [x] `Ctrl+P` キーバインド追加
+- [x] `ViewMode::FuzzyFinder` 追加
+- [x] FuzzyFinder UIコンポーネント作成 (`src/render/fuzzy.rs`)
+  - 入力フィールド（カーソル点滅）
+  - マッチ結果リスト（スコア順、最大15件）
+  - ハイライト表示（マッチ部分を黄色で強調）
+  - 矢印キー / Ctrl+J/K でナビゲーション
+- [x] ファイルパス収集（再帰的、深さ制限10）
+- [x] 選択時にツリーでそのファイルにジャンプ (`reveal_path`)
+- [x] 統合テスト追加（42テスト）
 - [ ] PR: `feat: Add built-in fuzzy finder`
 
 ### 17.3 クイックブックマーク（検討中）

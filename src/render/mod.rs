@@ -1,5 +1,6 @@
 //! Render module - UI rendering
 
+pub mod fuzzy;
 pub mod icons;
 pub mod preview;
 pub mod status;
@@ -16,6 +17,7 @@ pub use ratatui_image::picker::Picker;
 pub use status::{render_input_popup, render_status_bar};
 pub use terminal::{RecommendedProtocol, TerminalBrand};
 pub use tree::{render_tree, visible_height};
+pub use fuzzy::{collect_paths, fuzzy_match, render_fuzzy_finder, FuzzyMatch};
 
 /// Create an image picker for protocol detection
 ///

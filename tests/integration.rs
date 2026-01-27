@@ -3641,3 +3641,802 @@ mod shell_integration_tests {
         }
     }
 }
+
+// =============================================================================
+// Fuzzy Finder Tests
+// =============================================================================
+
+mod fuzzy_finder_tests {
+    use super::*;
+    use fileview::render::{collect_paths, fuzzy_match};
+    use fileview::tree::TreeNavigator;
+    use std::fs;
+
+    // =========================================================================
+    // Key Binding Tests
+    // =========================================================================
+
+    #[test]
+    fn test_ctrl_p_opens_fuzzy_finder() {
+        let temp = TempDir::new().unwrap();
+        let state = AppState::new(temp.path().to_path_buf());
+
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::OpenFuzzyFinder),
+            "Ctrl+P should open fuzzy finder"
+        );
+    }
+
+    #[test]
+    fn test_plain_p_is_paste_not_fuzzy_finder() {
+        let temp = TempDir::new().unwrap();
+        let state = AppState::new(temp.path().to_path_buf());
+
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::Paste),
+            "Plain 'p' should be Paste, not fuzzy finder"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_mode_esc_cancels() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::Cancel),
+            "Esc should cancel fuzzy finder"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_mode_arrow_up_moves_up() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 5,
+        };
+
+        let key = KeyEvent::new(KeyCode::Up, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::FuzzyUp),
+            "Arrow up should move up in fuzzy finder"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_mode_arrow_down_moves_down() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Down, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::FuzzyDown),
+            "Arrow down should move down in fuzzy finder"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_mode_ctrl_k_moves_up() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 3,
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::FuzzyUp),
+            "Ctrl+K should move up in fuzzy finder"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_mode_ctrl_j_moves_down() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::FuzzyDown),
+            "Ctrl+J should move down in fuzzy finder"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_mode_enter_confirms() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::FuzzyConfirm { .. }),
+            "Enter should confirm fuzzy finder"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_mode_regular_key_is_none() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        // Regular typing keys should return None (handled separately)
+        let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::None),
+            "Regular keys should return None for separate handling"
+        );
+    }
+
+    // =========================================================================
+    // Fuzzy Match Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_match_empty_query_returns_all() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("file1.txt"), "").unwrap();
+        fs::write(temp.path().join("file2.txt"), "").unwrap();
+        fs::write(temp.path().join("file3.txt"), "").unwrap();
+
+        let paths = vec![
+            temp.path().join("file1.txt"),
+            temp.path().join("file2.txt"),
+            temp.path().join("file3.txt"),
+        ];
+        let root = temp.path().to_path_buf();
+
+        let results = fuzzy_match("", &paths, &root);
+        assert_eq!(results.len(), 3, "Empty query should return all paths");
+    }
+
+    #[test]
+    fn test_fuzzy_match_filters_by_query() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("main.rs"),
+            temp.path().join("lib.rs"),
+            temp.path().join("config.toml"),
+        ];
+
+        let results = fuzzy_match("rs", &paths, &root);
+        assert!(results.len() >= 2, "Should match at least 2 .rs files");
+        assert!(
+            results.iter().all(|r| r.display.contains("rs")),
+            "All results should contain 'rs'"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_match_no_results() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![temp.path().join("file.txt")];
+        let results = fuzzy_match("xyz123nonexistent", &paths, &root);
+
+        assert!(results.is_empty(), "Should return empty for non-matching query");
+    }
+
+    #[test]
+    fn test_fuzzy_match_case_smart() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("README.md"),
+            temp.path().join("readme.txt"),
+        ];
+
+        // Lowercase query should match both
+        let results = fuzzy_match("readme", &paths, &root);
+        assert!(results.len() >= 1, "Should match at least one file");
+    }
+
+    #[test]
+    fn test_fuzzy_match_partial_match() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("src/render/mod.rs"),
+            temp.path().join("src/handler/mod.rs"),
+        ];
+
+        let results = fuzzy_match("ren", &paths, &root);
+        assert!(!results.is_empty(), "Should find partial matches");
+    }
+
+    #[test]
+    fn test_fuzzy_match_sorted_by_score() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("abcdefg.txt"),
+            temp.path().join("abc.txt"),
+            temp.path().join("ab.txt"),
+        ];
+
+        let results = fuzzy_match("ab", &paths, &root);
+        // Higher scores should come first
+        for i in 1..results.len() {
+            assert!(
+                results[i - 1].score >= results[i].score,
+                "Results should be sorted by score descending"
+            );
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_match_has_indices() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![temp.path().join("main.rs")];
+        let results = fuzzy_match("mn", &paths, &root);
+
+        if !results.is_empty() {
+            assert!(
+                !results[0].indices.is_empty(),
+                "Match should have highlighted indices"
+            );
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_match_respects_max_results() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        // Create more paths than MAX_RESULTS (15)
+        let paths: Vec<PathBuf> = (0..50)
+            .map(|i| temp.path().join(format!("file{}.txt", i)))
+            .collect();
+
+        let results = fuzzy_match("", &paths, &root);
+        assert!(
+            results.len() <= 15,
+            "Should limit results to MAX_RESULTS (15)"
+        );
+    }
+
+    // =========================================================================
+    // Path Collection Tests
+    // =========================================================================
+
+    #[test]
+    fn test_collect_paths_basic() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("file1.txt"), "").unwrap();
+        fs::write(temp.path().join("file2.txt"), "").unwrap();
+        fs::create_dir(temp.path().join("subdir")).unwrap();
+        fs::write(temp.path().join("subdir/nested.txt"), "").unwrap();
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, false);
+
+        assert!(paths.len() >= 3, "Should collect at least 3 paths");
+        assert!(paths.iter().any(|p| p.ends_with("file1.txt")));
+        assert!(paths.iter().any(|p| p.ends_with("file2.txt")));
+        assert!(paths.iter().any(|p| p.ends_with("nested.txt")));
+    }
+
+    #[test]
+    fn test_collect_paths_excludes_hidden_by_default() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("visible.txt"), "").unwrap();
+        fs::write(temp.path().join(".hidden"), "").unwrap();
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, false);
+
+        assert!(
+            paths.iter().any(|p| p.ends_with("visible.txt")),
+            "Should include visible files"
+        );
+        assert!(
+            !paths.iter().any(|p| p.ends_with(".hidden")),
+            "Should exclude hidden files"
+        );
+    }
+
+    #[test]
+    fn test_collect_paths_includes_hidden_when_enabled() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("visible.txt"), "").unwrap();
+        fs::write(temp.path().join(".hidden"), "").unwrap();
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, true);
+
+        assert!(
+            paths.iter().any(|p| p.ends_with("visible.txt")),
+            "Should include visible files"
+        );
+        assert!(
+            paths.iter().any(|p| p.ends_with(".hidden")),
+            "Should include hidden files when enabled"
+        );
+    }
+
+    #[test]
+    fn test_collect_paths_respects_depth_limit() {
+        let temp = TempDir::new().unwrap();
+        // Create deeply nested structure
+        let mut current = temp.path().to_path_buf();
+        for i in 0..15 {
+            current = current.join(format!("level{}", i));
+            fs::create_dir_all(&current).unwrap();
+        }
+        fs::write(current.join("deep.txt"), "").unwrap();
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, false);
+
+        // Should not collect files beyond depth 10
+        let deep_file = paths.iter().any(|p| p.ends_with("deep.txt"));
+        assert!(
+            !deep_file,
+            "Should not collect files beyond max depth (10)"
+        );
+    }
+
+    #[test]
+    fn test_collect_paths_empty_directory() {
+        let temp = TempDir::new().unwrap();
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, false);
+
+        assert!(
+            paths.is_empty(),
+            "Empty directory should return empty paths"
+        );
+    }
+
+    #[test]
+    fn test_collect_paths_includes_directories() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir(temp.path().join("mydir")).unwrap();
+        fs::write(temp.path().join("file.txt"), "").unwrap();
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, false);
+
+        assert!(
+            paths.iter().any(|p| p.ends_with("mydir")),
+            "Should include directories"
+        );
+        assert!(
+            paths.iter().any(|p| p.ends_with("file.txt")),
+            "Should include files"
+        );
+    }
+
+    // =========================================================================
+    // ViewMode Transition Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_finder_mode_structure() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test query".to_string(),
+            selected: 5,
+        };
+
+        if let ViewMode::FuzzyFinder { query, selected } = &state.mode {
+            assert_eq!(query, "test query");
+            assert_eq!(*selected, 5);
+        } else {
+            panic!("Mode should be FuzzyFinder");
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_jump_target_initial_none() {
+        let temp = TempDir::new().unwrap();
+        let state = AppState::new(temp.path().to_path_buf());
+
+        assert!(
+            state.fuzzy_jump_target.is_none(),
+            "fuzzy_jump_target should be None initially"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_jump_target_can_be_set() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        let target = temp.path().join("target.txt");
+        state.fuzzy_jump_target = Some(target.clone());
+
+        assert_eq!(state.fuzzy_jump_target.unwrap(), target);
+    }
+
+    // =========================================================================
+    // Tree Navigator reveal_path Tests
+    // =========================================================================
+
+    #[test]
+    fn test_reveal_path_basic() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join("a/b/c")).unwrap();
+        fs::write(temp.path().join("a/b/c/deep.txt"), "").unwrap();
+
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        let target = temp.path().join("a/b/c/deep.txt");
+
+        navigator.reveal_path(&target).unwrap();
+
+        // After reveal, the file should be visible
+        let entries = navigator.visible_entries();
+        let visible_paths: Vec<_> = entries.iter().map(|e| &e.path).collect();
+
+        assert!(
+            visible_paths.contains(&&target),
+            "Target should be visible after reveal"
+        );
+    }
+
+    #[test]
+    fn test_reveal_path_expands_ancestors() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join("a/b")).unwrap();
+        fs::write(temp.path().join("a/b/file.txt"), "").unwrap();
+
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+
+        // Initially, nested file is not visible
+        let before = navigator.visible_entries();
+        assert!(
+            !before.iter().any(|e| e.path.ends_with("file.txt")),
+            "File should not be visible initially"
+        );
+
+        let target = temp.path().join("a/b/file.txt");
+        navigator.reveal_path(&target).unwrap();
+
+        // After reveal, the file should be visible
+        let after = navigator.visible_entries();
+        assert!(
+            after.iter().any(|e| e.path.ends_with("file.txt")),
+            "File should be visible after reveal"
+        );
+    }
+
+    #[test]
+    fn test_reveal_path_already_visible() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("visible.txt"), "").unwrap();
+
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        let target = temp.path().join("visible.txt");
+
+        // Already visible
+        let before_count = navigator.visible_count();
+
+        navigator.reveal_path(&target).unwrap();
+
+        let after_count = navigator.visible_count();
+        assert_eq!(
+            before_count, after_count,
+            "Revealing already visible path should not change count"
+        );
+    }
+
+    #[test]
+    fn test_reveal_path_nonexistent() {
+        let temp = TempDir::new().unwrap();
+
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        let target = temp.path().join("nonexistent/path/file.txt");
+
+        // Should not panic, just do nothing
+        let result = navigator.reveal_path(&target);
+        assert!(result.is_ok());
+    }
+
+    // =========================================================================
+    // Integration Tests - Full Workflow
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_workflow_open_search_select() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join("src")).unwrap();
+        fs::write(temp.path().join("src/main.rs"), "").unwrap();
+        fs::write(temp.path().join("src/lib.rs"), "").unwrap();
+
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // 1. Start in Browse mode
+        assert!(matches!(state.mode, ViewMode::Browse));
+
+        // 2. Open fuzzy finder with Ctrl+P
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+        assert!(matches!(action, KeyAction::OpenFuzzyFinder));
+
+        // Simulate opening fuzzy finder
+        state.mode = ViewMode::FuzzyFinder {
+            query: String::new(),
+            selected: 0,
+        };
+
+        // 3. Simulate typing a query
+        if let ViewMode::FuzzyFinder { query, .. } = &mut state.mode {
+            *query = "main".to_string();
+        }
+
+        // 4. Press Enter to confirm
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+        assert!(matches!(action, KeyAction::FuzzyConfirm { .. }));
+
+        // 5. Simulate returning to Browse mode
+        state.mode = ViewMode::Browse;
+        assert!(matches!(state.mode, ViewMode::Browse));
+    }
+
+    #[test]
+    fn test_fuzzy_workflow_cancel() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // Start fuzzy finder
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 3,
+        };
+
+        // Press Esc to cancel
+        let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_fuzzy_workflow_navigation() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // Start fuzzy finder with some results
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        // Navigate down
+        let key = KeyEvent::new(KeyCode::Down, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+        assert!(matches!(action, KeyAction::FuzzyDown));
+
+        // Navigate up
+        let key = KeyEvent::new(KeyCode::Up, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+        assert!(matches!(action, KeyAction::FuzzyUp));
+    }
+
+    // =========================================================================
+    // Edge Case Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_finder_special_characters_in_query() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("test[1].txt"),
+            temp.path().join("test(2).txt"),
+        ];
+
+        // Should not panic with special characters
+        let results = fuzzy_match("[1]", &paths, &root);
+        // Results may or may not match depending on how special chars are handled
+        // Just verify no panic occurs
+        let _ = results.len();
+    }
+
+    #[test]
+    fn test_fuzzy_finder_unicode_query() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("日本語ファイル.txt"),
+            temp.path().join("english.txt"),
+        ];
+
+        let results = fuzzy_match("日本語", &paths, &root);
+        // Should match unicode filename
+        if !results.is_empty() {
+            assert!(results[0].display.contains("日本語"));
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_finder_whitespace_query() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![temp.path().join("my file.txt")];
+
+        let results = fuzzy_match(" ", &paths, &root);
+        // Whitespace should be treated as part of query
+        // Just verify no panic occurs
+        let _ = results.len();
+    }
+
+    #[test]
+    fn test_fuzzy_finder_very_long_query() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![temp.path().join("short.txt")];
+
+        let long_query = "a".repeat(1000);
+        let results = fuzzy_match(&long_query, &paths, &root);
+        // Should handle long query without panic
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_ctrl_p_not_triggered_in_other_modes() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // In Input mode
+        state.mode = ViewMode::Input {
+            purpose: InputPurpose::CreateFile,
+            buffer: String::new(),
+            cursor: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+
+        // Should not trigger fuzzy finder in input mode
+        assert!(
+            !matches!(action, KeyAction::OpenFuzzyFinder),
+            "Ctrl+P should not trigger fuzzy finder in Input mode"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_mode_preserves_query_on_navigation() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::FuzzyFinder {
+            query: "important query".to_string(),
+            selected: 2,
+        };
+
+        // Navigate down
+        let key = KeyEvent::new(KeyCode::Down, KeyModifiers::NONE);
+        let _ = handle_key_event(&state, key);
+
+        // Query should still be there
+        if let ViewMode::FuzzyFinder { query, .. } = &state.mode {
+            assert_eq!(query, "important query");
+        }
+    }
+
+    // =========================================================================
+    // Determinism Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_match_deterministic() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("file1.txt"),
+            temp.path().join("file2.txt"),
+            temp.path().join("other.rs"),
+        ];
+
+        // Multiple calls should produce same results
+        let results1 = fuzzy_match("file", &paths, &root);
+        let results2 = fuzzy_match("file", &paths, &root);
+
+        assert_eq!(results1.len(), results2.len());
+        for (r1, r2) in results1.iter().zip(results2.iter()) {
+            assert_eq!(r1.path, r2.path);
+            assert_eq!(r1.score, r2.score);
+        }
+    }
+
+    #[test]
+    fn test_collect_paths_deterministic() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("a.txt"), "").unwrap();
+        fs::write(temp.path().join("b.txt"), "").unwrap();
+        fs::write(temp.path().join("c.txt"), "").unwrap();
+
+        let root = temp.path().to_path_buf();
+
+        let paths1 = collect_paths(&root, false);
+        let paths2 = collect_paths(&root, false);
+
+        assert_eq!(paths1.len(), paths2.len());
+        // Note: Order might not be guaranteed, so just check contents match
+        for p in &paths1 {
+            assert!(paths2.contains(p));
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_confirm_action_type() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        // FuzzyConfirm should have path field
+        if let KeyAction::FuzzyConfirm { path } = action {
+            // Path is initially empty, to be filled by main.rs
+            assert!(path.as_os_str().is_empty());
+        } else {
+            panic!("Expected FuzzyConfirm action");
+        }
+    }
+}
