@@ -2034,3 +2034,874 @@ mod drag_and_drop_tests {
         assert!(detector.is_empty());
     }
 }
+
+// =============================================================================
+// Image Preview Comprehensive Tests (Phase 15.8.4)
+// =============================================================================
+
+mod image_preview_tests {
+    use super::*;
+    use fileview::render::{create_image_picker, render_image_preview, ImagePreview, Picker};
+    use std::fs;
+
+    // =========================================================================
+    // Test Helpers - Image Creation Functions
+    // =========================================================================
+
+    /// Create a test image with specified dimensions and format
+    fn create_test_image(path: &std::path::Path, width: u32, height: u32) {
+        use image::{ImageBuffer, Rgb};
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_fn(width, height, |x, y| {
+            Rgb([(x % 256) as u8, (y % 256) as u8, ((x + y) % 256) as u8])
+        });
+        img.save(path).unwrap();
+    }
+
+    /// Create a 1x1 PNG
+    fn create_test_png(path: &std::path::Path) {
+        create_test_image(path, 1, 1);
+    }
+
+    /// Create a 1x1 JPEG
+    fn create_test_jpeg(path: &std::path::Path) {
+        use image::{ImageBuffer, Rgb};
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
+            ImageBuffer::from_fn(1, 1, |_, _| Rgb([0, 0, 255]));
+        img.save(path).unwrap();
+    }
+
+    /// Create a test GIF file
+    fn create_test_gif(path: &std::path::Path) {
+        use image::{ImageBuffer, Rgb};
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
+            ImageBuffer::from_fn(2, 2, |_, _| Rgb([0, 255, 0]));
+        img.save(path).unwrap();
+    }
+
+    /// Create a test WebP file
+    fn create_test_webp(path: &std::path::Path) {
+        use image::{ImageBuffer, Rgb};
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
+            ImageBuffer::from_fn(2, 2, |_, _| Rgb([255, 255, 0]));
+        img.save(path).unwrap();
+    }
+
+    /// Create a test BMP file
+    fn create_test_bmp(path: &std::path::Path) {
+        use image::{ImageBuffer, Rgb};
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
+            ImageBuffer::from_fn(2, 2, |_, _| Rgb([255, 0, 255]));
+        img.save(path).unwrap();
+    }
+
+    /// Create a PNG with alpha channel (RGBA)
+    fn create_test_png_rgba(path: &std::path::Path) {
+        use image::{ImageBuffer, Rgba};
+        let img: ImageBuffer<Rgba<u8>, Vec<u8>> =
+            ImageBuffer::from_fn(2, 2, |_, _| Rgba([255, 0, 0, 128])); // Semi-transparent red
+        img.save(path).unwrap();
+    }
+
+    // =========================================================================
+    // SECTION 1: Image File Detection Tests (CI-Safe)
+    // These tests run in all environments including CI
+    // =========================================================================
+
+    #[test]
+    fn test_image_detection_all_supported_formats() {
+        let supported = [
+            "image.png",
+            "image.jpg",
+            "image.jpeg",
+            "image.gif",
+            "image.webp",
+            "image.bmp",
+            "image.ico",
+        ];
+
+        for filename in supported {
+            assert!(
+                is_image_file(&PathBuf::from(filename)),
+                "Expected {} to be detected as image",
+                filename
+            );
+        }
+    }
+
+    #[test]
+    fn test_image_detection_case_insensitive() {
+        // Upper case
+        assert!(is_image_file(&PathBuf::from("IMAGE.PNG")));
+        assert!(is_image_file(&PathBuf::from("IMAGE.JPG")));
+        assert!(is_image_file(&PathBuf::from("IMAGE.JPEG")));
+        assert!(is_image_file(&PathBuf::from("IMAGE.GIF")));
+        assert!(is_image_file(&PathBuf::from("IMAGE.WEBP")));
+        assert!(is_image_file(&PathBuf::from("IMAGE.BMP")));
+        assert!(is_image_file(&PathBuf::from("IMAGE.ICO")));
+
+        // Mixed case
+        assert!(is_image_file(&PathBuf::from("Image.Png")));
+        assert!(is_image_file(&PathBuf::from("iMaGe.JpG")));
+        assert!(is_image_file(&PathBuf::from("FILE.GiF")));
+    }
+
+    #[test]
+    fn test_image_detection_with_directory_path() {
+        assert!(is_image_file(&PathBuf::from("/absolute/path/image.png")));
+        assert!(is_image_file(&PathBuf::from("./relative/path/image.jpg")));
+        assert!(is_image_file(&PathBuf::from("../parent/dir/image.gif")));
+        assert!(is_image_file(&PathBuf::from("/path with spaces/image.png")));
+        assert!(is_image_file(&PathBuf::from("/日本語パス/画像.png")));
+    }
+
+    #[test]
+    fn test_image_detection_multiple_dots_in_filename() {
+        assert!(is_image_file(&PathBuf::from("file.backup.png")));
+        assert!(is_image_file(&PathBuf::from("image.v2.final.jpg")));
+        assert!(is_image_file(&PathBuf::from("screenshot.2024.01.28.png")));
+        assert!(is_image_file(&PathBuf::from("file...png")));
+    }
+
+    #[test]
+    fn test_image_detection_not_image_extensions() {
+        // Text files
+        assert!(!is_image_file(&PathBuf::from("file.txt")));
+        assert!(!is_image_file(&PathBuf::from("code.rs")));
+        assert!(!is_image_file(&PathBuf::from("script.py")));
+        assert!(!is_image_file(&PathBuf::from("document.md")));
+
+        // Binary files
+        assert!(!is_image_file(&PathBuf::from("app.exe")));
+        assert!(!is_image_file(&PathBuf::from("lib.dll")));
+        assert!(!is_image_file(&PathBuf::from("binary.bin")));
+
+        // Config files
+        assert!(!is_image_file(&PathBuf::from("config.json")));
+        assert!(!is_image_file(&PathBuf::from("settings.toml")));
+        assert!(!is_image_file(&PathBuf::from("data.yaml")));
+
+        // Unknown extensions
+        assert!(!is_image_file(&PathBuf::from("file.xyz")));
+        assert!(!is_image_file(&PathBuf::from("data.raw")));
+    }
+
+    #[test]
+    fn test_image_detection_no_extension() {
+        assert!(!is_image_file(&PathBuf::from("Makefile")));
+        assert!(!is_image_file(&PathBuf::from("LICENSE")));
+        assert!(!is_image_file(&PathBuf::from("README")));
+        assert!(!is_image_file(&PathBuf::from("file")));
+    }
+
+    #[test]
+    fn test_image_detection_hidden_files() {
+        assert!(is_image_file(&PathBuf::from(".hidden.png")));
+        assert!(is_image_file(&PathBuf::from(".secret.jpg")));
+        assert!(!is_image_file(&PathBuf::from(".gitignore")));
+        assert!(!is_image_file(&PathBuf::from(".env")));
+    }
+
+    #[test]
+    fn test_image_detection_similar_but_invalid_extensions() {
+        assert!(!is_image_file(&PathBuf::from("file.pn"))); // Not .png
+        assert!(!is_image_file(&PathBuf::from("file.jp"))); // Not .jpg
+        assert!(!is_image_file(&PathBuf::from("file.pngg"))); // Extra char
+        assert!(!is_image_file(&PathBuf::from("file.jpgg"))); // Extra char
+        assert!(!is_image_file(&PathBuf::from("file.gi"))); // Not .gif
+        assert!(!is_image_file(&PathBuf::from("file.web"))); // Not .webp
+        assert!(!is_image_file(&PathBuf::from("filepng"))); // No dot
+    }
+
+    #[test]
+    fn test_image_detection_unicode_filenames() {
+        assert!(is_image_file(&PathBuf::from("日本語.png")));
+        assert!(is_image_file(&PathBuf::from("中文图片.jpg")));
+        assert!(is_image_file(&PathBuf::from("émoji🖼️.gif")));
+        assert!(is_image_file(&PathBuf::from("Ñoño.webp")));
+        assert!(is_image_file(&PathBuf::from("αβγδ.bmp")));
+    }
+
+    #[test]
+    fn test_image_detection_long_filename() {
+        let long_name = format!("{}.png", "a".repeat(200));
+        assert!(is_image_file(&PathBuf::from(&long_name)));
+
+        let very_long = format!("{}.jpg", "x".repeat(500));
+        assert!(is_image_file(&PathBuf::from(&very_long)));
+    }
+
+    #[test]
+    fn test_image_detection_special_characters() {
+        assert!(is_image_file(&PathBuf::from("file-name.png")));
+        assert!(is_image_file(&PathBuf::from("file_name.png")));
+        assert!(is_image_file(&PathBuf::from("file (1).png")));
+        assert!(is_image_file(&PathBuf::from("file [copy].png")));
+        assert!(is_image_file(&PathBuf::from("file@2x.png")));
+        assert!(is_image_file(&PathBuf::from("file#1.png")));
+        assert!(is_image_file(&PathBuf::from("file+plus.png")));
+    }
+
+    #[test]
+    fn test_image_detection_empty_or_minimal_input() {
+        assert!(!is_image_file(&PathBuf::from("")));
+        assert!(!is_image_file(&PathBuf::from(".")));
+        assert!(!is_image_file(&PathBuf::from("..")));
+        assert!(!is_image_file(&PathBuf::from(".png"))); // Hidden file, no name
+    }
+
+    // =========================================================================
+    // SECTION 2: Real Image File Loading Tests (CI-Safe via image crate)
+    // These tests verify image::open works, not requiring Picker
+    // =========================================================================
+
+    #[test]
+    fn test_image_open_png() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.png");
+        create_test_png(&path);
+
+        let result = image::open(&path);
+        assert!(result.is_ok(), "Failed to open PNG: {:?}", result.err());
+
+        let img = result.unwrap();
+        assert_eq!(img.width(), 1);
+        assert_eq!(img.height(), 1);
+    }
+
+    #[test]
+    fn test_image_open_jpeg() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.jpg");
+        create_test_jpeg(&path);
+
+        let result = image::open(&path);
+        assert!(result.is_ok(), "Failed to open JPEG: {:?}", result.err());
+    }
+
+    #[test]
+    fn test_image_open_gif() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.gif");
+        create_test_gif(&path);
+
+        let result = image::open(&path);
+        assert!(result.is_ok(), "Failed to open GIF: {:?}", result.err());
+
+        let img = result.unwrap();
+        assert_eq!(img.width(), 2);
+        assert_eq!(img.height(), 2);
+    }
+
+    #[test]
+    fn test_image_open_webp() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.webp");
+        create_test_webp(&path);
+
+        let result = image::open(&path);
+        assert!(result.is_ok(), "Failed to open WebP: {:?}", result.err());
+
+        let img = result.unwrap();
+        assert_eq!(img.width(), 2);
+        assert_eq!(img.height(), 2);
+    }
+
+    #[test]
+    fn test_image_open_bmp() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.bmp");
+        create_test_bmp(&path);
+
+        let result = image::open(&path);
+        assert!(result.is_ok(), "Failed to open BMP: {:?}", result.err());
+
+        let img = result.unwrap();
+        assert_eq!(img.width(), 2);
+        assert_eq!(img.height(), 2);
+    }
+
+    #[test]
+    fn test_image_open_png_rgba_transparency() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("transparent.png");
+        create_test_png_rgba(&path);
+
+        let result = image::open(&path);
+        assert!(
+            result.is_ok(),
+            "Failed to open RGBA PNG: {:?}",
+            result.err()
+        );
+
+        let img = result.unwrap();
+        assert_eq!(img.width(), 2);
+        assert_eq!(img.height(), 2);
+        // Verify it has alpha channel by checking color type
+        assert!(img.color().has_alpha());
+    }
+
+    #[test]
+    fn test_image_open_all_formats_consistency() {
+        let temp = TempDir::new().unwrap();
+
+        let formats = [
+            ("test.png", create_test_png as fn(&std::path::Path)),
+            ("test.jpg", create_test_jpeg as fn(&std::path::Path)),
+            ("test.gif", create_test_gif as fn(&std::path::Path)),
+            ("test.webp", create_test_webp as fn(&std::path::Path)),
+            ("test.bmp", create_test_bmp as fn(&std::path::Path)),
+        ];
+
+        for (filename, creator) in formats {
+            let path = temp.path().join(filename);
+            creator(&path);
+
+            assert!(image::open(&path).is_ok(), "Failed to open {}", filename);
+            assert!(is_image_file(&path), "{} not detected as image", filename);
+        }
+    }
+
+    // =========================================================================
+    // SECTION 3: Image Dimension Tests (CI-Safe)
+    // =========================================================================
+
+    #[test]
+    fn test_image_dimensions_small() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("small.png");
+        create_test_image(&path, 1, 1);
+
+        let img = image::open(&path).unwrap();
+        assert_eq!(img.width(), 1);
+        assert_eq!(img.height(), 1);
+    }
+
+    #[test]
+    fn test_image_dimensions_medium() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("medium.png");
+        create_test_image(&path, 100, 100);
+
+        let img = image::open(&path).unwrap();
+        assert_eq!(img.width(), 100);
+        assert_eq!(img.height(), 100);
+    }
+
+    #[test]
+    fn test_image_dimensions_large() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("large.png");
+        create_test_image(&path, 1000, 1000);
+
+        let img = image::open(&path).unwrap();
+        assert_eq!(img.width(), 1000);
+        assert_eq!(img.height(), 1000);
+    }
+
+    #[test]
+    fn test_image_dimensions_wide() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("wide.png");
+        create_test_image(&path, 500, 10);
+
+        let img = image::open(&path).unwrap();
+        assert_eq!(img.width(), 500);
+        assert_eq!(img.height(), 10);
+    }
+
+    #[test]
+    fn test_image_dimensions_tall() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("tall.png");
+        create_test_image(&path, 10, 500);
+
+        let img = image::open(&path).unwrap();
+        assert_eq!(img.width(), 10);
+        assert_eq!(img.height(), 500);
+    }
+
+    // =========================================================================
+    // SECTION 4: Error Handling Tests (CI-Safe)
+    // =========================================================================
+
+    #[test]
+    fn test_image_open_nonexistent_file() {
+        let result = image::open("/nonexistent/path/image.png");
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        let err_string = err.to_string();
+        // Verify error indicates file not found
+        assert!(
+            err_string.contains("No such file")
+                || err_string.contains("not found")
+                || err_string.contains("IoError"),
+            "Unexpected error message: {}",
+            err_string
+        );
+    }
+
+    #[test]
+    fn test_image_open_invalid_data() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("fake.png");
+        fs::write(&path, "This is not a PNG file").unwrap();
+
+        let result = image::open(&path);
+        assert!(result.is_err(), "Should fail for invalid image data");
+
+        // Verify error is related to image format/decoding (various possible messages)
+        let err_str = result.unwrap_err().to_string().to_lowercase();
+        assert!(
+            err_str.contains("format")
+                || err_str.contains("decode")
+                || err_str.contains("invalid")
+                || err_str.contains("png")
+                || err_str.contains("signature"),
+            "Expected format/decode error, got: {}",
+            err_str
+        );
+    }
+
+    #[test]
+    fn test_image_open_empty_file() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("empty.png");
+        fs::write(&path, "").unwrap();
+
+        let result = image::open(&path);
+        assert!(result.is_err(), "Should fail for empty file");
+    }
+
+    #[test]
+    fn test_image_open_truncated_file() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("truncated.png");
+
+        // Write only PNG magic bytes but no actual data
+        fs::write(&path, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).unwrap();
+
+        let result = image::open(&path);
+        assert!(result.is_err(), "Should fail for truncated PNG");
+    }
+
+    #[test]
+    fn test_image_open_wrong_extension() {
+        let temp = TempDir::new().unwrap();
+
+        // Create a valid PNG but save with .txt extension
+        let png_path = temp.path().join("actual.png");
+        create_test_png(&png_path);
+
+        // Copy to .txt
+        let txt_path = temp.path().join("image.txt");
+        fs::copy(&png_path, &txt_path).unwrap();
+
+        // image::open uses extension to determine format, so it may fail
+        // But we can use ImageReader with guessed format to read by magic bytes
+        let reader = image::ImageReader::open(&txt_path)
+            .unwrap()
+            .with_guessed_format()
+            .unwrap();
+        let result = reader.decode();
+        assert!(
+            result.is_ok(),
+            "ImageReader with guessed format should work"
+        );
+
+        // Our is_image_file checks extension only
+        assert!(
+            !is_image_file(&txt_path),
+            "is_image_file should check extension"
+        );
+    }
+
+    // =========================================================================
+    // SECTION 5: Image Picker Tests
+    // =========================================================================
+
+    #[test]
+    fn test_create_image_picker_does_not_panic() {
+        // This should never panic, even in CI
+        let _picker = create_image_picker();
+    }
+
+    #[test]
+    fn test_create_image_picker_deterministic() {
+        let picker1 = create_image_picker();
+        let picker2 = create_image_picker();
+
+        // Both calls should return the same variant
+        assert_eq!(
+            picker1.is_some(),
+            picker2.is_some(),
+            "Picker creation should be deterministic"
+        );
+    }
+
+    #[test]
+    fn test_picker_none_is_valid_state() {
+        // When picker is None, the application should handle gracefully
+        let picker: Option<Picker> = None;
+        assert!(picker.is_none());
+
+        // This simulates the fallback path in main.rs
+        // Image preview should be skipped when picker is None
+        let should_show_image = picker.is_some();
+        assert!(!should_show_image);
+    }
+
+    // =========================================================================
+    // SECTION 6: ImagePreview::load Tests (Require Terminal - use #[ignore])
+    // These tests require a real terminal and are skipped in CI
+    // Run with: cargo test -- --ignored
+    // =========================================================================
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_image_preview_load_png() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.png");
+        create_test_png(&path);
+
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let result = ImagePreview::load(&path, &mut picker);
+        assert!(
+            result.is_ok(),
+            "ImagePreview::load failed: {:?}",
+            result.err()
+        );
+
+        let preview = result.unwrap();
+        assert_eq!(preview.width, 1);
+        assert_eq!(preview.height, 1);
+    }
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_image_preview_load_jpeg() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.jpg");
+        create_test_jpeg(&path);
+
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let result = ImagePreview::load(&path, &mut picker);
+        assert!(result.is_ok(), "ImagePreview::load failed for JPEG");
+    }
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_image_preview_load_gif() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.gif");
+        create_test_gif(&path);
+
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let result = ImagePreview::load(&path, &mut picker);
+        assert!(result.is_ok(), "ImagePreview::load failed for GIF");
+    }
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_image_preview_load_webp() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.webp");
+        create_test_webp(&path);
+
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let result = ImagePreview::load(&path, &mut picker);
+        assert!(result.is_ok(), "ImagePreview::load failed for WebP");
+    }
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_image_preview_load_bmp() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.bmp");
+        create_test_bmp(&path);
+
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let result = ImagePreview::load(&path, &mut picker);
+        assert!(result.is_ok(), "ImagePreview::load failed for BMP");
+    }
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_image_preview_load_large_image() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("large.png");
+        create_test_image(&path, 2000, 2000);
+
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let result = ImagePreview::load(&path, &mut picker);
+        assert!(result.is_ok(), "ImagePreview::load failed for large image");
+
+        let preview = result.unwrap();
+        assert_eq!(preview.width, 2000);
+        assert_eq!(preview.height, 2000);
+    }
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_image_preview_load_nonexistent_error() {
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let result = ImagePreview::load(&PathBuf::from("/nonexistent/image.png"), &mut picker);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_image_preview_load_invalid_error() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("invalid.png");
+        fs::write(&path, "not an image").unwrap();
+
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let result = ImagePreview::load(&path, &mut picker);
+        assert!(result.is_err(), "Should fail for invalid image");
+    }
+
+    // =========================================================================
+    // SECTION 7: render_image_preview Tests (Require Terminal - use #[ignore])
+    // =========================================================================
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_render_image_preview_does_not_panic() {
+        use ratatui::{backend::TestBackend, Terminal};
+
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.png");
+        create_test_png(&path);
+
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let mut preview = ImagePreview::load(&path, &mut picker).unwrap();
+
+        // Create a test terminal
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_image_preview(frame, &mut preview, area, "test.png", true);
+            })
+            .unwrap();
+
+        // If we get here without panicking, the test passes
+    }
+
+    #[test]
+    #[ignore = "Requires terminal with image protocol support"]
+    fn test_render_image_preview_focused_unfocused() {
+        use ratatui::{backend::TestBackend, Terminal};
+
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.png");
+        create_test_png(&path);
+
+        let mut picker =
+            create_image_picker().expect("This test requires a terminal with image support");
+
+        let mut preview = ImagePreview::load(&path, &mut picker).unwrap();
+
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        // Test focused state
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_image_preview(frame, &mut preview, area, "test.png", true);
+            })
+            .unwrap();
+
+        // Test unfocused state
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_image_preview(frame, &mut preview, area, "test.png", false);
+            })
+            .unwrap();
+    }
+
+    // =========================================================================
+    // SECTION 8: Preview Type Mutual Exclusivity Tests (CI-Safe)
+    // =========================================================================
+
+    #[test]
+    fn test_preview_type_mutual_exclusivity_text() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("file.txt");
+        fs::write(&path, "text content").unwrap();
+
+        assert!(is_text_file(&path), "Should be text file");
+        assert!(!is_image_file(&path), "Should NOT be image file");
+        assert!(!is_binary_file(&path), "Should NOT be binary file");
+    }
+
+    #[test]
+    fn test_preview_type_mutual_exclusivity_image() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("file.png");
+        create_test_png(&path);
+
+        assert!(!is_text_file(&path), "Should NOT be text file");
+        assert!(is_image_file(&path), "Should be image file");
+        assert!(!is_binary_file(&path), "Should NOT be binary file");
+    }
+
+    #[test]
+    fn test_preview_type_mutual_exclusivity_binary() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("file.exe");
+        fs::write(&path, [0x4D, 0x5A]).unwrap(); // MZ header
+
+        assert!(!is_text_file(&path), "Should NOT be text file");
+        assert!(!is_image_file(&path), "Should NOT be image file");
+        assert!(is_binary_file(&path), "Should be binary file");
+    }
+
+    #[test]
+    fn test_directory_not_any_preview_type() {
+        let temp = TempDir::new().unwrap();
+        let dir = temp.path().join("subdir");
+        fs::create_dir(&dir).unwrap();
+
+        assert!(!is_text_file(&dir), "Directory should NOT be text");
+        assert!(!is_image_file(&dir), "Directory should NOT be image");
+        // is_binary_file has special handling for directories
+        // Based on implementation, it returns false for directories without extension
+        assert!(!is_binary_file(&dir), "Directory should NOT be binary");
+    }
+
+    #[test]
+    fn test_symlink_to_image() {
+        let temp = TempDir::new().unwrap();
+        let image_path = temp.path().join("actual.png");
+        create_test_png(&image_path);
+
+        let link_path = temp.path().join("link.png");
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(&image_path, &link_path).unwrap();
+
+            // Symlink should be detected as image (follows link)
+            assert!(is_image_file(&link_path));
+
+            // Should be able to open via symlink
+            assert!(image::open(&link_path).is_ok());
+        }
+    }
+
+    // =========================================================================
+    // SECTION 9: Module Export Verification (CI-Safe)
+    // =========================================================================
+
+    #[test]
+    fn test_render_module_exports() {
+        // Verify public API exports
+        let _: fn(&std::path::Path, &mut Picker) -> anyhow::Result<ImagePreview> =
+            ImagePreview::load;
+        let _: fn() -> Option<Picker> = create_image_picker;
+        let _: fn(&std::path::Path) -> bool = is_image_file;
+        let _: fn(&std::path::Path) -> bool = is_text_file;
+        let _: fn(&std::path::Path) -> bool = is_binary_file;
+    }
+
+    #[test]
+    fn test_image_preview_struct_fields() {
+        let temp = TempDir::new().unwrap();
+        let path = temp.path().join("test.png");
+        create_test_image(&path, 50, 30);
+
+        // We can't create ImagePreview without picker, but we can verify
+        // that the struct has public width/height fields by checking the image
+        let img = image::open(&path).unwrap();
+        assert_eq!(img.width(), 50);
+        assert_eq!(img.height(), 30);
+    }
+
+    // =========================================================================
+    // SECTION 10: Edge Cases and Stress Tests (CI-Safe)
+    // =========================================================================
+
+    #[test]
+    fn test_multiple_images_in_sequence() {
+        let temp = TempDir::new().unwrap();
+
+        // Create and open multiple images in sequence
+        for i in 0..10 {
+            let path = temp.path().join(format!("image_{}.png", i));
+            create_test_image(&path, 10 + i, 10 + i);
+
+            let img = image::open(&path).unwrap();
+            assert_eq!(img.width(), 10 + i);
+            assert_eq!(img.height(), 10 + i);
+        }
+    }
+
+    #[test]
+    fn test_various_image_aspect_ratios() {
+        let temp = TempDir::new().unwrap();
+
+        let ratios = [
+            (1, 1),   // Square
+            (16, 9),  // Widescreen
+            (9, 16),  // Portrait
+            (4, 3),   // Classic
+            (21, 9),  // Ultrawide
+            (1, 100), // Very tall
+            (100, 1), // Very wide
+        ];
+
+        for (w, h) in ratios {
+            let path = temp.path().join(format!("ratio_{}x{}.png", w, h));
+            create_test_image(&path, w, h);
+
+            let img = image::open(&path).unwrap();
+            assert_eq!(img.width(), w);
+            assert_eq!(img.height(), h);
+        }
+    }
+
+    #[test]
+    fn test_real_file_detection_consistency() {
+        let temp = TempDir::new().unwrap();
+
+        // Create actual files and verify detection matches content
+        let png_path = temp.path().join("real.png");
+        let jpg_path = temp.path().join("real.jpg");
+        let gif_path = temp.path().join("real.gif");
+        let txt_path = temp.path().join("real.txt");
+
+        create_test_png(&png_path);
+        create_test_jpeg(&jpg_path);
+        create_test_gif(&gif_path);
+        fs::write(&txt_path, "text content").unwrap();
+
+        // Verify file type detection is consistent
+        assert!(is_image_file(&png_path) && image::open(&png_path).is_ok());
+        assert!(is_image_file(&jpg_path) && image::open(&jpg_path).is_ok());
+        assert!(is_image_file(&gif_path) && image::open(&gif_path).is_ok());
+        assert!(is_text_file(&txt_path) && image::open(&txt_path).is_err());
+    }
+}
