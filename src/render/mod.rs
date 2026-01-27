@@ -27,5 +27,7 @@ pub use preview::{
 };
 pub use sixel::{encode_sixel, render_sixel_image, write_sixel, SixelConfig};
 pub use status::{render_input_popup, render_status_bar};
-pub use terminal::{detect_best_protocol, detect_terminal, ImageProtocol, TerminalKind};
+pub use terminal::{
+    best_protocol_for_terminal, detect_best_protocol, detect_terminal, ImageProtocol, TerminalKind,
+};
 pub use tree::{render_tree, visible_height};
