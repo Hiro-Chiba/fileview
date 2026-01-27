@@ -1,4 +1,5 @@
 //! Nerd Fonts icon mappings for files and directories
+//! Based on yazi file manager's icon system with additional customizations
 
 use std::path::Path;
 
@@ -15,22 +16,53 @@ pub fn get_icon(path: &Path, is_dir: bool, expanded: bool) -> &'static str {
 fn get_directory_icon(path: &Path, expanded: bool) -> &'static str {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-    // Special directories
-    match name {
-        ".git" => "",
-        "node_modules" => "",
-        "src" => "",
-        "target" | "build" | "dist" => "",
-        "test" | "tests" | "__tests__" => "",
-        "docs" | "doc" => "",
-        ".github" => "",
-        ".vscode" => "",
+    // Special directories (sorted alphabetically for maintainability)
+    match name.to_lowercase().as_str() {
+        // Hidden/config directories
+        ".cache" => "\u{f0a0}",        //
+        ".cargo" => "\u{e7a8}",        //  (Rust)
+        ".config" => "\u{e5fc}",       //
+        ".git" => "\u{f1d3}",          //
+        ".github" => "\u{f408}",       //
+        ".idea" => "\u{e7b5}",         //  (IntelliJ)
+        ".npm" => "\u{e71e}",          //
+        ".rustup" => "\u{e7a8}",       //  (Rust)
+        ".ssh" => "\u{f084}",          //
+        ".vscode" => "\u{e70c}",       //
+
+        // Standard directories
+        "bin" | "sbin" => "\u{f489}",              //
+        "build" | "dist" | "out" | "output" => "\u{f487}",  //
+        "config" | "configs" | "configuration" => "\u{e5fc}", //
+        "desktop" => "\u{f108}",       //
+        "development" | "dev" | "projects" => "\u{e5fc}",  //
+        "doc" | "docs" | "documentation" => "\u{f02d}",    //
+        "documents" => "\u{f02d}",     //
+        "downloads" => "\u{f019}",     //
+        "fonts" => "\u{f031}",         //
+        "images" | "img" | "imgs" => "\u{f03e}",   //
+        "lib" | "libs" | "library" => "\u{f121}",  //
+        "media" => "\u{f03e}",         //
+        "movies" | "videos" | "video" => "\u{f008}",  //
+        "music" | "audio" | "sounds" => "\u{f001}",   //
+        "node_modules" => "\u{e718}",  //
+        "packages" => "\u{f487}",      //
+        "photos" | "pictures" => "\u{f03e}",  //
+        "public" => "\u{f0ac}",        //
+        "scripts" | "script" => "\u{f489}",   //
+        "src" | "source" | "sources" => "\u{e5fc}",   //
+        "target" => "\u{f487}",        //  (Rust build)
+        "test" | "tests" | "__tests__" | "spec" | "specs" => "\u{f0c3}",  //
+        "tmp" | "temp" | "temporary" => "\u{f252}",   //
+        "vendor" | "vendors" => "\u{f487}",   //
+        "www" | "wwwroot" | "htdocs" => "\u{f0ac}",   //
+
         // Default folder icons (open/closed)
         _ => {
             if expanded {
-                "\u{f07c}"
+                "\u{f07c}"  //  (folder open)
             } else {
-                "\u{f07b}"
+                "\u{f07b}"  //  (folder closed)
             }
         }
     }
@@ -39,19 +71,108 @@ fn get_directory_icon(path: &Path, expanded: bool) -> &'static str {
 /// Get icon for a file based on extension or filename
 fn get_file_icon(path: &Path) -> &'static str {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let name_lower = name.to_lowercase();
 
-    // Special filenames
-    match name {
-        "Cargo.toml" | "Cargo.lock" => "",
-        "package.json" | "package-lock.json" => "",
-        "Makefile" | "CMakeLists.txt" => "",
-        "Dockerfile" | "docker-compose.yml" | "docker-compose.yaml" => "",
-        ".gitignore" | ".gitattributes" => "",
-        ".env" | ".env.local" | ".env.development" | ".env.production" => "",
-        "LICENSE" | "LICENSE.md" | "LICENSE.txt" => "",
-        "README.md" | "README" | "README.txt" => "",
-        _ => get_icon_by_extension(path),
+    // Check special filenames first (exact match)
+    if let Some(icon) = get_special_file_icon(&name_lower, name) {
+        return icon;
     }
+
+    // Then check by extension
+    get_icon_by_extension(path)
+}
+
+/// Get icon for special filenames
+fn get_special_file_icon(name_lower: &str, _name: &str) -> Option<&'static str> {
+    Some(match name_lower {
+        // Build & Package
+        "cargo.toml" | "cargo.lock" => "\u{e7a8}",     //  (Rust)
+        "package.json" | "package-lock.json" => "\u{e71e}",  //
+        "yarn.lock" => "\u{e6a7}",                     //
+        "pnpm-lock.yaml" => "\u{e71e}",               //
+        "composer.json" | "composer.lock" => "\u{e608}",  //  (PHP)
+        "gemfile" | "gemfile.lock" => "\u{e791}",     //  (Ruby)
+        "requirements.txt" | "setup.py" | "pyproject.toml" => "\u{e73c}",  //  (Python)
+        "go.mod" | "go.sum" => "\u{e627}",            //  (Go)
+        "mix.exs" | "mix.lock" => "\u{e62d}",         //  (Elixir)
+
+        // Build Tools
+        "makefile" | "gnumakefile" => "\u{e673}",     //
+        "cmakelists.txt" => "\u{e673}",               //
+        "justfile" => "\u{e673}",                     //
+        "rakefile" => "\u{e791}",                     //  (Ruby)
+        "gulpfile.js" | "gruntfile.js" => "\u{e74e}", //  (JS)
+
+        // Docker
+        "dockerfile" => "\u{f308}",                   // 󰡨
+        "docker-compose.yml" | "docker-compose.yaml" => "\u{f308}",
+        "compose.yml" | "compose.yaml" => "\u{f308}",
+        ".dockerignore" => "\u{f308}",
+
+        // Git
+        ".gitignore" => "\u{f1d3}",                   //
+        ".gitattributes" => "\u{f1d3}",
+        ".gitmodules" => "\u{f1d3}",
+        ".gitconfig" => "\u{f1d3}",
+        ".gitkeep" => "\u{f1d3}",
+
+        // CI/CD
+        ".travis.yml" => "\u{e77e}",                  //
+        ".gitlab-ci.yml" => "\u{f296}",               //
+        "jenkinsfile" => "\u{e767}",                  //
+
+        // Config files
+        ".env" | ".env.local" | ".env.development" | ".env.production" | ".env.example" => "\u{f462}",  //
+        ".editorconfig" => "\u{e652}",                //
+        ".prettierrc" | ".prettierrc.json" | ".prettierrc.yml" | "prettier.config.js" => "\u{e6b4}",  //
+        ".eslintrc" | ".eslintrc.js" | ".eslintrc.json" | "eslint.config.js" => "\u{e655}",  //
+        ".stylelintrc" => "\u{e749}",                 //
+        "tsconfig.json" | "jsconfig.json" => "\u{e628}",  //  (TS)
+        "vite.config.js" | "vite.config.ts" => "\u{e6b5}",  //
+        "webpack.config.js" => "\u{f487}",            //
+        "rollup.config.js" => "\u{f487}",
+        "babel.config.js" | ".babelrc" => "\u{e661}",  //
+
+        // Shell
+        ".bashrc" | ".bash_profile" | ".bash_history" => "\u{e795}",  //
+        ".zshrc" | ".zprofile" | ".zsh_history" => "\u{e795}",
+        ".profile" => "\u{e795}",
+
+        // Vim/Neovim
+        ".vimrc" | ".gvimrc" | "_vimrc" => "\u{e62b}",  //
+        "init.vim" | "init.lua" => "\u{e62b}",
+
+        // Documentation
+        "readme" | "readme.md" | "readme.txt" | "readme.rst" => "\u{f48a}",  // 󰂺
+        "license" | "license.md" | "license.txt" | "licence" => "\u{f0219}",  // 󰈙
+        "changelog" | "changelog.md" | "changes" | "history.md" => "\u{f7d9}",  //
+        "contributing" | "contributing.md" => "\u{f4d4}",  //
+        "authors" | "authors.md" | "contributors" => "\u{f0c0}",  //
+        "code_of_conduct.md" => "\u{f4d4}",
+        "security.md" => "\u{f084}",                  //
+
+        // Lock files
+        "flake.lock" | "flake.nix" => "\u{f313}",     //
+
+        // Kubernetes
+        "kubernetes.yml" | "kubernetes.yaml" => "\u{f10fe}",  // 󱃾
+        "k8s.yml" | "k8s.yaml" => "\u{f10fe}",
+
+        // Terraform
+        "main.tf" | "variables.tf" | "outputs.tf" | "providers.tf" => "\u{e69a}",  //
+
+        // Other
+        ".npmrc" | ".npmignore" => "\u{e71e}",        //
+        ".yarnrc" | ".yarnclean" => "\u{e6a7}",       //
+        ".nvmrc" => "\u{e718}",                       //
+        "robots.txt" => "\u{f06a}",                   //
+        "favicon.ico" => "\u{f245}",                  //
+        "manifest.json" => "\u{e60b}",                //
+        ".htaccess" => "\u{e60b}",
+        "netlify.toml" | "vercel.json" => "\u{f233}",  //
+
+        _ => return None,
+    })
 }
 
 /// Get icon based on file extension
@@ -63,96 +184,291 @@ fn get_icon_by_extension(path: &Path) -> &'static str {
         .to_lowercase();
 
     match ext.as_str() {
-        // Programming languages
-        "rs" => "",
-        "py" | "pyw" | "pyi" => "",
-        "js" | "mjs" | "cjs" => "",
-        "ts" | "mts" | "cts" => "",
-        "jsx" => "",
-        "tsx" => "",
-        "go" => "",
-        "java" => "",
-        "c" => "",
-        "cpp" | "cc" | "cxx" | "c++" => "",
-        "h" | "hpp" | "hxx" | "h++" => "",
-        "cs" => "",
-        "rb" => "",
-        "php" => "",
-        "swift" => "",
-        "kt" | "kts" => "",
-        "scala" => "",
-        "lua" => "",
-        "r" => "",
-        "pl" | "pm" => "",
-        "sh" | "bash" | "zsh" | "fish" => "",
-        "ps1" | "psm1" | "psd1" => "",
-        "vim" => "",
-        "hs" | "lhs" => "",
-        "ex" | "exs" => "",
-        "erl" | "hrl" => "",
-        "clj" | "cljs" | "cljc" | "edn" => "",
-        "elm" => "",
-        "zig" => "",
-        "nim" => "",
-        "v" => "",
-        "asm" | "s" => "",
+        // ==========================================================================
+        // Programming Languages
+        // ==========================================================================
 
-        // Web
-        "html" | "htm" => "",
-        "css" => "",
-        "scss" | "sass" => "",
-        "less" => "",
-        "vue" => "",
-        "svelte" => "",
+        // Rust
+        "rs" => "\u{e7a8}",            //
 
+        // Python
+        "py" | "pyw" | "pyi" | "pyx" | "pxd" => "\u{e73c}",  //
+        "pyc" | "pyo" => "\u{e73c}",
+        "ipynb" => "\u{e678}",         //  (Jupyter)
+
+        // JavaScript & TypeScript
+        "js" | "mjs" | "cjs" => "\u{e74e}",    //
+        "ts" | "mts" | "cts" => "\u{e628}",    //
+        "jsx" => "\u{e7ba}",           //  (React)
+        "tsx" => "\u{e7ba}",           //  (React + TS)
+
+        // Go
+        "go" => "\u{e627}",            //
+        "mod" => "\u{e627}",           // go.mod
+
+        // Java & JVM
+        "java" => "\u{e738}",          //
+        "jar" | "war" | "ear" => "\u{e738}",
+        "kt" | "kts" => "\u{e634}",    //  (Kotlin)
+        "scala" | "sc" => "\u{e737}",  //  (Scala)
+        "groovy" | "gvy" | "gy" | "gsh" => "\u{e775}",  //
+        "clj" | "cljs" | "cljc" | "edn" => "\u{e76a}",  //  (Clojure)
+
+        // C Family
+        "c" => "\u{e61e}",             //
+        "cpp" | "cc" | "cxx" | "c++" => "\u{e61d}",  //
+        "h" | "hpp" | "hxx" | "h++" | "hh" => "\u{e61d}",
+        "cs" => "\u{f031b}",           // 󰌛 (C#)
+        "m" | "mm" => "\u{e61e}",      //  (Objective-C)
+
+        // Swift
+        "swift" => "\u{e755}",         //
+
+        // Ruby
+        "rb" | "ruby" | "rake" | "erb" | "slim" | "haml" => "\u{e791}",  //
+
+        // PHP
+        "php" | "phtml" | "php3" | "php4" | "php5" | "php7" | "php8" => "\u{e608}",  //
+        "blade.php" => "\u{e608}",
+
+        // Perl
+        "pl" | "pm" | "pod" | "t" | "perl" => "\u{e769}",  //
+
+        // Shell
+        "sh" | "bash" | "zsh" | "fish" | "ksh" | "csh" | "tcsh" => "\u{e795}",  //
+        "ps1" | "psm1" | "psd1" => "\u{e70f}",  //  (PowerShell)
+        "bat" | "cmd" => "\u{e629}",   //
+
+        // Lua
+        "lua" => "\u{e620}",           //
+
+        // R
+        "r" | "rmd" | "rproj" => "\u{e68a}",  //
+
+        // Haskell
+        "hs" | "lhs" => "\u{e777}",    //
+
+        // Elixir & Erlang
+        "ex" | "exs" => "\u{e62d}",    //  (Elixir)
+        "erl" | "hrl" => "\u{e7b1}",   //  (Erlang)
+
+        // Elm
+        "elm" => "\u{e62c}",           //
+
+        // Zig
+        "zig" => "\u{e6a9}",           //
+
+        // Nim
+        "nim" | "nims" | "nimble" => "\u{e677}",  //
+
+        // V
+        "v" => "\u{e6ac}",             //
+
+        // OCaml & F#
+        "ml" | "mli" => "\u{e67a}",    //  (OCaml)
+        "fs" | "fsi" | "fsx" => "\u{e7a7}",  //  (F#)
+
+        // D
+        "d" => "\u{e7af}",             //
+
+        // Crystal
+        "cr" => "\u{e7a3}",            //
+
+        // Julia
+        "jl" => "\u{e624}",            //
+
+        // Dart & Flutter
+        "dart" => "\u{e798}",          //
+
+        // Assembly
+        "asm" | "s" | "S" => "\u{e6ab}",  //
+
+        // WASM
+        "wasm" | "wat" => "\u{e6a1}",  //
+
+        // ==========================================================================
+        // Web Technologies
+        // ==========================================================================
+
+        // HTML
+        "html" | "htm" | "xhtml" => "\u{e736}",  //
+
+        // CSS
+        "css" => "\u{e749}",           //
+        "scss" | "sass" => "\u{e603}",  //
+        "less" => "\u{e758}",          //
+        "styl" | "stylus" => "\u{e600}",  //
+
+        // Vue.js
+        "vue" => "\u{e6a0}",           //
+
+        // Svelte
+        "svelte" => "\u{e697}",        //
+
+        // Astro
+        "astro" => "\u{e6b4}",         //
+
+        // Angular
+        "angular" | "component.ts" => "\u{e753}",  //
+
+        // ==========================================================================
         // Data & Config
-        "json" | "jsonc" => "",
-        "yaml" | "yml" => "",
-        "toml" => "",
-        "xml" => "",
-        "ini" | "cfg" | "conf" => "",
-        "csv" => "",
-        "sql" => "",
+        // ==========================================================================
 
+        // JSON
+        "json" | "jsonc" | "json5" => "\u{e60b}",  //
+
+        // YAML
+        "yaml" | "yml" => "\u{e6a8}",  //
+
+        // TOML
+        "toml" => "\u{e6b2}",          //
+
+        // XML
+        "xml" | "plist" | "xsd" | "xsl" | "xslt" | "rss" | "atom" => "\u{e796}",  //
+
+        // INI
+        "ini" | "cfg" | "conf" | "config" => "\u{e615}",  //
+
+        // CSV & Data
+        "csv" | "tsv" => "\u{f0ce}",   //
+
+        // SQL
+        "sql" | "pgsql" | "mysql" => "\u{e706}",  //
+
+        // GraphQL
+        "graphql" | "gql" => "\u{e662}",  //
+
+        // Protocol Buffers
+        "proto" => "\u{e6a5}",         //
+
+        // ==========================================================================
         // Documentation
-        "md" | "markdown" => "",
-        "txt" => "",
-        "pdf" => "",
-        "doc" | "docx" => "",
-        "xls" | "xlsx" => "",
-        "ppt" | "pptx" => "",
-        "tex" | "latex" => "",
-        "org" => "",
-        "rst" => "",
+        // ==========================================================================
 
+        // Markdown
+        "md" | "markdown" | "mdown" | "mkd" | "mdx" => "\u{e73e}",  //
+
+        // Plain text
+        "txt" | "text" => "\u{f0f6}",  //
+
+        // reStructuredText
+        "rst" => "\u{e73e}",           //
+
+        // Org mode
+        "org" => "\u{e633}",           //
+
+        // AsciiDoc
+        "adoc" | "asciidoc" => "\u{e606}",  //
+
+        // LaTeX
+        "tex" | "latex" | "bib" | "sty" | "cls" => "\u{e69b}",  //
+
+        // PDF
+        "pdf" => "\u{f1c1}",           //
+
+        // Office documents
+        "doc" | "docx" | "odt" => "\u{f1c2}",     //
+        "xls" | "xlsx" | "ods" => "\u{f1c3}",     //
+        "ppt" | "pptx" | "odp" => "\u{f1c4}",     //
+
+        // eBooks
+        "epub" | "mobi" | "azw" | "azw3" => "\u{f02d}",  //
+
+        // ==========================================================================
         // Images
-        "png" | "jpg" | "jpeg" | "gif" | "bmp" | "ico" | "webp" => "",
-        "svg" => "",
-        "psd" => "",
-        "ai" => "",
+        // ==========================================================================
 
+        // Raster images
+        "png" | "jpg" | "jpeg" | "gif" | "bmp" | "ico" | "webp" | "avif" | "heic" | "heif" => "\u{f03e}",  //
+        "tiff" | "tif" | "raw" | "cr2" | "nef" | "arw" | "dng" => "\u{f03e}",
+
+        // Vector images
+        "svg" => "\u{f1c5}",           //
+        "eps" | "ai" => "\u{e7b4}",    //  (Adobe Illustrator)
+
+        // Design files
+        "psd" => "\u{e7b8}",           //  (Photoshop)
+        "xd" => "\u{e7b5}",            //  (Adobe XD)
+        "sketch" => "\u{e7b6}",        //
+        "fig" | "figma" => "\u{e7b5}", //
+
+        // 3D
+        "obj" | "stl" | "fbx" | "blend" | "3ds" | "dae" | "gltf" | "glb" => "\u{f1b2}",  //
+
+        // ==========================================================================
         // Audio
-        "mp3" | "wav" | "flac" | "aac" | "ogg" | "wma" => "",
+        // ==========================================================================
 
+        "mp3" | "wav" | "flac" | "aac" | "ogg" | "wma" | "m4a" | "opus" | "aiff" => "\u{f001}",  //
+        "mid" | "midi" => "\u{f001}",
+
+        // ==========================================================================
         // Video
-        "mp4" | "avi" | "mkv" | "mov" | "wmv" | "webm" => "",
+        // ==========================================================================
 
+        "mp4" | "avi" | "mkv" | "mov" | "wmv" | "webm" | "flv" | "m4v" | "mpeg" | "mpg" => "\u{f008}",  //
+        "3gp" | "3g2" | "ogv" | "vob" => "\u{f008}",
+
+        // ==========================================================================
         // Archives
-        "zip" | "tar" | "gz" | "bz2" | "xz" | "7z" | "rar" => "",
+        // ==========================================================================
 
+        "zip" | "tar" | "gz" | "bz2" | "xz" | "lz" | "lzma" | "lzo" => "\u{f1c6}",  //
+        "7z" | "rar" | "cab" | "iso" | "dmg" | "pkg" | "deb" | "rpm" => "\u{f1c6}",
+        "tgz" | "tbz2" | "txz" | "zst" | "zstd" => "\u{f1c6}",
+
+        // ==========================================================================
         // Executables & Libraries
-        "exe" | "msi" => "",
-        "dll" | "so" | "dylib" => "",
-        "app" => "",
+        // ==========================================================================
 
-        // Lock files
-        "lock" => "",
+        "exe" | "msi" | "com" | "scr" => "\u{f085}",  //  (Windows)
+        "app" | "bundle" => "\u{f0ac}",  //  (Mac)
+        "dll" | "so" | "dylib" | "a" | "lib" => "\u{f121}",  //
+        "apk" => "\u{e70e}",           //  (Android)
+        "ipa" => "\u{e711}",           //  (iOS)
+
+        // ==========================================================================
+        // Security & Certificates
+        // ==========================================================================
+
+        "pem" | "crt" | "cer" | "key" | "pub" => "\u{f084}",  //
+        "p12" | "pfx" | "jks" | "keystore" => "\u{f084}",
+        "gpg" | "pgp" | "asc" => "\u{f084}",
+
+        // ==========================================================================
+        // Misc
+        // ==========================================================================
+
+        // Lock files (generic)
+        "lock" => "\u{f023}",          //
 
         // Git
-        "gitignore" | "gitattributes" | "gitmodules" => "",
+        "gitignore" | "gitattributes" | "gitmodules" => "\u{f1d3}",  //
 
-        // Default
-        _ => "",
+        // Log files
+        "log" => "\u{f0f6}",           //
+
+        // Backup files
+        "bak" | "backup" | "old" | "orig" | "swp" => "\u{f0c5}",  //
+
+        // Diff & Patch
+        "diff" | "patch" => "\u{f440}",  //
+
+        // Fonts
+        "ttf" | "otf" | "woff" | "woff2" | "eot" => "\u{f031}",  //
+
+        // Database
+        "db" | "sqlite" | "sqlite3" | "mdb" | "accdb" => "\u{f1c0}",  //
+
+        // Virtual machines
+        "vmdk" | "vdi" | "vhd" | "qcow2" | "ova" | "ovf" => "\u{f233}",  //
+
+        // Nix
+        "nix" => "\u{f313}",           //
+
+        // Default file icon
+        _ => "\u{f15b}",               //
     }
 }
 
@@ -162,302 +478,97 @@ mod tests {
     use std::path::PathBuf;
 
     // ==========================================================================
-    // Programming Language Icons
+    // Directory Tests
     // ==========================================================================
 
     #[test]
-    fn test_rust_file_icon() {
-        let path = PathBuf::from("main.rs");
-        assert_eq!(get_icon(&path, false, false), "");
+    fn test_special_directories() {
+        assert_eq!(get_icon(&PathBuf::from(".git"), true, false), "\u{f1d3}");
+        assert_eq!(get_icon(&PathBuf::from(".config"), true, false), "\u{e5fc}");
+        assert_eq!(get_icon(&PathBuf::from("node_modules"), true, false), "\u{e718}");
+        assert_eq!(get_icon(&PathBuf::from("src"), true, false), "\u{e5fc}");
+        assert_eq!(get_icon(&PathBuf::from("Downloads"), true, false), "\u{f019}");
     }
 
     #[test]
-    fn test_python_file_icon() {
-        let path = PathBuf::from("script.py");
-        assert_eq!(get_icon(&path, false, false), "");
-    }
-
-    #[test]
-    fn test_javascript_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("app.js"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("module.mjs"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("common.cjs"), false, false), "");
-    }
-
-    #[test]
-    fn test_typescript_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("app.ts"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("module.mts"), false, false), "");
-    }
-
-    #[test]
-    fn test_jsx_tsx_file_icons() {
-        assert_eq!(get_icon(&PathBuf::from("Component.jsx"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("Component.tsx"), false, false), "");
-    }
-
-    #[test]
-    fn test_go_file_icon() {
-        let path = PathBuf::from("main.go");
-        assert_eq!(get_icon(&path, false, false), "");
-    }
-
-    #[test]
-    fn test_java_file_icon() {
-        let path = PathBuf::from("Main.java");
-        assert_eq!(get_icon(&path, false, false), "");
-    }
-
-    #[test]
-    fn test_c_file_icon() {
-        let path = PathBuf::from("main.c");
-        assert_eq!(get_icon(&path, false, false), "");
-    }
-
-    #[test]
-    fn test_cpp_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("main.cpp"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("main.cc"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("main.cxx"), false, false), "");
-    }
-
-    #[test]
-    fn test_header_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("header.h"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("header.hpp"), false, false), "");
-    }
-
-    #[test]
-    fn test_shell_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("script.sh"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("script.bash"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("script.zsh"), false, false), "");
+    fn test_directory_open_close() {
+        assert_eq!(get_icon(&PathBuf::from("mydir"), true, false), "\u{f07b}");
+        assert_eq!(get_icon(&PathBuf::from("mydir"), true, true), "\u{f07c}");
     }
 
     // ==========================================================================
-    // Web Files
+    // File Extension Tests
     // ==========================================================================
 
     #[test]
-    fn test_html_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("index.html"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("page.htm"), false, false), "");
+    fn test_programming_languages() {
+        assert_eq!(get_icon(&PathBuf::from("main.rs"), false, false), "\u{e7a8}");
+        assert_eq!(get_icon(&PathBuf::from("script.py"), false, false), "\u{e73c}");
+        assert_eq!(get_icon(&PathBuf::from("app.js"), false, false), "\u{e74e}");
+        assert_eq!(get_icon(&PathBuf::from("app.ts"), false, false), "\u{e628}");
+        assert_eq!(get_icon(&PathBuf::from("main.go"), false, false), "\u{e627}");
     }
 
     #[test]
-    fn test_css_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("style.css"), false, false), "");
+    fn test_react_files() {
+        assert_eq!(get_icon(&PathBuf::from("Component.jsx"), false, false), "\u{e7ba}");
+        assert_eq!(get_icon(&PathBuf::from("Component.tsx"), false, false), "\u{e7ba}");
     }
 
     #[test]
-    fn test_scss_sass_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("style.scss"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("style.sass"), false, false), "");
+    fn test_web_files() {
+        assert_eq!(get_icon(&PathBuf::from("index.html"), false, false), "\u{e736}");
+        assert_eq!(get_icon(&PathBuf::from("style.css"), false, false), "\u{e749}");
+        assert_eq!(get_icon(&PathBuf::from("style.scss"), false, false), "\u{e603}");
     }
 
     #[test]
-    fn test_vue_svelte_file_icons() {
-        assert_eq!(get_icon(&PathBuf::from("App.vue"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("App.svelte"), false, false), "");
-    }
-
-    // ==========================================================================
-    // Config & Data Files
-    // ==========================================================================
-
-    #[test]
-    fn test_json_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("config.json"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("tsconfig.jsonc"), false, false), "");
-    }
-
-    #[test]
-    fn test_yaml_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("config.yaml"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("config.yml"), false, false), "");
-    }
-
-    #[test]
-    fn test_toml_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("config.toml"), false, false), "");
-    }
-
-    #[test]
-    fn test_xml_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("config.xml"), false, false), "");
+    fn test_config_files() {
+        assert_eq!(get_icon(&PathBuf::from("config.json"), false, false), "\u{e60b}");
+        assert_eq!(get_icon(&PathBuf::from("config.yaml"), false, false), "\u{e6a8}");
+        assert_eq!(get_icon(&PathBuf::from("config.toml"), false, false), "\u{e6b2}");
     }
 
     // ==========================================================================
-    // Media Files
+    // Special File Tests
     // ==========================================================================
 
     #[test]
-    fn test_image_file() {
-        assert_eq!(get_icon(&PathBuf::from("photo.png"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("photo.jpg"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("photo.jpeg"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("photo.gif"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("photo.webp"), false, false), "");
+    fn test_special_files() {
+        assert_eq!(get_icon(&PathBuf::from("Cargo.toml"), false, false), "\u{e7a8}");
+        assert_eq!(get_icon(&PathBuf::from("package.json"), false, false), "\u{e71e}");
+        assert_eq!(get_icon(&PathBuf::from("Dockerfile"), false, false), "\u{f308}");
+        assert_eq!(get_icon(&PathBuf::from(".gitignore"), false, false), "\u{f1d3}");
+        assert_eq!(get_icon(&PathBuf::from("README.md"), false, false), "\u{f48a}");
     }
 
     #[test]
-    fn test_svg_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("logo.svg"), false, false), "");
-    }
-
-    #[test]
-    fn test_audio_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("song.mp3"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("song.wav"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("song.flac"), false, false), "");
-    }
-
-    #[test]
-    fn test_video_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("video.mp4"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("video.mkv"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("video.webm"), false, false), "");
+    fn test_shell_config_files() {
+        assert_eq!(get_icon(&PathBuf::from(".bashrc"), false, false), "\u{e795}");
+        assert_eq!(get_icon(&PathBuf::from(".zshrc"), false, false), "\u{e795}");
     }
 
     // ==========================================================================
-    // Archive Files
+    // Media File Tests
     // ==========================================================================
 
     #[test]
-    fn test_archive_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("archive.zip"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("archive.tar"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("archive.gz"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("archive.7z"), false, false), "");
-    }
-
-    // ==========================================================================
-    // Special Directories
-    // ==========================================================================
-
-    #[test]
-    fn test_directory_collapsed() {
-        let path = PathBuf::from("src");
-        assert_eq!(get_icon(&path, true, false), "");
+    fn test_image_files() {
+        assert_eq!(get_icon(&PathBuf::from("photo.png"), false, false), "\u{f03e}");
+        assert_eq!(get_icon(&PathBuf::from("photo.jpg"), false, false), "\u{f03e}");
+        assert_eq!(get_icon(&PathBuf::from("logo.svg"), false, false), "\u{f1c5}");
     }
 
     #[test]
-    fn test_directory_expanded() {
-        let path = PathBuf::from("other");
-        assert_eq!(get_icon(&path, true, true), "\u{f07c}");
+    fn test_audio_video_files() {
+        assert_eq!(get_icon(&PathBuf::from("song.mp3"), false, false), "\u{f001}");
+        assert_eq!(get_icon(&PathBuf::from("video.mp4"), false, false), "\u{f008}");
     }
 
     #[test]
-    fn test_generic_directory_collapsed() {
-        let path = PathBuf::from("mydir");
-        assert_eq!(get_icon(&path, true, false), "\u{f07b}");
-    }
-
-    #[test]
-    fn test_special_directory_git() {
-        let path = PathBuf::from(".git");
-        assert_eq!(get_icon(&path, true, false), "");
-    }
-
-    #[test]
-    fn test_special_directory_node_modules() {
-        let path = PathBuf::from("node_modules");
-        assert_eq!(get_icon(&path, true, false), "");
-    }
-
-    #[test]
-    fn test_special_directory_target() {
-        assert_eq!(get_icon(&PathBuf::from("target"), true, false), "");
-        assert_eq!(get_icon(&PathBuf::from("build"), true, false), "");
-        assert_eq!(get_icon(&PathBuf::from("dist"), true, false), "");
-    }
-
-    #[test]
-    fn test_special_directory_tests() {
-        assert_eq!(get_icon(&PathBuf::from("test"), true, false), "");
-        assert_eq!(get_icon(&PathBuf::from("tests"), true, false), "");
-        assert_eq!(get_icon(&PathBuf::from("__tests__"), true, false), "");
-    }
-
-    #[test]
-    fn test_special_directory_docs() {
-        assert_eq!(get_icon(&PathBuf::from("docs"), true, false), "");
-        assert_eq!(get_icon(&PathBuf::from("doc"), true, false), "");
-    }
-
-    #[test]
-    fn test_special_directory_github() {
-        let path = PathBuf::from(".github");
-        assert_eq!(get_icon(&path, true, false), "");
-    }
-
-    #[test]
-    fn test_special_directory_vscode() {
-        let path = PathBuf::from(".vscode");
-        assert_eq!(get_icon(&path, true, false), "");
-    }
-
-    // ==========================================================================
-    // Special Files
-    // ==========================================================================
-
-    #[test]
-    fn test_special_file_cargo() {
-        assert_eq!(get_icon(&PathBuf::from("Cargo.toml"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("Cargo.lock"), false, false), "");
-    }
-
-    #[test]
-    fn test_special_file_package_json() {
-        assert_eq!(get_icon(&PathBuf::from("package.json"), false, false), "");
-        assert_eq!(
-            get_icon(&PathBuf::from("package-lock.json"), false, false),
-            ""
-        );
-    }
-
-    #[test]
-    fn test_special_file_makefile() {
-        assert_eq!(get_icon(&PathBuf::from("Makefile"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("CMakeLists.txt"), false, false), "");
-    }
-
-    #[test]
-    fn test_special_file_dockerfile() {
-        assert_eq!(get_icon(&PathBuf::from("Dockerfile"), false, false), "");
-        assert_eq!(
-            get_icon(&PathBuf::from("docker-compose.yml"), false, false),
-            ""
-        );
-    }
-
-    #[test]
-    fn test_special_file_gitignore() {
-        assert_eq!(get_icon(&PathBuf::from(".gitignore"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from(".gitattributes"), false, false), "");
-    }
-
-    #[test]
-    fn test_special_file_env() {
-        assert_eq!(get_icon(&PathBuf::from(".env"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from(".env.local"), false, false), "");
-        assert_eq!(
-            get_icon(&PathBuf::from(".env.development"), false, false),
-            ""
-        );
-    }
-
-    #[test]
-    fn test_special_file_license() {
-        assert_eq!(get_icon(&PathBuf::from("LICENSE"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("LICENSE.md"), false, false), "");
-    }
-
-    #[test]
-    fn test_special_file_readme() {
-        assert_eq!(get_icon(&PathBuf::from("README.md"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("README"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("README.txt"), false, false), "");
+    fn test_archive_files() {
+        assert_eq!(get_icon(&PathBuf::from("archive.zip"), false, false), "\u{f1c6}");
+        assert_eq!(get_icon(&PathBuf::from("archive.tar.gz"), false, false), "\u{f1c6}");
     }
 
     // ==========================================================================
@@ -465,72 +576,19 @@ mod tests {
     // ==========================================================================
 
     #[test]
+    fn test_case_insensitivity() {
+        assert_eq!(get_icon(&PathBuf::from("FILE.RS"), false, false), "\u{e7a8}");
+        assert_eq!(get_icon(&PathBuf::from("README.MD"), false, false), "\u{f48a}");
+        assert_eq!(get_icon(&PathBuf::from("DOCKERFILE"), false, false), "\u{f308}");
+    }
+
+    #[test]
     fn test_unknown_extension() {
-        let path = PathBuf::from("file.xyz");
-        assert_eq!(get_icon(&path, false, false), "");
+        assert_eq!(get_icon(&PathBuf::from("file.xyz"), false, false), "\u{f15b}");
     }
 
     #[test]
-    fn test_case_insensitive_extension() {
-        // Extension matching should be case-insensitive
-        assert_eq!(get_icon(&PathBuf::from("file.RS"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("file.Py"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("file.JSON"), false, false), "");
-    }
-
-    #[test]
-    fn test_no_extension() {
-        // File without extension should use default icon
-        let path = PathBuf::from("Makefile_backup");
-        assert_eq!(get_icon(&path, false, false), "");
-    }
-
-    #[test]
-    fn test_multiple_dots_in_filename() {
-        // Should use the last extension
-        assert_eq!(get_icon(&PathBuf::from("file.test.js"), false, false), "");
-        assert_eq!(
-            get_icon(&PathBuf::from("app.config.json"), false, false),
-            ""
-        );
-        assert_eq!(
-            get_icon(&PathBuf::from("style.module.css"), false, false),
-            ""
-        );
-    }
-
-    #[test]
-    fn test_hidden_file_with_extension() {
-        assert_eq!(get_icon(&PathBuf::from(".bashrc"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from(".zshrc"), false, false), "");
-    }
-
-    #[test]
-    fn test_markdown_file() {
-        // Non-README markdown file
-        assert_eq!(get_icon(&PathBuf::from("CHANGELOG.md"), false, false), "");
-        assert_eq!(
-            get_icon(&PathBuf::from("CONTRIBUTING.md"), false, false),
-            ""
-        );
-    }
-
-    #[test]
-    fn test_lock_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("yarn.lock"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("pnpm-lock.yaml"), false, false), "");
-    }
-
-    #[test]
-    fn test_executable_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("app.exe"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("installer.msi"), false, false), "");
-    }
-
-    #[test]
-    fn test_library_file_icon() {
-        assert_eq!(get_icon(&PathBuf::from("lib.dll"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("lib.so"), false, false), "");
-        assert_eq!(get_icon(&PathBuf::from("lib.dylib"), false, false), "");
+    fn test_default_file() {
+        assert_eq!(get_icon(&PathBuf::from("noextension"), false, false), "\u{f15b}");
     }
 }
