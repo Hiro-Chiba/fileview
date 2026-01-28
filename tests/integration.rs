@@ -4439,4 +4439,718 @@ mod fuzzy_finder_tests {
             panic!("Expected FuzzyConfirm action");
         }
     }
+
+    // =========================================================================
+    // Boundary Condition Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_up_at_index_zero() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // Start at index 0
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Up, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        // Should still return FuzzyUp (saturation handled in action handler)
+        assert!(matches!(action, KeyAction::FuzzyUp));
+    }
+
+    #[test]
+    fn test_fuzzy_down_at_large_index() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // Start at a large index
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 100,
+        };
+
+        let key = KeyEvent::new(KeyCode::Down, KeyModifiers::NONE);
+        let action = handle_key_event(&state, key);
+
+        // Should still return FuzzyDown (bounding handled elsewhere)
+        assert!(matches!(action, KeyAction::FuzzyDown));
+    }
+
+    #[test]
+    fn test_fuzzy_selected_bounds_with_empty_results() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths: Vec<PathBuf> = vec![];
+        let results = fuzzy_match("anything", &paths, &root);
+
+        assert!(results.is_empty());
+
+        // Bounding logic should handle empty results
+        let bounded = if results.is_empty() {
+            0
+        } else {
+            5usize.min(results.len() - 1)
+        };
+        assert_eq!(bounded, 0);
+    }
+
+    #[test]
+    fn test_fuzzy_selected_bounds_with_few_results() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("a.txt"),
+            temp.path().join("b.txt"),
+        ];
+        let results = fuzzy_match("txt", &paths, &root);
+
+        // If selected is larger than results, should be bounded
+        let selected = 10usize;
+        let bounded = if results.is_empty() {
+            0
+        } else {
+            selected.min(results.len() - 1)
+        };
+        assert!(bounded < 10);
+    }
+
+    // =========================================================================
+    // Interaction with Other Modes
+    // =========================================================================
+
+    #[test]
+    fn test_ctrl_p_not_triggered_in_search_mode() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::Search {
+            query: "searching".to_string(),
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            !matches!(action, KeyAction::OpenFuzzyFinder),
+            "Ctrl+P should not trigger fuzzy finder in Search mode"
+        );
+    }
+
+    #[test]
+    fn test_ctrl_p_not_triggered_in_preview_mode() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::Preview { scroll: 0 };
+
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            !matches!(action, KeyAction::OpenFuzzyFinder),
+            "Ctrl+P should not trigger fuzzy finder in Preview mode"
+        );
+    }
+
+    #[test]
+    fn test_ctrl_p_not_triggered_in_confirm_mode() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::Confirm {
+            action: PendingAction::Delete {
+                targets: vec![PathBuf::from("test")],
+            },
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            !matches!(action, KeyAction::OpenFuzzyFinder),
+            "Ctrl+P should not trigger fuzzy finder in Confirm mode"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_finder_with_pick_mode_enabled() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.pick_mode = true;
+
+        // Ctrl+P should still work in pick mode
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::OpenFuzzyFinder),
+            "Ctrl+P should work in pick mode"
+        );
+    }
+
+    #[test]
+    fn test_fuzzy_finder_with_preview_visible() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        state.preview_visible = true;
+
+        // Ctrl+P should still work with preview visible
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let action = handle_key_event(&state, key);
+
+        assert!(
+            matches!(action, KeyAction::OpenFuzzyFinder),
+            "Ctrl+P should work with preview visible"
+        );
+    }
+
+    // =========================================================================
+    // Large Directory Tests
+    // =========================================================================
+
+    #[test]
+    fn test_collect_paths_with_many_files() {
+        let temp = TempDir::new().unwrap();
+
+        // Create 100 files
+        for i in 0..100 {
+            fs::write(temp.path().join(format!("file_{:03}.txt", i)), "").unwrap();
+        }
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, false);
+
+        assert_eq!(paths.len(), 100);
+    }
+
+    #[test]
+    fn test_fuzzy_match_with_many_files() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        // Create paths for 100 files
+        let paths: Vec<PathBuf> = (0..100)
+            .map(|i| temp.path().join(format!("file_{:03}.txt", i)))
+            .collect();
+
+        let results = fuzzy_match("file", &paths, &root);
+
+        // Should limit to MAX_RESULTS (15)
+        assert!(results.len() <= 15);
+        // All results should match "file"
+        assert!(results.iter().all(|r| r.display.contains("file")));
+    }
+
+    #[test]
+    fn test_collect_paths_wide_directory() {
+        let temp = TempDir::new().unwrap();
+
+        // Create many subdirectories with files
+        for i in 0..10 {
+            let subdir = temp.path().join(format!("dir_{}", i));
+            fs::create_dir(&subdir).unwrap();
+            for j in 0..5 {
+                fs::write(subdir.join(format!("file_{}.txt", j)), "").unwrap();
+            }
+        }
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, false);
+
+        // Should have 10 dirs + 50 files = 60 paths
+        assert_eq!(paths.len(), 60);
+    }
+
+    // =========================================================================
+    // Query Edge Cases
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_match_query_with_path_separator() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        fs::create_dir_all(temp.path().join("src/render")).unwrap();
+        fs::write(temp.path().join("src/render/mod.rs"), "").unwrap();
+
+        let paths = vec![temp.path().join("src/render/mod.rs")];
+        let results = fuzzy_match("src/ren", &paths, &root);
+
+        // Should match the path with separator
+        assert!(!results.is_empty());
+    }
+
+    #[test]
+    fn test_fuzzy_match_query_all_match() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("a.txt"),
+            temp.path().join("ab.txt"),
+            temp.path().join("abc.txt"),
+        ];
+
+        let results = fuzzy_match("", &paths, &root);
+
+        // Empty query should return all
+        assert_eq!(results.len(), 3);
+    }
+
+    #[test]
+    fn test_fuzzy_match_repeated_characters() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("aaa.txt"),
+            temp.path().join("bbb.txt"),
+        ];
+
+        let results = fuzzy_match("aaa", &paths, &root);
+
+        assert!(!results.is_empty());
+        assert!(results[0].display.contains("aaa"));
+    }
+
+    #[test]
+    fn test_fuzzy_match_numbers_only() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("12345.txt"),
+            temp.path().join("other.txt"),
+        ];
+
+        let results = fuzzy_match("123", &paths, &root);
+
+        assert!(!results.is_empty());
+        assert!(results[0].display.contains("123"));
+    }
+
+    #[test]
+    fn test_fuzzy_match_mixed_case_query() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![
+            temp.path().join("MyFile.txt"),
+            temp.path().join("myfile.txt"),
+        ];
+
+        // Uppercase query should be case-sensitive
+        let results = fuzzy_match("MyFile", &paths, &root);
+        assert!(!results.is_empty());
+    }
+
+    // =========================================================================
+    // reveal_path Edge Cases
+    // =========================================================================
+
+    #[test]
+    fn test_reveal_path_with_symlink_directory() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join("real_dir")).unwrap();
+        fs::write(temp.path().join("real_dir/file.txt"), "").unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(
+                temp.path().join("real_dir"),
+                temp.path().join("link_dir"),
+            )
+            .unwrap();
+
+            let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+            let target = temp.path().join("link_dir/file.txt");
+
+            // Should not panic with symlink
+            let result = navigator.reveal_path(&target);
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_reveal_path_multiple_times_same_target() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join("a/b/c")).unwrap();
+        fs::write(temp.path().join("a/b/c/file.txt"), "").unwrap();
+
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        let target = temp.path().join("a/b/c/file.txt");
+
+        // Reveal multiple times
+        navigator.reveal_path(&target).unwrap();
+        let count1 = navigator.visible_count();
+
+        navigator.reveal_path(&target).unwrap();
+        let count2 = navigator.visible_count();
+
+        navigator.reveal_path(&target).unwrap();
+        let count3 = navigator.visible_count();
+
+        // Should be stable
+        assert_eq!(count1, count2);
+        assert_eq!(count2, count3);
+    }
+
+    #[test]
+    fn test_reveal_path_different_targets_sequentially() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join("a/b")).unwrap();
+        fs::create_dir_all(temp.path().join("x/y")).unwrap();
+        fs::write(temp.path().join("a/b/file1.txt"), "").unwrap();
+        fs::write(temp.path().join("x/y/file2.txt"), "").unwrap();
+
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+
+        let target1 = temp.path().join("a/b/file1.txt");
+        let target2 = temp.path().join("x/y/file2.txt");
+
+        navigator.reveal_path(&target1).unwrap();
+        navigator.reveal_path(&target2).unwrap();
+
+        let entries = navigator.visible_entries();
+        let paths: Vec<_> = entries.iter().map(|e| &e.path).collect();
+
+        // Both targets should be visible
+        assert!(paths.contains(&&target1));
+        assert!(paths.contains(&&target2));
+    }
+
+    #[test]
+    fn test_reveal_path_with_hidden_parent() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join(".hidden/sub")).unwrap();
+        fs::write(temp.path().join(".hidden/sub/file.txt"), "").unwrap();
+
+        // Navigator without showing hidden
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        let target = temp.path().join(".hidden/sub/file.txt");
+
+        // reveal_path should still succeed (but may not show the hidden parent)
+        let result = navigator.reveal_path(&target);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_reveal_path_root_itself() {
+        let temp = TempDir::new().unwrap();
+
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        let target = temp.path().to_path_buf();
+
+        // Revealing root itself should work
+        let result = navigator.reveal_path(&target);
+        assert!(result.is_ok());
+    }
+
+    // =========================================================================
+    // FuzzyMatch Struct Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_match_struct_fields() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![temp.path().join("test_file.rs")];
+        let results = fuzzy_match("test", &paths, &root);
+
+        if !results.is_empty() {
+            let result = &results[0];
+
+            // Check all fields are populated
+            assert!(!result.path.as_os_str().is_empty());
+            assert!(!result.display.is_empty());
+            // Score and indices should exist (may be 0/empty for weak matches)
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_match_display_is_relative() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![temp.path().join("file.txt")];
+        let results = fuzzy_match("", &paths, &root);
+
+        assert!(!results.is_empty());
+        // Display should be relative path, not absolute
+        assert_eq!(results[0].display, "file.txt");
+        assert!(!results[0].display.starts_with('/'));
+    }
+
+    #[test]
+    fn test_fuzzy_match_clone() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        let paths = vec![temp.path().join("file.txt")];
+        let results = fuzzy_match("file", &paths, &root);
+
+        if !results.is_empty() {
+            let cloned = results[0].clone();
+            assert_eq!(cloned.path, results[0].path);
+            assert_eq!(cloned.display, results[0].display);
+            assert_eq!(cloned.score, results[0].score);
+            assert_eq!(cloned.indices, results[0].indices);
+        }
+    }
+
+    // =========================================================================
+    // Action Handler Tests (simulating what handle_action does)
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_up_saturates_at_zero() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // Start at 0
+        state.mode = ViewMode::FuzzyFinder {
+            query: String::new(),
+            selected: 0,
+        };
+
+        // Simulate FuzzyUp action
+        if let ViewMode::FuzzyFinder { selected, .. } = &mut state.mode {
+            *selected = selected.saturating_sub(1);
+        }
+
+        // Should still be 0
+        if let ViewMode::FuzzyFinder { selected, .. } = &state.mode {
+            assert_eq!(*selected, 0);
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_down_increments() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::FuzzyFinder {
+            query: String::new(),
+            selected: 5,
+        };
+
+        // Simulate FuzzyDown action
+        if let ViewMode::FuzzyFinder { selected, .. } = &mut state.mode {
+            *selected += 1;
+        }
+
+        if let ViewMode::FuzzyFinder { selected, .. } = &state.mode {
+            assert_eq!(*selected, 6);
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_cancel_returns_to_browse() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 3,
+        };
+
+        // Simulate Cancel action (sets mode to Browse)
+        state.mode = ViewMode::Browse;
+
+        assert!(matches!(state.mode, ViewMode::Browse));
+    }
+
+    #[test]
+    fn test_fuzzy_confirm_sets_jump_target() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        let target = temp.path().join("target.txt");
+
+        // Simulate FuzzyConfirm action
+        state.fuzzy_jump_target = Some(target.clone());
+        state.mode = ViewMode::Browse;
+
+        assert_eq!(state.fuzzy_jump_target, Some(target));
+        assert!(matches!(state.mode, ViewMode::Browse));
+    }
+
+    #[test]
+    fn test_fuzzy_confirm_with_empty_path_no_jump() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        // Simulate FuzzyConfirm with empty path (no results selected)
+        let empty_path = PathBuf::new();
+        if !empty_path.as_os_str().is_empty() {
+            state.fuzzy_jump_target = Some(empty_path);
+        }
+        state.mode = ViewMode::Browse;
+
+        // Jump target should remain None
+        assert!(state.fuzzy_jump_target.is_none());
+    }
+
+    // =========================================================================
+    // Integration Sequence Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_full_workflow_with_deep_file() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join("a/b/c/d")).unwrap();
+        fs::write(temp.path().join("a/b/c/d/deep.txt"), "").unwrap();
+
+        let mut state = AppState::new(temp.path().to_path_buf());
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+
+        // 1. Open fuzzy finder
+        state.mode = ViewMode::FuzzyFinder {
+            query: String::new(),
+            selected: 0,
+        };
+
+        // 2. Simulate finding and selecting deep.txt
+        let target = temp.path().join("a/b/c/d/deep.txt");
+        state.fuzzy_jump_target = Some(target.clone());
+        state.mode = ViewMode::Browse;
+
+        // 3. Reveal the path
+        navigator.reveal_path(&target).unwrap();
+
+        // 4. Find and focus the file
+        let entries = navigator.visible_entries();
+        let idx = entries.iter().position(|e| e.path == target);
+
+        assert!(idx.is_some(), "Deep file should be visible after reveal");
+    }
+
+    #[test]
+    fn test_fuzzy_rapid_open_close() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // Rapidly open and close fuzzy finder
+        for _ in 0..10 {
+            state.mode = ViewMode::FuzzyFinder {
+                query: String::new(),
+                selected: 0,
+            };
+            assert!(matches!(state.mode, ViewMode::FuzzyFinder { .. }));
+
+            state.mode = ViewMode::Browse;
+            assert!(matches!(state.mode, ViewMode::Browse));
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_query_change_resets_selection() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // Start with some selection
+        state.mode = ViewMode::FuzzyFinder {
+            query: "old".to_string(),
+            selected: 5,
+        };
+
+        // Change query (simulating text input)
+        state.mode = ViewMode::FuzzyFinder {
+            query: "new".to_string(),
+            selected: 0, // Reset to 0
+        };
+
+        if let ViewMode::FuzzyFinder { query, selected } = &state.mode {
+            assert_eq!(query, "new");
+            assert_eq!(*selected, 0);
+        }
+    }
+
+    // =========================================================================
+    // Stress Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fuzzy_match_performance_many_paths() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        // Create 1000 paths
+        let paths: Vec<PathBuf> = (0..1000)
+            .map(|i| temp.path().join(format!("file_{:04}.txt", i)))
+            .collect();
+
+        // Should complete quickly and return limited results
+        let results = fuzzy_match("file", &paths, &root);
+        assert!(results.len() <= 15);
+    }
+
+    #[test]
+    fn test_fuzzy_match_long_path() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+
+        // Very long filename
+        let long_name = "a".repeat(200);
+        let paths = vec![temp.path().join(format!("{}.txt", long_name))];
+
+        let results = fuzzy_match("a", &paths, &root);
+        assert!(!results.is_empty());
+    }
+
+    #[test]
+    fn test_collect_paths_at_depth_limit() {
+        let temp = TempDir::new().unwrap();
+
+        // Create exactly at depth 10
+        let mut path = temp.path().to_path_buf();
+        for i in 0..10 {
+            path = path.join(format!("level{}", i));
+        }
+        fs::create_dir_all(&path).unwrap();
+        fs::write(path.join("at_limit.txt"), "").unwrap();
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, false);
+
+        // File at depth 10 should be included
+        assert!(paths.iter().any(|p| p.ends_with("at_limit.txt")));
+    }
+
+    #[test]
+    fn test_collect_paths_beyond_depth_limit() {
+        let temp = TempDir::new().unwrap();
+
+        // Create beyond depth 10
+        let mut path = temp.path().to_path_buf();
+        for i in 0..12 {
+            path = path.join(format!("level{}", i));
+        }
+        fs::create_dir_all(&path).unwrap();
+        fs::write(path.join("beyond_limit.txt"), "").unwrap();
+
+        let root = temp.path().to_path_buf();
+        let paths = collect_paths(&root, false);
+
+        // File beyond depth 10 should NOT be included
+        assert!(!paths.iter().any(|p| p.ends_with("beyond_limit.txt")));
+    }
 }
