@@ -449,7 +449,14 @@ fn run_app(
                     } else if let Some(ref tp) = text_preview {
                         render_text_preview(frame, tp, preview_area, &title, preview_focused);
                     } else if let Some(ref mut ip) = image_preview {
-                        render_image_preview(frame, ip, preview_area, &title, preview_focused, font_size);
+                        render_image_preview(
+                            frame,
+                            ip,
+                            preview_area,
+                            &title,
+                            preview_focused,
+                            font_size,
+                        );
                     } else if let Some(ref hp) = hex_preview {
                         render_hex_preview(frame, hp, preview_area, &title, preview_focused);
                     } else {
