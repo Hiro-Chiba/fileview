@@ -39,6 +39,8 @@ pub struct AppState {
     pub icons_enabled: bool,
     /// Directory path to cd on exit (shell integration)
     pub choosedir_path: Option<PathBuf>,
+    /// Target path to jump to from fuzzy finder
+    pub fuzzy_jump_target: Option<PathBuf>,
 }
 
 impl AppState {
@@ -67,6 +69,7 @@ impl AppState {
             git_status,
             icons_enabled,
             choosedir_path: None,
+            fuzzy_jump_target: None,
         }
     }
 

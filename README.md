@@ -165,6 +165,22 @@ fv --on-select "code {path}"
 |-----|--------|
 | `/` | Start search |
 | `n` | Next search result |
+| `Ctrl+P` | Open fuzzy finder |
+
+### Fuzzy Finder
+
+Press `Ctrl+P` to open the built-in fuzzy finder for quick file navigation:
+
+| Key | Action |
+|-----|--------|
+| `↑` / `Ctrl+K` | Move up in results |
+| `↓` / `Ctrl+J` | Move down in results |
+| `Enter` | Jump to selected file |
+| `Esc` | Cancel |
+
+- Type to filter files by name
+- Results are sorted by match score
+- Hidden files follow the current visibility setting
 
 ### Preview
 

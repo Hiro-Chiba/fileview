@@ -90,6 +90,14 @@ pub enum KeyAction {
     ShowHelp,
     /// Toggle focus between tree and preview (side preview mode)
     ToggleFocus,
+    /// Open fuzzy finder
+    OpenFuzzyFinder,
+    /// Move up in fuzzy finder results
+    FuzzyUp,
+    /// Move down in fuzzy finder results
+    FuzzyDown,
+    /// Confirm fuzzy finder selection
+    FuzzyConfirm { path: std::path::PathBuf },
 }
 
 /// Handle key event and return the resulting action
@@ -100,6 +108,7 @@ pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
         ViewMode::Input { buffer, .. } => handle_input_mode(key, buffer),
         ViewMode::Confirm { .. } => handle_confirm_mode(key),
         ViewMode::Preview { .. } => handle_preview_mode(key),
+        ViewMode::FuzzyFinder { .. } => handle_fuzzy_finder_mode(key),
     }
 }
 
@@ -212,6 +221,10 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
         KeyCode::Char('D') | KeyCode::Delete => KeyAction::ConfirmDelete,
+        // Fuzzy finder (Ctrl+P) - must be checked before plain 'p'
+        KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::OpenFuzzyFinder
+        }
         KeyCode::Char('p') => KeyAction::Paste,
 
         // File operations
@@ -275,6 +288,28 @@ fn handle_preview_mode(key: KeyEvent) -> KeyAction {
         KeyCode::Char('g') => KeyAction::PreviewToTop,
         KeyCode::Char('G') => KeyAction::PreviewToBottom,
         _ => KeyAction::None,
+    }
+}
+
+/// Handle keys in fuzzy finder mode
+fn handle_fuzzy_finder_mode(key: KeyEvent) -> KeyAction {
+    match key.code {
+        KeyCode::Esc => KeyAction::Cancel,
+        KeyCode::Up | KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::FuzzyUp
+        }
+        KeyCode::Down | KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::FuzzyDown
+        }
+        KeyCode::Up => KeyAction::FuzzyUp,
+        KeyCode::Down => KeyAction::FuzzyDown,
+        KeyCode::Enter => {
+            // The actual path will be filled in by the action handler
+            KeyAction::FuzzyConfirm {
+                path: PathBuf::new(),
+            }
+        }
+        _ => KeyAction::None, // Text input handled separately
     }
 }
 

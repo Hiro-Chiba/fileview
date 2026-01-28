@@ -94,6 +94,35 @@ impl TreeNavigator {
         self.reload()
     }
 
+    /// Reveal a path by expanding all parent directories
+    ///
+    /// This makes the target path visible in the tree by expanding
+    /// all ancestor directories from the root to the target.
+    pub fn reveal_path(&mut self, target: &Path) -> anyhow::Result<()> {
+        // Collect ancestors from root to target
+        let root_path = self.root.path.clone();
+        let mut ancestors = Vec::new();
+
+        // Build list of ancestors that need to be expanded
+        if let Ok(relative) = target.strip_prefix(&root_path) {
+            let mut current = root_path.clone();
+            for component in relative.components() {
+                current = current.join(component);
+                if current != *target {
+                    // Only expand directories, not the target itself
+                    ancestors.push(current.clone());
+                }
+            }
+        }
+
+        // Expand each ancestor in order
+        for ancestor in ancestors {
+            self.expand(&ancestor)?;
+        }
+
+        Ok(())
+    }
+
     /// Find entry by path (mutable)
     fn find_entry_mut(&mut self, path: &Path) -> Option<&mut TreeEntry> {
         Self::find_in_entry_mut(&mut self.root, path)
@@ -241,5 +270,125 @@ mod tests {
         let count_after = nav.visible_count();
 
         assert_eq!(count_after, count_before + 1);
+    }
+
+    #[test]
+    fn test_reveal_path_nested() {
+        let temp = setup_test_dir();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        // nested.txt is in dir_a, which needs to be expanded
+        let target = temp.path().join("dir_a/nested.txt");
+
+        // Initially, nested.txt should not be visible
+        let before = nav.visible_entries();
+        assert!(
+            !before.iter().any(|e| e.path == target),
+            "Target should not be visible initially"
+        );
+
+        // Reveal the path
+        nav.reveal_path(&target).unwrap();
+
+        // Now it should be visible
+        let after = nav.visible_entries();
+        assert!(
+            after.iter().any(|e| e.path == target),
+            "Target should be visible after reveal"
+        );
+    }
+
+    #[test]
+    fn test_reveal_path_deeply_nested() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join("a/b/c")).unwrap();
+        fs::write(temp.path().join("a/b/c/deep.txt"), "content").unwrap();
+
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+        let target = temp.path().join("a/b/c/deep.txt");
+
+        nav.reveal_path(&target).unwrap();
+
+        let entries = nav.visible_entries();
+        assert!(
+            entries.iter().any(|e| e.path == target),
+            "Deep target should be visible after reveal"
+        );
+    }
+
+    #[test]
+    fn test_reveal_path_root_level() {
+        let temp = setup_test_dir();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        // file.txt is at root level, already visible
+        let target = temp.path().join("file.txt");
+        let before_count = nav.visible_count();
+
+        nav.reveal_path(&target).unwrap();
+
+        let after_count = nav.visible_count();
+        // Count should be the same since it's already visible
+        assert_eq!(before_count, after_count);
+    }
+
+    #[test]
+    fn test_reveal_path_directory() {
+        let temp = setup_test_dir();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        // Reveal a directory (subdir) inside dir_a
+        let target = temp.path().join("dir_a/subdir");
+
+        nav.reveal_path(&target).unwrap();
+
+        let entries = nav.visible_entries();
+        assert!(
+            entries.iter().any(|e| e.path == target),
+            "Directory should be visible after reveal"
+        );
+    }
+
+    #[test]
+    fn test_reveal_path_nonexistent_graceful() {
+        let temp = setup_test_dir();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        let target = temp.path().join("nonexistent/path/file.txt");
+
+        // Should not panic, should complete successfully
+        let result = nav.reveal_path(&target);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_reveal_path_outside_root() {
+        let temp = setup_test_dir();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        // Try to reveal a path outside the root
+        let outside = PathBuf::from("/some/other/path");
+
+        // Should not panic
+        let result = nav.reveal_path(&outside);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_reveal_path_idempotent() {
+        let temp = setup_test_dir();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+
+        let target = temp.path().join("dir_a/nested.txt");
+
+        // Reveal twice
+        nav.reveal_path(&target).unwrap();
+        let count1 = nav.visible_count();
+
+        nav.reveal_path(&target).unwrap();
+        let count2 = nav.visible_count();
+
+        // Should be the same
+        assert_eq!(count1, count2);
     }
 }
