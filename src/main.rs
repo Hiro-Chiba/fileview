@@ -34,7 +34,7 @@ use fileview::render::{
     collect_paths, create_image_picker, fuzzy_match, is_binary_file, is_image_file, is_text_file,
     render_directory_info, render_fuzzy_finder, render_hex_preview, render_image_preview,
     render_input_popup, render_status_bar, render_text_preview, render_tree, visible_height,
-    DirectoryInfo, FuzzyMatch, HexPreview, ImagePreview, Picker, TextPreview,
+    DirectoryInfo, FontSize, FuzzyMatch, HexPreview, ImagePreview, Picker, TextPreview,
 };
 use fileview::tree::TreeNavigator;
 
@@ -374,6 +374,12 @@ fn run_app(
             }
         }
 
+        // Get font size for image centering (default to typical terminal cell size)
+        let font_size: FontSize = image_picker
+            .as_ref()
+            .map(|p| p.font_size())
+            .unwrap_or((10, 20));
+
         // Render
         terminal.draw(|frame| {
             let size = frame.area();
@@ -395,7 +401,7 @@ fn run_app(
                 } else if let Some(ref tp) = text_preview {
                     render_text_preview(frame, tp, size, &title, false);
                 } else if let Some(ref mut ip) = image_preview {
-                    render_image_preview(frame, ip, size, &title, false);
+                    render_image_preview(frame, ip, size, &title, false, font_size);
                 } else if let Some(ref hp) = hex_preview {
                     render_hex_preview(frame, hp, size, &title, false);
                 } else {
@@ -443,7 +449,7 @@ fn run_app(
                     } else if let Some(ref tp) = text_preview {
                         render_text_preview(frame, tp, preview_area, &title, preview_focused);
                     } else if let Some(ref mut ip) = image_preview {
-                        render_image_preview(frame, ip, preview_area, &title, preview_focused);
+                        render_image_preview(frame, ip, preview_area, &title, preview_focused, font_size);
                     } else if let Some(ref hp) = hex_preview {
                         render_hex_preview(frame, hp, preview_area, &title, preview_focused);
                     } else {
