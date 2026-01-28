@@ -8,9 +8,10 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use fileview::core::{AppState, InputPurpose, PendingAction, ViewMode};
 use fileview::handler::{handle_key_event, update_input_buffer, KeyAction};
 use fileview::render::{
-    is_binary_file, is_image_file, is_text_file, DirectoryInfo, HexPreview, RecommendedProtocol,
-    TerminalBrand, TextPreview,
+    calculate_centered_image_area, is_binary_file, is_image_file, is_text_file, DirectoryInfo,
+    FontSize, HexPreview, RecommendedProtocol, TerminalBrand, TextPreview,
 };
+use ratatui::layout::Rect;
 use tempfile::TempDir;
 
 /// Helper to create a KeyEvent
@@ -2700,10 +2701,11 @@ mod image_preview_tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
+        let font_size: FontSize = (10, 20);
         terminal
             .draw(|frame| {
                 let area = frame.area();
-                render_image_preview(frame, &mut preview, area, "test.png", true);
+                render_image_preview(frame, &mut preview, area, "test.png", true, font_size);
             })
             .unwrap();
 
@@ -2726,12 +2728,13 @@ mod image_preview_tests {
 
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
+        let font_size: FontSize = picker.font_size();
 
         // Test focused state
         terminal
             .draw(|frame| {
                 let area = frame.area();
-                render_image_preview(frame, &mut preview, area, "test.png", true);
+                render_image_preview(frame, &mut preview, area, "test.png", true, font_size);
             })
             .unwrap();
 
@@ -2739,7 +2742,7 @@ mod image_preview_tests {
         terminal
             .draw(|frame| {
                 let area = frame.area();
-                render_image_preview(frame, &mut preview, area, "test.png", false);
+                render_image_preview(frame, &mut preview, area, "test.png", false, font_size);
             })
             .unwrap();
     }
@@ -2904,6 +2907,135 @@ mod image_preview_tests {
         assert!(is_image_file(&jpg_path) && image::open(&jpg_path).is_ok());
         assert!(is_image_file(&gif_path) && image::open(&gif_path).is_ok());
         assert!(is_text_file(&txt_path) && image::open(&txt_path).is_err());
+    }
+
+    // =========================================================================
+    // SECTION 5: Image Centering Tests
+    // Tests for the calculate_centered_image_area function
+    // =========================================================================
+
+    #[test]
+    fn test_centered_image_square_in_square_area() {
+        // Square image in square area should be perfectly centered with no padding
+        let area = Rect::new(0, 0, 20, 20);
+        let font_size: FontSize = (10, 10); // Square cells for simplicity
+        let result = calculate_centered_image_area(area, 100, 100, font_size);
+
+        // Image should fill the entire area (scaled to 200x200 pixels = 20x20 cells)
+        assert_eq!(result.x, 0);
+        assert_eq!(result.y, 0);
+        assert_eq!(result.width, 20);
+        assert_eq!(result.height, 20);
+    }
+
+    #[test]
+    fn test_centered_image_wide_image_in_square_area() {
+        // Wide image (2:1) in square area should have vertical padding
+        let area = Rect::new(0, 0, 20, 20);
+        let font_size: FontSize = (10, 10);
+        let result = calculate_centered_image_area(area, 200, 100, font_size);
+
+        // Image width fills area (200 pixels), height is 100 pixels = 10 cells
+        // Vertical padding should be (20 - 10) / 2 = 5
+        assert_eq!(result.width, 20);
+        assert_eq!(result.height, 10);
+        assert_eq!(result.x, 0);
+        assert_eq!(result.y, 5); // Centered vertically
+    }
+
+    #[test]
+    fn test_centered_image_tall_image_in_square_area() {
+        // Tall image (1:2) in square area should have horizontal padding
+        let area = Rect::new(0, 0, 20, 20);
+        let font_size: FontSize = (10, 10);
+        let result = calculate_centered_image_area(area, 100, 200, font_size);
+
+        // Image height fills area (200 pixels), width is 100 pixels = 10 cells
+        // Horizontal padding should be (20 - 10) / 2 = 5
+        assert_eq!(result.width, 10);
+        assert_eq!(result.height, 20);
+        assert_eq!(result.x, 5); // Centered horizontally
+        assert_eq!(result.y, 0);
+    }
+
+    #[test]
+    fn test_centered_image_with_offset_area() {
+        // Area with non-zero origin
+        let area = Rect::new(10, 5, 20, 20);
+        let font_size: FontSize = (10, 10);
+        let result = calculate_centered_image_area(area, 200, 100, font_size);
+
+        // Wide image should be centered vertically within the offset area
+        assert_eq!(result.x, 10); // Original x
+        assert_eq!(result.y, 10); // Original y (5) + padding (5)
+        assert_eq!(result.width, 20);
+        assert_eq!(result.height, 10);
+    }
+
+    #[test]
+    fn test_centered_image_typical_terminal_font() {
+        // Typical terminal: cells are taller than wide (e.g., 10x20 pixels)
+        let area = Rect::new(0, 0, 40, 20);
+        let font_size: FontSize = (10, 20); // Typical terminal font
+
+        // Square image (100x100 pixels)
+        let result = calculate_centered_image_area(area, 100, 100, font_size);
+
+        // Area in pixels: 400x400
+        // Image scaled to fit: 400x400 pixels
+        // In cells: width = 400/10 = 40, height = 400/20 = 20
+        assert_eq!(result.width, 40);
+        assert_eq!(result.height, 20);
+        assert_eq!(result.x, 0);
+        assert_eq!(result.y, 0);
+    }
+
+    #[test]
+    fn test_centered_image_small_image_scales_up() {
+        // Small image should be scaled up to fill the area
+        let area = Rect::new(0, 0, 100, 50);
+        let font_size: FontSize = (10, 20);
+
+        // Very small image (10x10 pixels)
+        let result = calculate_centered_image_area(area, 10, 10, font_size);
+
+        // Area in pixels: 1000x1000
+        // Image scales up by 100x to 1000x1000 pixels
+        // In cells: 1000/10 = 100 width, 1000/20 = 50 height
+        assert_eq!(result.width, 100);
+        assert_eq!(result.height, 50);
+    }
+
+    #[test]
+    fn test_centered_image_preserves_aspect_ratio() {
+        // Verify aspect ratio is preserved for various image sizes
+        let area = Rect::new(0, 0, 80, 40);
+        let font_size: FontSize = (10, 20);
+
+        // 4:3 image
+        let result = calculate_centered_image_area(area, 400, 300, font_size);
+
+        // The image should maintain 4:3 ratio
+        // Area pixels: 800x800
+        // Scale to fit: min(800/400, 800/300) = min(2, 2.67) = 2
+        // Scaled: 800x600 pixels = 80x30 cells
+        // Centered: x=0, y=(40-30)/2=5
+        assert_eq!(result.width, 80);
+        assert_eq!(result.height, 30);
+        assert_eq!(result.y, 5);
+    }
+
+    #[test]
+    fn test_centered_image_handles_zero_dimensions() {
+        // Edge case: very small area
+        let area = Rect::new(0, 0, 1, 1);
+        let font_size: FontSize = (10, 20);
+
+        let result = calculate_centered_image_area(area, 100, 100, font_size);
+
+        // Should not panic and should return valid result
+        assert!(result.width <= area.width);
+        assert!(result.height <= area.height);
     }
 }
 
