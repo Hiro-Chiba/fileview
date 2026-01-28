@@ -3860,7 +3860,10 @@ mod fuzzy_finder_tests {
         let paths = vec![temp.path().join("file.txt")];
         let results = fuzzy_match("xyz123nonexistent", &paths, &root);
 
-        assert!(results.is_empty(), "Should return empty for non-matching query");
+        assert!(
+            results.is_empty(),
+            "Should return empty for non-matching query"
+        );
     }
 
     #[test]
@@ -4021,10 +4024,7 @@ mod fuzzy_finder_tests {
 
         // Should not collect files beyond depth 10
         let deep_file = paths.iter().any(|p| p.ends_with("deep.txt"));
-        assert!(
-            !deep_file,
-            "Should not collect files beyond max depth (10)"
-        );
+        assert!(!deep_file, "Should not collect files beyond max depth (10)");
     }
 
     #[test]
@@ -4504,10 +4504,7 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let root = temp.path().to_path_buf();
 
-        let paths = vec![
-            temp.path().join("a.txt"),
-            temp.path().join("b.txt"),
-        ];
+        let paths = vec![temp.path().join("a.txt"), temp.path().join("b.txt")];
         let results = fuzzy_match("txt", &paths, &root);
 
         // If selected is larger than results, should be bounded
@@ -4708,10 +4705,7 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let root = temp.path().to_path_buf();
 
-        let paths = vec![
-            temp.path().join("aaa.txt"),
-            temp.path().join("bbb.txt"),
-        ];
+        let paths = vec![temp.path().join("aaa.txt"), temp.path().join("bbb.txt")];
 
         let results = fuzzy_match("aaa", &paths, &root);
 
@@ -4724,10 +4718,7 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let root = temp.path().to_path_buf();
 
-        let paths = vec![
-            temp.path().join("12345.txt"),
-            temp.path().join("other.txt"),
-        ];
+        let paths = vec![temp.path().join("12345.txt"), temp.path().join("other.txt")];
 
         let results = fuzzy_match("123", &paths, &root);
 
@@ -4763,11 +4754,7 @@ mod fuzzy_finder_tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
-            symlink(
-                temp.path().join("real_dir"),
-                temp.path().join("link_dir"),
-            )
-            .unwrap();
+            symlink(temp.path().join("real_dir"), temp.path().join("link_dir")).unwrap();
 
             let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
             let target = temp.path().join("link_dir/file.txt");

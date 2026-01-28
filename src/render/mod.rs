@@ -7,6 +7,7 @@ pub mod status;
 pub mod terminal;
 pub mod tree;
 
+pub use fuzzy::{collect_paths, fuzzy_match, render_fuzzy_finder, FuzzyMatch};
 pub use icons::get_icon;
 pub use preview::{
     is_binary_file, is_image_file, is_text_file, render_directory_info, render_hex_preview,
@@ -17,7 +18,6 @@ pub use ratatui_image::picker::Picker;
 pub use status::{render_input_popup, render_status_bar};
 pub use terminal::{RecommendedProtocol, TerminalBrand};
 pub use tree::{render_tree, visible_height};
-pub use fuzzy::{collect_paths, fuzzy_match, render_fuzzy_finder, FuzzyMatch};
 
 /// Create an image picker for protocol detection
 ///
