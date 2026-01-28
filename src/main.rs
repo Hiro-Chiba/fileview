@@ -575,7 +575,8 @@ fn run_app(
                     // Fill in actual path for FuzzyConfirm
                     if matches!(action, KeyAction::FuzzyConfirm { .. }) {
                         if let ViewMode::FuzzyFinder { selected, .. } = &state.mode {
-                            let actual_selected = (*selected).min(fuzzy_results.len().saturating_sub(1));
+                            let actual_selected =
+                                (*selected).min(fuzzy_results.len().saturating_sub(1));
                             if let Some(result) = fuzzy_results.get(actual_selected) {
                                 action = KeyAction::FuzzyConfirm {
                                     path: result.path.clone(),
@@ -599,6 +600,15 @@ fn run_app(
                                 exit_code: code,
                                 choosedir_path: state.choosedir_path.clone(),
                             })
+                        }
+                    }
+
+                    // Clamp fuzzy finder selected index to valid range
+                    if let ViewMode::FuzzyFinder { selected, .. } = &mut state.mode {
+                        if fuzzy_results.is_empty() {
+                            *selected = 0;
+                        } else {
+                            *selected = (*selected).min(fuzzy_results.len() - 1);
                         }
                     }
 

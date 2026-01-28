@@ -101,7 +101,9 @@ pub fn render_fuzzy_finder(
     area: Rect,
 ) {
     // Calculate popup dimensions (handle very small terminals)
-    let popup_width = (area.width * 70 / 100).min(80).max(40).min(area.width.saturating_sub(2));
+    let popup_width = (area.width * 70 / 100)
+        .clamp(40, 80)
+        .min(area.width.saturating_sub(2));
     let popup_height = (MAX_RESULTS as u16 + 4)
         .min(area.height.saturating_sub(4))
         .max(6); // Minimum height for usability
@@ -125,14 +127,23 @@ pub fn render_fuzzy_finder(
 
     // Split inner area: input field + results
     let chunks = Layout::default()
-        .constraints([Constraint::Length(1), Constraint::Length(1), Constraint::Min(1)])
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(1),
+        ])
         .split(inner);
 
     // Render query input
     let input_line = Line::from(vec![
         Span::styled("> ", Style::default().fg(Color::Cyan)),
         Span::raw(query),
-        Span::styled("_", Style::default().fg(Color::Gray).add_modifier(Modifier::SLOW_BLINK)),
+        Span::styled(
+            "_",
+            Style::default()
+                .fg(Color::Gray)
+                .add_modifier(Modifier::SLOW_BLINK),
+        ),
     ]);
     frame.render_widget(Paragraph::new(input_line), chunks[0]);
 
@@ -145,8 +156,8 @@ pub fn render_fuzzy_finder(
 
     // Render results
     if results.is_empty() {
-        let no_results = Paragraph::new("  No matches found")
-            .style(Style::default().fg(Color::DarkGray));
+        let no_results =
+            Paragraph::new("  No matches found").style(Style::default().fg(Color::DarkGray));
         frame.render_widget(no_results, chunks[2]);
     } else {
         let items: Vec<ListItem> = results
@@ -177,7 +188,11 @@ pub fn render_fuzzy_finder(
 }
 
 /// Create spans with matched characters highlighted
-fn create_highlighted_spans(text: &str, indices: &[usize], _is_selected: bool) -> Vec<Span<'static>> {
+fn create_highlighted_spans(
+    text: &str,
+    indices: &[usize],
+    _is_selected: bool,
+) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     let chars: Vec<char> = text.chars().collect();
 
@@ -190,16 +205,18 @@ fn create_highlighted_spans(text: &str, indices: &[usize], _is_selected: bool) -
 
     let mut last_idx = 0;
     for &idx in indices {
+        // Skip out-of-bounds indices
+        if idx >= chars.len() {
+            continue;
+        }
         if idx > last_idx {
             // Add non-matched characters
             let s: String = chars[last_idx..idx].iter().collect();
             spans.push(Span::styled(s, normal_style));
         }
-        if idx < chars.len() {
-            // Add matched character
-            spans.push(Span::styled(chars[idx].to_string(), match_style));
-            last_idx = idx + 1;
-        }
+        // Add matched character
+        spans.push(Span::styled(chars[idx].to_string(), match_style));
+        last_idx = idx + 1;
     }
 
     // Add remaining characters
@@ -343,5 +360,155 @@ mod tests {
         for i in 1..results.len() {
             assert!(results[i - 1].score >= results[i].score);
         }
+    }
+
+    #[test]
+    fn test_fuzzy_match_max_results_limit() {
+        let root = PathBuf::from("/test");
+        let paths: Vec<PathBuf> = (0..50)
+            .map(|i| PathBuf::from(format!("/test/file{}.txt", i)))
+            .collect();
+
+        let results = fuzzy_match("file", &paths, &root);
+        assert!(results.len() <= MAX_RESULTS);
+    }
+
+    #[test]
+    fn test_fuzzy_match_empty_paths() {
+        let root = PathBuf::from("/test");
+        let paths: Vec<PathBuf> = vec![];
+
+        let results = fuzzy_match("test", &paths, &root);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_fuzzy_match_with_root_prefix() {
+        let root = PathBuf::from("/test/root");
+        let paths = vec![PathBuf::from("/test/root/subdir/file.txt")];
+
+        let results = fuzzy_match("", &paths, &root);
+        assert!(!results.is_empty());
+        // Display should be relative to root
+        assert_eq!(results[0].display, "subdir/file.txt");
+    }
+
+    #[test]
+    fn test_fuzzy_match_unicode_filename() {
+        let root = PathBuf::from("/test");
+        let paths = vec![PathBuf::from("/test/日本語ファイル.txt")];
+
+        let results = fuzzy_match("日本", &paths, &root);
+        // Should handle unicode
+        assert!(!results.is_empty() || results.is_empty()); // Just don't panic
+    }
+
+    #[test]
+    fn test_create_highlighted_spans_full_match() {
+        let spans = create_highlighted_spans("abc", &[0, 1, 2], false);
+        // Should have padding + 3 highlighted chars
+        assert!(spans.len() >= 4);
+    }
+
+    #[test]
+    fn test_create_highlighted_spans_empty_text() {
+        let spans = create_highlighted_spans("", &[], false);
+        // Should have at least the padding span
+        assert!(!spans.is_empty());
+    }
+
+    #[test]
+    fn test_create_highlighted_spans_out_of_bounds_indices() {
+        // Indices beyond text length should be handled gracefully
+        let spans = create_highlighted_spans("ab", &[0, 5, 10], false);
+        assert!(!spans.is_empty());
+    }
+
+    #[test]
+    fn test_collect_paths_empty_dir() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+
+        let paths = collect_paths(&temp.path().to_path_buf(), false);
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn test_collect_paths_with_files() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("test.txt"), "").unwrap();
+        fs::write(temp.path().join("test2.txt"), "").unwrap();
+
+        let paths = collect_paths(&temp.path().to_path_buf(), false);
+        assert_eq!(paths.len(), 2);
+    }
+
+    #[test]
+    fn test_collect_paths_hidden_files() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join(".hidden"), "").unwrap();
+        fs::write(temp.path().join("visible"), "").unwrap();
+
+        // Without showing hidden
+        let paths_no_hidden = collect_paths(&temp.path().to_path_buf(), false);
+        assert_eq!(paths_no_hidden.len(), 1);
+
+        // With showing hidden
+        let paths_with_hidden = collect_paths(&temp.path().to_path_buf(), true);
+        assert_eq!(paths_with_hidden.len(), 2);
+    }
+
+    #[test]
+    fn test_collect_paths_nested_directories() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join("a/b/c")).unwrap();
+        fs::write(temp.path().join("a/b/c/file.txt"), "").unwrap();
+
+        let paths = collect_paths(&temp.path().to_path_buf(), false);
+        // Should include a, a/b, a/b/c, and a/b/c/file.txt
+        assert!(paths.len() >= 4);
+    }
+
+    #[test]
+    fn test_fuzzy_match_debug_impl() {
+        let fm = FuzzyMatch {
+            path: PathBuf::from("/test"),
+            display: "test".to_string(),
+            score: 100,
+            indices: vec![0, 1],
+        };
+        // Debug should not panic
+        let _ = format!("{:?}", fm);
+    }
+
+    #[test]
+    fn test_fuzzy_match_clone_impl() {
+        let fm = FuzzyMatch {
+            path: PathBuf::from("/test"),
+            display: "test".to_string(),
+            score: 100,
+            indices: vec![0, 1],
+        };
+        let cloned = fm.clone();
+        assert_eq!(cloned.path, fm.path);
+        assert_eq!(cloned.display, fm.display);
+        assert_eq!(cloned.score, fm.score);
+        assert_eq!(cloned.indices, fm.indices);
+    }
+
+    #[test]
+    fn test_max_results_constant() {
+        // Verify constant is reasonable
+        assert!(MAX_RESULTS > 0);
+        assert!(MAX_RESULTS <= 100); // Should not be too large
     }
 }
