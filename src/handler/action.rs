@@ -71,6 +71,24 @@ pub fn handle_action(
     context: &ActionContext,
     text_preview: &mut Option<TextPreview>,
 ) -> anyhow::Result<ActionResult> {
+    // Disable CRUD operations in stdin mode
+    if state.stdin_mode {
+        let is_crud_action = matches!(
+            action,
+            KeyAction::StartNewFile
+                | KeyAction::StartNewDir
+                | KeyAction::StartRename
+                | KeyAction::ConfirmDelete
+                | KeyAction::ExecuteDelete
+                | KeyAction::Paste
+                | KeyAction::Refresh
+        );
+        if is_crud_action {
+            state.set_message("File operations disabled in stdin mode");
+            return Ok(ActionResult::Continue);
+        }
+    }
+
     match action {
         KeyAction::None => {}
         KeyAction::Quit => {

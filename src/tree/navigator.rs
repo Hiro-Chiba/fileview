@@ -10,6 +10,8 @@ pub struct TreeNavigator {
     root: TreeEntry,
     /// Whether to show hidden files
     show_hidden: bool,
+    /// Whether in stdin mode (read-only, no filesystem operations)
+    stdin_mode: bool,
 }
 
 impl TreeNavigator {
@@ -19,7 +21,50 @@ impl TreeNavigator {
         root.load_children(show_hidden)?;
         root.set_expanded(true);
 
-        Ok(Self { root, show_hidden })
+        Ok(Self {
+            root,
+            show_hidden,
+            stdin_mode: false,
+        })
+    }
+
+    /// Create navigator from stdin paths
+    ///
+    /// Builds a tree structure from the given paths. Paths that don't exist
+    /// in the filesystem will still be shown in the tree.
+    pub fn from_paths(
+        root_path: &Path,
+        paths: Vec<PathBuf>,
+        show_hidden: bool,
+    ) -> anyhow::Result<Self> {
+        let mut root = TreeEntry::new(root_path.to_path_buf(), 0);
+        root.set_expanded(true);
+
+        // Insert each path into the tree
+        for path in paths {
+            insert_path_into_tree(&mut root, &path, root_path);
+        }
+
+        // Sort children at all levels
+        sort_tree_children(&mut root);
+
+        Ok(Self {
+            root,
+            show_hidden,
+            stdin_mode: true,
+        })
+    }
+
+    /// Check if in stdin mode
+    pub fn is_stdin_mode(&self) -> bool {
+        self.stdin_mode
+    }
+
+    /// Collect all paths in the tree (for fuzzy finder in stdin mode)
+    pub fn collect_all_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        collect_paths_recursive(&self.root, &mut paths);
+        paths
     }
 
     /// Get root entry
@@ -162,6 +207,83 @@ impl TreeNavigator {
             self.expand(path)?;
         }
         Ok(())
+    }
+}
+
+/// Insert a path into the tree, creating intermediate directories as needed
+fn insert_path_into_tree(root: &mut TreeEntry, path: &Path, root_path: &Path) {
+    // Get relative path from root
+    let relative = match path.strip_prefix(root_path) {
+        Ok(rel) => rel,
+        Err(_) => return, // Path is not under root
+    };
+
+    let components: Vec<_> = relative.components().collect();
+    if components.is_empty() {
+        return;
+    }
+
+    let mut current = root;
+    let mut current_path = root_path.to_path_buf();
+
+    for (i, component) in components.iter().enumerate() {
+        current_path = current_path.join(component);
+        let is_last = i == components.len() - 1;
+        let is_dir = if is_last {
+            path.is_dir()
+        } else {
+            true // Intermediate components are directories
+        };
+
+        // Find or create child
+        let child_name = component.as_os_str().to_string_lossy().to_string();
+        let child_idx = current
+            .children()
+            .iter()
+            .position(|c| c.name == child_name);
+
+        match child_idx {
+            Some(idx) => {
+                // Child exists, descend into it
+                current = &mut current.children_mut()[idx];
+            }
+            None => {
+                // Create new child
+                let depth = current.depth + 1;
+                let mut child = TreeEntry::new_with_type(current_path.clone(), depth, is_dir);
+                if is_dir {
+                    child.set_expanded(true);
+                }
+                current.children_mut().push(child);
+                let new_idx = current.children().len() - 1;
+                current = &mut current.children_mut()[new_idx];
+            }
+        }
+    }
+}
+
+/// Recursively sort children in the tree (directories first, then alphabetically)
+fn sort_tree_children(entry: &mut TreeEntry) {
+    entry
+        .children_mut()
+        .sort_by(|a, b| match (a.is_dir, b.is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        });
+
+    for child in entry.children_mut() {
+        sort_tree_children(child);
+    }
+}
+
+/// Recursively collect all file paths (not directories) in the tree
+fn collect_paths_recursive(entry: &TreeEntry, paths: &mut Vec<PathBuf>) {
+    if !entry.is_dir {
+        paths.push(entry.path.clone());
+    }
+    for child in entry.children() {
+        collect_paths_recursive(child, paths);
     }
 }
 

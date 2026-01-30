@@ -41,6 +41,8 @@ pub struct AppState {
     pub choosedir_path: Option<PathBuf>,
     /// Target path to jump to from fuzzy finder
     pub fuzzy_jump_target: Option<PathBuf>,
+    /// Whether in stdin mode (file operations disabled)
+    pub stdin_mode: bool,
 }
 
 impl AppState {
@@ -71,6 +73,7 @@ impl AppState {
             icons_enabled,
             choosedir_path: None,
             fuzzy_jump_target: None,
+            stdin_mode: false,
         }
     }
 
