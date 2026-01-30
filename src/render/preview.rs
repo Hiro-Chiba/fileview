@@ -636,3 +636,92 @@ pub fn is_image_file(path: &std::path::Path) -> bool {
         Some("png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp" | "ico")
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // format_size tests
+    // =========================================================================
+
+    #[test]
+    fn test_format_size_bytes() {
+        // Edge cases: 0 bytes
+        assert_eq!(format_size(0), "0 B");
+
+        // Small values
+        assert_eq!(format_size(100), "100 B");
+
+        // Just below 1 KB
+        assert_eq!(format_size(1023), "1023 B");
+    }
+
+    #[test]
+    fn test_format_size_kb_mb_gb() {
+        // Exactly 1 KB
+        assert_eq!(format_size(1024), "1.0 KB");
+
+        // Exactly 1 MB
+        assert_eq!(format_size(1024 * 1024), "1.0 MB");
+
+        // Exactly 1 GB
+        assert_eq!(format_size(1024 * 1024 * 1024), "1.0 GB");
+
+        // Larger than 1 TB
+        assert_eq!(format_size(1024 * 1024 * 1024 * 1024), "1.0 TB");
+
+        // Mixed sizes
+        assert_eq!(format_size(1536), "1.5 KB"); // 1.5 KB
+        assert_eq!(format_size(2 * 1024 * 1024 + 512 * 1024), "2.5 MB"); // 2.5 MB
+    }
+
+    // =========================================================================
+    // calculate_centered_image_area tests
+    // =========================================================================
+
+    #[test]
+    fn test_centered_image_area_square() {
+        // Square image in square area - should fill area
+        let area = Rect::new(0, 0, 100, 50);
+        let font_size: FontSize = (10, 20); // 10px wide, 20px tall per cell
+
+        // Area in pixels: 1000x1000
+        // Image: 500x500 (square)
+        // Scale: min(1000/500, 1000/500) = 2.0
+        // Scaled: 1000x1000 pixels -> 100x50 cells
+        let result = calculate_centered_image_area(area, 500, 500, font_size);
+
+        // Image should be centered
+        assert_eq!(result.x, 0);
+        assert_eq!(result.y, 0);
+        assert_eq!(result.width, 100);
+        assert_eq!(result.height, 50);
+    }
+
+    #[test]
+    fn test_centered_image_area_wide() {
+        // Wide image - should have padding on top/bottom
+        let area = Rect::new(0, 0, 100, 50);
+        let font_size: FontSize = (10, 20); // 10px wide, 20px tall per cell
+
+        // Area in pixels: 1000x1000
+        // Image: 1000x500 (wide)
+        // Scale: min(1000/1000, 1000/500) = 1.0
+        // Scaled: 1000x500 pixels -> 100x25 cells
+        // Padding: (50-25)/2 = 12 cells top/bottom
+        let result = calculate_centered_image_area(area, 1000, 500, font_size);
+
+        // Should be horizontally centered with vertical padding
+        assert_eq!(result.x, 0);
+        assert!(result.y > 0); // Should have top padding
+        assert_eq!(result.width, 100);
+        assert!(result.height <= 50);
+
+        // Verify vertical centering
+        let expected_height = 25u16;
+        let expected_y = (50 - expected_height) / 2;
+        assert_eq!(result.y, expected_y);
+        assert_eq!(result.height, expected_height);
+    }
+}
