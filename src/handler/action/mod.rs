@@ -171,6 +171,8 @@ pub fn handle_action(
         | KeyAction::ToggleQuickPreview
         | KeyAction::ShowHelp
         | KeyAction::ToggleFocus
+        | KeyAction::FocusTree
+        | KeyAction::FocusPreview
         | KeyAction::CopyPath
         | KeyAction::CopyFilename
         | KeyAction::Refresh => {

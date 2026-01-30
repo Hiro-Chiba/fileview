@@ -90,6 +90,10 @@ pub enum KeyAction {
     ShowHelp,
     /// Toggle focus between tree and preview (side preview mode)
     ToggleFocus,
+    /// Focus on tree panel (left)
+    FocusTree,
+    /// Focus on preview panel (right)
+    FocusPreview,
     /// Open fuzzy finder
     OpenFuzzyFinder,
     /// Move up in fuzzy finder results
@@ -205,9 +209,24 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             KeyAction::PreviewPageDown
         }
 
-        // Expand/Collapse
-        KeyCode::Right | KeyCode::Char('l') => KeyAction::Expand,
-        KeyCode::Left | KeyCode::Char('h') | KeyCode::Backspace => KeyAction::Collapse,
+        // Expand/Collapse and Focus switching
+        // Arrow keys switch focus when preview is visible, l/h always expand/collapse
+        KeyCode::Right => {
+            if state.preview_visible {
+                KeyAction::FocusPreview
+            } else {
+                KeyAction::Expand
+            }
+        }
+        KeyCode::Char('l') => KeyAction::Expand,
+        KeyCode::Left => {
+            if state.preview_visible {
+                KeyAction::FocusTree
+            } else {
+                KeyAction::Collapse
+            }
+        }
+        KeyCode::Char('h') | KeyCode::Backspace => KeyAction::Collapse,
         KeyCode::Tab => {
             // Tab toggles focus when side preview is visible, otherwise toggles expand
             if state.preview_visible {
@@ -483,6 +502,7 @@ fn handle_filter_mode(key: KeyEvent, current_query: &str) -> KeyAction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::AppState;
 
     fn key_event(code: KeyCode) -> KeyEvent {
         KeyEvent::new(code, KeyModifiers::empty())
@@ -574,8 +594,10 @@ mod tests {
 
     #[test]
     fn test_fuzzy_finder_ctrl_p_cancels() {
-        let action =
-            handle_fuzzy_finder_mode(key_event_with_modifiers(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        let action = handle_fuzzy_finder_mode(key_event_with_modifiers(
+            KeyCode::Char('p'),
+            KeyModifiers::CONTROL,
+        ));
         assert!(matches!(action, KeyAction::Cancel));
     }
 
@@ -583,5 +605,57 @@ mod tests {
     fn test_preview_mode_o_cancels() {
         let action = handle_preview_mode(key_event(KeyCode::Char('o')));
         assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    // Tests for arrow key focus switching when preview is visible
+
+    fn test_state() -> AppState {
+        AppState::new(std::path::PathBuf::from("/tmp"))
+    }
+
+    #[test]
+    fn test_right_arrow_focus_preview_when_preview_visible() {
+        let mut state = test_state();
+        state.preview_visible = true;
+        let action = handle_browse_mode(&state, key_event(KeyCode::Right));
+        assert!(matches!(action, KeyAction::FocusPreview));
+    }
+
+    #[test]
+    fn test_left_arrow_focus_tree_when_preview_visible() {
+        let mut state = test_state();
+        state.preview_visible = true;
+        let action = handle_browse_mode(&state, key_event(KeyCode::Left));
+        assert!(matches!(action, KeyAction::FocusTree));
+    }
+
+    #[test]
+    fn test_right_arrow_expands_when_preview_not_visible() {
+        let state = test_state();
+        let action = handle_browse_mode(&state, key_event(KeyCode::Right));
+        assert!(matches!(action, KeyAction::Expand));
+    }
+
+    #[test]
+    fn test_left_arrow_collapses_when_preview_not_visible() {
+        let state = test_state();
+        let action = handle_browse_mode(&state, key_event(KeyCode::Left));
+        assert!(matches!(action, KeyAction::Collapse));
+    }
+
+    #[test]
+    fn test_l_always_expands_regardless_of_preview() {
+        let mut state = test_state();
+        state.preview_visible = true;
+        let action = handle_browse_mode(&state, key_event(KeyCode::Char('l')));
+        assert!(matches!(action, KeyAction::Expand));
+    }
+
+    #[test]
+    fn test_h_always_collapses_regardless_of_preview() {
+        let mut state = test_state();
+        state.preview_visible = true;
+        let action = handle_browse_mode(&state, key_event(KeyCode::Char('h')));
+        assert!(matches!(action, KeyAction::Collapse));
     }
 }
