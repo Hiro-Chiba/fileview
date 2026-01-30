@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-01-31
+
+### Changed
+- **Status bar redesign**: Show file info instead of position indicator
+  - Display file size (e.g., `1.2 KB`, `4.5 MB`) for focused file
+  - Display relative modification time (e.g., `2h ago`, `Yesterday`, `Jan 30`)
+  - Format: `1.2 KB · 2h ago | Selected: 3`
+  - Directories show `--` for size
+
+### Removed
+- Position indicator (`1/20`) - visual position in the list is sufficient
+
 ## [1.6.3] - 2026-01-31
 
 ### Added
