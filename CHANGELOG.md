@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-01-31
+
+### Improved
+- **Toggle behavior for mode keys**: Same key that opens a mode can now close it
+  - `m`: Press again to cancel bookmark set mode
+  - `'`: Press again to cancel bookmark jump mode
+  - `F`: Press again to cancel filter input mode
+  - `/`: Press again to cancel search mode
+  - More intuitive UX - no need to remember that Esc closes modes
+
 ## [1.6.0] - 2026-01-31
 
 ### Added
