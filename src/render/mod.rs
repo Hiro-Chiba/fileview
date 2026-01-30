@@ -16,7 +16,7 @@ pub use preview::{
 };
 pub use ratatui_image::picker::Picker;
 pub use ratatui_image::FontSize;
-pub use status::{render_input_popup, render_status_bar};
+pub use status::{render_help_popup, render_input_popup, render_status_bar};
 pub use terminal::{RecommendedProtocol, TerminalBrand};
 pub use tree::{render_tree, visible_height};
 
