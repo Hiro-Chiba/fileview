@@ -43,6 +43,8 @@ pub struct AppState {
     pub fuzzy_jump_target: Option<PathBuf>,
     /// Whether in stdin mode (file operations disabled)
     pub stdin_mode: bool,
+    /// Whether file watching is enabled
+    pub watch_enabled: bool,
 }
 
 impl AppState {
@@ -74,6 +76,7 @@ impl AppState {
             choosedir_path: None,
             fuzzy_jump_target: None,
             stdin_mode: false,
+            watch_enabled: false,
         }
     }
 
