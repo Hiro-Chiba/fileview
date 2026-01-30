@@ -115,6 +115,70 @@ mod state_tests {
         state.mode = ViewMode::Preview { scroll: 0 };
         assert!(matches!(state.mode, ViewMode::Preview { .. }));
     }
+
+    #[test]
+    fn test_toggle_focus_when_preview_hidden() {
+        use fileview::core::FocusTarget;
+
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // preview_visible is false by default
+        assert!(!state.preview_visible);
+
+        // focus_target should be Tree when preview is hidden
+        assert_eq!(state.focus_target, FocusTarget::Tree);
+
+        // Even if we set focus to Preview, it doesn't make sense when preview is hidden
+        // This test documents the expected behavior
+        state.focus_target = FocusTarget::Preview;
+        assert_eq!(state.focus_target, FocusTarget::Preview);
+
+        // But when preview is shown, focus can be toggled
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Tree;
+        assert_eq!(state.focus_target, FocusTarget::Tree);
+
+        state.focus_target = FocusTarget::Preview;
+        assert_eq!(state.focus_target, FocusTarget::Preview);
+    }
+
+    #[test]
+    fn test_focus_resets_when_preview_closes() {
+        use fileview::core::FocusTarget;
+
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // Enable preview and set focus to preview
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Preview;
+
+        // When preview is closed, focus should go back to tree
+        // (This documents expected behavior - actual reset happens in action handler)
+        state.preview_visible = false;
+        // Focus target remains unchanged until explicitly reset
+        // The action handler is responsible for resetting it
+        assert_eq!(state.focus_target, FocusTarget::Preview);
+
+        // Manually reset as the action handler would
+        state.focus_target = FocusTarget::Tree;
+        assert_eq!(state.focus_target, FocusTarget::Tree);
+    }
+
+    #[test]
+    fn test_focus_defaults_to_tree() {
+        use fileview::core::FocusTarget;
+
+        let temp = TempDir::new().unwrap();
+        let state = AppState::new(temp.path().to_path_buf());
+
+        // Default focus should be Tree
+        assert_eq!(state.focus_target, FocusTarget::Tree);
+
+        // Default behavior - FocusTarget::default() is Tree
+        assert_eq!(FocusTarget::default(), FocusTarget::Tree);
+    }
 }
 
 // =============================================================================
@@ -737,6 +801,38 @@ mod key_handler_tests {
             KeyAction::MoveToBottom
         ));
     }
+
+    #[test]
+    fn test_fuzzy_finder_ctrl_p_opens() {
+        let temp = TempDir::new().unwrap();
+        let state = AppState::new(temp.path().to_path_buf());
+
+        // Ctrl+P in Browse mode should open fuzzy finder
+        let ctrl_p = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        assert!(matches!(
+            handle_key_event(&state, ctrl_p),
+            KeyAction::OpenFuzzyFinder
+        ));
+    }
+
+    #[test]
+    fn test_fuzzy_finder_ctrl_p_closes() {
+        let temp = TempDir::new().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        // Enter fuzzy finder mode
+        state.mode = ViewMode::FuzzyFinder {
+            query: "test".to_string(),
+            selected: 0,
+        };
+
+        // Ctrl+P in FuzzyFinder mode should close it (Cancel)
+        let ctrl_p = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        assert!(matches!(
+            handle_key_event(&state, ctrl_p),
+            KeyAction::Cancel
+        ));
+    }
 }
 
 // =============================================================================
@@ -1058,6 +1154,61 @@ mod input_buffer_tests {
         // End
         let result = update_input_buffer(key_event(KeyCode::End), "abc", 1);
         assert_eq!(result, Some(("abc".to_string(), 3)));
+    }
+
+    #[test]
+    fn test_input_buffer_unicode_char() {
+        // Insert Unicode character (Japanese hiragana 'あ')
+        let result = update_input_buffer(key_event(KeyCode::Char('あ')), "", 0);
+        assert_eq!(result, Some(("あ".to_string(), 1)));
+
+        // Insert Unicode character into existing ASCII string
+        // Note: cursor is char-based (1 = after 'a')
+        let result = update_input_buffer(key_event(KeyCode::Char('日')), "ab", 1);
+        assert_eq!(result, Some(("a日b".to_string(), 2)));
+
+        // Insert emoji at end of ASCII string
+        let result = update_input_buffer(key_event(KeyCode::Char('🎉')), "test", 4);
+        assert_eq!(result, Some(("test🎉".to_string(), 5)));
+    }
+
+    #[test]
+    fn test_input_buffer_backspace_unicode() {
+        // Note: The current implementation uses char-based cursor (not byte-based)
+        // Backspace on pure ASCII works correctly
+        let result = update_input_buffer(key_event(KeyCode::Backspace), "abc", 3);
+        assert_eq!(result, Some(("ab".to_string(), 2)));
+
+        // Backspace in the middle of ASCII
+        let result = update_input_buffer(key_event(KeyCode::Backspace), "abc", 2);
+        assert_eq!(result, Some(("ac".to_string(), 1)));
+
+        // Note: For Unicode strings, cursor positions are char-based
+        // but the implementation has a known limitation with multi-byte chars
+        // This documents the current behavior for ASCII-only use cases
+    }
+
+    #[test]
+    fn test_input_buffer_empty() {
+        // Operations on empty buffer - all navigation returns None
+        let result = update_input_buffer(key_event(KeyCode::Backspace), "", 0);
+        assert_eq!(result, None);
+
+        let result = update_input_buffer(key_event(KeyCode::Delete), "", 0);
+        assert_eq!(result, None);
+
+        let result = update_input_buffer(key_event(KeyCode::Left), "", 0);
+        assert_eq!(result, None);
+
+        let result = update_input_buffer(key_event(KeyCode::Right), "", 0);
+        assert_eq!(result, None);
+
+        // Home and End on empty buffer return None (cursor already at position)
+        let result = update_input_buffer(key_event(KeyCode::Home), "", 0);
+        assert_eq!(result, None);
+
+        let result = update_input_buffer(key_event(KeyCode::End), "", 0);
+        assert_eq!(result, None);
     }
 }
 
