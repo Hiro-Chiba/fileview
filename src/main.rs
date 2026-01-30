@@ -38,6 +38,7 @@ use fileview::render::{
     TextPreview,
 };
 use fileview::tree::TreeNavigator;
+use fileview::watcher::FileWatcher;
 
 /// Application configuration from CLI args
 struct Config {
@@ -280,6 +281,9 @@ PLACEHOLDERS for --on-select:
     {{stem}}    Filename without extension
     {{ext}}     Extension only
 
+FEATURES:
+    Auto-refresh    Automatically refreshes on file changes (disabled in stdin mode)
+
 EXIT CODES:
     0           Success (normal exit or file selected)
     1           Cancelled (user cancelled selection in pick mode)
@@ -441,6 +445,22 @@ fn run_app(
     // Lazy initialization: defer Git detection until after the first frame
     // to improve perceived startup time (first frame renders faster)
     let mut skip_git_init_once = true;
+
+    // Initialize file watcher (disabled in stdin mode)
+    let file_watcher = if !state.stdin_mode {
+        match FileWatcher::new(&config.root) {
+            Ok(watcher) => {
+                state.watch_enabled = true;
+                Some(watcher)
+            }
+            Err(_) => {
+                // Watcher initialization failed, continue without watching
+                None
+            }
+        }
+    } else {
+        None
+    };
 
     loop {
         // Initialize git status after the first frame is rendered.
@@ -671,6 +691,15 @@ fn run_app(
 
         // Drop the entries borrow before event handling
         drop(entries);
+
+        // Check file watcher events (auto-refresh on file changes)
+        if let Some(ref watcher) = file_watcher {
+            if watcher.poll().is_some() {
+                navigator.reload()?;
+                state.refresh_git_status();
+                // Silent auto-refresh - no message displayed
+            }
+        }
 
         // Check drop buffer timeout (for file drop detection via rapid key input)
         if path_buffer.is_ready() {
