@@ -37,6 +37,8 @@ pub enum ViewMode {
         /// Index of selected item in results
         selected: usize,
     },
+    /// Help popup display
+    Help,
 }
 
 /// Purpose of text input
