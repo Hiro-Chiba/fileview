@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2026-01-31
+
+### Added
+- **Arrow key focus switching**: When side preview is visible, use `←`/`→` to switch focus
+  - `←`: Focus tree panel (left)
+  - `→`: Focus preview panel (right)
+  - `l`/`h` keys continue to expand/collapse directories as before
+
+### Documentation
+- Updated keybindings documentation for new focus switching behavior
+
+### Tests
+- Added 6 unit tests for arrow key focus switching
+
 ## [1.6.2] - 2026-01-31
 
 ### Documentation

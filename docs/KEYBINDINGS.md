@@ -17,8 +17,10 @@ Complete keybinding reference for FileView (fv).
 
 | Key | Action |
 |-----|--------|
-| `l` / `→` / `Tab` | Expand directory |
-| `h` / `←` / `Backspace` | Collapse directory |
+| `l` / `Tab` | Expand directory |
+| `h` / `Backspace` | Collapse directory |
+| `→` | Expand directory (or switch focus to preview when visible) |
+| `←` | Collapse directory (or switch focus to tree when visible) |
 | `Enter` | Toggle expand/collapse |
 | `H` | Collapse all |
 | `L` | Expand all (depth limit: 5) |
@@ -72,10 +74,11 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 | `P` | Toggle side preview panel |
 | `o` | Open fullscreen preview |
 | `Tab` | Toggle focus between tree and preview (when preview visible) |
+| `←` / `→` | Switch focus to tree (left) / preview (right) |
 
 ### Side Preview Focus Mode
 
-When the side preview panel is open, press `Tab` to switch focus:
+When the side preview panel is open, use `Tab` or arrow keys to switch focus:
 
 | Focus | j/k/↑/↓ | g/G | b/f |
 |-------|---------|-----|-----|
