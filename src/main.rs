@@ -1,7 +1,7 @@
 //! FileView - A minimal file tree UI for terminal emulators
 
 use std::env;
-use std::io::{self, stdout};
+use std::io::{self, stdout, BufRead, IsTerminal};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::str::FromStr;
@@ -48,6 +48,8 @@ struct Config {
     icons_enabled: Option<bool>,
     /// Shell integration: output directory path on exit (for cd)
     choosedir_mode: bool,
+    /// Paths read from stdin (for pipeline integration)
+    stdin_paths: Option<Vec<PathBuf>>,
 }
 
 impl Config {
@@ -59,11 +61,13 @@ impl Config {
         let mut callback: Option<Callback> = None;
         let mut icons_enabled: Option<bool> = None;
         let mut choosedir_mode = false;
+        let mut stdin_mode = false;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--pick" | "-p" => pick_mode = true,
                 "--choosedir" => choosedir_mode = true,
+                "--stdin" => stdin_mode = true,
                 "--icons" | "-i" => icons_enabled = Some(true),
                 "--no-icons" => icons_enabled = Some(false),
                 "--format" | "-f" => {
@@ -114,6 +118,20 @@ impl Config {
             }
         }
 
+        // Handle stdin mode
+        let stdin_paths = if stdin_mode {
+            Some(read_stdin_paths()?)
+        } else {
+            None
+        };
+
+        // If stdin paths are provided, determine root from common ancestor
+        let root = if let Some(ref paths) = stdin_paths {
+            find_common_ancestor(paths)?
+        } else {
+            root
+        };
+
         Ok(Self {
             root,
             pick_mode,
@@ -121,8 +139,84 @@ impl Config {
             callback,
             icons_enabled,
             choosedir_mode,
+            stdin_paths,
         })
     }
+}
+
+/// Read paths from stdin (one path per line)
+fn read_stdin_paths() -> anyhow::Result<Vec<PathBuf>> {
+    let stdin = io::stdin();
+
+    // Check if stdin is a TTY (not piped)
+    if stdin.is_terminal() {
+        anyhow::bail!("--stdin requires piped input");
+    }
+
+    let paths: Vec<PathBuf> = stdin
+        .lock()
+        .lines()
+        .map_while(Result::ok)
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            let path = PathBuf::from(line.trim());
+            // Normalize path (resolve relative paths, handle . and ..)
+            if path.is_absolute() {
+                path
+            } else {
+                env::current_dir()
+                    .map(|cwd| cwd.join(&path))
+                    .unwrap_or(path)
+            }
+        })
+        .collect();
+
+    if paths.is_empty() {
+        anyhow::bail!("No paths provided via stdin");
+    }
+
+    Ok(paths)
+}
+
+/// Find the common ancestor directory of all paths
+fn find_common_ancestor(paths: &[PathBuf]) -> anyhow::Result<PathBuf> {
+    if paths.is_empty() {
+        return env::current_dir().map_err(Into::into);
+    }
+
+    // Start with the first path's parent (or itself if it's a directory)
+    let first = &paths[0];
+    let mut ancestor = if first.is_dir() {
+        first.clone()
+    } else {
+        first
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from("/")))
+    };
+
+    // Find common prefix with all other paths
+    for path in paths.iter().skip(1) {
+        let other = if path.is_dir() {
+            path.clone()
+        } else {
+            path.parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|| ancestor.clone())
+        };
+
+        // Walk up until we find a common ancestor
+        while !other.starts_with(&ancestor) {
+            if let Some(parent) = ancestor.parent() {
+                ancestor = parent.to_path_buf();
+            } else {
+                // Reached root
+                break;
+            }
+        }
+    }
+
+    Ok(ancestor)
 }
 
 fn print_help() {
@@ -131,10 +225,12 @@ fn print_help() {
 
 USAGE:
     fv [OPTIONS] [PATH]
+    command | fv --stdin [OPTIONS]
 
 OPTIONS:
     -p, --pick          Pick mode: output selected path(s) to stdout
     -f, --format FMT    Output format for pick mode: lines, null, json
+    --stdin             Read paths from stdin (one per line)
     --on-select CMD     Run command when file is selected (use {{path}}, {{name}}, etc.)
     --choosedir         Output directory path on exit (press Q to cd there)
     -i, --icons         Enable Nerd Fonts icons (default)
@@ -271,6 +367,12 @@ fn handle_file_drop(
         return Ok(0);
     }
 
+    // Disable file drop in stdin mode
+    if state.stdin_mode {
+        state.set_message("File operations disabled in stdin mode");
+        return Ok(0);
+    }
+
     let dest = get_target_directory(focused_path, root);
     let mut success_count = 0;
     let mut fail_count = 0;
@@ -309,7 +411,13 @@ fn run_app(
         state.icons_enabled = icons;
     }
 
-    let mut navigator = TreeNavigator::new(&config.root, state.show_hidden)?;
+    // Create navigator based on stdin mode
+    let mut navigator = if let Some(paths) = config.stdin_paths {
+        state.stdin_mode = true;
+        TreeNavigator::from_paths(&config.root, paths, state.show_hidden)?
+    } else {
+        TreeNavigator::new(&config.root, state.show_hidden)?
+    };
     let mut click_detector = ClickDetector::new();
     let mut path_buffer = PathBuffer::new();
 
@@ -652,7 +760,11 @@ fn run_app(
                     // Handle fuzzy finder special actions
                     if matches!(action, KeyAction::OpenFuzzyFinder) {
                         // Collect paths when fuzzy finder opens
-                        fuzzy_paths = collect_paths(&state.root, state.show_hidden);
+                        fuzzy_paths = if state.stdin_mode {
+                            navigator.collect_all_paths()
+                        } else {
+                            collect_paths(&state.root, state.show_hidden)
+                        };
                         fuzzy_results = fuzzy_match("", &fuzzy_paths, &state.root);
                     }
 
