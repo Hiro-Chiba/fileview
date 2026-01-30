@@ -118,7 +118,7 @@ pub enum KeyAction {
 pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
     match &state.mode {
         ViewMode::Browse => handle_browse_mode(state, key),
-        ViewMode::Search { query } => handle_input_mode(key, query),
+        ViewMode::Search { query } => handle_search_mode(key, query),
         ViewMode::Input { buffer, .. } => handle_input_mode(key, buffer),
         ViewMode::Confirm { .. } => handle_confirm_mode(key),
         ViewMode::Preview { .. } => handle_preview_mode(key),
@@ -286,7 +286,19 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Handle keys in input mode (search, rename, new file/dir)
+/// Handle keys in search mode
+fn handle_search_mode(key: KeyEvent, current_query: &str) -> KeyAction {
+    match key.code {
+        KeyCode::Enter => KeyAction::ConfirmInput {
+            value: current_query.to_string(),
+        },
+        // Same key to cancel (toggle behavior)
+        KeyCode::Char('/') | KeyCode::Esc => KeyAction::Cancel,
+        _ => KeyAction::None, // Buffer updates handled separately
+    }
+}
+
+/// Handle keys in input mode (rename, new file/dir)
 fn handle_input_mode(key: KeyEvent, current_buffer: &str) -> KeyAction {
     match key.code {
         KeyCode::Enter => KeyAction::ConfirmInput {
@@ -431,7 +443,8 @@ fn handle_bookmark_set_mode(key: KeyEvent) -> KeyAction {
             let slot = c.to_digit(10).unwrap() as u8;
             KeyAction::SetBookmark { slot }
         }
-        KeyCode::Esc => KeyAction::Cancel,
+        // Same key to cancel (toggle behavior)
+        KeyCode::Char('m') | KeyCode::Esc => KeyAction::Cancel,
         _ => KeyAction::None,
     }
 }
@@ -443,7 +456,8 @@ fn handle_bookmark_jump_mode(key: KeyEvent) -> KeyAction {
             let slot = c.to_digit(10).unwrap() as u8;
             KeyAction::JumpToBookmark { slot }
         }
-        KeyCode::Esc => KeyAction::Cancel,
+        // Same key to cancel (toggle behavior)
+        KeyCode::Char('\'') | KeyCode::Esc => KeyAction::Cancel,
         _ => KeyAction::None,
     }
 }
@@ -460,7 +474,8 @@ fn handle_filter_mode(key: KeyEvent, current_query: &str) -> KeyAction {
                 }
             }
         }
-        KeyCode::Esc => KeyAction::Cancel,
+        // Same key to cancel (toggle behavior)
+        KeyCode::Char('F') | KeyCode::Esc => KeyAction::Cancel,
         _ => KeyAction::None, // Text input handled separately
     }
 }
