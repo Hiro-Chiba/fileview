@@ -39,6 +39,12 @@ pub enum ViewMode {
     },
     /// Help popup display
     Help,
+    /// Waiting for bookmark slot input (set bookmark)
+    BookmarkSet,
+    /// Waiting for bookmark slot input (jump to bookmark)
+    BookmarkJump,
+    /// File filter input mode
+    Filter { query: String },
 }
 
 /// Purpose of text input

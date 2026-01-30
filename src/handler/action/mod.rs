@@ -3,13 +3,17 @@
 //! This module handles the execution of KeyActions, translating them into
 //! actual state changes and side effects.
 
+mod bookmark;
 mod display;
 mod file_ops;
+mod filter;
 mod input;
 mod navigation;
 mod search;
 mod selection;
 mod tree_ops;
+
+pub use filter::matches_filter;
 
 use std::path::{Path, PathBuf};
 
@@ -66,6 +70,14 @@ pub fn get_filename_str(path: Option<&PathBuf>) -> String {
     path.and_then(|p| p.file_name())
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_default()
+}
+
+/// Reload the tree navigator and refresh git status.
+/// This is a common pattern used after file operations.
+pub fn reload_tree(navigator: &mut TreeNavigator, state: &mut AppState) -> anyhow::Result<()> {
+    navigator.reload()?;
+    state.refresh_git_status();
+    Ok(())
 }
 
 /// Handle a KeyAction and update state accordingly
@@ -188,6 +200,21 @@ pub fn handle_action(
 
         KeyAction::FuzzyConfirm { path } => {
             search::handle_fuzzy_confirm(path, state);
+            Ok(ActionResult::Continue)
+        }
+
+        // Bookmarks
+        KeyAction::StartBookmarkSet
+        | KeyAction::StartBookmarkJump
+        | KeyAction::SetBookmark { .. }
+        | KeyAction::JumpToBookmark { .. } => {
+            bookmark::handle(action, state, navigator, focused_path)?;
+            Ok(ActionResult::Continue)
+        }
+
+        // Filter
+        KeyAction::StartFilter | KeyAction::ApplyFilter { .. } | KeyAction::ClearFilter => {
+            filter::handle(action, state);
             Ok(ActionResult::Continue)
         }
     }

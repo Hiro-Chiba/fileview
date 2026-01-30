@@ -11,7 +11,10 @@ use crate::action::file as file_ops;
 use crate::app::{Config, PreviewState};
 use crate::core::{AppState, FocusTarget, ViewMode};
 use crate::handler::{
-    action::{get_target_directory, handle_action, ActionContext, ActionResult, EntrySnapshot},
+    action::{
+        get_target_directory, handle_action, reload_tree, ActionContext, ActionResult,
+        EntrySnapshot,
+    },
     key::{handle_key_event, update_input_buffer, KeyAction},
     mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer},
 };
@@ -55,8 +58,7 @@ fn handle_file_drop(
             Err(_) => fail_count += 1,
         }
     }
-    navigator.reload()?;
-    state.refresh_git_status();
+    reload_tree(navigator, state)?;
 
     let message = if fail_count == 0 {
         format!("Dropped {} file(s)", success_count)
@@ -138,8 +140,19 @@ pub fn run_app(
         } else if state.git_status.is_none() {
             state.init_git_status();
         }
-        // Get visible entries and create snapshots
-        let entries = navigator.visible_entries();
+        // Get visible entries and apply filter if set
+        let all_entries = navigator.visible_entries();
+        let entries: Vec<_> = if let Some(ref pattern) = state.filter_pattern {
+            all_entries
+                .into_iter()
+                .filter(|e| {
+                    // Always show directories for navigation
+                    e.is_dir || crate::handler::action::matches_filter(&e.name, pattern)
+                })
+                .collect()
+        } else {
+            all_entries
+        };
         let total_entries = entries.len();
         let snapshots: Vec<EntrySnapshot> = entries
             .iter()
@@ -206,8 +219,7 @@ pub fn run_app(
         // Check file watcher events (auto-refresh on file changes)
         if let Some(ref watcher) = file_watcher {
             if watcher.poll() {
-                navigator.reload()?;
-                state.refresh_git_status();
+                reload_tree(&mut navigator, &mut state)?;
                 last_git_poll = Instant::now(); // Reset git poll timer
             }
         }
@@ -279,6 +291,14 @@ pub fn run_app(
                                 query: new_buf,
                                 selected: 0, // Reset selection on query change
                             };
+                            continue;
+                        }
+                    }
+
+                    // Handle filter text input
+                    if let ViewMode::Filter { query } = &state.mode {
+                        if let Some((new_buf, _)) = update_input_buffer(key, query, query.len()) {
+                            state.mode = ViewMode::Filter { query: new_buf };
                             continue;
                         }
                     }
@@ -358,7 +378,7 @@ pub fn run_app(
                     if let Some(target) = state.fuzzy_jump_target.take() {
                         // Expand parent directories to make the target visible
                         if let Err(e) = navigator.reveal_path(&target) {
-                            state.set_message(format!("Failed to reveal path: {}", e));
+                            state.set_message(format!("Failed: reveal path - {}", e));
                         } else {
                             // Find the target in visible entries and set focus
                             let entries = navigator.visible_entries();

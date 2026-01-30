@@ -10,7 +10,7 @@ use crate::integrate::{exit_code, PickResult};
 use crate::render::TextPreview;
 use crate::tree::TreeNavigator;
 
-use super::{get_filename_str, ActionContext, ActionResult};
+use super::{get_filename_str, reload_tree, ActionContext, ActionResult};
 
 /// Handle app control actions (Quit, QuitAndCd, Cancel)
 pub fn handle_app_control(
@@ -64,8 +64,7 @@ pub fn handle(
 ) -> anyhow::Result<()> {
     match action {
         KeyAction::Refresh => {
-            navigator.reload()?;
-            state.refresh_git_status();
+            reload_tree(navigator, state)?;
             state.set_message("Refreshed");
         }
         KeyAction::ToggleHidden => {
@@ -82,8 +81,8 @@ pub fn handle(
                 match arboard::Clipboard::new()
                     .and_then(|mut cb| cb.set_text(path.display().to_string()))
                 {
-                    Ok(_) => state.set_message("Path copied to clipboard"),
-                    Err(_) => state.set_message("Failed to copy path to clipboard"),
+                    Ok(_) => state.set_message("Copied path"),
+                    Err(_) => state.set_message("Failed: copy path"),
                 }
             }
         }
@@ -91,8 +90,8 @@ pub fn handle(
             if let Some(path) = focused_path {
                 let name = get_filename_str(Some(path));
                 match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(name)) {
-                    Ok(_) => state.set_message("Filename copied to clipboard"),
-                    Err(_) => state.set_message("Failed to copy filename to clipboard"),
+                    Ok(_) => state.set_message("Copied filename"),
+                    Err(_) => state.set_message("Failed: copy filename"),
                 }
             }
         }
