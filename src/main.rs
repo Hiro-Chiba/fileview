@@ -5,7 +5,7 @@ use std::io::{self, stdout, BufRead, IsTerminal};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::str::FromStr;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossterm::{
     cursor,
@@ -447,7 +447,7 @@ fn run_app(
     let mut skip_git_init_once = true;
 
     // Initialize file watcher (disabled in stdin mode)
-    let file_watcher = if !state.stdin_mode {
+    let mut file_watcher = if !state.stdin_mode {
         match FileWatcher::new(&config.root) {
             Ok(watcher) => {
                 state.watch_enabled = true;
@@ -461,6 +461,13 @@ fn run_app(
     } else {
         None
     };
+
+    // Git status polling timer
+    let mut last_git_poll = Instant::now();
+    const GIT_POLL_INTERVAL: Duration = Duration::from_secs(3);
+
+    // Track previous expanded paths for watcher sync
+    let mut prev_expanded: Vec<PathBuf> = Vec::new();
 
     loop {
         // Initialize git status after the first frame is rendered.
@@ -692,13 +699,28 @@ fn run_app(
         // Drop the entries borrow before event handling
         drop(entries);
 
+        // Sync watcher with expanded directories (only when changed)
+        if let Some(ref mut watcher) = file_watcher {
+            let current_expanded = navigator.expanded_paths();
+            if current_expanded != prev_expanded {
+                watcher.sync_with_expanded(&current_expanded);
+                prev_expanded = current_expanded;
+            }
+        }
+
         // Check file watcher events (auto-refresh on file changes)
         if let Some(ref watcher) = file_watcher {
             if watcher.poll() {
                 navigator.reload()?;
                 state.refresh_git_status();
-                // Silent auto-refresh - no message displayed
+                last_git_poll = Instant::now(); // Reset git poll timer
             }
+        }
+
+        // Git status polling (every 3 seconds)
+        if last_git_poll.elapsed() >= GIT_POLL_INTERVAL {
+            state.refresh_git_status();
+            last_git_poll = Instant::now();
         }
 
         // Check drop buffer timeout (for file drop detection via rapid key input)

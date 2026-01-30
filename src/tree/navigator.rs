@@ -127,7 +127,7 @@ impl TreeNavigator {
 
     /// Reload tree from filesystem
     pub fn reload(&mut self) -> anyhow::Result<()> {
-        let expanded_paths = self.collect_expanded_paths();
+        let expanded_paths = self.expanded_paths();
         self.root.load_children(self.show_hidden)?;
         self.restore_expanded(&expanded_paths)?;
         Ok(())
@@ -185,8 +185,10 @@ impl TreeNavigator {
         None
     }
 
-    /// Collect paths of all expanded entries
-    fn collect_expanded_paths(&self) -> Vec<PathBuf> {
+    /// Get all currently expanded directory paths
+    ///
+    /// Used for syncing file watcher with expanded directories.
+    pub fn expanded_paths(&self) -> Vec<PathBuf> {
         let mut paths = Vec::new();
         self.collect_expanded_in(&self.root, &mut paths);
         paths
