@@ -38,11 +38,14 @@ impl FileWatcher {
 
     /// Check for pending file change events (non-blocking)
     ///
-    /// Returns Some with events if changes were detected, None otherwise
-    pub fn poll(&self) -> Option<Vec<DebouncedEvent>> {
-        match self.rx.try_recv() {
-            Ok(Ok(events)) => Some(events),
-            _ => None,
+    /// Drains all pending events from the channel and returns true if any were found.
+    /// This prevents event buildup that could cause repeated expensive reloads.
+    pub fn poll(&self) -> bool {
+        let mut has_events = false;
+        // Drain all pending events to avoid buildup
+        while let Ok(Ok(_)) = self.rx.try_recv() {
+            has_events = true;
         }
+        has_events
     }
 }

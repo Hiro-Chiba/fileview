@@ -694,7 +694,7 @@ fn run_app(
 
         // Check file watcher events (auto-refresh on file changes)
         if let Some(ref watcher) = file_watcher {
-            if watcher.poll().is_some() {
+            if watcher.poll() {
                 navigator.reload()?;
                 state.refresh_git_status();
                 // Silent auto-refresh - no message displayed
