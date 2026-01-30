@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2026-01-31
+
+### Documentation
+- Updated keybinding documentation to show toggle cancel behavior
+- Added cancel key info for Search, Bookmarks, Filter, Fuzzy Finder
+
+### Tests
+- Added 15 unit tests for toggle behavior in key handlers
+
 ## [1.6.1] - 2026-01-31
 
 ### Improved
