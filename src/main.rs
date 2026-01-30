@@ -32,9 +32,10 @@ use fileview::handler::{
 use fileview::integrate::{exit_code, Callback, OutputFormat};
 use fileview::render::{
     collect_paths, create_image_picker, fuzzy_match, is_binary_file, is_image_file, is_text_file,
-    render_directory_info, render_fuzzy_finder, render_hex_preview, render_image_preview,
-    render_input_popup, render_status_bar, render_text_preview, render_tree, visible_height,
-    DirectoryInfo, FontSize, FuzzyMatch, HexPreview, ImagePreview, Picker, TextPreview,
+    render_directory_info, render_fuzzy_finder, render_help_popup, render_hex_preview,
+    render_image_preview, render_input_popup, render_status_bar, render_text_preview, render_tree,
+    visible_height, DirectoryInfo, FontSize, FuzzyMatch, HexPreview, ImagePreview, Picker,
+    TextPreview,
 };
 use fileview::tree::TreeNavigator;
 
@@ -554,6 +555,9 @@ fn run_app(
                     };
                     render_fuzzy_finder(frame, query, &fuzzy_results, bounded_selected, size);
                 }
+
+                // Render help popup if in Help mode
+                render_help_popup(frame, &state);
             }
         })?;
 

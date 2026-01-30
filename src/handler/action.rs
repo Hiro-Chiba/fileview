@@ -446,7 +446,7 @@ pub fn handle_action(
             }
         }
         KeyAction::ShowHelp => {
-            state.set_message("j/k:move l/h:expand g/G:top/bottom Space:mark P:preview Ctrl+P:fuzzy /:search a/A:new D:del q:quit");
+            state.mode = ViewMode::Help;
         }
         KeyAction::ToggleFocus => {
             state.toggle_focus();
