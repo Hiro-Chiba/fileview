@@ -154,7 +154,7 @@ pub fn handle_action(
         }
 
         // Search
-        KeyAction::StartSearch | KeyAction::SearchNext => {
+        KeyAction::StartSearch | KeyAction::SearchNext | KeyAction::SearchPrev => {
             search::handle(action, state, entries);
             Ok(ActionResult::Continue)
         }
@@ -175,7 +175,8 @@ pub fn handle_action(
         | KeyAction::FocusPreview
         | KeyAction::CopyPath
         | KeyAction::CopyFilename
-        | KeyAction::Refresh => {
+        | KeyAction::Refresh
+        | KeyAction::CycleSort => {
             display::handle(action, state, navigator, focused_path)?;
             Ok(ActionResult::Continue)
         }

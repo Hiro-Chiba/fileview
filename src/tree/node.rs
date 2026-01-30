@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+use crate::core::SortMode;
+
 /// A single entry in the file tree
 #[derive(Debug, Clone)]
 pub struct TreeEntry {
@@ -80,6 +82,18 @@ impl TreeEntry {
     /// Uses `DirEntry::file_type()` to avoid extra stat() calls for better performance.
     /// For symlinks, falls back to `path.is_dir()` to follow the link.
     pub fn load_children(&mut self, show_hidden: bool) -> anyhow::Result<()> {
+        self.load_children_with_sort(show_hidden, SortMode::Name)
+    }
+
+    /// Load children from filesystem with specified sort mode
+    ///
+    /// Uses `DirEntry::file_type()` to avoid extra stat() calls for better performance.
+    /// For symlinks, falls back to `path.is_dir()` to follow the link.
+    pub fn load_children_with_sort(
+        &mut self,
+        show_hidden: bool,
+        sort_mode: SortMode,
+    ) -> anyhow::Result<()> {
         if !self.is_dir {
             return Ok(());
         }
@@ -112,16 +126,42 @@ impl TreeEntry {
             })
             .collect();
 
-        // Sort: directories first, then alphabetically
-        entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        });
+        // Sort: directories first, then by sort mode
+        sort_entries(&mut entries, sort_mode);
 
         self.children = entries;
         Ok(())
     }
+}
+
+/// Sort entries with directories first, then by sort mode
+pub fn sort_entries(entries: &mut [TreeEntry], sort_mode: SortMode) {
+    entries.sort_by(|a, b| {
+        // Directories always come first
+        match (a.is_dir, b.is_dir) {
+            (true, false) => return std::cmp::Ordering::Less,
+            (false, true) => return std::cmp::Ordering::Greater,
+            _ => {}
+        }
+
+        match sort_mode {
+            SortMode::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            SortMode::Size => {
+                // For directories, sort by name (size doesn't make sense)
+                if a.is_dir {
+                    return a.name.to_lowercase().cmp(&b.name.to_lowercase());
+                }
+                let a_size = a.path.metadata().map(|m| m.len()).unwrap_or(0);
+                let b_size = b.path.metadata().map(|m| m.len()).unwrap_or(0);
+                b_size.cmp(&a_size) // Descending (largest first)
+            }
+            SortMode::Date => {
+                let a_time = a.path.metadata().and_then(|m| m.modified()).ok();
+                let b_time = b.path.metadata().and_then(|m| m.modified()).ok();
+                b_time.cmp(&a_time) // Descending (newest first)
+            }
+        }
+    });
 }
 
 #[cfg(test)]
