@@ -46,7 +46,7 @@ Complete keybinding reference for FileView (fv).
 
 | Key | Action |
 |-----|--------|
-| `/` | Start search |
+| `/` | Start search (press again to cancel) |
 | `n` | Next search result |
 | `Ctrl+P` | Open fuzzy finder |
 
@@ -59,7 +59,7 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 | `↑` / `Ctrl+K` | Move up in results |
 | `↓` / `Ctrl+J` | Move down in results |
 | `Enter` | Jump to selected file |
-| `Esc` | Cancel |
+| `Esc` / `Ctrl+P` | Cancel |
 
 - Type to filter files by name
 - Results are sorted by match score
@@ -102,6 +102,7 @@ Press `m` followed by a digit (1-9) to set a bookmark, and `'` followed by a dig
 |-----|--------|
 | `m1`-`m9` | Set bookmark at slot 1-9 |
 | `'1`-`'9` | Jump to bookmark at slot 1-9 |
+| `m` / `'` | Cancel (press again without digit) |
 
 - Bookmarks persist for the current session only
 - A status message shows the bookmarked path when set
@@ -115,7 +116,7 @@ Press `F` to set or clear a file filter:
 |-----|--------|
 | `F` | Open filter input / clear filter |
 | `Enter` | Apply filter |
-| `Esc` | Cancel |
+| `Esc` / `F` | Cancel |
 
 - Supports glob patterns: `*` (any chars), `?` (single char)
 - Examples: `*.rs`, `test*`, `*_test.py`
