@@ -4,4 +4,4 @@ pub mod mode;
 pub mod state;
 
 pub use mode::{FocusTarget, InputPurpose, PendingAction, ViewMode};
-pub use state::AppState;
+pub use state::{AppState, BOOKMARK_SLOTS};
