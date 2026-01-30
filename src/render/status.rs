@@ -1,5 +1,8 @@
 //! Status bar and input popup rendering
 
+use std::path::PathBuf;
+use std::time::SystemTime;
+
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -11,7 +14,12 @@ use ratatui::{
 use crate::core::{AppState, InputPurpose, PendingAction, ViewMode};
 
 /// Render the status bar
-pub fn render_status_bar(frame: &mut Frame, state: &AppState, total_entries: usize, area: Rect) {
+pub fn render_status_bar(
+    frame: &mut Frame,
+    state: &AppState,
+    focused_path: Option<&PathBuf>,
+    area: Rect,
+) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -47,7 +55,12 @@ pub fn render_status_bar(frame: &mut Frame, state: &AppState, total_entries: usi
     let msg_widget = Paragraph::new(left_content).block(Block::default().borders(Borders::ALL));
     frame.render_widget(msg_widget, chunks[0]);
 
-    // Right: stats
+    // Right: file info + selection stats
+    let file_info = focused_path
+        .map(|p| p.as_path())
+        .and_then(get_file_info)
+        .unwrap_or_else(|| "--".to_string());
+
     let selected_count = state.selected_paths.len();
     let clipboard_info = state
         .clipboard
@@ -62,9 +75,8 @@ pub fn render_status_bar(frame: &mut Frame, state: &AppState, total_entries: usi
         .unwrap_or_default();
 
     let stats = format!(
-        "{}/{}{}{}",
-        state.focus_index + 1,
-        total_entries,
+        "{}{}{}",
+        file_info,
         if selected_count > 0 {
             format!(" | Selected: {}", selected_count)
         } else {
@@ -74,6 +86,142 @@ pub fn render_status_bar(frame: &mut Frame, state: &AppState, total_entries: usi
     );
     let stats_widget = Paragraph::new(stats).block(Block::default().borders(Borders::ALL));
     frame.render_widget(stats_widget, chunks[1]);
+}
+
+/// Get file size and modification time as a formatted string
+fn get_file_info(path: &std::path::Path) -> Option<String> {
+    let metadata = path.metadata().ok()?;
+
+    // Format size
+    let size_str = if metadata.is_dir() {
+        "--".to_string()
+    } else {
+        format_size(metadata.len())
+    };
+
+    // Format modification time
+    let mtime_str = metadata
+        .modified()
+        .ok()
+        .map(format_relative_time)
+        .unwrap_or_else(|| "--".to_string());
+
+    Some(format!("{} · {}", size_str, mtime_str))
+}
+
+/// Format file size in human-readable format
+fn format_size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+
+    if bytes >= GB {
+        format!("{:.1} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} B", bytes)
+    }
+}
+
+/// Format time as relative (e.g., "2h ago", "Yesterday", "Jan 30")
+fn format_relative_time(time: SystemTime) -> String {
+    let now = SystemTime::now();
+    let duration = match now.duration_since(time) {
+        Ok(d) => d,
+        Err(_) => return "Future".to_string(),
+    };
+
+    let secs = duration.as_secs();
+    let mins = secs / 60;
+    let hours = mins / 60;
+    let days = hours / 24;
+
+    if secs < 60 {
+        "Just now".to_string()
+    } else if mins < 60 {
+        format!("{}m ago", mins)
+    } else if hours < 24 {
+        format!("{}h ago", hours)
+    } else if days == 1 {
+        "Yesterday".to_string()
+    } else if days < 7 {
+        format!("{}d ago", days)
+    } else {
+        // Use date format for older files
+        use std::time::UNIX_EPOCH;
+        let timestamp = time
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        format_date_from_timestamp(timestamp)
+    }
+}
+
+/// Format timestamp as "Mon DD" or "Mon DD YYYY" if not current year
+fn format_date_from_timestamp(timestamp: u64) -> String {
+    // Simple month calculation (approximate, but good enough for display)
+    let secs_per_day: u64 = 86400;
+    let days_since_epoch = timestamp / secs_per_day;
+
+    // Calculate year, month, day (simplified)
+    let mut year = 1970u32;
+    let mut remaining_days = days_since_epoch as u32;
+
+    loop {
+        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+        if remaining_days < days_in_year {
+            break;
+        }
+        remaining_days -= days_in_year;
+        year += 1;
+    }
+
+    let months = [
+        ("Jan", 31),
+        ("Feb", if is_leap_year(year) { 29 } else { 28 }),
+        ("Mar", 31),
+        ("Apr", 30),
+        ("May", 31),
+        ("Jun", 30),
+        ("Jul", 31),
+        ("Aug", 31),
+        ("Sep", 30),
+        ("Oct", 31),
+        ("Nov", 30),
+        ("Dec", 31),
+    ];
+
+    let mut month_name = "Jan";
+    let mut day = remaining_days + 1;
+
+    for (name, days) in months.iter() {
+        if remaining_days < *days {
+            month_name = name;
+            day = remaining_days + 1;
+            break;
+        }
+        remaining_days -= days;
+    }
+
+    // Get current year for comparison
+    let now_timestamp = SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let current_year = 1970 + (now_timestamp / (365 * secs_per_day)) as u32;
+
+    if year == current_year {
+        format!("{} {}", month_name, day)
+    } else {
+        format!("{} {} {}", month_name, day, year)
+    }
+}
+
+fn is_leap_year(year: u32) -> bool {
+    (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
 }
 
 /// Render input popup based on current mode
