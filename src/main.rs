@@ -340,28 +340,55 @@ fn run_app(
                             hex_preview = None;
                         }
                     } else if is_text_file(path) {
-                        if let Ok(content) = std::fs::read_to_string(path) {
-                            text_preview = Some(TextPreview::new(&content));
-                            image_preview = None;
-                            dir_info = None;
-                            hex_preview = None;
-                        }
-                    } else if is_image_file(path) {
-                        if let Some(ref mut picker) = image_picker {
-                            if let Ok(img) = ImagePreview::load(path, picker) {
-                                image_preview = Some(img);
+                        match std::fs::read_to_string(path) {
+                            Ok(content) => {
+                                text_preview = Some(TextPreview::new(&content));
+                                image_preview = None;
+                                dir_info = None;
+                                hex_preview = None;
+                            }
+                            Err(e) => {
+                                state.set_message(format!("Cannot preview: {}", e));
                                 text_preview = None;
+                                image_preview = None;
                                 dir_info = None;
                                 hex_preview = None;
                             }
                         }
+                    } else if is_image_file(path) {
+                        if let Some(ref mut picker) = image_picker {
+                            match ImagePreview::load(path, picker) {
+                                Ok(img) => {
+                                    image_preview = Some(img);
+                                    text_preview = None;
+                                    dir_info = None;
+                                    hex_preview = None;
+                                }
+                                Err(e) => {
+                                    state.set_message(format!("Cannot preview image: {}", e));
+                                    text_preview = None;
+                                    image_preview = None;
+                                    dir_info = None;
+                                    hex_preview = None;
+                                }
+                            }
+                        }
                     } else if is_binary_file(path) || path.is_file() {
                         // Binary file or unknown type - show hex preview
-                        if let Ok(hex) = HexPreview::load(path) {
-                            hex_preview = Some(hex);
-                            text_preview = None;
-                            image_preview = None;
-                            dir_info = None;
+                        match HexPreview::load(path) {
+                            Ok(hex) => {
+                                hex_preview = Some(hex);
+                                text_preview = None;
+                                image_preview = None;
+                                dir_info = None;
+                            }
+                            Err(e) => {
+                                state.set_message(format!("Cannot preview: {}", e));
+                                text_preview = None;
+                                image_preview = None;
+                                dir_info = None;
+                                hex_preview = None;
+                            }
                         }
                     } else {
                         // Clear all previews

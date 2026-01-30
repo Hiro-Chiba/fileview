@@ -8,30 +8,47 @@ pub fn create_file(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
     std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
-        .open(&path)?;
+        .open(&path)
+        .map_err(|e| anyhow::anyhow!("Failed to create file '{}': {}", path.display(), e))?;
     Ok(path)
 }
 
 /// Create a new directory
 pub fn create_dir(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
     let path = parent.join(name);
-    std::fs::create_dir(&path)?;
+    std::fs::create_dir(&path)
+        .map_err(|e| anyhow::anyhow!("Failed to create directory '{}': {}", path.display(), e))?;
     Ok(path)
 }
 
 /// Rename a file or directory
 pub fn rename(path: &Path, new_name: &str) -> anyhow::Result<PathBuf> {
-    let new_path = path.parent().unwrap_or(Path::new("")).join(new_name);
-    std::fs::rename(path, &new_path)?;
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .ok_or_else(|| {
+            anyhow::anyhow!("Cannot determine parent directory for '{}'", path.display())
+        })?;
+    let new_path = parent.join(new_name);
+    std::fs::rename(path, &new_path).map_err(|e| {
+        anyhow::anyhow!(
+            "Failed to rename '{}' to '{}': {}",
+            path.display(),
+            new_name,
+            e
+        )
+    })?;
     Ok(new_path)
 }
 
 /// Delete a file or directory
 pub fn delete(path: &Path) -> anyhow::Result<()> {
     if path.is_dir() {
-        std::fs::remove_dir_all(path)?;
+        std::fs::remove_dir_all(path)
+            .map_err(|e| anyhow::anyhow!("Failed to delete '{}': {}", path.display(), e))?;
     } else {
-        std::fs::remove_file(path)?;
+        std::fs::remove_file(path)
+            .map_err(|e| anyhow::anyhow!("Failed to delete '{}': {}", path.display(), e))?;
     }
     Ok(())
 }
@@ -40,7 +57,7 @@ pub fn delete(path: &Path) -> anyhow::Result<()> {
 pub fn copy_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
     let file_name = src
         .file_name()
-        .ok_or_else(|| anyhow::anyhow!("Invalid source path"))?;
+        .ok_or_else(|| anyhow::anyhow!("Cannot copy '{}': no filename", src.display()))?;
     let dest = get_unique_path(&dest_dir.join(file_name));
 
     if src.is_dir() {
@@ -62,7 +79,10 @@ fn get_unique_path(path: &Path) -> PathBuf {
         .extension()
         .map(|e| format!(".{}", e.to_string_lossy()))
         .unwrap_or_default();
-    let parent = path.parent().unwrap_or(Path::new(""));
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
 
     let mut counter = 1;
     loop {
