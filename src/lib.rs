@@ -10,3 +10,4 @@ pub mod handler;
 pub mod integrate;
 pub mod render;
 pub mod tree;
+pub mod watcher;
