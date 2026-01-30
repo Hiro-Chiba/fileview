@@ -17,6 +17,7 @@ English | [日本語](README_ja.md)
   - Images (Kitty/iTerm2/Sixel protocols with auto-detection)
   - Directories (file count, size statistics)
   - Binary files (hex dump view)
+- **Fuzzy finder** (`Ctrl+P`) for quick file navigation
 - Copy/cut/paste with internal clipboard
 - System clipboard integration (path/filename copy)
 - Pick mode for external tool integration
@@ -228,6 +229,15 @@ When the side preview panel is open, press `Tab` to switch focus:
 | `--no-icons` | Disable icons |
 | `-h`, `--help` | Show help |
 | `-V`, `--version` | Show version |
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success (normal exit or file selected in pick mode) |
+| 1 | Cancelled (user cancelled selection in pick mode) |
+| 2 | Error (runtime error) |
+| 3 | Invalid arguments (unknown option or invalid value) |
 
 ### Environment Variables
 
