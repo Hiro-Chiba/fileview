@@ -225,3 +225,69 @@ fn centered_rect(percent_x: u16, height: u16, area: Rect) -> Rect {
         ])
         .split(popup_layout[1])[1]
 }
+
+/// Render help popup overlay
+pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
+    if !matches!(state.mode, ViewMode::Help) {
+        return;
+    }
+
+    let help_lines = vec![
+        Line::from(vec![Span::styled(
+            "Navigation",
+            Style::default().add_modifier(Modifier::BOLD),
+        )]),
+        Line::from("  j/Down   Move down"),
+        Line::from("  k/Up     Move up"),
+        Line::from("  g        Go to top"),
+        Line::from("  G        Go to bottom"),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            "Tree",
+            Style::default().add_modifier(Modifier::BOLD),
+        )]),
+        Line::from("  l/Right  Expand"),
+        Line::from("  h/Left   Collapse"),
+        Line::from("  H        Collapse all"),
+        Line::from("  L        Expand all"),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            "File Operations",
+            Style::default().add_modifier(Modifier::BOLD),
+        )]),
+        Line::from("  a        New file"),
+        Line::from("  A        New directory"),
+        Line::from("  r        Rename"),
+        Line::from("  D        Delete"),
+        Line::from("  y/d      Copy/Cut"),
+        Line::from("  p        Paste"),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            "Other",
+            Style::default().add_modifier(Modifier::BOLD),
+        )]),
+        Line::from("  P        Toggle preview"),
+        Line::from("  Ctrl+P   Fuzzy finder"),
+        Line::from("  /        Search"),
+        Line::from("  .        Toggle hidden"),
+        Line::from("  q        Quit"),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            "  Press ? or Esc to close",
+            Style::default().fg(Color::DarkGray),
+        )]),
+    ];
+
+    let height = (help_lines.len() + 2) as u16; // +2 for border
+    let area = centered_rect(50, height, frame.area());
+
+    let popup = Paragraph::new(help_lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Help ")
+            .border_style(Style::default().fg(Color::Cyan)),
+    );
+
+    frame.render_widget(Clear, area);
+    frame.render_widget(popup, area);
+}
