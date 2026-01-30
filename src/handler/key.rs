@@ -109,6 +109,7 @@ pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
         ViewMode::Confirm { .. } => handle_confirm_mode(key),
         ViewMode::Preview { .. } => handle_preview_mode(key),
         ViewMode::FuzzyFinder { .. } => handle_fuzzy_finder_mode(key),
+        ViewMode::Help => handle_help_mode(key),
     }
 }
 
@@ -312,6 +313,14 @@ fn handle_fuzzy_finder_mode(key: KeyEvent) -> KeyAction {
             }
         }
         _ => KeyAction::None, // Text input handled separately
+    }
+}
+
+/// Handle keys in help mode
+fn handle_help_mode(key: KeyEvent) -> KeyAction {
+    match key.code {
+        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => KeyAction::Cancel,
+        _ => KeyAction::None,
     }
 }
 
