@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-01-31
+
+### Added
+- **Bookmark feature**: Quick navigation with vim-style keybindings
+  - `m1`-`m9`: Set bookmark at slot 1-9
+  - `'1`-`'9`: Jump to bookmark at slot 1-9
+  - 9 bookmark slots persist for current session
+  - Status message shows bookmarked path when set
+- **File filter feature**: Filter visible files by glob pattern
+  - `F`: Open filter input / clear active filter
+  - Supports `*` (any chars) and `?` (single char) wildcards
+  - Examples: `*.rs`, `test*`, `*_test.py`
+  - Directories always shown for navigation
+  - Active filter displayed in status bar
+
+### Changed
+- Unified error message format across codebase
+- Updated documentation (DESIGN.md, KEYBINDINGS.md, KEYBINDINGS_ja.md)
+
 ## [1.5.0] - 2026-01-31
 
 ### Changed
