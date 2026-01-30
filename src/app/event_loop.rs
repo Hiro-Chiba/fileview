@@ -252,8 +252,8 @@ pub fn run_app(
             }
         }
 
-        // Handle events (100ms timeout balances responsiveness and CPU usage)
-        if event::poll(Duration::from_millis(100))? {
+        // Handle events (60ms timeout balances responsiveness and CPU usage)
+        if event::poll(Duration::from_millis(60))? {
             match event::read()? {
                 Event::Key(key) => {
                     // Handle input buffer updates first
