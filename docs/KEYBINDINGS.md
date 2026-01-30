@@ -94,6 +94,35 @@ When the side preview panel is open, press `Tab` to switch focus:
 | `c` | Copy path to system clipboard |
 | `C` | Copy filename to system clipboard |
 
+## Bookmarks
+
+Press `m` followed by a digit (1-9) to set a bookmark, and `'` followed by a digit to jump:
+
+| Key | Action |
+|-----|--------|
+| `m1`-`m9` | Set bookmark at slot 1-9 |
+| `'1`-`'9` | Jump to bookmark at slot 1-9 |
+
+- Bookmarks persist for the current session only
+- A status message shows the bookmarked path when set
+- Jumping to an unset bookmark shows "Bookmark N not set"
+
+## File Filter
+
+Press `F` to set or clear a file filter:
+
+| Key | Action |
+|-----|--------|
+| `F` | Open filter input / clear filter |
+| `Enter` | Apply filter |
+| `Esc` | Cancel |
+
+- Supports glob patterns: `*` (any chars), `?` (single char)
+- Examples: `*.rs`, `test*`, `*_test.py`
+- Directories are always shown for navigation
+- Active filter is shown in status bar with filter icon
+- Press `F` again when filter is active to clear it
+
 ## Other
 
 | Key | Action |
