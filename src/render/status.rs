@@ -17,12 +17,18 @@ pub fn render_status_bar(frame: &mut Frame, state: &AppState, total_entries: usi
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    // Left: message or help hint, with git branch and watch indicator
+    // Left: message or help hint, with git branch, watch, and filter indicators
     let watch_indicator = if state.watch_enabled {
         "\u{f06e} " // Eye icon (nf-fa-eye) for file watching
     } else {
         ""
     };
+
+    let filter_indicator = state
+        .filter_pattern
+        .as_ref()
+        .map(|p| format!("\u{f0b0} {} |", p)) // Filter icon
+        .unwrap_or_default();
 
     let branch_info = state
         .git_status
@@ -34,6 +40,7 @@ pub fn render_status_bar(frame: &mut Frame, state: &AppState, total_entries: usi
     let message = state.message.as_deref().unwrap_or("? for help");
     let left_content = Line::from(vec![
         Span::styled(watch_indicator, Style::default().fg(Color::Blue)),
+        Span::styled(filter_indicator, Style::default().fg(Color::Yellow)),
         Span::styled(branch_info, Style::default().fg(Color::Green)),
         Span::raw(format!(" {}", message)),
     ]);
@@ -90,6 +97,15 @@ pub fn render_input_popup(frame: &mut Frame, state: &AppState) {
         ViewMode::Confirm { action } => {
             draw_confirm_popup(frame, action);
         }
+        ViewMode::BookmarkSet => {
+            draw_mini_popup(frame, "Set bookmark (1-9)");
+        }
+        ViewMode::BookmarkJump => {
+            draw_mini_popup(frame, "Jump to bookmark (1-9)");
+        }
+        ViewMode::Filter { query } => {
+            draw_input_popup(frame, "Filter (e.g., *.rs)", query);
+        }
         _ => {}
     }
 }
@@ -104,6 +120,19 @@ fn draw_input_popup(frame: &mut Frame, title: &str, content: &str) {
 
     frame.render_widget(Clear, area);
     frame.render_widget(input, area);
+}
+
+/// Draw a small notification popup (for bookmark modes, etc.)
+fn draw_mini_popup(frame: &mut Frame, message: &str) {
+    let width = (message.len() + 4).min(50) as u16;
+    let area = centered_rect(width, 3, frame.area());
+
+    let popup = Paragraph::new(message)
+        .style(Style::default().fg(Color::Cyan))
+        .block(Block::default().borders(Borders::ALL));
+
+    frame.render_widget(Clear, area);
+    frame.render_widget(popup, area);
 }
 
 /// Draw confirmation popup
@@ -275,6 +304,19 @@ pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
         Line::from("  D        Delete"),
         Line::from("  y/d      Copy/Cut"),
         Line::from("  p        Paste"),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            "Bookmarks",
+            Style::default().add_modifier(Modifier::BOLD),
+        )]),
+        Line::from("  m1-9     Set bookmark"),
+        Line::from("  '1-9     Jump to bookmark"),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            "Filter",
+            Style::default().add_modifier(Modifier::BOLD),
+        )]),
+        Line::from("  F        Set/clear filter"),
         Line::from(""),
         Line::from(vec![Span::styled(
             "Other",

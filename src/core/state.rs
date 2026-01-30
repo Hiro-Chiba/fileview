@@ -7,6 +7,9 @@ use super::{FocusTarget, ViewMode};
 use crate::action::Clipboard;
 use crate::git::GitStatus;
 
+/// Number of bookmark slots (1-9)
+pub const BOOKMARK_SLOTS: usize = 9;
+
 /// Main application state
 pub struct AppState {
     /// Root directory path
@@ -45,6 +48,10 @@ pub struct AppState {
     pub stdin_mode: bool,
     /// Whether file watching is enabled
     pub watch_enabled: bool,
+    /// Bookmarks (slots 0-8 for keys 1-9)
+    pub bookmarks: [Option<PathBuf>; BOOKMARK_SLOTS],
+    /// File filter pattern (glob-like, e.g., "*.rs", "test*")
+    pub filter_pattern: Option<String>,
 }
 
 impl AppState {
@@ -77,6 +84,8 @@ impl AppState {
             fuzzy_jump_target: None,
             stdin_mode: false,
             watch_enabled: false,
+            bookmarks: [const { None }; BOOKMARK_SLOTS],
+            filter_pattern: None,
         }
     }
 
