@@ -128,7 +128,8 @@ OPTIONS:
     -V, --version       Show version
 
 ENVIRONMENT:
-    FILEVIEW_ICONS=0    Disable icons by default
+    FILEVIEW_ICONS=0            Disable icons
+    FILEVIEW_IMAGE_PROTOCOL     Force image protocol: auto, halfblocks, chafa, sixel, kitty, iterm2
 
 KEYBINDINGS:
     j/↓         Move down

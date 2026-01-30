@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/fileview.svg)](https://crates.io/crates/fileview)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-モダンなターミナルエミュレータ向けの、ミニマルなVSCodeスタイルのファイルツリーTUI。
+Vimライクなキーバインドと画像プレビューを備えた、ミニマルなファイルツリーブラウザ。
 
 [English](README.md) | 日本語
 
@@ -13,7 +13,7 @@
 - **Git連携** - ファイル状態のカラー表示とブランチ名表示
 - 複数選択によるバッチ操作
 - **プレビューパネル**（以下に対応）:
-  - テキストファイル（拡張子による構文ハイライト）
+  - テキストファイル（行番号付き）
   - 画像（Kitty/iTerm2/Sixelプロトコル、自動検出対応）
   - ディレクトリ（ファイル数、サイズ統計）
   - バイナリファイル（Hexダンプ表示）
@@ -23,7 +23,7 @@
 - ファイル選択時のコールバック実行
 - 隠しファイルの表示切り替え
 - マウス対応（クリック、ダブルクリック、スクロール、ドラッグ&ドロップ）
-- **Nerd Fontsアイコン**（オプション、`--icons`で有効化）
+- **Nerd Fontsアイコン**（デフォルト有効、`--no-icons`で無効化）
 
 ## Gitステータス表示
 
@@ -233,7 +233,7 @@ fv --on-select "code {path}"
 
 | 変数 | 説明 |
 |------|------|
-| `FILEVIEW_ICONS=0` | デフォルトでアイコンを無効化 |
+| `FILEVIEW_ICONS=0` | アイコンを無効化 |
 | `FILEVIEW_IMAGE_PROTOCOL` | 画像プロトコルを指定: `auto`, `halfblocks`, `chafa`, `sixel`, `kitty`, `iterm2` |
 
 ### `--on-select` のプレースホルダー

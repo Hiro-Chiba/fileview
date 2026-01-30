@@ -9,6 +9,8 @@ FileViewへの貢献に感謝します。本ドキュメントでは、開発に
 - [Git Workflow](#git-workflow)
 - [Commit Convention](#commit-convention)
 - [Pull Request Guidelines](#pull-request-guidelines)
+- [Testing Requirements](#testing-requirements)
+- [Documentation Updates](#documentation-updates)
 
 ---
 
@@ -243,6 +245,45 @@ Closes #123
 
 - **Squash and merge**: 複数コミットを1つにまとめてマージ
 - マージコミットメッセージはPRタイトルを使用
+
+---
+
+## Testing Requirements
+
+PRを作成する前に、以下のチェックをすべて通過させてください：
+
+```bash
+# テスト実行
+cargo test
+
+# Lintチェック（警告はエラーとして扱う）
+cargo clippy -- -D warnings
+
+# フォーマットチェック
+cargo fmt --check
+```
+
+これらはCIでも自動チェックされます。
+
+---
+
+## Documentation Updates
+
+機能追加・変更時のドキュメント更新ルール：
+
+1. **README.md** と **README_ja.md** は常に同期
+   - 英語版を先に更新し、日本語版も同じ内容に更新
+   - 機能の追加・削除・変更は両方に反映
+
+2. **実装済み機能のみ記載**
+   - 未実装の機能を記載しない
+   - 過大な表現（"VSCode-style"等）を避ける
+   - シンプルで正確な表現を心がける
+
+3. **キーバインド変更時**
+   - README.md / README_ja.md のキーバインドテーブルを更新
+   - `src/main.rs` の `print_help()` を更新
+   - `src/handler/action.rs` のヘルプメッセージを更新
 
 ---
 

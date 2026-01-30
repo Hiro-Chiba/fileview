@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/fileview.svg)](https://crates.io/crates/fileview)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A minimal, VSCode-style file tree TUI for modern terminal emulators.
+A minimal file tree browser for terminal emulators with vim-like keybindings and image preview.
 
 English | [日本語](README_ja.md)
 
@@ -13,7 +13,7 @@ English | [日本語](README_ja.md)
 - **Git integration** - color-coded file status and branch display
 - Multi-select support for batch operations
 - **Preview panel** with support for:
-  - Text files (syntax highlighting by extension)
+  - Text files (with line numbers)
   - Images (Kitty/iTerm2/Sixel protocols with auto-detection)
   - Directories (file count, size statistics)
   - Binary files (hex dump view)
@@ -23,7 +23,7 @@ English | [日本語](README_ja.md)
 - Callback execution on file selection
 - Hidden files toggle
 - Mouse support (click, double-click, scroll, drag-and-drop)
-- **Nerd Fonts icons** (optional, enable with `--icons`)
+- **Nerd Fonts icons** (enabled by default, disable with `--no-icons`)
 
 ## Git Status Colors
 
@@ -233,7 +233,7 @@ When the side preview panel is open, press `Tab` to switch focus:
 
 | Variable | Description |
 |----------|-------------|
-| `FILEVIEW_ICONS=0` | Disable icons by default |
+| `FILEVIEW_ICONS=0` | Disable icons |
 | `FILEVIEW_IMAGE_PROTOCOL` | Force image protocol: `auto`, `halfblocks`, `chafa`, `sixel`, `kitty`, `iterm2` |
 
 ### Placeholders for `--on-select`
