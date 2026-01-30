@@ -319,7 +319,9 @@ fn handle_fuzzy_finder_mode(key: KeyEvent) -> KeyAction {
 /// Handle keys in help mode
 fn handle_help_mode(key: KeyEvent) -> KeyAction {
     match key.code {
-        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => KeyAction::Cancel,
+        KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') | KeyCode::Char('?') => {
+            KeyAction::Cancel
+        }
         _ => KeyAction::None,
     }
 }
