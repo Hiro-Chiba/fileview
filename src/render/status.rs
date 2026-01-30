@@ -11,7 +11,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::core::{AppState, InputPurpose, PendingAction, ViewMode};
+use crate::core::{AppState, InputPurpose, PendingAction, SortMode, ViewMode};
 
 /// Render the status bar
 pub fn render_status_bar(
@@ -25,7 +25,7 @@ pub fn render_status_bar(
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    // Left: message or help hint, with git branch, watch, and filter indicators
+    // Left: message or help hint, with git branch, watch, filter, sort, and search indicators
     let watch_indicator = if state.watch_enabled {
         "\u{f06e} " // Eye icon (nf-fa-eye) for file watching
     } else {
@@ -45,11 +45,26 @@ pub fn render_status_bar(
         .map(|b| format!("\u{e0a0} {} |", b)) // Git branch icon
         .unwrap_or_default();
 
+    // Sort mode indicator (only show if not default)
+    let sort_indicator = if state.sort_mode != SortMode::Name {
+        format!("\u{f0dc} {} |", state.sort_mode.display_name()) // Sort icon
+    } else {
+        String::new()
+    };
+
+    // Search match info
+    let search_indicator = state
+        .search_matches
+        .map(|(current, total)| format!("{}/{} matches |", current, total))
+        .unwrap_or_default();
+
     let message = state.message.as_deref().unwrap_or("? for help");
     let left_content = Line::from(vec![
         Span::styled(watch_indicator, Style::default().fg(Color::Blue)),
         Span::styled(filter_indicator, Style::default().fg(Color::Yellow)),
         Span::styled(branch_info, Style::default().fg(Color::Green)),
+        Span::styled(sort_indicator, Style::default().fg(Color::Magenta)),
+        Span::styled(search_indicator, Style::default().fg(Color::Cyan)),
         Span::raw(format!(" {}", message)),
     ]);
     let msg_widget = Paragraph::new(left_content).block(Block::default().borders(Borders::ALL));
@@ -473,7 +488,8 @@ pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
         Line::from("  P        Toggle preview"),
         Line::from("  Ctrl+P   Fuzzy finder"),
         Line::from("  /        Search"),
-        Line::from("  n        Next match"),
+        Line::from("  n/N      Next/prev match"),
+        Line::from("  S        Cycle sort mode"),
         Line::from("  .        Toggle hidden"),
         Line::from("  q        Quit"),
         Line::from(""),

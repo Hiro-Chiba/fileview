@@ -10,6 +10,38 @@ use crate::git::GitStatus;
 /// Number of bookmark slots (1-9)
 pub const BOOKMARK_SLOTS: usize = 9;
 
+/// Sort mode for file entries
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SortMode {
+    /// Sort by name (alphabetically, case-insensitive)
+    #[default]
+    Name,
+    /// Sort by size (descending, largest first)
+    Size,
+    /// Sort by modification date (descending, newest first)
+    Date,
+}
+
+impl SortMode {
+    /// Cycle to the next sort mode
+    pub fn next(self) -> Self {
+        match self {
+            SortMode::Name => SortMode::Size,
+            SortMode::Size => SortMode::Date,
+            SortMode::Date => SortMode::Name,
+        }
+    }
+
+    /// Get display name for status bar
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            SortMode::Name => "name",
+            SortMode::Size => "size",
+            SortMode::Date => "date",
+        }
+    }
+}
+
 /// Main application state
 pub struct AppState {
     /// Root directory path
@@ -52,6 +84,10 @@ pub struct AppState {
     pub bookmarks: [Option<PathBuf>; BOOKMARK_SLOTS],
     /// File filter pattern (glob-like, e.g., "*.rs", "test*")
     pub filter_pattern: Option<String>,
+    /// Current sort mode
+    pub sort_mode: SortMode,
+    /// Search match info (current_index, total_count)
+    pub search_matches: Option<(usize, usize)>,
 }
 
 impl AppState {
@@ -86,6 +122,8 @@ impl AppState {
             watch_enabled: false,
             bookmarks: [const { None }; BOOKMARK_SLOTS],
             filter_pattern: None,
+            sort_mode: SortMode::default(),
+            search_matches: None,
         }
     }
 

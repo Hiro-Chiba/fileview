@@ -121,6 +121,12 @@ pub fn handle(
         KeyAction::FocusPreview => {
             state.set_focus(crate::core::FocusTarget::Preview);
         }
+        KeyAction::CycleSort => {
+            let new_mode = state.sort_mode.next();
+            state.sort_mode = new_mode;
+            navigator.set_sort_mode(new_mode)?;
+            state.set_message(format!("Sort: {}", new_mode.display_name()));
+        }
         _ => {}
     }
     Ok(())
