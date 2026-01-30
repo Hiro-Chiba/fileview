@@ -1,9 +1,8 @@
 //! File system watcher for real-time updates
 
-use notify::Watcher;
 use notify_debouncer_mini::{new_debouncer, Debouncer};
-use std::fs;
-use std::path::Path;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
 
@@ -25,14 +24,13 @@ const EXCLUDED_DIRS: &[&str] = &[
 
 /// File watcher with debouncing for real-time file system monitoring
 pub struct FileWatcher {
-    _debouncer: Debouncer<notify::RecommendedWatcher>,
+    debouncer: Debouncer<notify::RecommendedWatcher>,
     rx: Receiver<Result<Vec<notify_debouncer_mini::DebouncedEvent>, notify::Error>>,
+    watched_paths: HashSet<PathBuf>,
 }
 
 impl FileWatcher {
-    /// Create a new file watcher for the given root directory
-    ///
-    /// Excludes common large directories like .git, target, node_modules, etc.
+    /// Create a new file watcher (initially watches only root)
     pub fn new(root: &Path) -> anyhow::Result<Self> {
         let (tx, rx) = channel();
 
@@ -40,39 +38,53 @@ impl FileWatcher {
             let _ = tx.send(res);
         })?;
 
-        // Watch directories individually, excluding large/generated ones
-        Self::watch_directory_tree(debouncer.watcher(), root)?;
+        // Watch root directory only (non-recursive)
+        debouncer
+            .watcher()
+            .watch(root, notify::RecursiveMode::NonRecursive)?;
+
+        let mut watched_paths = HashSet::new();
+        watched_paths.insert(root.to_path_buf());
 
         Ok(Self {
-            _debouncer: debouncer,
+            debouncer,
             rx,
+            watched_paths,
         })
     }
 
-    /// Recursively watch directories, excluding common large directories
-    fn watch_directory_tree(watcher: &mut dyn Watcher, dir: &Path) -> anyhow::Result<()> {
-        // Watch this directory (non-recursive)
-        watcher.watch(dir, notify::RecursiveMode::NonRecursive)?;
+    /// Sync watched directories with expanded paths
+    ///
+    /// Adds watches for newly expanded directories and removes watches for collapsed ones.
+    pub fn sync_with_expanded(&mut self, expanded_paths: &[PathBuf]) {
+        let new_set: HashSet<PathBuf> = expanded_paths
+            .iter()
+            .filter(|p| !Self::is_excluded(p))
+            .cloned()
+            .collect();
 
-        // Recursively process subdirectories
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    // Check if this directory should be excluded
-                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        if EXCLUDED_DIRS.contains(&name) {
-                            continue; // Skip excluded directories
-                        }
-                    }
-                    // Recursively watch subdirectory
-                    // Ignore errors for individual subdirectories (permission issues, etc.)
-                    let _ = Self::watch_directory_tree(watcher, &path);
-                }
-            }
+        // Remove watches for collapsed directories
+        for path in self.watched_paths.difference(&new_set) {
+            let _ = self.debouncer.watcher().unwatch(path);
         }
 
-        Ok(())
+        // Add watches for newly expanded directories
+        for path in new_set.difference(&self.watched_paths) {
+            let _ = self
+                .debouncer
+                .watcher()
+                .watch(path, notify::RecursiveMode::NonRecursive);
+        }
+
+        self.watched_paths = new_set;
+    }
+
+    /// Check if a path should be excluded from watching
+    fn is_excluded(path: &Path) -> bool {
+        path.file_name()
+            .and_then(|n| n.to_str())
+            .map(|name| EXCLUDED_DIRS.contains(&name))
+            .unwrap_or(false)
     }
 
     /// Check for pending file change events (non-blocking)
