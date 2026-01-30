@@ -479,3 +479,109 @@ fn handle_filter_mode(key: KeyEvent, current_query: &str) -> KeyAction {
         _ => KeyAction::None, // Text input handled separately
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn key_event(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::empty())
+    }
+
+    fn key_event_with_modifiers(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent::new(code, modifiers)
+    }
+
+    // Tests for toggle behavior - same key can cancel the mode
+
+    #[test]
+    fn test_search_mode_slash_cancels() {
+        let action = handle_search_mode(key_event(KeyCode::Char('/')), "query");
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_search_mode_esc_cancels() {
+        let action = handle_search_mode(key_event(KeyCode::Esc), "query");
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_bookmark_set_mode_m_cancels() {
+        let action = handle_bookmark_set_mode(key_event(KeyCode::Char('m')));
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_bookmark_set_mode_esc_cancels() {
+        let action = handle_bookmark_set_mode(key_event(KeyCode::Esc));
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_bookmark_set_mode_digit_sets() {
+        let action = handle_bookmark_set_mode(key_event(KeyCode::Char('5')));
+        assert!(matches!(action, KeyAction::SetBookmark { slot: 5 }));
+    }
+
+    #[test]
+    fn test_bookmark_jump_mode_quote_cancels() {
+        let action = handle_bookmark_jump_mode(key_event(KeyCode::Char('\'')));
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_bookmark_jump_mode_esc_cancels() {
+        let action = handle_bookmark_jump_mode(key_event(KeyCode::Esc));
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_bookmark_jump_mode_digit_jumps() {
+        let action = handle_bookmark_jump_mode(key_event(KeyCode::Char('3')));
+        assert!(matches!(action, KeyAction::JumpToBookmark { slot: 3 }));
+    }
+
+    #[test]
+    fn test_filter_mode_f_cancels() {
+        let action = handle_filter_mode(key_event(KeyCode::Char('F')), "*.rs");
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_filter_mode_esc_cancels() {
+        let action = handle_filter_mode(key_event(KeyCode::Esc), "*.rs");
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_filter_mode_enter_applies() {
+        let action = handle_filter_mode(key_event(KeyCode::Enter), "*.rs");
+        assert!(matches!(action, KeyAction::ApplyFilter { pattern } if pattern == "*.rs"));
+    }
+
+    #[test]
+    fn test_filter_mode_enter_empty_clears() {
+        let action = handle_filter_mode(key_event(KeyCode::Enter), "");
+        assert!(matches!(action, KeyAction::ClearFilter));
+    }
+
+    #[test]
+    fn test_help_mode_question_cancels() {
+        let action = handle_help_mode(key_event(KeyCode::Char('?')));
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_fuzzy_finder_ctrl_p_cancels() {
+        let action =
+            handle_fuzzy_finder_mode(key_event_with_modifiers(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_preview_mode_o_cancels() {
+        let action = handle_preview_mode(key_event(KeyCode::Char('o')));
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+}
