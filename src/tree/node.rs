@@ -22,11 +22,19 @@ pub struct TreeEntry {
 impl TreeEntry {
     /// Create a new tree entry
     pub fn new(path: PathBuf, depth: usize) -> Self {
+        let is_dir = path.is_dir();
+        Self::new_with_type(path, depth, is_dir)
+    }
+
+    /// Create a new tree entry with pre-computed is_dir value
+    ///
+    /// This avoids an extra stat() call when is_dir is already known
+    /// (e.g., from DirEntry::file_type()).
+    pub fn new_with_type(path: PathBuf, depth: usize, is_dir: bool) -> Self {
         let name = path
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| path.to_string_lossy().into_owned());
-        let is_dir = path.is_dir();
 
         Self {
             path,
@@ -68,6 +76,9 @@ impl TreeEntry {
     }
 
     /// Load children from filesystem
+    ///
+    /// Uses `DirEntry::file_type()` to avoid extra stat() calls for better performance.
+    /// For symlinks, falls back to `path.is_dir()` to follow the link.
     pub fn load_children(&mut self, show_hidden: bool) -> anyhow::Result<()> {
         if !self.is_dir {
             return Ok(());
@@ -83,7 +94,22 @@ impl TreeEntry {
                     !e.file_name().to_string_lossy().starts_with('.')
                 }
             })
-            .map(|e| TreeEntry::new(e.path(), self.depth + 1))
+            .map(|e| {
+                // Use file_type() from DirEntry to avoid extra stat() call
+                // For symlinks, follow the link to determine if it points to a directory
+                let is_dir = e
+                    .file_type()
+                    .map(|t| {
+                        if t.is_symlink() {
+                            // Follow symlink to check if target is directory
+                            e.path().is_dir()
+                        } else {
+                            t.is_dir()
+                        }
+                    })
+                    .unwrap_or(false);
+                TreeEntry::new_with_type(e.path(), self.depth + 1, is_dir)
+            })
             .collect();
 
         // Sort: directories first, then alphabetically

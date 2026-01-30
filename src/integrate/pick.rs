@@ -7,14 +7,22 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-/// Exit codes for pick mode
+/// Exit codes for the application
+///
+/// These codes are stable and can be relied upon for scripting:
+/// - `SUCCESS` (0): Normal exit or file selected in pick mode
+/// - `CANCELLED` (1): User cancelled selection in pick mode (Esc/q)
+/// - `ERROR` (2): Runtime error (I/O error, terminal error, etc.)
+/// - `INVALID` (3): Invalid command-line arguments or option values
 pub mod exit_code {
-    /// User selected file(s) successfully
+    /// User selected file(s) successfully or normal exit
     pub const SUCCESS: i32 = 0;
-    /// User cancelled selection
+    /// User cancelled selection (pick mode only)
     pub const CANCELLED: i32 = 1;
-    /// Error occurred
+    /// Runtime error occurred
     pub const ERROR: i32 = 2;
+    /// Invalid arguments or options (e.g., unknown flag, invalid format)
+    pub const INVALID: i32 = 3;
 }
 
 /// Output format for picked paths

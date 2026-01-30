@@ -67,21 +67,30 @@ impl Config {
                 "--no-icons" => icons_enabled = Some(false),
                 "--format" | "-f" => {
                     if let Some(fmt) = args.next() {
-                        output_format = OutputFormat::from_str(&fmt).unwrap_or_default();
+                        output_format = OutputFormat::from_str(&fmt).map_err(|_| {
+                            anyhow::anyhow!(
+                                "Invalid format '{}'. Valid formats: lines, null, json",
+                                fmt
+                            )
+                        })?;
+                    } else {
+                        anyhow::bail!("--format requires a value (lines, null, or json)");
                     }
                 }
                 "--on-select" => {
                     if let Some(cmd) = args.next() {
                         callback = Some(Callback::new(cmd));
+                    } else {
+                        anyhow::bail!("--on-select requires a command");
                     }
                 }
                 "--help" | "-h" => {
                     print_help();
-                    std::process::exit(0);
+                    std::process::exit(exit_code::SUCCESS);
                 }
                 "--version" | "-V" => {
                     println!("fv {}", env!("CARGO_PKG_VERSION"));
-                    std::process::exit(0);
+                    std::process::exit(exit_code::SUCCESS);
                 }
                 path if !path.starts_with('-') => {
                     let p = PathBuf::from(path);
@@ -95,7 +104,12 @@ impl Config {
                         anyhow::bail!("Path does not exist: {}", path);
                     }
                 }
-                _ => {}
+                unknown => {
+                    anyhow::bail!(
+                        "Unknown option: {}. Use --help for usage information.",
+                        unknown
+                    );
+                }
             }
         }
 
@@ -168,12 +182,27 @@ PLACEHOLDERS for --on-select:
     {{name}}    Filename with extension
     {{stem}}    Filename without extension
     {{ext}}     Extension only
+
+EXIT CODES:
+    0           Success (normal exit or file selected)
+    1           Cancelled (user cancelled selection in pick mode)
+    2           Error (runtime error)
+    3           Invalid arguments (unknown option or invalid value)
 "#
     );
 }
 
 fn main() -> ExitCode {
-    match run() {
+    // Parse config first to return INVALID exit code for argument errors
+    let config = match Config::from_args() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            return ExitCode::from(exit_code::INVALID as u8);
+        }
+    };
+
+    match run_with_config(config) {
         Ok(code) => ExitCode::from(code as u8),
         Err(e) => {
             eprintln!("Error: {}", e);
@@ -182,9 +211,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn run() -> anyhow::Result<i32> {
-    let config = Config::from_args()?;
-
+fn run_with_config(config: Config) -> anyhow::Result<i32> {
     // Initialize image picker BEFORE entering alternate screen
     // (terminal capability detection requires normal screen mode)
     let mut image_picker = create_image_picker();
@@ -302,7 +329,19 @@ fn run_app(
     let mut fuzzy_paths: Vec<PathBuf> = Vec::new();
     let mut fuzzy_results: Vec<FuzzyMatch> = Vec::new();
 
+    // Lazy initialization: defer Git detection until after the first frame
+    // to improve perceived startup time (first frame renders faster)
+    let mut skip_git_init_once = true;
+
     loop {
+        // Initialize git status after the first frame is rendered.
+        // On the first iteration, we skip to render the UI immediately.
+        // On the second iteration, we detect Git status.
+        if skip_git_init_once {
+            skip_git_init_once = false;
+        } else if state.git_status.is_none() {
+            state.init_git_status();
+        }
         // Get visible entries and create snapshots
         let entries = navigator.visible_entries();
         let total_entries = entries.len();

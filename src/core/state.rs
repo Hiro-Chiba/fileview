@@ -45,9 +45,10 @@ pub struct AppState {
 
 impl AppState {
     /// Create new application state
+    ///
+    /// Note: Git status is NOT initialized at startup for performance.
+    /// Call `init_git_status()` after the first frame is rendered.
     pub fn new(root: PathBuf) -> Self {
-        let git_status = GitStatus::detect(&root);
-
         // Check environment variable for icons setting (default: enabled)
         let icons_enabled = std::env::var("FILEVIEW_ICONS")
             .map(|v| v != "0" && v.to_lowercase() != "false")
@@ -66,10 +67,17 @@ impl AppState {
             should_quit: false,
             pick_mode: false,
             clipboard: None,
-            git_status,
+            git_status: None, // Lazy-initialized for faster startup
             icons_enabled,
             choosedir_path: None,
             fuzzy_jump_target: None,
+        }
+    }
+
+    /// Initialize git status (call after first frame render for faster startup)
+    pub fn init_git_status(&mut self) {
+        if self.git_status.is_none() {
+            self.git_status = GitStatus::detect(&self.root);
         }
     }
 
