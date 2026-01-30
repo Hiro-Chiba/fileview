@@ -50,7 +50,22 @@ Complete keybinding reference for FileView (fv).
 |-----|--------|
 | `/` | Start search (press again to cancel) |
 | `n` | Next search result |
+| `N` | Previous search result |
 | `Ctrl+P` | Open fuzzy finder |
+
+Match count is displayed in status bar (e.g., `3/12 matches`).
+
+## Sorting
+
+| Key | Action |
+|-----|--------|
+| `S` | Cycle sort mode: Name → Size → Date → Name |
+
+- **Name**: Alphabetical order (case-insensitive)
+- **Size**: Largest files first
+- **Date**: Newest files first
+- Directories are always sorted first within each mode
+- Current sort mode is shown in status bar when not default
 
 ### Fuzzy Finder
 
