@@ -295,6 +295,8 @@ fn handle_preview_mode(key: KeyEvent) -> KeyAction {
 fn handle_fuzzy_finder_mode(key: KeyEvent) -> KeyAction {
     match key.code {
         KeyCode::Esc => KeyAction::Cancel,
+        // Ctrl+P toggles fuzzy finder off
+        KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => KeyAction::Cancel,
         KeyCode::Up | KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::FuzzyUp
         }

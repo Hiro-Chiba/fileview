@@ -2,15 +2,25 @@
 
 ## 1. Overview
 
-FileViewは、ターミナルエミュレーター上で動作するVSCode風のミニマルファイルツリーUIである。
-Ghostty等のモダンターミナルでの使用を想定し、**軽量・高速・直感操作**を設計思想の中核とする。
+FileViewは、ターミナルエミュレーター上で動作するシンプルなファイルビューワーである。
+
+```
+ls より便利、yazi より軽い
+```
 
 ### 1.1 設計目標
 
 - **シンプル**: 必要最小限の機能に絞る
-- **高速**: 大きなディレクトリでもスムーズに動作
+- **高速**: 起動 <50ms、大きなディレクトリでもスムーズに動作
 - **直感的**: Vimライクなキーバインドで効率的な操作
-- **連携性**: 外部ツールとの連携を重視（--pick, --on-select）
+- **ゼロ設定**: インストールしてすぐ使える
+
+### 1.2 やらないこと
+
+- プラグインシステム（複雑さの元）
+- 設定ファイル（ゼロ設定を維持）
+- yaziとの機能競争（勝てない、勝つ必要もない）
+- AI連携機能（Claude Code等は既にファイルを読める）
 
 ---
 
@@ -38,18 +48,22 @@ src/
 │   ├── mod.rs
 │   ├── tree.rs         # ツリー描画
 │   ├── preview.rs      # プレビュー描画
-│   └── status.rs       # ステータスバー
+│   ├── status.rs       # ステータスバー
+│   ├── icons.rs        # Nerd Fontsアイコン
+│   ├── fuzzy.rs        # ファジーファインダーUI
+│   └── terminal.rs     # ターミナル検出・画像プロトコル
 ├── handler/
 │   ├── mod.rs
 │   ├── key.rs          # キーイベント
-│   └── mouse.rs        # マウスイベント
+│   ├── mouse.rs        # マウスイベント
+│   └── action.rs       # アクション実行
 ├── integrate/
 │   ├── mod.rs
 │   ├── pick.rs         # --pick モード
 │   └── callback.rs     # --on-select
 └── git/
     ├── mod.rs
-    └── status.rs       # Git状態管理 (v0.2.0+)
+    └── status.rs       # Git状態管理
 ```
 
 ### 2.2 モジュール責務
@@ -59,20 +73,21 @@ src/
 | `core` | アプリケーション状態とモード管理 |
 | `tree` | ファイルツリーのデータ構造と操作 |
 | `action` | ファイル操作とクリップボード |
-| `render` | UI描画 |
-| `handler` | イベント処理 |
-| `integrate` | 外部ツール連携 |
-| `git` | Gitリポジトリ状態の検出と表示 (v0.2.0+) |
+| `render` | UI描画（ツリー、プレビュー、ファジーファインダー、画像） |
+| `handler` | イベント処理（キーボード、マウス、アクション実行） |
+| `integrate` | 外部ツール連携（--pick, --on-select, --choosedir） |
+| `git` | Gitリポジトリ状態の検出と表示 |
 
 ### 2.3 モード定義
 
 ```rust
 pub enum ViewMode {
     Browse,                            // 通常ブラウズ
-    Search { query: String },          // 検索（状態を内包）
-    Input { purpose: InputPurpose },   // 入力
-    Confirm { action: PendingAction }, // 確認
-    Preview { scroll: usize },         // プレビュー（スクロール状態を内包）
+    Search { query: String },          // インクリメンタル検索
+    Input { purpose: InputPurpose, buffer: String, cursor: usize },
+    Confirm { action: PendingAction }, // 確認ダイアログ
+    Preview { scroll: usize },         // フルスクリーンプレビュー
+    FuzzyFinder { query: String, selected: usize }, // ファジーファインダー
 }
 
 pub enum InputPurpose {
@@ -89,6 +104,7 @@ pub enum PendingAction {
 **設計ポイント:**
 - 状態をenum variantに内包することで、状態管理を型安全に
 - モードごとに必要なデータを明示
+- 不正な状態遷移をコンパイル時に防止
 
 ---
 
@@ -303,12 +319,17 @@ impl GitStatus {
 | `r` | リネーム |
 | `a` | 新規ファイル |
 | `A` | 新規フォルダ |
-| `/` | 検索 |
+| `/` | インクリメンタル検索 |
+| `Ctrl+P` | ファジーファインダー |
 | `c` | パスをクリップボードへ |
-| `P` | プレビュー切替 |
+| `C` | ファイル名をクリップボードへ |
+| `P` | サイドプレビュー切替 |
 | `o` | フルスクリーンプレビュー |
+| `Tab` | フォーカス切替（ツリー/プレビュー） |
 | `.` | 隠しファイル切替 |
+| `?` | ヘルプ |
 | `q` | 終了 |
+| `Q` | 終了してcd（--choosedir時） |
 
 ---
 
@@ -320,14 +341,31 @@ impl GitStatus {
 | TUI | ratatui |
 | Terminal | crossterm |
 | Clipboard | arboard |
-| Image | image |
+| Image | image, ratatui-image |
+| Fuzzy Match | nucleo-matcher |
 | Error | anyhow |
 
 ---
 
 ## 8. Design Principles
 
-1. **シンプルさを保つ**: 機能追加より既存機能の洗練を優先
+1. **シンプルさを保つ**: 機能追加より安定性を優先
 2. **型安全性**: Rustの型システムを活用した安全な設計
 3. **モジュール性**: 責務を明確に分離し、テスト容易性を確保
-4. **外部連携**: スタンドアロンよりも他ツールとの連携を重視
+4. **外部連携**: --pick, --on-select, --choosedirでシェルと連携
+5. **ゼロ設定**: 設定ファイルなしで動作、環境変数でオーバーライド可能
+
+---
+
+## 9. Non-Goals（やらないこと）
+
+以下は意図的にスコープ外とする:
+
+| 機能 | 理由 |
+|------|------|
+| プラグインシステム | 複雑さの元、メンテナンスコスト増大 |
+| 設定ファイル | ゼロ設定を維持、CLIオプションで十分 |
+| タブ/分割ウィンドウ | tmux/ターミナルの仕事 |
+| 組み込みエディタ | vim/nvimの仕事 |
+| リモートファイル | スコープ外 |
+| アーカイブ操作 | スコープ外 |
