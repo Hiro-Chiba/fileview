@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-01-31
+
+### Changed
+- **Major refactoring**: Split `handler/action.rs` (2,853 lines) into modular structure
+  - `src/handler/action/mod.rs` - Type definitions and dispatch
+  - `src/handler/action/navigation.rs` - Navigation actions (MoveUp, MoveDown, etc.)
+  - `src/handler/action/tree_ops.rs` - Tree operations (Expand, Collapse, etc.)
+  - `src/handler/action/selection.rs` - Selection and clipboard actions
+  - `src/handler/action/file_ops.rs` - File operations (Paste, Delete, Rename, etc.)
+  - `src/handler/action/search.rs` - Search and fuzzy finder actions
+  - `src/handler/action/input.rs` - Input confirmation handling
+  - `src/handler/action/display.rs` - Display, preview, and app control actions
+- **Major refactoring**: Split `main.rs` (991 lines) into modular structure
+  - `src/app/mod.rs` - Application module exports
+  - `src/app/config.rs` - CLI configuration and argument parsing
+  - `src/app/preview.rs` - Preview state management
+  - `src/app/event_loop.rs` - Main event loop
+  - `src/app/render.rs` - Rendering helpers
+  - `src/main.rs` reduced to 81 lines (entry point only)
+
+### Developer Experience
+- Improved code organization with clear separation of concerns
+- Each module has a single responsibility
+- Easier to navigate and maintain the codebase
+
 ## [1.4.0] - 2026-01-30
 
 ### Added
