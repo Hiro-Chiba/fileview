@@ -124,9 +124,9 @@ pub fn run_app(
         None
     };
 
-    // Git status polling timer
+    // Git status polling timer (5 seconds balances responsiveness and CPU usage)
     let mut last_git_poll = Instant::now();
-    const GIT_POLL_INTERVAL: Duration = Duration::from_secs(3);
+    const GIT_POLL_INTERVAL: Duration = Duration::from_secs(5);
 
     // Track previous expanded paths for watcher sync
     let mut prev_expanded: Vec<PathBuf> = Vec::new();
@@ -252,8 +252,8 @@ pub fn run_app(
             }
         }
 
-        // Handle events
-        if event::poll(Duration::from_millis(50))? {
+        // Handle events (100ms timeout balances responsiveness and CPU usage)
+        if event::poll(Duration::from_millis(100))? {
             match event::read()? {
                 Event::Key(key) => {
                     // Handle input buffer updates first
