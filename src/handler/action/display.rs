@@ -115,6 +115,12 @@ pub fn handle(
         KeyAction::ToggleFocus => {
             state.toggle_focus();
         }
+        KeyAction::FocusTree => {
+            state.set_focus(crate::core::FocusTarget::Tree);
+        }
+        KeyAction::FocusPreview => {
+            state.set_focus(crate::core::FocusTarget::Preview);
+        }
         _ => {}
     }
     Ok(())
