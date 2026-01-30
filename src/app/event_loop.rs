@@ -199,7 +199,6 @@ pub fn run_app(
         let render_context = RenderContext {
             state: &state,
             entries,
-            total_entries,
             focused_path: focused_path.as_ref(),
             preview: &mut preview,
             fuzzy_results: &fuzzy_results,
