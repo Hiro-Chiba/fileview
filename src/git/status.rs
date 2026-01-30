@@ -152,10 +152,9 @@ fn load_git_status(
     let mut dir_statuses: HashMap<PathBuf, FileStatus> = HashMap::new();
 
     // Get status with porcelain format for machine parsing
-    // Use -unormal instead of -uall for better performance on large repos
-    // -unormal shows untracked directories, -uall recursively lists all files
+    // -uall shows all untracked files (required for per-file status display)
     let output = Command::new("git")
-        .args(["status", "--porcelain=v1", "-unormal", "--ignored"])
+        .args(["status", "--porcelain=v1", "-uall", "--ignored"])
         .current_dir(repo_root)
         .output();
 
