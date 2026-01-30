@@ -19,7 +19,6 @@ use crate::tree::TreeEntry;
 pub struct RenderContext<'a> {
     pub state: &'a AppState,
     pub entries: Vec<&'a TreeEntry>,
-    pub total_entries: usize,
     pub focused_path: Option<&'a PathBuf>,
     pub preview: &'a mut PreviewState,
     pub fuzzy_results: &'a [FuzzyMatch],
@@ -100,7 +99,7 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
     render_tree(frame, ctx.state, &ctx.entries, tree_chunks[0]);
 
     // Render status bar
-    render_status_bar(frame, ctx.state, ctx.total_entries, tree_chunks[1]);
+    render_status_bar(frame, ctx.state, ctx.focused_path, tree_chunks[1]);
 
     // Render preview if visible
     if ctx.state.preview_visible && main_chunks.len() > 1 {
