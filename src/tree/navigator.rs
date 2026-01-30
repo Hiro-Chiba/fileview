@@ -2,7 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
+use super::node::sort_entries;
 use super::TreeEntry;
+use crate::core::SortMode;
 
 /// Manages file tree navigation
 pub struct TreeNavigator {
@@ -12,6 +14,8 @@ pub struct TreeNavigator {
     show_hidden: bool,
     /// Whether in stdin mode (read-only, no filesystem operations)
     stdin_mode: bool,
+    /// Current sort mode
+    sort_mode: SortMode,
 }
 
 impl TreeNavigator {
@@ -25,6 +29,7 @@ impl TreeNavigator {
             root,
             show_hidden,
             stdin_mode: false,
+            sort_mode: SortMode::default(),
         })
     }
 
@@ -52,6 +57,7 @@ impl TreeNavigator {
             root,
             show_hidden,
             stdin_mode: true,
+            sort_mode: SortMode::default(),
         })
     }
 
@@ -97,9 +103,10 @@ impl TreeNavigator {
     /// Toggle expand/collapse for entry at path
     pub fn toggle_expand(&mut self, path: &Path) -> anyhow::Result<()> {
         let show_hidden = self.show_hidden;
+        let sort_mode = self.sort_mode;
         if let Some(entry) = self.find_entry_mut(path) {
             if entry.is_dir && !entry.is_expanded() && entry.children().is_empty() {
-                entry.load_children(show_hidden)?;
+                entry.load_children_with_sort(show_hidden, sort_mode)?;
             }
             entry.toggle_expanded();
         }
@@ -109,9 +116,10 @@ impl TreeNavigator {
     /// Expand entry at path
     pub fn expand(&mut self, path: &Path) -> anyhow::Result<()> {
         let show_hidden = self.show_hidden;
+        let sort_mode = self.sort_mode;
         if let Some(entry) = self.find_entry_mut(path) {
             if entry.is_dir && entry.children().is_empty() {
-                entry.load_children(show_hidden)?;
+                entry.load_children_with_sort(show_hidden, sort_mode)?;
             }
             entry.set_expanded(true);
         }
@@ -128,7 +136,8 @@ impl TreeNavigator {
     /// Reload tree from filesystem
     pub fn reload(&mut self) -> anyhow::Result<()> {
         let expanded_paths = self.expanded_paths();
-        self.root.load_children(self.show_hidden)?;
+        self.root
+            .load_children_with_sort(self.show_hidden, self.sort_mode)?;
         self.restore_expanded(&expanded_paths)?;
         Ok(())
     }
@@ -137,6 +146,14 @@ impl TreeNavigator {
     pub fn set_show_hidden(&mut self, show: bool) -> anyhow::Result<()> {
         self.show_hidden = show;
         self.reload()
+    }
+
+    /// Set sort mode and re-sort all loaded children
+    pub fn set_sort_mode(&mut self, mode: SortMode) -> anyhow::Result<()> {
+        self.sort_mode = mode;
+        // Re-sort all loaded children recursively
+        resort_entry_children(&mut self.root, mode);
+        Ok(())
     }
 
     /// Reveal a path by expanding all parent directories
@@ -263,16 +280,20 @@ fn insert_path_into_tree(root: &mut TreeEntry, path: &Path, root_path: &Path) {
 
 /// Recursively sort children in the tree (directories first, then alphabetically)
 fn sort_tree_children(entry: &mut TreeEntry) {
-    entry
-        .children_mut()
-        .sort_by(|a, b| match (a.is_dir, b.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        });
+    sort_entries(entry.children_mut(), SortMode::Name);
 
     for child in entry.children_mut() {
         sort_tree_children(child);
+    }
+}
+
+/// Recursively re-sort children in an entry with the given sort mode
+fn resort_entry_children(entry: &mut TreeEntry, mode: SortMode) {
+    sort_entries(entry.children_mut(), mode);
+    for child in entry.children_mut() {
+        if child.is_dir && !child.children().is_empty() {
+            resort_entry_children(child, mode);
+        }
     }
 }
 

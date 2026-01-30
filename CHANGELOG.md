@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-01-31
+
+### Added
+- **Sort mode cycling**: Press `S` to cycle through sort modes
+  - Name (default): Alphabetical order, case-insensitive
+  - Size: Largest files first (descending)
+  - Date: Newest files first (descending)
+  - Directories are always sorted first within each mode
+  - Current sort mode displayed in status bar when not default
+- **Search match counter**: Display match count in status bar
+  - Shows `3/12 matches` format during search
+  - Updates when navigating between matches
+  - Shows "No matches" when search finds nothing
+- **Reverse search**: Press `N` (Shift+n) for previous match
+  - `n` for next match (existing)
+  - `N` for previous match (new)
+  - Both wrap around at list boundaries
+
+### Changed
+- Help popup now shows `n/N` for search navigation and `S` for sort
+
 ## [1.7.2] - 2026-01-31
 
 ### Fixed

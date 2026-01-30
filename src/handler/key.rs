@@ -116,6 +116,10 @@ pub enum KeyAction {
     ApplyFilter { pattern: String },
     /// Clear filter
     ClearFilter,
+    /// Cycle sort mode (Name -> Size -> Date -> Name)
+    CycleSort,
+    /// Search for previous match
+    SearchPrev,
 }
 
 /// Handle key event and return the resulting action
@@ -272,6 +276,10 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Search
         KeyCode::Char('/') => KeyAction::StartSearch,
         KeyCode::Char('n') => KeyAction::SearchNext,
+        KeyCode::Char('N') => KeyAction::SearchPrev,
+
+        // Sort
+        KeyCode::Char('S') => KeyAction::CycleSort,
 
         // Refresh and toggle
         KeyCode::Char('R') | KeyCode::F(5) => KeyAction::Refresh,
