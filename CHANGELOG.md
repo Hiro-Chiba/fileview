@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-01-30
+
+### Added
+- E2E test suite: 21 tests covering CLI behavior, error handling, and stdin mode
+- Documentation: Complete keybindings reference in `docs/KEYBINDINGS.md`
+
+### Changed
+- README improvements: Shorter, more focused documentation with badges
+- Added download count, CI status, and MSRV badges
+
+### Developer Experience
+- Added `assert_cmd` and `predicates` for CLI testing
+- Test coverage now includes exit codes and error messages
+
 ## [1.3.0] - 2026-01-30
 
 ### Changed
