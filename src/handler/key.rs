@@ -98,6 +98,20 @@ pub enum KeyAction {
     FuzzyDown,
     /// Confirm fuzzy finder selection
     FuzzyConfirm { path: std::path::PathBuf },
+    /// Enter bookmark set mode
+    StartBookmarkSet,
+    /// Enter bookmark jump mode
+    StartBookmarkJump,
+    /// Set bookmark at slot (1-9)
+    SetBookmark { slot: u8 },
+    /// Jump to bookmark at slot (1-9)
+    JumpToBookmark { slot: u8 },
+    /// Start file filter input
+    StartFilter,
+    /// Apply filter pattern
+    ApplyFilter { pattern: String },
+    /// Clear filter
+    ClearFilter,
 }
 
 /// Handle key event and return the resulting action
@@ -110,6 +124,9 @@ pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
         ViewMode::Preview { .. } => handle_preview_mode(key),
         ViewMode::FuzzyFinder { .. } => handle_fuzzy_finder_mode(key),
         ViewMode::Help => handle_help_mode(key),
+        ViewMode::BookmarkSet => handle_bookmark_set_mode(key),
+        ViewMode::BookmarkJump => handle_bookmark_jump_mode(key),
+        ViewMode::Filter { query } => handle_filter_mode(key, query),
     }
 }
 
@@ -252,6 +269,19 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Help
         KeyCode::Char('?') => KeyAction::ShowHelp,
 
+        // Bookmarks
+        KeyCode::Char('m') => KeyAction::StartBookmarkSet,
+        KeyCode::Char('\'') => KeyAction::StartBookmarkJump,
+
+        // Filter
+        KeyCode::Char('F') => {
+            if state.filter_pattern.is_some() {
+                KeyAction::ClearFilter
+            } else {
+                KeyAction::StartFilter
+            }
+        }
+
         _ => KeyAction::None,
     }
 }
@@ -391,5 +421,46 @@ pub fn create_delete_targets(state: &AppState, focused_path: Option<&PathBuf>) -
         focused_path.map(|p| vec![p.clone()]).unwrap_or_default()
     } else {
         state.selected_paths.iter().cloned().collect()
+    }
+}
+
+/// Handle keys in bookmark set mode (waiting for slot number)
+fn handle_bookmark_set_mode(key: KeyEvent) -> KeyAction {
+    match key.code {
+        KeyCode::Char(c) if c.is_ascii_digit() && c != '0' => {
+            let slot = c.to_digit(10).unwrap() as u8;
+            KeyAction::SetBookmark { slot }
+        }
+        KeyCode::Esc => KeyAction::Cancel,
+        _ => KeyAction::None,
+    }
+}
+
+/// Handle keys in bookmark jump mode (waiting for slot number)
+fn handle_bookmark_jump_mode(key: KeyEvent) -> KeyAction {
+    match key.code {
+        KeyCode::Char(c) if c.is_ascii_digit() && c != '0' => {
+            let slot = c.to_digit(10).unwrap() as u8;
+            KeyAction::JumpToBookmark { slot }
+        }
+        KeyCode::Esc => KeyAction::Cancel,
+        _ => KeyAction::None,
+    }
+}
+
+/// Handle keys in filter mode
+fn handle_filter_mode(key: KeyEvent, current_query: &str) -> KeyAction {
+    match key.code {
+        KeyCode::Enter => {
+            if current_query.is_empty() {
+                KeyAction::ClearFilter
+            } else {
+                KeyAction::ApplyFilter {
+                    pattern: current_query.to_string(),
+                }
+            }
+        }
+        KeyCode::Esc => KeyAction::Cancel,
+        _ => KeyAction::None, // Text input handled separately
     }
 }

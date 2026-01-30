@@ -8,7 +8,7 @@ use crate::action::file as file_ops;
 use crate::core::{AppState, InputPurpose, ViewMode};
 use crate::tree::TreeNavigator;
 
-use super::get_target_directory;
+use super::{get_target_directory, reload_tree};
 
 /// Handle input confirmation
 pub fn handle_confirm(
@@ -23,21 +23,18 @@ pub fn handle_confirm(
             match purpose {
                 InputPurpose::CreateFile => {
                     file_ops::create_file(&parent, &value)?;
-                    navigator.reload()?;
-                    state.refresh_git_status();
-                    state.set_message(format!("Created file: {}", value));
+                    reload_tree(navigator, state)?;
+                    state.set_message(format!("Created: {}", value));
                 }
                 InputPurpose::CreateDir => {
                     file_ops::create_dir(&parent, &value)?;
-                    navigator.reload()?;
-                    state.refresh_git_status();
-                    state.set_message(format!("Created directory: {}", value));
+                    reload_tree(navigator, state)?;
+                    state.set_message(format!("Created: {}", value));
                 }
                 InputPurpose::Rename { original } => {
                     file_ops::rename(original, &value)?;
-                    navigator.reload()?;
-                    state.refresh_git_status();
-                    state.set_message(format!("Renamed to: {}", value));
+                    reload_tree(navigator, state)?;
+                    state.set_message(format!("Renamed: {}", value));
                 }
             }
             state.mode = ViewMode::Browse;

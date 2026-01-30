@@ -9,7 +9,7 @@ use crate::core::{AppState, InputPurpose, PendingAction, ViewMode};
 use crate::handler::key::{create_delete_targets, KeyAction};
 use crate::tree::TreeNavigator;
 
-use super::{get_filename_str, get_target_directory, EntrySnapshot};
+use super::{get_filename_str, get_target_directory, reload_tree, EntrySnapshot};
 
 /// Handle file operations
 pub fn handle(
@@ -42,8 +42,7 @@ pub fn handle(
                             state.set_message(format!("Moved {} item(s)", paths.len()));
                         }
                     }
-                    navigator.reload()?;
-                    state.refresh_git_status();
+                    reload_tree(navigator, state)?;
                 }
             }
         }
@@ -66,8 +65,7 @@ pub fn handle(
                 state.set_message(format!("Deleted {} item(s)", targets.len()));
                 state.selected_paths.clear();
                 state.mode = ViewMode::Browse;
-                navigator.reload()?;
-                state.refresh_git_status();
+                reload_tree(navigator, state)?;
             }
         }
         KeyAction::StartRename => {

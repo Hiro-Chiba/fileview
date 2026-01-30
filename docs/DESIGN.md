@@ -30,8 +30,14 @@ ls より便利、yazi より軽い
 
 ```
 src/
-├── main.rs
+├── main.rs             # エントリポイント
 ├── lib.rs
+├── app/                # アプリケーションモジュール (v1.5.0+)
+│   ├── mod.rs
+│   ├── config.rs       # Config - CLI引数とアプリケーション設定
+│   ├── preview.rs      # PreviewState - プレビュー状態管理
+│   ├── event_loop.rs   # run_app - メインイベントループ
+│   └── render.rs       # RenderContext - 描画ヘルパー
 ├── core/
 │   ├── mod.rs
 │   ├── state.rs        # AppState - アプリケーション状態
@@ -48,19 +54,32 @@ src/
 │   ├── mod.rs
 │   ├── tree.rs         # ツリー描画
 │   ├── preview.rs      # プレビュー描画
-│   ├── status.rs       # ステータスバー
+│   ├── status.rs       # ステータスバー・ヘルプ
 │   ├── icons.rs        # Nerd Fontsアイコン
 │   ├── fuzzy.rs        # ファジーファインダーUI
 │   └── terminal.rs     # ターミナル検出・画像プロトコル
 ├── handler/
 │   ├── mod.rs
-│   ├── key.rs          # キーイベント
+│   ├── key.rs          # キーイベント・KeyAction定義
 │   ├── mouse.rs        # マウスイベント
-│   └── action.rs       # アクション実行
+│   └── action/         # アクション実行 (v1.5.0+)
+│       ├── mod.rs      # dispatch関数とActionResult
+│       ├── navigation.rs   # 移動アクション
+│       ├── tree_ops.rs     # ツリー操作
+│       ├── selection.rs    # 選択・クリップボード
+│       ├── file_ops.rs     # ファイル操作
+│       ├── search.rs       # 検索・ファジーファインダー
+│       ├── input.rs        # 入力確認
+│       ├── display.rs      # 表示・プレビュー
+│       ├── bookmark.rs     # ブックマーク (v1.6.0+)
+│       └── tests.rs        # アクションテスト
 ├── integrate/
 │   ├── mod.rs
 │   ├── pick.rs         # --pick モード
 │   └── callback.rs     # --on-select
+├── watcher/            # ファイル監視 (v1.3.0+)
+│   ├── mod.rs
+│   └── smart.rs        # スマートファイルウォッチャー
 └── git/
     ├── mod.rs
     └── status.rs       # Git状態管理
@@ -70,12 +89,15 @@ src/
 
 | モジュール | 責務 |
 |-----------|------|
+| `app` | アプリケーション設定、イベントループ、プレビュー状態管理 |
 | `core` | アプリケーション状態とモード管理 |
 | `tree` | ファイルツリーのデータ構造と操作 |
 | `action` | ファイル操作とクリップボード |
 | `render` | UI描画（ツリー、プレビュー、ファジーファインダー、画像） |
-| `handler` | イベント処理（キーボード、マウス、アクション実行） |
+| `handler` | イベント処理（キーボード、マウス）とアクション実行 |
+| `handler/action` | アクション実行の分割モジュール群 |
 | `integrate` | 外部ツール連携（--pick, --on-select, --choosedir） |
+| `watcher` | ファイル変更監視（展開ディレクトリの自動更新） |
 | `git` | Gitリポジトリ状態の検出と表示 |
 
 ### 2.3 モード定義
@@ -88,6 +110,10 @@ pub enum ViewMode {
     Confirm { action: PendingAction }, // 確認ダイアログ
     Preview { scroll: usize },         // フルスクリーンプレビュー
     FuzzyFinder { query: String, selected: usize }, // ファジーファインダー
+    Help,                              // ヘルプポップアップ
+    BookmarkSet,                       // ブックマーク設定待ち (v1.6.0+)
+    BookmarkJump,                      // ブックマークジャンプ待ち (v1.6.0+)
+    Filter { query: String },          // ファイルフィルター入力 (v1.6.0+)
 }
 
 pub enum InputPurpose {
@@ -327,6 +353,9 @@ impl GitStatus {
 | `o` | フルスクリーンプレビュー |
 | `Tab` | フォーカス切替（ツリー/プレビュー） |
 | `.` | 隠しファイル切替 |
+| `m1-9` | ブックマーク設定 (v1.6.0+) |
+| `'1-9` | ブックマークジャンプ (v1.6.0+) |
+| `F` | ファイルフィルター (v1.6.0+) |
 | `?` | ヘルプ |
 | `q` | 終了 |
 | `Q` | 終了してcd（--choosedir時） |

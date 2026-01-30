@@ -67,7 +67,7 @@ impl PreviewState {
                     self.hex = None;
                 }
                 Err(e) => {
-                    state.set_message(format!("Cannot preview: {}", e));
+                    state.set_message(format!("Failed: preview - {}", e));
                     self.clear_all();
                 }
             }
@@ -81,7 +81,7 @@ impl PreviewState {
                         self.hex = None;
                     }
                     Err(e) => {
-                        state.set_message(format!("Cannot preview image: {}", e));
+                        state.set_message(format!("Failed: preview - {}", e));
                         self.clear_all();
                     }
                 }
@@ -96,7 +96,7 @@ impl PreviewState {
                     self.dir_info = None;
                 }
                 Err(e) => {
-                    state.set_message(format!("Cannot preview: {}", e));
+                    state.set_message(format!("Failed: preview - {}", e));
                     self.clear_all();
                 }
             }
