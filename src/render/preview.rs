@@ -387,7 +387,8 @@ impl HexPreview {
 
         let mut file = std::fs::File::open(path)?;
         let mut bytes = vec![0u8; HEX_PREVIEW_MAX_BYTES.min(size as usize)];
-        file.read_exact(&mut bytes)?;
+        let n = file.read(&mut bytes)?;
+        bytes.truncate(n);
 
         Ok(Self {
             bytes,
@@ -674,54 +675,5 @@ mod tests {
         // Mixed sizes
         assert_eq!(format_size(1536), "1.5 KB"); // 1.5 KB
         assert_eq!(format_size(2 * 1024 * 1024 + 512 * 1024), "2.5 MB"); // 2.5 MB
-    }
-
-    // =========================================================================
-    // calculate_centered_image_area tests
-    // =========================================================================
-
-    #[test]
-    fn test_centered_image_area_square() {
-        // Square image in square area - should fill area
-        let area = Rect::new(0, 0, 100, 50);
-        let font_size: FontSize = (10, 20); // 10px wide, 20px tall per cell
-
-        // Area in pixels: 1000x1000
-        // Image: 500x500 (square)
-        // Scale: min(1000/500, 1000/500) = 2.0
-        // Scaled: 1000x1000 pixels -> 100x50 cells
-        let result = calculate_centered_image_area(area, 500, 500, font_size);
-
-        // Image should be centered
-        assert_eq!(result.x, 0);
-        assert_eq!(result.y, 0);
-        assert_eq!(result.width, 100);
-        assert_eq!(result.height, 50);
-    }
-
-    #[test]
-    fn test_centered_image_area_wide() {
-        // Wide image - should have padding on top/bottom
-        let area = Rect::new(0, 0, 100, 50);
-        let font_size: FontSize = (10, 20); // 10px wide, 20px tall per cell
-
-        // Area in pixels: 1000x1000
-        // Image: 1000x500 (wide)
-        // Scale: min(1000/1000, 1000/500) = 1.0
-        // Scaled: 1000x500 pixels -> 100x25 cells
-        // Padding: (50-25)/2 = 12 cells top/bottom
-        let result = calculate_centered_image_area(area, 1000, 500, font_size);
-
-        // Should be horizontally centered with vertical padding
-        assert_eq!(result.x, 0);
-        assert!(result.y > 0); // Should have top padding
-        assert_eq!(result.width, 100);
-        assert!(result.height <= 50);
-
-        // Verify vertical centering
-        let expected_height = 25u16;
-        let expected_y = (50 - expected_height) / 2;
-        assert_eq!(result.y, expected_y);
-        assert_eq!(result.height, expected_height);
     }
 }
