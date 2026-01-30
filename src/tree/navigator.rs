@@ -237,10 +237,7 @@ fn insert_path_into_tree(root: &mut TreeEntry, path: &Path, root_path: &Path) {
 
         // Find or create child
         let child_name = component.as_os_str().to_string_lossy().to_string();
-        let child_idx = current
-            .children()
-            .iter()
-            .position(|c| c.name == child_name);
+        let child_idx = current.children().iter().position(|c| c.name == child_name);
 
         match child_idx {
             Some(idx) => {

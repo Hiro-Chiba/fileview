@@ -189,9 +189,10 @@ fn find_common_ancestor(paths: &[PathBuf]) -> anyhow::Result<PathBuf> {
     let mut ancestor = if first.is_dir() {
         first.clone()
     } else {
-        first.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| {
-            env::current_dir().unwrap_or_else(|_| PathBuf::from("/"))
-        })
+        first
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from("/")))
     };
 
     // Find common prefix with all other paths
