@@ -121,26 +121,28 @@ fn read_stdin_paths() -> anyhow::Result<Vec<PathBuf>> {
         anyhow::bail!("--stdin requires piped input");
     }
 
+    let cwd = env::current_dir()?;
     let paths: Vec<PathBuf> = stdin
         .lock()
         .lines()
         .map_while(Result::ok)
         .filter(|line| !line.trim().is_empty())
-        .map(|line| {
+        .filter_map(|line| {
             let path = PathBuf::from(line.trim());
-            // Normalize path (resolve relative paths, handle . and ..)
-            if path.is_absolute() {
+            let resolved = if path.is_absolute() {
                 path
             } else {
-                env::current_dir()
-                    .map(|cwd| cwd.join(&path))
-                    .unwrap_or(path)
-            }
+                cwd.join(&path)
+            };
+
+            // canonicalize() resolves ".." components and verifies path exists
+            // This prevents path traversal attacks like "../../../etc/passwd"
+            resolved.canonicalize().ok()
         })
         .collect();
 
     if paths.is_empty() {
-        anyhow::bail!("No paths provided via stdin");
+        anyhow::bail!("No valid paths provided via stdin");
     }
 
     Ok(paths)

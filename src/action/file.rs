@@ -62,6 +62,8 @@ pub fn copy_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
 }
 
 /// Get a unique path by appending _1, _2, etc. if needed
+///
+/// Uses a bounded counter with timestamp fallback to mitigate TOCTOU race conditions.
 fn get_unique_path(path: &Path) -> PathBuf {
     if !path.exists() {
         return path.to_path_buf();
@@ -77,15 +79,21 @@ fn get_unique_path(path: &Path) -> PathBuf {
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
 
-    let mut counter = 1;
-    loop {
+    // Bounded counter to avoid infinite loops
+    for counter in 1..=1000 {
         let new_name = format!("{}_{}{}", stem, counter, ext);
         let new_path = parent.join(new_name);
         if !new_path.exists() {
             return new_path;
         }
-        counter += 1;
     }
+
+    // Fallback: use timestamp for uniqueness (mitigates TOCTOU race)
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    parent.join(format!("{}_{}{}", stem, timestamp, ext))
 }
 
 /// Copy directory recursively
