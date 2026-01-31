@@ -41,16 +41,9 @@ pub fn rename(path: &Path, new_name: &str) -> anyhow::Result<PathBuf> {
     Ok(new_path)
 }
 
-/// Delete a file or directory
+/// Delete a file or directory (move to trash)
 pub fn delete(path: &Path) -> anyhow::Result<()> {
-    if path.is_dir() {
-        std::fs::remove_dir_all(path)
-            .map_err(|e| anyhow::anyhow!("Failed to delete '{}': {}", path.display(), e))?;
-    } else {
-        std::fs::remove_file(path)
-            .map_err(|e| anyhow::anyhow!("Failed to delete '{}': {}", path.display(), e))?;
-    }
-    Ok(())
+    trash::delete(path).map_err(|e| anyhow::anyhow!("Failed to move to trash: {}", e))
 }
 
 /// Copy a file to a destination directory
@@ -177,6 +170,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Requires Finder/trash permissions; run manually
     fn test_delete_file() {
         let temp = TempDir::new().unwrap();
         let file = temp.path().join("to_delete.txt");
@@ -187,6 +181,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Requires Finder/trash permissions; run manually
     fn test_delete_dir() {
         let temp = TempDir::new().unwrap();
         let dir = temp.path().join("to_delete");
