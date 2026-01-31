@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-01-31
+
+### Added
+
+- **Custom commands system**: Define and execute shell commands via config
+  - Commands section in `config.toml`: `[commands]`
+  - Placeholder expansion: `$f` (file path), `$d` (directory), `$n` (filename), `$s` (stem), `$e` (extension), `$S` (selected files)
+  - Keymap binding with `command:name` syntax
+  - Example: `open = "open $f"`, `edit = "nvim $f"`
+- **Custom preview system**: External scripts for file preview
+  - Custom preview section in `config.toml`: `[preview.custom]`
+  - Extension-to-command mapping: `md = "glow -s dark $f"`, `json = "jq -C . $f"`
+  - Scroll support for custom preview output
+- **Documentation**: Comprehensive configuration guides
+  - `docs/CONFIGURATION.md`: Main configuration reference
+  - `docs/THEMES.md`: Theme customization guide
+  - `docs/COMMANDS.md`: Custom commands guide
+  - `examples/config.toml`, `examples/keymap.toml`, `examples/theme.toml`: Example files
+
+### New Files
+
+- `src/handler/action/command.rs`: Command execution logic (~120 lines)
+- `src/render/preview.rs`: Added `CustomPreview` struct and `render_custom_preview` function
+- `docs/CONFIGURATION.md`: Configuration guide
+- `docs/THEMES.md`: Theme customization guide
+- `docs/COMMANDS.md`: Custom commands guide
+- `examples/`: Example configuration files
+
+### Changed
+
+- `PreviewState` now includes custom preview support
+- `handle_action` signature updated to include custom preview parameter
+- `handle_preview_scroll` now handles custom preview scrolling
+- Added `Clone` derive to `CommandsConfig` and `PreviewConfig`
+- Exported `CommandsConfig` and `PreviewConfig` from `app` module
+
+### Tests
+
+- Added 16 new integration tests for custom commands and custom preview
+- Added 6 new E2E tests for config file parsing with new features
+- Total test count: 346 unit/integration tests + 72 E2E tests = 418 tests
+
 ## [1.16.0] - 2026-01-31
 
 ### Added

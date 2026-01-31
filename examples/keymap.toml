@@ -1,0 +1,144 @@
+# FileView Keymap Example
+# Copy this file to ~/.config/fileview/keymap.toml
+
+[browse]
+# Navigation
+"j" = "move_down"
+"k" = "move_up"
+"down" = "move_down"
+"up" = "move_up"
+"g" = "move_to_top"
+"G" = "move_to_bottom"
+
+# Tree operations
+"l" = "expand"
+"h" = "collapse"
+"right" = "expand"
+"left" = "collapse"
+"tab" = "expand"
+"backspace" = "collapse"
+"enter" = "toggle_expand"
+"L" = "expand_all"
+"H" = "collapse_all"
+
+# Selection and clipboard
+"space" = "toggle_mark"
+"y" = "copy"
+"d" = "cut"
+"p" = "paste"
+
+# File operations
+"a" = "new_file"
+"A" = "new_dir"
+"r" = "rename"
+"D" = "confirm_delete"
+"delete" = "confirm_delete"
+
+# Search and filter
+"/" = "start_search"
+"n" = "search_next"
+"N" = "search_prev"
+"ctrl+p" = "fuzzy_finder"
+"f" = "start_filter"
+"ctrl+f" = "clear_filter"
+
+# Display and preview
+"." = "toggle_hidden"
+"P" = "toggle_quick_preview"
+"o" = "open_preview"
+"c" = "copy_path"
+"C" = "copy_filename"
+"R" = "refresh"
+"F5" = "refresh"
+"?" = "show_help"
+"s" = "cycle_sort"
+
+# Focus
+"ctrl+h" = "focus_tree"
+"ctrl+l" = "focus_preview"
+
+# Exit
+"q" = "quit"
+"Q" = "quit_and_cd"
+"escape" = "cancel"
+
+# Bookmarks
+"m" = "start_bookmark_set"
+"'" = "start_bookmark_jump"
+
+# Git operations
+"+" = "git_stage"
+"-" = "git_unstage"
+
+# Bulk rename
+"ctrl+r" = "start_bulk_rename"
+
+# Tabs
+"ctrl+t" = "new_tab"
+"ctrl+w" = "close_tab"
+"ctrl+n" = "next_tab"
+"ctrl+b" = "prev_tab"
+
+# Custom commands (bind to your commands from config.toml)
+# "e" = "command:edit"
+# "O" = "command:open"
+# "T" = "command:terminal"
+
+[preview]
+# Preview navigation
+"j" = "scroll_down"
+"k" = "scroll_up"
+"down" = "scroll_down"
+"up" = "scroll_up"
+"ctrl+d" = "page_down"
+"ctrl+u" = "page_up"
+"g" = "to_top"
+"G" = "to_bottom"
+
+# PDF navigation
+"[" = "pdf_prev_page"
+"]" = "pdf_next_page"
+
+# Exit preview
+"q" = "cancel"
+"escape" = "cancel"
+"o" = "cancel"
+
+[input]
+# Input mode (search, rename, etc.)
+"escape" = "cancel"
+"enter" = "confirm"
+
+[confirm]
+# Confirmation dialogs
+"y" = "confirm"
+"n" = "cancel"
+"escape" = "cancel"
+
+[fuzzy]
+# Fuzzy finder
+"down" = "fuzzy_down"
+"ctrl+n" = "fuzzy_down"
+"ctrl+j" = "fuzzy_down"
+"up" = "fuzzy_up"
+"ctrl+p" = "fuzzy_up"
+"ctrl+k" = "fuzzy_up"
+"enter" = "fuzzy_confirm"
+"escape" = "cancel"
+
+[bookmark]
+# Bookmark mode (after pressing m or ')
+# Any single key sets/jumps to that bookmark slot
+"escape" = "cancel"
+
+[help]
+# Help screen
+"q" = "cancel"
+"escape" = "cancel"
+"?" = "cancel"
+
+[bulk_rename]
+# Bulk rename mode
+"tab" = "bulk_rename_next_field"
+"enter" = "execute_bulk_rename"
+"escape" = "cancel"

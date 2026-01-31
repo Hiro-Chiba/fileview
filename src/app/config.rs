@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use super::config_file::ConfigFile;
+use super::config_file::{CommandsConfig, ConfigFile, PreviewConfig};
 use crate::integrate::{exit_code, Callback, OutputFormat};
 
 /// Application configuration from CLI args and config file
@@ -38,6 +38,10 @@ pub struct Config {
     pub show_permissions: bool,
     /// Date format string (from config file)
     pub date_format: String,
+    /// Custom commands configuration
+    pub commands: CommandsConfig,
+    /// Custom preview configuration
+    pub preview_custom: PreviewConfig,
 }
 
 impl Config {
@@ -141,11 +145,13 @@ impl Config {
             mouse_enabled: config_file.general.mouse_enabled,
             hex_max_bytes: config_file.preview.hex_max_bytes,
             max_archive_entries: config_file.preview.max_archive_entries,
-            image_protocol: config_file.preview.image_protocol,
+            image_protocol: config_file.preview.image_protocol.clone(),
             git_poll_interval: Duration::from_secs(config_file.performance.git_poll_interval_secs),
             show_size: config_file.ui.show_size,
             show_permissions: config_file.ui.show_permissions,
             date_format: config_file.ui.date_format,
+            commands: config_file.commands,
+            preview_custom: config_file.preview,
         })
     }
 }

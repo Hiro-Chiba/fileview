@@ -9,10 +9,10 @@ use crate::app::PreviewState;
 use crate::core::{AppState, FocusTarget, ViewMode};
 use crate::handler::action::get_filename_str;
 use crate::render::{
-    render_archive_preview, render_bulk_rename_dialog, render_diff_preview, render_directory_info,
-    render_fuzzy_finder, render_help_popup, render_hex_preview, render_image_preview,
-    render_input_popup, render_pdf_preview, render_status_bar, render_text_preview, render_tree,
-    FontSize, FuzzyMatch, Picker,
+    render_archive_preview, render_bulk_rename_dialog, render_custom_preview, render_diff_preview,
+    render_directory_info, render_fuzzy_finder, render_help_popup, render_hex_preview,
+    render_image_preview, render_input_popup, render_pdf_preview, render_status_bar,
+    render_text_preview, render_tree, FontSize, FuzzyMatch, Picker,
 };
 use crate::tree::TreeEntry;
 
@@ -65,6 +65,8 @@ fn render_fullscreen_preview(
         render_directory_info(frame, di, size, false);
     } else if let Some(ref dp) = ctx.preview.diff {
         render_diff_preview(frame, dp, size, &title, false);
+    } else if let Some(ref cp) = ctx.preview.custom {
+        render_custom_preview(frame, cp, size, &title, false);
     } else if let Some(ref tp) = ctx.preview.text {
         render_text_preview(frame, tp, size, &title, false);
     } else if let Some(ref mut ip) = ctx.preview.image {
@@ -150,6 +152,8 @@ fn render_side_preview(
         render_directory_info(frame, di, area, preview_focused);
     } else if let Some(ref dp) = ctx.preview.diff {
         render_diff_preview(frame, dp, area, &title, preview_focused);
+    } else if let Some(ref cp) = ctx.preview.custom {
+        render_custom_preview(frame, cp, area, &title, preview_focused);
     } else if let Some(ref tp) = ctx.preview.text {
         render_text_preview(frame, tp, area, &title, preview_focused);
     } else if let Some(ref mut ip) = ctx.preview.image {

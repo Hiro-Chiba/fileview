@@ -430,7 +430,14 @@ fn parse_browse_action(action: &str) -> Option<KeyAction> {
         "preview_page_down" | "preview_page_down_if_preview" => Some(KeyAction::PreviewPageDown),
         "preview_to_top" => Some(KeyAction::PreviewToTop),
         "preview_to_bottom" => Some(KeyAction::PreviewToBottom),
-        _ => None,
+        _ => {
+            // Check for command:name pattern
+            action
+                .strip_prefix("command:")
+                .map(|name| KeyAction::RunCommand {
+                    name: name.to_string(),
+                })
+        }
     }
 }
 
