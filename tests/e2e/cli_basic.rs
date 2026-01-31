@@ -3,12 +3,13 @@
 //! Tests for command-line argument parsing, help output, version display,
 //! and error handling for invalid inputs.
 
+use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
 use tempfile::TempDir;
 
 fn fv() -> Command {
-    Command::cargo_bin("fv").unwrap()
+    cargo_bin_cmd!("fv")
 }
 
 // =============================================================================
