@@ -5435,6 +5435,9 @@ mod archive_preview_tests {
     use std::fs;
     use std::io::Write;
     use zip::write::FileOptions;
+    // tar.gz support imports
+    use flate2;
+    use tar;
 
     /// Helper to create a test zip file with given entries
     fn create_test_zip(path: &std::path::Path, files: &[(&str, &[u8])]) {
@@ -5459,7 +5462,7 @@ mod archive_preview_tests {
 
     #[test]
     fn test_is_archive_file_detection() {
-        // Supported archive formats
+        // Supported archive formats (zip-based)
         assert!(is_archive_file(&PathBuf::from("test.zip")));
         assert!(is_archive_file(&PathBuf::from("test.jar")));
         assert!(is_archive_file(&PathBuf::from("test.apk")));
@@ -5467,14 +5470,20 @@ mod archive_preview_tests {
         assert!(is_archive_file(&PathBuf::from("test.xpi")));
         assert!(is_archive_file(&PathBuf::from("test.epub")));
 
+        // Supported archive formats (tar.gz)
+        assert!(is_archive_file(&PathBuf::from("test.tar.gz")));
+        assert!(is_archive_file(&PathBuf::from("test.tgz")));
+
         // Case insensitive
         assert!(is_archive_file(&PathBuf::from("TEST.ZIP")));
         assert!(is_archive_file(&PathBuf::from("Test.Jar")));
+        assert!(is_archive_file(&PathBuf::from("TEST.TAR.GZ")));
+        assert!(is_archive_file(&PathBuf::from("TEST.TGZ")));
 
         // Non-archive files
         assert!(!is_archive_file(&PathBuf::from("test.txt")));
-        assert!(!is_archive_file(&PathBuf::from("test.tar.gz")));
         assert!(!is_archive_file(&PathBuf::from("test.7z")));
+        assert!(!is_archive_file(&PathBuf::from("test.tar"))); // Plain tar not supported
     }
 
     #[test]
@@ -5636,6 +5645,154 @@ mod archive_preview_tests {
     #[test]
     fn test_archive_preview_nonexistent_file() {
         let result = ArchivePreview::load_zip(std::path::Path::new("/nonexistent/path/file.zip"));
+        assert!(result.is_err(), "Nonexistent file should return an error");
+    }
+
+    // =========================================================================
+    // tar.gz archive tests (v1.10.0)
+    // =========================================================================
+
+    /// Helper to create a test tar.gz file with given entries
+    fn create_test_tar_gz(path: &std::path::Path, files: &[(&str, &[u8])]) {
+        let file = fs::File::create(path).unwrap();
+        let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+        let mut archive = tar::Builder::new(encoder);
+
+        for (name, content) in files {
+            if name.ends_with('/') {
+                // Directory - create a header for empty directory
+                let mut header = tar::Header::new_gnu();
+                header.set_entry_type(tar::EntryType::Directory);
+                header.set_path(*name).unwrap();
+                header.set_size(0);
+                header.set_mode(0o755);
+                header.set_mtime(0);
+                header.set_cksum();
+                archive.append(&header, std::io::empty()).unwrap();
+            } else {
+                // File
+                let mut header = tar::Header::new_gnu();
+                header.set_size(content.len() as u64);
+                header.set_mode(0o644);
+                header.set_mtime(0);
+                header.set_cksum();
+                archive
+                    .append_data(&mut header, *name, &content[..])
+                    .unwrap();
+            }
+        }
+
+        archive.into_inner().unwrap().finish().unwrap();
+    }
+
+    #[test]
+    fn test_tar_gz_archive_preview_load_valid() {
+        let temp = TempDir::new().unwrap();
+        let tar_gz_path = temp.path().join("test.tar.gz");
+
+        // Create test tar.gz with files
+        create_test_tar_gz(
+            &tar_gz_path,
+            &[
+                ("file1.txt", b"content1"),
+                ("dir/", &[]),
+                ("dir/file2.txt", b"content2"),
+            ],
+        );
+
+        let preview = ArchivePreview::load_tar_gz(&tar_gz_path).unwrap();
+
+        // Should have 2 files (dir entry is a directory, not a file)
+        assert_eq!(preview.file_count, 2);
+        assert!(preview.total_size > 0);
+        assert_eq!(preview.scroll, 0);
+
+        // Should have 3 entries total (1 dir + 2 files)
+        assert_eq!(preview.entries.len(), 3);
+    }
+
+    #[test]
+    fn test_tar_gz_archive_preview_tgz_extension() {
+        let temp = TempDir::new().unwrap();
+        let tgz_path = temp.path().join("test.tgz");
+
+        // Create test .tgz with files
+        create_test_tar_gz(
+            &tgz_path,
+            &[("file1.txt", b"content"), ("file2.txt", b"more content")],
+        );
+
+        let preview = ArchivePreview::load_tar_gz(&tgz_path).unwrap();
+
+        assert_eq!(preview.file_count, 2);
+        assert_eq!(preview.entries.len(), 2);
+    }
+
+    #[test]
+    fn test_tar_gz_archive_preview_empty() {
+        let temp = TempDir::new().unwrap();
+        let tar_gz_path = temp.path().join("empty.tar.gz");
+
+        // Create empty tar.gz
+        create_test_tar_gz(&tar_gz_path, &[]);
+
+        let preview = ArchivePreview::load_tar_gz(&tar_gz_path).unwrap();
+
+        assert_eq!(preview.file_count, 0);
+        assert_eq!(preview.total_size, 0);
+        assert!(preview.entries.is_empty());
+    }
+
+    #[test]
+    fn test_tar_gz_archive_preview_corrupted() {
+        let temp = TempDir::new().unwrap();
+        let tar_gz_path = temp.path().join("corrupted.tar.gz");
+
+        // Create a corrupted tar.gz (random bytes)
+        fs::write(&tar_gz_path, b"not a valid tar.gz file content").unwrap();
+
+        let result = ArchivePreview::load_tar_gz(&tar_gz_path);
+        assert!(result.is_err(), "Corrupted tar.gz should return an error");
+    }
+
+    #[test]
+    fn test_tar_gz_archive_preview_entries_sorted() {
+        let temp = TempDir::new().unwrap();
+        let tar_gz_path = temp.path().join("sorted.tar.gz");
+
+        // Create tar.gz with mixed files and directories (unsorted order)
+        create_test_tar_gz(
+            &tar_gz_path,
+            &[
+                ("z_file.txt", b"z"),
+                ("a_dir/", &[]),
+                ("a_file.txt", b"a"),
+                ("m_dir/", &[]),
+            ],
+        );
+
+        let preview = ArchivePreview::load_tar_gz(&tar_gz_path).unwrap();
+
+        // Entries should be sorted: directories first, then files, both alphabetically
+        // First entries should be directories
+        assert!(
+            preview.entries[0].is_dir,
+            "First entry should be a directory"
+        );
+        assert!(
+            preview.entries[1].is_dir,
+            "Second entry should be a directory"
+        );
+
+        // Files should come after directories
+        assert!(!preview.entries[2].is_dir, "Third entry should be a file");
+        assert!(!preview.entries[3].is_dir, "Fourth entry should be a file");
+    }
+
+    #[test]
+    fn test_tar_gz_archive_preview_nonexistent_file() {
+        let result =
+            ArchivePreview::load_tar_gz(std::path::Path::new("/nonexistent/path/file.tar.gz"));
         assert!(result.is_err(), "Nonexistent file should return an error");
     }
 }
