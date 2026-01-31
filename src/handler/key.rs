@@ -120,6 +120,10 @@ pub enum KeyAction {
     CycleSort,
     /// Search for previous match
     SearchPrev,
+    /// Go to previous PDF page
+    PdfPrevPage,
+    /// Go to next PDF page
+    PdfNextPage,
 }
 
 /// Handle key event and return the resulting action
@@ -296,6 +300,10 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Help
         KeyCode::Char('?') => KeyAction::ShowHelp,
 
+        // PDF navigation
+        KeyCode::Char('[') => KeyAction::PdfPrevPage,
+        KeyCode::Char(']') => KeyAction::PdfNextPage,
+
         // Bookmarks
         KeyCode::Char('m') => KeyAction::StartBookmarkSet,
         KeyCode::Char('\'') => KeyAction::StartBookmarkJump,
@@ -357,6 +365,9 @@ fn handle_preview_mode(key: KeyEvent) -> KeyAction {
         KeyCode::PageDown | KeyCode::Char('f') | KeyCode::Char(' ') => KeyAction::PreviewPageDown,
         KeyCode::Char('g') => KeyAction::PreviewToTop,
         KeyCode::Char('G') => KeyAction::PreviewToBottom,
+        // PDF navigation
+        KeyCode::Char('[') => KeyAction::PdfPrevPage,
+        KeyCode::Char(']') => KeyAction::PdfNextPage,
         _ => KeyAction::None,
     }
 }

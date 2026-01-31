@@ -10,8 +10,8 @@ use crate::core::{AppState, FocusTarget, ViewMode};
 use crate::handler::action::get_filename_str;
 use crate::render::{
     render_archive_preview, render_directory_info, render_fuzzy_finder, render_help_popup,
-    render_hex_preview, render_image_preview, render_input_popup, render_status_bar,
-    render_text_preview, render_tree, FontSize, FuzzyMatch, Picker,
+    render_hex_preview, render_image_preview, render_input_popup, render_pdf_preview,
+    render_status_bar, render_text_preview, render_tree, FontSize, FuzzyMatch, Picker,
 };
 use crate::tree::TreeEntry;
 
@@ -66,6 +66,8 @@ fn render_fullscreen_preview(
         render_text_preview(frame, tp, size, &title, false);
     } else if let Some(ref mut ip) = ctx.preview.image {
         render_image_preview(frame, ip, size, &title, false, font_size);
+    } else if let Some(ref mut pdf) = ctx.preview.pdf {
+        render_pdf_preview(frame, pdf, size, &filename, false, font_size);
     } else if let Some(ref hp) = ctx.preview.hex {
         render_hex_preview(frame, hp, size, &title, false);
     } else if let Some(ref ap) = ctx.preview.archive {
@@ -142,6 +144,8 @@ fn render_side_preview(
         render_text_preview(frame, tp, area, &title, preview_focused);
     } else if let Some(ref mut ip) = ctx.preview.image {
         render_image_preview(frame, ip, area, &title, preview_focused, font_size);
+    } else if let Some(ref mut pdf) = ctx.preview.pdf {
+        render_pdf_preview(frame, pdf, area, &title, preview_focused, font_size);
     } else if let Some(ref hp) = ctx.preview.hex {
         render_hex_preview(frame, hp, area, &title, preview_focused);
     } else if let Some(ref ap) = ctx.preview.archive {
