@@ -3412,14 +3412,14 @@ mod terminal_detection_tests {
     #[test]
     fn test_terminal_brand_clone() {
         let brand = TerminalBrand::Kitty;
-        let cloned = brand.clone();
+        let cloned = brand;
         assert_eq!(brand, cloned);
     }
 
     #[test]
     fn test_recommended_protocol_clone() {
         let protocol = RecommendedProtocol::Sixel;
-        let cloned = protocol.clone();
+        let cloned = protocol;
         assert_eq!(protocol, cloned);
     }
 
@@ -4163,7 +4163,7 @@ mod fuzzy_finder_tests {
 
         // Lowercase query should match both
         let results = fuzzy_match("readme", &paths, &root);
-        assert!(results.len() >= 1, "Should match at least one file");
+        assert!(!results.is_empty(), "Should match at least one file");
     }
 
     #[test]
@@ -5436,9 +5436,6 @@ mod archive_preview_tests {
     use std::fs;
     use std::io::Write;
     use zip::write::FileOptions;
-    // tar.gz support imports
-    use flate2;
-    use tar;
 
     /// Helper to create a test zip file with given entries
     fn create_test_zip(path: &std::path::Path, files: &[(&str, &[u8])]) {
