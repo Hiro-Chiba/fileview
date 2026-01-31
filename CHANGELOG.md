@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-01-31
+
+### Security
+
+- **stdin path traversal fix**: `--stdin` mode now validates paths using `canonicalize()` to prevent path traversal attacks (e.g., `../../../etc/passwd`)
+- **git command PATH hardening**: Git executable is now resolved from standard system paths (`/usr/bin/git`, `/usr/local/bin/git`, `/opt/homebrew/bin/git`) before falling back to `$PATH`, preventing malicious git binary injection
+- **TOCTOU mitigation**: `get_unique_path()` now uses bounded counter (1-1000) with timestamp fallback to reduce race condition window during file copy operations
+
+### Added
+
+- **Security documentation**: New `docs/SECURITY.md` documenting security model and `--on-select` callback safety guidelines
+
 ## [1.11.3] - 2026-01-31
 
 ### Added
