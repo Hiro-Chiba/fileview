@@ -477,8 +477,8 @@ pub fn create_delete_targets(state: &AppState, focused_path: Option<&PathBuf>) -
 /// Handle keys in bookmark set mode (waiting for slot number)
 fn handle_bookmark_set_mode(key: KeyEvent) -> KeyAction {
     match key.code {
-        KeyCode::Char(c) if c.is_ascii_digit() && c != '0' => {
-            let slot = c.to_digit(10).unwrap() as u8;
+        KeyCode::Char(c @ '1'..='9') => {
+            let slot = c as u8 - b'0';
             KeyAction::SetBookmark { slot }
         }
         // Same key to cancel (toggle behavior)
@@ -490,8 +490,8 @@ fn handle_bookmark_set_mode(key: KeyEvent) -> KeyAction {
 /// Handle keys in bookmark jump mode (waiting for slot number)
 fn handle_bookmark_jump_mode(key: KeyEvent) -> KeyAction {
     match key.code {
-        KeyCode::Char(c) if c.is_ascii_digit() && c != '0' => {
-            let slot = c.to_digit(10).unwrap() as u8;
+        KeyCode::Char(c @ '1'..='9') => {
+            let slot = c as u8 - b'0';
             KeyAction::JumpToBookmark { slot }
         }
         // Same key to cancel (toggle behavior)
