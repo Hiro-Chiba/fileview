@@ -15,10 +15,10 @@ pub use fuzzy::{collect_paths, fuzzy_match, render_fuzzy_finder, FuzzyMatch};
 pub use icons::get_icon;
 pub use preview::{
     calculate_centered_image_area, find_pdftoppm, is_archive_file, is_binary_file, is_image_file,
-    is_pdf_file, is_tar_gz_file, is_text_file, render_archive_preview, render_diff_preview,
-    render_directory_info, render_hex_preview, render_image_preview, render_pdf_preview,
-    render_text_preview, ArchiveEntry, ArchivePreview, DiffPreview, DirectoryInfo, HexPreview,
-    ImagePreview, PdfPreview, TextPreview,
+    is_pdf_file, is_tar_gz_file, is_text_file, render_archive_preview, render_custom_preview,
+    render_diff_preview, render_directory_info, render_hex_preview, render_image_preview,
+    render_pdf_preview, render_text_preview, ArchiveEntry, ArchivePreview, CustomPreview,
+    DiffPreview, DirectoryInfo, HexPreview, ImagePreview, PdfPreview, TextPreview,
 };
 pub use ratatui_image::picker::Picker;
 pub use ratatui_image::FontSize;
