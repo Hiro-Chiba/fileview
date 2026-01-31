@@ -8,8 +8,9 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use fileview::core::{AppState, InputPurpose, PendingAction, ViewMode};
 use fileview::handler::{handle_key_event, update_input_buffer, KeyAction};
 use fileview::render::{
-    calculate_centered_image_area, is_binary_file, is_image_file, is_text_file, DirectoryInfo,
-    FontSize, HexPreview, RecommendedProtocol, TerminalBrand, TextPreview,
+    calculate_centered_image_area, is_archive_file, is_binary_file, is_image_file, is_text_file,
+    ArchivePreview, DirectoryInfo, FontSize, HexPreview, RecommendedProtocol, TerminalBrand,
+    TextPreview,
 };
 use ratatui::layout::Rect;
 use tempfile::TempDir;
@@ -5422,5 +5423,219 @@ mod fuzzy_finder_tests {
 
         // File beyond depth 10 should NOT be included
         assert!(!paths.iter().any(|p| p.ends_with("beyond_limit.txt")));
+    }
+}
+
+// =============================================================================
+// Archive Preview Tests
+// =============================================================================
+
+mod archive_preview_tests {
+    use super::*;
+    use std::fs;
+    use std::io::Write;
+    use zip::write::FileOptions;
+
+    /// Helper to create a test zip file with given entries
+    fn create_test_zip(path: &std::path::Path, files: &[(&str, &[u8])]) {
+        let file = fs::File::create(path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let options: FileOptions<'_, ()> =
+            FileOptions::default().compression_method(zip::CompressionMethod::Stored);
+
+        for (name, content) in files {
+            if name.ends_with('/') {
+                // Directory
+                zip.add_directory(*name, options).unwrap();
+            } else {
+                // File
+                zip.start_file(*name, options).unwrap();
+                zip.write_all(content).unwrap();
+            }
+        }
+
+        zip.finish().unwrap();
+    }
+
+    #[test]
+    fn test_is_archive_file_detection() {
+        // Supported archive formats
+        assert!(is_archive_file(&PathBuf::from("test.zip")));
+        assert!(is_archive_file(&PathBuf::from("test.jar")));
+        assert!(is_archive_file(&PathBuf::from("test.apk")));
+        assert!(is_archive_file(&PathBuf::from("test.ipa")));
+        assert!(is_archive_file(&PathBuf::from("test.xpi")));
+        assert!(is_archive_file(&PathBuf::from("test.epub")));
+
+        // Case insensitive
+        assert!(is_archive_file(&PathBuf::from("TEST.ZIP")));
+        assert!(is_archive_file(&PathBuf::from("Test.Jar")));
+
+        // Non-archive files
+        assert!(!is_archive_file(&PathBuf::from("test.txt")));
+        assert!(!is_archive_file(&PathBuf::from("test.tar.gz")));
+        assert!(!is_archive_file(&PathBuf::from("test.7z")));
+    }
+
+    #[test]
+    fn test_archive_preview_load_valid_zip() {
+        let temp = TempDir::new().unwrap();
+        let zip_path = temp.path().join("test.zip");
+
+        // Create test zip with files
+        create_test_zip(
+            &zip_path,
+            &[
+                ("file1.txt", b"content1"),
+                ("dir/", &[]),
+                ("dir/file2.txt", b"content2"),
+            ],
+        );
+
+        let preview = ArchivePreview::load_zip(&zip_path).unwrap();
+
+        // Should have 2 files (dir entry is a directory, not a file)
+        assert_eq!(preview.file_count, 2);
+        assert!(preview.total_size > 0);
+        assert_eq!(preview.scroll, 0);
+
+        // Should have 3 entries total (1 dir + 2 files)
+        assert_eq!(preview.entries.len(), 3);
+    }
+
+    #[test]
+    fn test_archive_preview_load_corrupted_zip() {
+        let temp = TempDir::new().unwrap();
+        let zip_path = temp.path().join("corrupted.zip");
+
+        // Create a corrupted zip (random bytes)
+        fs::write(&zip_path, b"not a valid zip file content").unwrap();
+
+        let result = ArchivePreview::load_zip(&zip_path);
+        assert!(result.is_err(), "Corrupted zip should return an error");
+    }
+
+    #[test]
+    fn test_archive_preview_empty_zip() {
+        let temp = TempDir::new().unwrap();
+        let zip_path = temp.path().join("empty.zip");
+
+        // Create empty zip
+        create_test_zip(&zip_path, &[]);
+
+        let preview = ArchivePreview::load_zip(&zip_path).unwrap();
+
+        assert_eq!(preview.file_count, 0);
+        assert_eq!(preview.total_size, 0);
+        assert!(preview.entries.is_empty());
+    }
+
+    #[test]
+    fn test_archive_preview_scroll_bounds() {
+        let temp = TempDir::new().unwrap();
+        let zip_path = temp.path().join("scroll_test.zip");
+
+        // Create zip with multiple files
+        let files: Vec<(String, Vec<u8>)> = (0..50)
+            .map(|i| {
+                (
+                    format!("file{:03}.txt", i),
+                    format!("content{}", i).into_bytes(),
+                )
+            })
+            .collect();
+
+        let file_refs: Vec<(&str, &[u8])> = files
+            .iter()
+            .map(|(n, c)| (n.as_str(), c.as_slice()))
+            .collect();
+
+        create_test_zip(&zip_path, &file_refs);
+
+        let mut preview = ArchivePreview::load_zip(&zip_path).unwrap();
+
+        // Initial scroll is 0
+        assert_eq!(preview.scroll, 0);
+
+        // Scroll down
+        preview.scroll = 10;
+        assert_eq!(preview.scroll, 10);
+
+        // Scroll up (saturating)
+        preview.scroll = preview.scroll.saturating_sub(15);
+        assert_eq!(preview.scroll, 0);
+
+        // Scroll to bottom
+        let max_scroll = preview.line_count().saturating_sub(20);
+        preview.scroll = max_scroll;
+        assert!(preview.scroll <= preview.line_count());
+    }
+
+    #[test]
+    fn test_archive_preview_entries_sorted() {
+        let temp = TempDir::new().unwrap();
+        let zip_path = temp.path().join("sorted.zip");
+
+        // Create zip with mixed files and directories (unsorted order)
+        create_test_zip(
+            &zip_path,
+            &[
+                ("z_file.txt", b"z"),
+                ("a_dir/", &[]),
+                ("a_file.txt", b"a"),
+                ("m_dir/", &[]),
+            ],
+        );
+
+        let preview = ArchivePreview::load_zip(&zip_path).unwrap();
+
+        // Entries should be sorted: directories first, then files, both alphabetically
+        let names: Vec<&str> = preview.entries.iter().map(|e| e.name.as_str()).collect();
+
+        // First entries should be directories
+        assert!(
+            preview.entries[0].is_dir,
+            "First entry should be a directory"
+        );
+        assert!(
+            preview.entries[1].is_dir,
+            "Second entry should be a directory"
+        );
+
+        // Directories should be sorted
+        assert!(names[0] < names[1], "Directories should be sorted");
+
+        // Files should come after directories and be sorted
+        assert!(!preview.entries[2].is_dir, "Third entry should be a file");
+        assert!(!preview.entries[3].is_dir, "Fourth entry should be a file");
+    }
+
+    #[test]
+    fn test_archive_preview_line_count() {
+        let temp = TempDir::new().unwrap();
+        let zip_path = temp.path().join("linecount.zip");
+
+        // Create zip with 5 files
+        create_test_zip(
+            &zip_path,
+            &[
+                ("file1.txt", b"1"),
+                ("file2.txt", b"2"),
+                ("file3.txt", b"3"),
+                ("file4.txt", b"4"),
+                ("file5.txt", b"5"),
+            ],
+        );
+
+        let preview = ArchivePreview::load_zip(&zip_path).unwrap();
+
+        // line_count = entries (5) + header lines (2) = 7
+        assert_eq!(preview.line_count(), 7);
+    }
+
+    #[test]
+    fn test_archive_preview_nonexistent_file() {
+        let result = ArchivePreview::load_zip(std::path::Path::new("/nonexistent/path/file.zip"));
+        assert!(result.is_err(), "Nonexistent file should return an error");
     }
 }

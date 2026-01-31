@@ -863,4 +863,143 @@ mod tests {
         assert_eq!(format_size(1536), "1.5 KB"); // 1.5 KB
         assert_eq!(format_size(2 * 1024 * 1024 + 512 * 1024), "2.5 MB"); // 2.5 MB
     }
+
+    // =========================================================================
+    // is_archive_file tests
+    // =========================================================================
+
+    #[test]
+    fn test_is_archive_file_zip_variants() {
+        // Standard zip
+        assert!(is_archive_file(Path::new("file.zip")));
+
+        // Java archive (jar)
+        assert!(is_archive_file(Path::new("library.jar")));
+
+        // Android package (apk)
+        assert!(is_archive_file(Path::new("app.apk")));
+
+        // iOS package (ipa)
+        assert!(is_archive_file(Path::new("app.ipa")));
+
+        // Firefox extension (xpi)
+        assert!(is_archive_file(Path::new("addon.xpi")));
+
+        // E-book (epub)
+        assert!(is_archive_file(Path::new("book.epub")));
+    }
+
+    #[test]
+    fn test_is_archive_file_case_insensitive() {
+        // Uppercase
+        assert!(is_archive_file(Path::new("FILE.ZIP")));
+        assert!(is_archive_file(Path::new("LIBRARY.JAR")));
+        assert!(is_archive_file(Path::new("APP.APK")));
+
+        // Mixed case
+        assert!(is_archive_file(Path::new("File.Zip")));
+        assert!(is_archive_file(Path::new("Library.Jar")));
+    }
+
+    #[test]
+    fn test_is_archive_file_non_archive() {
+        // Text files
+        assert!(!is_archive_file(Path::new("file.txt")));
+        assert!(!is_archive_file(Path::new("file.md")));
+        assert!(!is_archive_file(Path::new("file.rs")));
+
+        // Image files
+        assert!(!is_archive_file(Path::new("image.png")));
+        assert!(!is_archive_file(Path::new("image.jpg")));
+
+        // Unsupported archive formats (tar.gz, 7z, etc.)
+        assert!(!is_archive_file(Path::new("file.tar.gz")));
+        assert!(!is_archive_file(Path::new("file.7z")));
+        assert!(!is_archive_file(Path::new("file.rar")));
+        assert!(!is_archive_file(Path::new("file.tar")));
+    }
+
+    #[test]
+    fn test_is_archive_file_no_extension() {
+        // Files without extension
+        assert!(!is_archive_file(Path::new("Makefile")));
+        assert!(!is_archive_file(Path::new("README")));
+    }
+
+    // =========================================================================
+    // ArchiveEntry tests
+    // =========================================================================
+
+    #[test]
+    fn test_archive_entry_struct_file() {
+        let entry = ArchiveEntry {
+            name: "src/main.rs".to_string(),
+            size: 1024,
+            is_dir: false,
+            modified: Some("2024-01-15".to_string()),
+        };
+
+        assert_eq!(entry.name, "src/main.rs");
+        assert_eq!(entry.size, 1024);
+        assert!(!entry.is_dir);
+        assert_eq!(entry.modified, Some("2024-01-15".to_string()));
+    }
+
+    #[test]
+    fn test_archive_entry_struct_directory() {
+        let entry = ArchiveEntry {
+            name: "src/".to_string(),
+            size: 0,
+            is_dir: true,
+            modified: None,
+        };
+
+        assert_eq!(entry.name, "src/");
+        assert_eq!(entry.size, 0);
+        assert!(entry.is_dir);
+        assert!(entry.modified.is_none());
+    }
+
+    // =========================================================================
+    // ArchivePreview tests
+    // =========================================================================
+
+    #[test]
+    fn test_archive_preview_line_count() {
+        let preview = ArchivePreview {
+            entries: vec![
+                ArchiveEntry {
+                    name: "file1.txt".to_string(),
+                    size: 100,
+                    is_dir: false,
+                    modified: None,
+                },
+                ArchiveEntry {
+                    name: "file2.txt".to_string(),
+                    size: 200,
+                    is_dir: false,
+                    modified: None,
+                },
+            ],
+            total_size: 300,
+            file_count: 2,
+            scroll: 0,
+        };
+
+        // line_count = entries.len() + 2 (for header lines)
+        assert_eq!(preview.line_count(), 4);
+    }
+
+    #[test]
+    fn test_archive_preview_empty() {
+        let preview = ArchivePreview {
+            entries: vec![],
+            total_size: 0,
+            file_count: 0,
+            scroll: 0,
+        };
+
+        // Even empty archive has 2 header lines
+        assert_eq!(preview.line_count(), 2);
+    }
 }
