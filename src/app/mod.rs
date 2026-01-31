@@ -5,9 +5,11 @@
 
 mod config;
 mod event_loop;
+mod image_loader;
 mod preview;
 mod render;
 
 pub use config::Config;
 pub use event_loop::{run_app, AppResult};
+pub use image_loader::ImageLoader;
 pub use preview::PreviewState;

@@ -77,6 +77,8 @@ pub struct GitStatus {
     dir_statuses: HashMap<PathBuf, FileStatus>,
     /// Current branch name
     branch: Option<String>,
+    /// Files that are staged (have changes in the index)
+    staged_files: std::collections::HashSet<PathBuf>,
 }
 
 impl GitStatus {
@@ -84,13 +86,14 @@ impl GitStatus {
     pub fn detect(path: &Path) -> Option<Self> {
         let repo_root = find_git_root(path)?;
         let branch = get_current_branch(&repo_root);
-        let (statuses, dir_statuses) = load_git_status(&repo_root);
+        let (statuses, dir_statuses, staged_files) = load_git_status(&repo_root);
 
         Some(Self {
             repo_root,
             statuses,
             dir_statuses,
             branch,
+            staged_files,
         })
     }
 
@@ -132,9 +135,27 @@ impl GitStatus {
     /// Refresh git status (call after file operations)
     pub fn refresh(&mut self) {
         self.branch = get_current_branch(&self.repo_root);
-        let (statuses, dir_statuses) = load_git_status(&self.repo_root);
+        let (statuses, dir_statuses, staged_files) = load_git_status(&self.repo_root);
         self.statuses = statuses;
         self.dir_statuses = dir_statuses;
+        self.staged_files = staged_files;
+    }
+
+    /// Check if a file is staged (has changes in the index)
+    pub fn is_staged(&self, path: &Path) -> bool {
+        // Check if the file is in the staged files set
+        if self.staged_files.contains(path) {
+            return true;
+        }
+
+        // Also check relative path
+        if let Ok(relative) = path.strip_prefix(&self.repo_root) {
+            if self.staged_files.contains(relative) {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
@@ -187,14 +208,21 @@ fn get_current_branch(repo_root: &Path) -> Option<String> {
 /// Load git status for all files in the repository
 fn load_git_status(
     repo_root: &Path,
-) -> (HashMap<PathBuf, FileStatus>, HashMap<PathBuf, FileStatus>) {
+) -> (
+    HashMap<PathBuf, FileStatus>,
+    HashMap<PathBuf, FileStatus>,
+    std::collections::HashSet<PathBuf>,
+) {
+    use std::collections::HashSet;
+
     let mut statuses = HashMap::new();
     let mut dir_statuses: HashMap<PathBuf, FileStatus> = HashMap::new();
+    let mut staged_files: HashSet<PathBuf> = HashSet::new();
 
     // Get status with porcelain format for machine parsing
     // -uall shows all untracked files (required for per-file status display)
     let Some(mut cmd) = git_command() else {
-        return (statuses, dir_statuses);
+        return (statuses, dir_statuses, staged_files);
     };
     let output = cmd
         .args(["status", "--porcelain=v1", "-uall", "--ignored"])
@@ -203,7 +231,7 @@ fn load_git_status(
 
     let output = match output {
         Ok(o) if o.status.success() => o,
-        _ => return (statuses, dir_statuses),
+        _ => return (statuses, dir_statuses, staged_files),
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -227,6 +255,11 @@ fn load_git_status(
         let path = PathBuf::from(file_path);
         let status = parse_status(index_status, worktree_status);
 
+        // Track staged files (index has changes: M, A, D, R, C)
+        if matches!(index_status, 'M' | 'A' | 'D' | 'R' | 'C') {
+            staged_files.insert(path.clone());
+        }
+
         if status != FileStatus::Clean {
             statuses.insert(path.clone(), status);
 
@@ -245,7 +278,7 @@ fn load_git_status(
         }
     }
 
-    (statuses, dir_statuses)
+    (statuses, dir_statuses, staged_files)
 }
 
 /// Parse git status characters into FileStatus

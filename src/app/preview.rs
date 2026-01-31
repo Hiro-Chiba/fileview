@@ -2,11 +2,15 @@
 
 use std::path::PathBuf;
 
+use image::GenericImageView;
+
+use crate::app::ImageLoader;
 use crate::core::AppState;
+use crate::git::{self, FileStatus};
 use crate::render::{
     find_pdftoppm, is_archive_file, is_binary_file, is_image_file, is_pdf_file, is_tar_gz_file,
-    is_text_file, ArchivePreview, DirectoryInfo, HexPreview, ImagePreview, PdfPreview, Picker,
-    TextPreview,
+    is_text_file, ArchivePreview, DiffPreview, DirectoryInfo, HexPreview, ImagePreview, PdfPreview,
+    Picker, TextPreview,
 };
 
 /// Preview state container
@@ -18,7 +22,12 @@ pub struct PreviewState {
     pub hex: Option<HexPreview>,
     pub archive: Option<ArchivePreview>,
     pub pdf: Option<PdfPreview>,
+    pub diff: Option<DiffPreview>,
     pub last_path: Option<PathBuf>,
+    /// Background image loader
+    image_loader: ImageLoader,
+    /// Path currently being loaded asynchronously
+    pub loading_image_path: Option<PathBuf>,
 }
 
 impl PreviewState {
@@ -34,6 +43,7 @@ impl PreviewState {
         self.hex = None;
         self.archive = None;
         self.pdf = None;
+        self.diff = None;
     }
 
     /// Update preview for the given path if it has changed
@@ -64,8 +74,45 @@ impl PreviewState {
                 self.hex = None;
                 self.archive = None;
                 self.pdf = None;
+                self.diff = None;
             }
         } else if is_text_file(path) {
+            // Check if file has git changes - if so, show diff instead
+            let git_status = state
+                .git_status
+                .as_ref()
+                .map(|g| g.get_status(path))
+                .unwrap_or(FileStatus::Clean);
+
+            let has_changes = matches!(
+                git_status,
+                FileStatus::Modified | FileStatus::Added | FileStatus::Deleted
+            );
+
+            if has_changes {
+                // Try to get diff for changed files
+                if let Some(ref git) = state.git_status {
+                    let repo_root = git.repo_root();
+                    // Try staged diff first, then unstaged
+                    let diff = git::get_diff(repo_root, path, true)
+                        .or_else(|| git::get_diff(repo_root, path, false));
+
+                    if let Some(file_diff) = diff {
+                        if !file_diff.is_empty() {
+                            self.diff = Some(DiffPreview::new(file_diff));
+                            self.text = None;
+                            self.image = None;
+                            self.dir_info = None;
+                            self.hex = None;
+                            self.archive = None;
+                            self.pdf = None;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Fall back to regular text preview
             match std::fs::read_to_string(path) {
                 Ok(content) => {
                     self.text = Some(TextPreview::with_highlighting(&content, path));
@@ -74,6 +121,7 @@ impl PreviewState {
                     self.hex = None;
                     self.archive = None;
                     self.pdf = None;
+                    self.diff = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -81,21 +129,17 @@ impl PreviewState {
                 }
             }
         } else if is_image_file(path) {
-            if let Some(ref mut picker) = image_picker {
-                match ImagePreview::load(path, picker) {
-                    Ok(img) => {
-                        self.image = Some(img);
-                        self.text = None;
-                        self.dir_info = None;
-                        self.hex = None;
-                        self.archive = None;
-                        self.pdf = None;
-                    }
-                    Err(e) => {
-                        state.set_message(format!("Failed: preview - {}", e));
-                        self.clear_all();
-                    }
-                }
+            // Start async image loading (non-blocking)
+            if self.image_loader.request(path.to_path_buf()) {
+                // Clear current preview while loading
+                self.image = None;
+                self.text = None;
+                self.dir_info = None;
+                self.hex = None;
+                self.archive = None;
+                self.pdf = None;
+                self.diff = None;
+                self.loading_image_path = Some(path.to_path_buf());
             }
         } else if is_tar_gz_file(path) {
             // Handle tar.gz files separately (before is_archive_file check)
@@ -107,6 +151,7 @@ impl PreviewState {
                     self.dir_info = None;
                     self.hex = None;
                     self.pdf = None;
+                    self.diff = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -122,6 +167,7 @@ impl PreviewState {
                     self.dir_info = None;
                     self.hex = None;
                     self.pdf = None;
+                    self.diff = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -140,6 +186,7 @@ impl PreviewState {
                             self.dir_info = None;
                             self.hex = None;
                             self.archive = None;
+                            self.diff = None;
                         }
                         Err(e) => {
                             state.set_message(format!("Failed: preview - {}", e));
@@ -166,6 +213,7 @@ impl PreviewState {
                     self.dir_info = None;
                     self.archive = None;
                     self.pdf = None;
+                    self.diff = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -185,6 +233,7 @@ impl PreviewState {
                 self.text = None;
                 self.image = None;
                 self.dir_info = None;
+                self.diff = None;
                 self.archive = None;
                 self.pdf = None;
             }
@@ -203,5 +252,49 @@ impl PreviewState {
             || self.hex.is_some()
             || self.archive.is_some()
             || self.pdf.is_some()
+            || self.diff.is_some()
+    }
+
+    /// Poll for completed image load results
+    ///
+    /// This should be called in the main event loop to receive
+    /// asynchronously loaded images.
+    ///
+    /// Returns true if an image was successfully loaded.
+    pub fn poll_image_result(
+        &mut self,
+        image_picker: &mut Option<Picker>,
+        state: &mut AppState,
+    ) -> bool {
+        if let Some(result) = self.image_loader.try_recv() {
+            // Only process if this is the image we're still waiting for
+            if self.loading_image_path.as_ref() == Some(&result.path) {
+                self.loading_image_path = None;
+
+                match result.result {
+                    Ok(dyn_img) => {
+                        if let Some(ref mut picker) = image_picker {
+                            let (width, height) = dyn_img.dimensions();
+                            let protocol = picker.new_resize_protocol(dyn_img);
+                            self.image = Some(ImagePreview {
+                                width,
+                                height,
+                                protocol,
+                            });
+                            return true;
+                        }
+                    }
+                    Err(e) => {
+                        state.set_message(format!("Failed: preview - {}", e));
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    /// Check if an image is currently being loaded
+    pub fn is_loading_image(&self) -> bool {
+        self.loading_image_path.is_some()
     }
 }

@@ -7,7 +7,9 @@ use tempfile::TempDir;
 use crate::core::{AppState, FocusTarget, ViewMode};
 use crate::handler::key::KeyAction;
 use crate::integrate::exit_code;
-use crate::render::{ArchiveEntry, ArchivePreview, HexPreview, PdfPreview, Picker, TextPreview};
+use crate::render::{
+    ArchiveEntry, ArchivePreview, DiffPreview, HexPreview, PdfPreview, Picker, TextPreview,
+};
 use crate::tree::TreeNavigator;
 
 use super::{
@@ -20,6 +22,7 @@ macro_rules! call_handle_action {
     ($action:expr, $state:expr, $navigator:expr, $path:expr, $entries:expr, $context:expr,
      $text_preview:expr, $hex_preview:expr, $archive_preview:expr) => {{
         let mut pdf_preview: Option<PdfPreview> = None;
+        let mut diff_preview: Option<DiffPreview> = None;
         let mut image_picker: Option<Picker> = None;
         handle_action(
             $action,
@@ -32,6 +35,7 @@ macro_rules! call_handle_action {
             $hex_preview,
             $archive_preview,
             &mut pdf_preview,
+            &mut diff_preview,
             &mut image_picker,
         )
     }};
