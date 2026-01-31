@@ -4,10 +4,12 @@ use std::env;
 use std::io::{self, BufRead, IsTerminal};
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::time::Duration;
 
+use super::config_file::ConfigFile;
 use crate::integrate::{exit_code, Callback, OutputFormat};
 
-/// Application configuration from CLI args
+/// Application configuration from CLI args and config file
 pub struct Config {
     pub root: PathBuf,
     pub pick_mode: bool,
@@ -18,10 +20,31 @@ pub struct Config {
     pub choosedir_mode: bool,
     /// Paths read from stdin (for pipeline integration)
     pub stdin_paths: Option<Vec<PathBuf>>,
+    /// Show hidden files by default (from config file)
+    pub show_hidden: bool,
+    /// Enable mouse support (from config file)
+    pub mouse_enabled: bool,
+    /// Maximum bytes for hex preview (from config file)
+    pub hex_max_bytes: usize,
+    /// Maximum entries for archive preview (from config file)
+    pub max_archive_entries: usize,
+    /// Image protocol setting (from config file)
+    pub image_protocol: String,
+    /// Git poll interval (from config file)
+    pub git_poll_interval: Duration,
+    /// Show file size in tree (from config file)
+    pub show_size: bool,
+    /// Show file permissions in tree (from config file)
+    pub show_permissions: bool,
+    /// Date format string (from config file)
+    pub date_format: String,
 }
 
 impl Config {
     pub fn from_args() -> anyhow::Result<Self> {
+        // Load config file first (provides defaults)
+        let config_file = ConfigFile::load();
+
         let mut args = env::args().skip(1).peekable();
         let mut root = env::current_dir()?;
         let mut pick_mode = false;
@@ -30,6 +53,7 @@ impl Config {
         let mut icons_enabled: Option<bool> = None;
         let mut choosedir_mode = false;
         let mut stdin_mode = false;
+        let mut show_hidden: Option<bool> = None;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -38,6 +62,8 @@ impl Config {
                 "--stdin" => stdin_mode = true,
                 "--icons" | "-i" => icons_enabled = Some(true),
                 "--no-icons" => icons_enabled = Some(false),
+                "--hidden" | "-a" => show_hidden = Some(true),
+                "--no-hidden" => show_hidden = Some(false),
                 "--format" | "-f" => {
                     if let Some(fmt) = args.next() {
                         output_format = OutputFormat::from_str(&fmt).map_err(|_| {
@@ -100,6 +126,8 @@ impl Config {
             root
         };
 
+        // Merge config file settings with CLI overrides
+        // CLI arguments take precedence over config file
         Ok(Self {
             root,
             pick_mode,
@@ -108,6 +136,16 @@ impl Config {
             icons_enabled,
             choosedir_mode,
             stdin_paths,
+            // Settings from config file (CLI can override some)
+            show_hidden: show_hidden.unwrap_or(config_file.general.show_hidden),
+            mouse_enabled: config_file.general.mouse_enabled,
+            hex_max_bytes: config_file.preview.hex_max_bytes,
+            max_archive_entries: config_file.preview.max_archive_entries,
+            image_protocol: config_file.preview.image_protocol,
+            git_poll_interval: Duration::from_secs(config_file.performance.git_poll_interval_secs),
+            show_size: config_file.ui.show_size,
+            show_permissions: config_file.ui.show_permissions,
+            date_format: config_file.ui.date_format,
         })
     }
 }
@@ -205,8 +243,15 @@ OPTIONS:
     --choosedir         Output directory path on exit (press Q to cd there)
     -i, --icons         Enable Nerd Fonts icons (default)
     --no-icons          Disable icons
+    -a, --hidden        Show hidden files
+    --no-hidden         Hide hidden files (default)
     -h, --help          Show this help message
     -V, --version       Show version
+
+CONFIG FILE:
+    ~/.config/fileview/config.toml    Main configuration file
+    ~/.config/fileview/keymap.toml    Key bindings (customizable)
+    ~/.config/fileview/theme.toml     Color theme
 
 ENVIRONMENT:
     FILEVIEW_ICONS=0            Disable icons
