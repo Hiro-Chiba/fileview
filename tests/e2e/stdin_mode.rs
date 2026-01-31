@@ -28,7 +28,7 @@ fn stdin_with_empty_input_returns_error() {
         .write_stdin("")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("No paths provided"));
+        .stderr(predicate::str::contains("No valid paths provided"));
 }
 
 #[test]

@@ -3,6 +3,46 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
+
+/// Cached git executable path
+static GIT_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+/// Find git executable path using standard locations or which command
+fn find_git_executable() -> Option<&'static PathBuf> {
+    GIT_PATH
+        .get_or_init(|| {
+            // Priority: standard paths → which command fallback
+            let candidates = [
+                "/usr/bin/git",
+                "/usr/local/bin/git",
+                "/opt/homebrew/bin/git",
+            ];
+
+            for path in candidates {
+                let p = PathBuf::from(path);
+                if p.exists() {
+                    return Some(p);
+                }
+            }
+
+            // Fallback: which git
+            std::process::Command::new("which")
+                .arg("git")
+                .output()
+                .ok()
+                .filter(|o| o.status.success())
+                .and_then(|o| String::from_utf8(o.stdout).ok())
+                .map(|s| PathBuf::from(s.trim()))
+                .filter(|p| p.exists())
+        })
+        .as_ref()
+}
+
+/// Create a git Command using the validated executable path
+fn git_command() -> Option<Command> {
+    find_git_executable().map(Command::new)
+}
 
 /// Git file status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -100,7 +140,7 @@ impl GitStatus {
 
 /// Find the root of the git repository containing the given path
 fn find_git_root(path: &Path) -> Option<PathBuf> {
-    let output = Command::new("git")
+    let output = git_command()?
         .args(["rev-parse", "--show-toplevel"])
         .current_dir(path)
         .output()
@@ -116,7 +156,7 @@ fn find_git_root(path: &Path) -> Option<PathBuf> {
 
 /// Get the current branch name
 fn get_current_branch(repo_root: &Path) -> Option<String> {
-    let output = Command::new("git")
+    let output = git_command()?
         .args(["rev-parse", "--abbrev-ref", "HEAD"])
         .current_dir(repo_root)
         .output()
@@ -126,7 +166,7 @@ fn get_current_branch(repo_root: &Path) -> Option<String> {
         let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if branch == "HEAD" {
             // Detached HEAD state - try to get commit hash
-            let hash_output = Command::new("git")
+            let hash_output = git_command()?
                 .args(["rev-parse", "--short", "HEAD"])
                 .current_dir(repo_root)
                 .output()
@@ -153,7 +193,10 @@ fn load_git_status(
 
     // Get status with porcelain format for machine parsing
     // -uall shows all untracked files (required for per-file status display)
-    let output = Command::new("git")
+    let Some(mut cmd) = git_command() else {
+        return (statuses, dir_statuses);
+    };
+    let output = cmd
         .args(["status", "--porcelain=v1", "-uall", "--ignored"])
         .current_dir(repo_root)
         .output();
