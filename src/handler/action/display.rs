@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use crate::core::{AppState, ViewMode};
 use crate::handler::key::KeyAction;
 use crate::integrate::{exit_code, PickResult};
-use crate::render::TextPreview;
+use crate::render::{ArchivePreview, HexPreview, TextPreview};
 use crate::tree::TreeNavigator;
 
 use super::{get_filename_str, reload_tree, ActionContext, ActionResult};
@@ -132,16 +132,24 @@ pub fn handle(
     Ok(())
 }
 
-/// Handle preview scroll actions
+/// Handle preview scroll actions for text, hex, and archive previews
 pub fn handle_preview_scroll(
     action: KeyAction,
     state: &mut AppState,
     text_preview: &mut Option<TextPreview>,
+    hex_preview: &mut Option<HexPreview>,
+    archive_preview: &mut Option<ArchivePreview>,
 ) {
     match action {
         KeyAction::PreviewScrollUp => {
             if let Some(ref mut tp) = text_preview {
                 tp.scroll = tp.scroll.saturating_sub(1);
+            }
+            if let Some(ref mut hp) = hex_preview {
+                hp.scroll = hp.scroll.saturating_sub(1);
+            }
+            if let Some(ref mut ap) = archive_preview {
+                ap.scroll = ap.scroll.saturating_sub(1);
             }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll = scroll.saturating_sub(1);
@@ -151,6 +159,12 @@ pub fn handle_preview_scroll(
             if let Some(ref mut tp) = text_preview {
                 tp.scroll += 1;
             }
+            if let Some(ref mut hp) = hex_preview {
+                hp.scroll += 1;
+            }
+            if let Some(ref mut ap) = archive_preview {
+                ap.scroll += 1;
+            }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll += 1;
             }
@@ -158,6 +172,12 @@ pub fn handle_preview_scroll(
         KeyAction::PreviewPageUp => {
             if let Some(ref mut tp) = text_preview {
                 tp.scroll = tp.scroll.saturating_sub(20);
+            }
+            if let Some(ref mut hp) = hex_preview {
+                hp.scroll = hp.scroll.saturating_sub(20);
+            }
+            if let Some(ref mut ap) = archive_preview {
+                ap.scroll = ap.scroll.saturating_sub(20);
             }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll = scroll.saturating_sub(20);
@@ -167,6 +187,12 @@ pub fn handle_preview_scroll(
             if let Some(ref mut tp) = text_preview {
                 tp.scroll += 20;
             }
+            if let Some(ref mut hp) = hex_preview {
+                hp.scroll += 20;
+            }
+            if let Some(ref mut ap) = archive_preview {
+                ap.scroll += 20;
+            }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll += 20;
             }
@@ -175,6 +201,12 @@ pub fn handle_preview_scroll(
             if let Some(ref mut tp) = text_preview {
                 tp.scroll = 0;
             }
+            if let Some(ref mut hp) = hex_preview {
+                hp.scroll = 0;
+            }
+            if let Some(ref mut ap) = archive_preview {
+                ap.scroll = 0;
+            }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll = 0;
             }
@@ -182,6 +214,12 @@ pub fn handle_preview_scroll(
         KeyAction::PreviewToBottom => {
             if let Some(ref mut tp) = text_preview {
                 tp.scroll = tp.lines.len().saturating_sub(20);
+            }
+            if let Some(ref mut hp) = hex_preview {
+                hp.scroll = hp.line_count().saturating_sub(20);
+            }
+            if let Some(ref mut ap) = archive_preview {
+                ap.scroll = ap.line_count().saturating_sub(20);
             }
         }
         _ => {}
