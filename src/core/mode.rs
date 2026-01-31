@@ -45,6 +45,17 @@ pub enum ViewMode {
     BookmarkJump,
     /// File filter input mode
     Filter { query: String },
+    /// Bulk rename mode
+    BulkRename {
+        /// Pattern to match (e.g., "*.txt", "old_")
+        from_pattern: String,
+        /// Pattern to replace with (e.g., "*.md", "new_")
+        to_pattern: String,
+        /// Currently selected field (0 = from, 1 = to)
+        selected_field: usize,
+        /// Cursor position in current field
+        cursor: usize,
+    },
 }
 
 /// Purpose of text input
