@@ -6405,3 +6405,217 @@ mod theme_integration_tests {
         assert_eq!(parse_color("lightcyan"), Color::LightCyan);
     }
 }
+
+// =============================================================================
+// Custom Commands Integration Tests (Phase 4)
+// =============================================================================
+
+mod custom_commands_tests {
+    use fileview::app::CommandsConfig;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    fn create_config(commands: Vec<(&str, &str)>) -> CommandsConfig {
+        let mut map = HashMap::new();
+        for (name, cmd) in commands {
+            map.insert(name.to_string(), cmd.to_string());
+        }
+        CommandsConfig { commands: map }
+    }
+
+    #[test]
+    fn test_commands_config_get() {
+        let config = create_config(vec![("open", "open $f"), ("edit", "vim $f")]);
+
+        assert_eq!(config.get("open"), Some(&"open $f".to_string()));
+        assert_eq!(config.get("edit"), Some(&"vim $f".to_string()));
+        assert_eq!(config.get("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_commands_config_expand_file_path() {
+        let path = PathBuf::from("/home/user/test.txt");
+        let expanded = CommandsConfig::expand("echo $f", &path);
+        assert_eq!(expanded, "echo /home/user/test.txt");
+    }
+
+    #[test]
+    fn test_commands_config_expand_directory() {
+        let path = PathBuf::from("/home/user/test.txt");
+        let expanded = CommandsConfig::expand("cd $d", &path);
+        assert_eq!(expanded, "cd /home/user");
+    }
+
+    #[test]
+    fn test_commands_config_expand_filename() {
+        let path = PathBuf::from("/home/user/test.txt");
+        let expanded = CommandsConfig::expand("echo $n", &path);
+        assert_eq!(expanded, "echo test.txt");
+    }
+
+    #[test]
+    fn test_commands_config_expand_stem() {
+        let path = PathBuf::from("/home/user/test.txt");
+        let expanded = CommandsConfig::expand("echo $s", &path);
+        assert_eq!(expanded, "echo test");
+    }
+
+    #[test]
+    fn test_commands_config_expand_extension() {
+        let path = PathBuf::from("/home/user/test.txt");
+        let expanded = CommandsConfig::expand("echo $e", &path);
+        assert_eq!(expanded, "echo txt");
+    }
+
+    #[test]
+    fn test_commands_config_expand_all_placeholders() {
+        let path = PathBuf::from("/home/user/document.pdf");
+        let expanded = CommandsConfig::expand("process $f in $d: $n ($s.$e)", &path);
+        assert_eq!(
+            expanded,
+            "process /home/user/document.pdf in /home/user: document.pdf (document.pdf)"
+        );
+    }
+
+    #[test]
+    fn test_commands_config_expand_no_placeholders() {
+        let path = PathBuf::from("/home/user/test.txt");
+        let expanded = CommandsConfig::expand("echo hello", &path);
+        assert_eq!(expanded, "echo hello");
+    }
+
+    #[test]
+    fn test_commands_config_expand_no_extension() {
+        let path = PathBuf::from("/home/user/Makefile");
+        let expanded = CommandsConfig::expand("$n has ext: $e", &path);
+        assert_eq!(expanded, "Makefile has ext: ");
+    }
+
+    #[test]
+    fn test_commands_from_toml() {
+        let toml_content = r#"
+            [commands]
+            open = "open $f"
+            edit = "nvim $f"
+            terminal = "cd $d && $SHELL"
+        "#;
+
+        #[derive(serde::Deserialize)]
+        struct TestConfig {
+            commands: CommandsConfig,
+        }
+
+        let config: TestConfig = toml::from_str(toml_content).unwrap();
+        assert_eq!(config.commands.get("open"), Some(&"open $f".to_string()));
+        assert_eq!(config.commands.get("edit"), Some(&"nvim $f".to_string()));
+        assert_eq!(
+            config.commands.get("terminal"),
+            Some(&"cd $d && $SHELL".to_string())
+        );
+    }
+}
+
+// =============================================================================
+// Custom Preview Integration Tests (Phase 5)
+// =============================================================================
+
+mod custom_preview_tests {
+    use fileview::render::CustomPreview;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_custom_preview_execute_simple() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.path().join("test.txt");
+        fs::write(&file_path, "hello world").unwrap();
+
+        let preview = CustomPreview::execute("cat $f", &file_path).unwrap();
+        assert_eq!(preview.lines.len(), 1);
+        assert_eq!(preview.lines[0], "hello world");
+        assert_eq!(preview.scroll, 0);
+    }
+
+    #[test]
+    fn test_custom_preview_execute_multiline() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.path().join("test.txt");
+        fs::write(&file_path, "line1\nline2\nline3").unwrap();
+
+        let preview = CustomPreview::execute("cat $f", &file_path).unwrap();
+        assert_eq!(preview.lines.len(), 3);
+        assert_eq!(preview.lines[0], "line1");
+        assert_eq!(preview.lines[1], "line2");
+        assert_eq!(preview.lines[2], "line3");
+    }
+
+    #[test]
+    fn test_custom_preview_line_count() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.path().join("test.txt");
+        fs::write(&file_path, "a\nb\nc\nd\ne").unwrap();
+
+        let preview = CustomPreview::execute("cat $f", &file_path).unwrap();
+        assert_eq!(preview.line_count(), 5);
+    }
+
+    #[test]
+    fn test_custom_preview_placeholder_expansion() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.path().join("test.txt");
+        fs::write(&file_path, "content").unwrap();
+
+        // Echo the file path
+        let preview = CustomPreview::execute("echo $f", &file_path).unwrap();
+        assert!(preview.lines[0].contains("test.txt"));
+    }
+
+    #[test]
+    fn test_custom_preview_empty_output() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.path().join("test.txt");
+        fs::write(&file_path, "").unwrap();
+
+        let preview = CustomPreview::execute("cat $f", &file_path).unwrap();
+        assert_eq!(preview.line_count(), 0);
+    }
+
+    #[test]
+    fn test_custom_preview_config_parsing() {
+        let toml_content = r#"
+            [preview]
+            hex_max_bytes = 4096
+
+            [preview.custom]
+            md = "glow -s dark $f"
+            json = "jq -C . $f"
+            csv = "column -s, -t $f"
+        "#;
+
+        #[derive(serde::Deserialize)]
+        struct TestConfig {
+            preview: PreviewSection,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct PreviewSection {
+            hex_max_bytes: usize,
+            custom: std::collections::HashMap<String, String>,
+        }
+
+        let config: TestConfig = toml::from_str(toml_content).unwrap();
+        assert_eq!(config.preview.hex_max_bytes, 4096);
+        assert_eq!(
+            config.preview.custom.get("md"),
+            Some(&"glow -s dark $f".to_string())
+        );
+        assert_eq!(
+            config.preview.custom.get("json"),
+            Some(&"jq -C . $f".to_string())
+        );
+        assert_eq!(
+            config.preview.custom.get("csv"),
+            Some(&"column -s, -t $f".to_string())
+        );
+    }
+}

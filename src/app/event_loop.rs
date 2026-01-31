@@ -107,6 +107,7 @@ pub fn run_app(
     let action_context = ActionContext {
         callback: config.callback.clone(),
         output_format: config.output_format,
+        commands: config.commands.clone(),
     };
 
     // Preview state
@@ -187,7 +188,12 @@ pub fn run_app(
         // Update preview if needed (side panel or fullscreen mode)
         let needs_preview = state.preview_visible || matches!(state.mode, ViewMode::Preview { .. });
         if needs_preview {
-            preview.update(focused_path.as_ref(), image_picker, &mut state);
+            preview.update_with_custom(
+                focused_path.as_ref(),
+                image_picker,
+                &mut state,
+                &config.preview_custom.custom,
+            );
         }
 
         // Adjust viewport before rendering
@@ -401,6 +407,7 @@ pub fn run_app(
                         &mut preview.archive,
                         &mut preview.pdf,
                         &mut preview.diff,
+                        &mut preview.custom,
                         image_picker,
                     )? {
                         ActionResult::Continue => {}
