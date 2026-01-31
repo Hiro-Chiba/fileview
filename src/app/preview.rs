@@ -1,5 +1,6 @@
 //! Preview state management
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use image::GenericImageView;
@@ -9,8 +10,8 @@ use crate::core::AppState;
 use crate::git::{self, FileStatus};
 use crate::render::{
     find_pdftoppm, is_archive_file, is_binary_file, is_image_file, is_pdf_file, is_tar_gz_file,
-    is_text_file, ArchivePreview, DiffPreview, DirectoryInfo, HexPreview, ImagePreview, PdfPreview,
-    Picker, TextPreview,
+    is_text_file, ArchivePreview, CustomPreview, DiffPreview, DirectoryInfo, HexPreview,
+    ImagePreview, PdfPreview, Picker, TextPreview,
 };
 
 /// Preview state container
@@ -23,6 +24,7 @@ pub struct PreviewState {
     pub archive: Option<ArchivePreview>,
     pub pdf: Option<PdfPreview>,
     pub diff: Option<DiffPreview>,
+    pub custom: Option<CustomPreview>,
     pub last_path: Option<PathBuf>,
     /// Background image loader
     image_loader: ImageLoader,
@@ -44,6 +46,7 @@ impl PreviewState {
         self.archive = None;
         self.pdf = None;
         self.diff = None;
+        self.custom = None;
     }
 
     /// Update preview for the given path if it has changed
@@ -52,6 +55,20 @@ impl PreviewState {
         path: Option<&PathBuf>,
         image_picker: &mut Option<Picker>,
         state: &mut AppState,
+    ) {
+        self.update_with_custom(path, image_picker, state, &HashMap::new());
+    }
+
+    /// Update preview with custom preview support
+    ///
+    /// `custom_previews` maps file extensions to command templates.
+    /// The command template can use `$f` as a placeholder for the file path.
+    pub fn update_with_custom(
+        &mut self,
+        path: Option<&PathBuf>,
+        image_picker: &mut Option<Picker>,
+        state: &mut AppState,
+        custom_previews: &HashMap<String, String>,
     ) {
         // Only reload preview if the path changed
         if path == self.last_path.as_ref() {
@@ -65,6 +82,31 @@ impl PreviewState {
             return;
         };
 
+        // Check for custom preview first (if not a directory)
+        if !path.is_dir() {
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                if let Some(cmd) = custom_previews.get(ext) {
+                    match CustomPreview::execute(cmd, path) {
+                        Ok(preview) => {
+                            self.custom = Some(preview);
+                            self.text = None;
+                            self.image = None;
+                            self.dir_info = None;
+                            self.hex = None;
+                            self.archive = None;
+                            self.pdf = None;
+                            self.diff = None;
+                            return;
+                        }
+                        Err(e) => {
+                            state.set_message(format!("Custom preview failed: {}", e));
+                            // Fall through to default preview
+                        }
+                    }
+                }
+            }
+        }
+
         if path.is_dir() {
             // Load directory info
             if let Ok(info) = DirectoryInfo::from_path(path) {
@@ -75,6 +117,7 @@ impl PreviewState {
                 self.archive = None;
                 self.pdf = None;
                 self.diff = None;
+                self.custom = None;
             }
         } else if is_text_file(path) {
             // Check if file has git changes - if so, show diff instead
@@ -106,6 +149,7 @@ impl PreviewState {
                             self.hex = None;
                             self.archive = None;
                             self.pdf = None;
+                            self.custom = None;
                             return;
                         }
                     }
@@ -122,6 +166,7 @@ impl PreviewState {
                     self.archive = None;
                     self.pdf = None;
                     self.diff = None;
+                    self.custom = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -139,6 +184,7 @@ impl PreviewState {
                 self.archive = None;
                 self.pdf = None;
                 self.diff = None;
+                self.custom = None;
                 self.loading_image_path = Some(path.to_path_buf());
             }
         } else if is_tar_gz_file(path) {
@@ -152,6 +198,7 @@ impl PreviewState {
                     self.hex = None;
                     self.pdf = None;
                     self.diff = None;
+                    self.custom = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -168,6 +215,7 @@ impl PreviewState {
                     self.hex = None;
                     self.pdf = None;
                     self.diff = None;
+                    self.custom = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -187,6 +235,7 @@ impl PreviewState {
                             self.hex = None;
                             self.archive = None;
                             self.diff = None;
+                            self.custom = None;
                         }
                         Err(e) => {
                             state.set_message(format!("Failed: preview - {}", e));
@@ -214,6 +263,7 @@ impl PreviewState {
                     self.archive = None;
                     self.pdf = None;
                     self.diff = None;
+                    self.custom = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -236,6 +286,7 @@ impl PreviewState {
                 self.diff = None;
                 self.archive = None;
                 self.pdf = None;
+                self.custom = None;
             }
             Err(e) => {
                 state.set_message(format!("Failed: preview - {}", e));
@@ -253,6 +304,7 @@ impl PreviewState {
             || self.archive.is_some()
             || self.pdf.is_some()
             || self.diff.is_some()
+            || self.custom.is_some()
     }
 
     /// Poll for completed image load results

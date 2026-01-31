@@ -1,0 +1,89 @@
+# FileView Theme Example
+# Copy this file to ~/.config/fileview/theme.toml
+
+# Color formats:
+# - Named: "blue", "green", "yellow", "red", "cyan", "magenta", "white", "gray"
+# - Hex short: "#fff", "#123"
+# - Hex long: "#ffffff", "#112233"
+# - RGB: "rgb(255, 255, 255)"
+# - 256-color: "color240", "245"
+# - Special: "default" (terminal default), "reset"
+
+[colors]
+# Main colors
+background = "default"
+foreground = "white"
+selection = "blue"
+border = "gray"
+
+[file_colors]
+# File type colors
+directory = "blue"
+executable = "green"
+symlink = "cyan"
+archive = "red"
+image = "magenta"
+media = "magenta"
+
+[git_colors]
+# Git status colors
+modified = "yellow"
+staged = "green"
+untracked = "red"
+conflict = "red"
+ignored = "gray"
+
+# ============================================================
+# Alternative themes (uncomment one to use)
+# ============================================================
+
+# --- Light Theme ---
+# [colors]
+# background = "#ffffff"
+# foreground = "#1a1a1a"
+# selection = "#0066cc"
+# border = "#cccccc"
+#
+# [file_colors]
+# directory = "#0066cc"
+# executable = "#008800"
+# symlink = "#008888"
+#
+# [git_colors]
+# modified = "#cc6600"
+# staged = "#008800"
+# untracked = "#cc0000"
+
+# --- Nord Theme ---
+# [colors]
+# background = "#2e3440"
+# foreground = "#eceff4"
+# selection = "#5e81ac"
+# border = "#4c566a"
+#
+# [file_colors]
+# directory = "#81a1c1"
+# executable = "#a3be8c"
+# symlink = "#88c0d0"
+#
+# [git_colors]
+# modified = "#ebcb8b"
+# staged = "#a3be8c"
+# untracked = "#bf616a"
+
+# --- Dracula Theme ---
+# [colors]
+# background = "#282a36"
+# foreground = "#f8f8f2"
+# selection = "#44475a"
+# border = "#6272a4"
+#
+# [file_colors]
+# directory = "#bd93f9"
+# executable = "#50fa7b"
+# symlink = "#8be9fd"
+#
+# [git_colors]
+# modified = "#ffb86c"
+# staged = "#50fa7b"
+# untracked = "#ff5555"

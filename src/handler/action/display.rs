@@ -7,7 +7,9 @@ use std::path::PathBuf;
 use crate::core::{AppState, ViewMode};
 use crate::handler::key::KeyAction;
 use crate::integrate::{exit_code, PickResult};
-use crate::render::{ArchivePreview, DiffPreview, HexPreview, PdfPreview, Picker, TextPreview};
+use crate::render::{
+    ArchivePreview, CustomPreview, DiffPreview, HexPreview, PdfPreview, Picker, TextPreview,
+};
 use crate::tree::TreeNavigator;
 
 use super::{get_filename_str, reload_tree, ActionContext, ActionResult};
@@ -132,7 +134,7 @@ pub fn handle(
     Ok(())
 }
 
-/// Handle preview scroll actions for text, hex, archive, and diff previews
+/// Handle preview scroll actions for text, hex, archive, diff, and custom previews
 pub fn handle_preview_scroll(
     action: KeyAction,
     state: &mut AppState,
@@ -140,6 +142,7 @@ pub fn handle_preview_scroll(
     hex_preview: &mut Option<HexPreview>,
     archive_preview: &mut Option<ArchivePreview>,
     diff_preview: &mut Option<DiffPreview>,
+    custom_preview: &mut Option<CustomPreview>,
 ) {
     match action {
         KeyAction::PreviewScrollUp => {
@@ -154,6 +157,9 @@ pub fn handle_preview_scroll(
             }
             if let Some(ref mut dp) = diff_preview {
                 dp.scroll = dp.scroll.saturating_sub(1);
+            }
+            if let Some(ref mut cp) = custom_preview {
+                cp.scroll = cp.scroll.saturating_sub(1);
             }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll = scroll.saturating_sub(1);
@@ -176,6 +182,10 @@ pub fn handle_preview_scroll(
                 let max_scroll = dp.line_count().saturating_sub(1);
                 dp.scroll = (dp.scroll + 1).min(max_scroll);
             }
+            if let Some(ref mut cp) = custom_preview {
+                let max_scroll = cp.line_count().saturating_sub(1);
+                cp.scroll = (cp.scroll + 1).min(max_scroll);
+            }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll += 1;
             }
@@ -192,6 +202,9 @@ pub fn handle_preview_scroll(
             }
             if let Some(ref mut dp) = diff_preview {
                 dp.scroll = dp.scroll.saturating_sub(20);
+            }
+            if let Some(ref mut cp) = custom_preview {
+                cp.scroll = cp.scroll.saturating_sub(20);
             }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll = scroll.saturating_sub(20);
@@ -214,6 +227,10 @@ pub fn handle_preview_scroll(
                 let max_scroll = dp.line_count().saturating_sub(1);
                 dp.scroll = (dp.scroll + 20).min(max_scroll);
             }
+            if let Some(ref mut cp) = custom_preview {
+                let max_scroll = cp.line_count().saturating_sub(1);
+                cp.scroll = (cp.scroll + 20).min(max_scroll);
+            }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll += 20;
             }
@@ -230,6 +247,9 @@ pub fn handle_preview_scroll(
             }
             if let Some(ref mut dp) = diff_preview {
                 dp.scroll = 0;
+            }
+            if let Some(ref mut cp) = custom_preview {
+                cp.scroll = 0;
             }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll = 0;
@@ -248,6 +268,9 @@ pub fn handle_preview_scroll(
             if let Some(ref mut dp) = diff_preview {
                 dp.scroll = dp.line_count().saturating_sub(1);
             }
+            if let Some(ref mut cp) = custom_preview {
+                cp.scroll = cp.line_count().saturating_sub(1);
+            }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 // Set to max for ViewMode as well
                 if let Some(ref tp) = text_preview {
@@ -258,6 +281,8 @@ pub fn handle_preview_scroll(
                     *scroll = ap.line_count().saturating_sub(1);
                 } else if let Some(ref dp) = diff_preview {
                     *scroll = dp.line_count().saturating_sub(1);
+                } else if let Some(ref cp) = custom_preview {
+                    *scroll = cp.line_count().saturating_sub(1);
                 }
             }
         }

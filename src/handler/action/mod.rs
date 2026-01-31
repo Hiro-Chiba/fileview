@@ -5,6 +5,7 @@
 
 mod bookmark;
 mod bulk_rename;
+pub mod command;
 mod display;
 mod file_ops;
 mod filter;
@@ -16,15 +17,18 @@ mod selection;
 mod tree_ops;
 
 pub use bulk_rename::update_bulk_rename_buffer;
-
+pub use command::{execute_command, CommandResult};
 pub use filter::matches_filter;
 
 use std::path::{Path, PathBuf};
 
+use crate::app::CommandsConfig;
 use crate::core::AppState;
 use crate::handler::key::KeyAction;
 use crate::integrate::{Callback, OutputFormat};
-use crate::render::{ArchivePreview, DiffPreview, HexPreview, PdfPreview, Picker, TextPreview};
+use crate::render::{
+    ArchivePreview, CustomPreview, DiffPreview, HexPreview, PdfPreview, Picker, TextPreview,
+};
 use crate::tree::TreeNavigator;
 
 /// Result of action execution
@@ -52,6 +56,8 @@ pub struct ActionContext {
     pub callback: Option<Callback>,
     /// Output format for pick mode
     pub output_format: OutputFormat,
+    /// Custom commands configuration
+    pub commands: CommandsConfig,
 }
 
 /// Get the target directory for file operations.
@@ -98,6 +104,7 @@ pub fn handle_action(
     archive_preview: &mut Option<ArchivePreview>,
     pdf_preview: &mut Option<PdfPreview>,
     diff_preview: &mut Option<DiffPreview>,
+    custom_preview: &mut Option<CustomPreview>,
     image_picker: &mut Option<Picker>,
 ) -> anyhow::Result<ActionResult> {
     // Disable CRUD operations in stdin mode
@@ -205,6 +212,7 @@ pub fn handle_action(
                 hex_preview,
                 archive_preview,
                 diff_preview,
+                custom_preview,
             );
             Ok(ActionResult::Continue)
         }
@@ -260,6 +268,34 @@ pub fn handle_action(
 
         // Tab operations (handled in event loop)
         KeyAction::NewTab | KeyAction::CloseTab | KeyAction::NextTab | KeyAction::PrevTab => {
+            Ok(ActionResult::Continue)
+        }
+
+        // Custom command execution
+        KeyAction::RunCommand { name } => {
+            let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();
+            match command::execute_command(
+                &name,
+                &context.commands,
+                focused_path.as_ref().map(|p| p.as_path()),
+                &selected,
+            ) {
+                CommandResult::Success(output) => {
+                    if output.is_empty() {
+                        state.set_message(format!("Command '{}' executed", name));
+                    } else {
+                        // Show first line of output
+                        let first_line = output.lines().next().unwrap_or("Done");
+                        state.set_message(first_line.to_string());
+                    }
+                }
+                CommandResult::Error(err) => {
+                    state.set_message(format!("Error: {}", err));
+                }
+                CommandResult::NotFound => {
+                    state.set_message(format!("Command '{}' not found", name));
+                }
+            }
             Ok(ActionResult::Continue)
         }
     }
