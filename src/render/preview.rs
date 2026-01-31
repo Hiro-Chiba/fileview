@@ -419,6 +419,17 @@ pub struct ArchiveEntry {
     pub modified: Option<String>,
 }
 
+impl ArchiveEntry {
+    /// Sort archive entries: directories first, then alphabetically by name
+    pub fn sort_entries(entries: &mut [ArchiveEntry]) {
+        entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.cmp(&b.name),
+        });
+    }
+}
+
 /// Archive preview content
 pub struct ArchivePreview {
     /// Archive entries
@@ -466,11 +477,7 @@ impl ArchivePreview {
         }
 
         // Sort entries: directories first, then files, both alphabetically
-        entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.cmp(&b.name),
-        });
+        ArchiveEntry::sort_entries(&mut entries);
 
         Ok(Self {
             entries,
@@ -528,11 +535,7 @@ impl ArchivePreview {
         }
 
         // Sort entries: directories first, then files, both alphabetically
-        entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.cmp(&b.name),
-        });
+        ArchiveEntry::sort_entries(&mut entries);
 
         Ok(Self {
             entries,
