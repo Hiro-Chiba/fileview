@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-01-31
+
+### Added
+
+- **Configuration file system**: Full customization via `~/.config/fileview/config.toml`
+  - General settings: `show_hidden`, `enable_icons`, `mouse_enabled`
+  - Preview settings: `hex_max_bytes`, `max_archive_entries`, `image_protocol`
+  - Performance settings: `git_poll_interval_secs`
+  - UI settings: `show_size`, `show_permissions`, `date_format`
+- **Keymap customization**: Custom key bindings via `~/.config/fileview/keymap.toml`
+  - Mode-based keybindings (browse, preview, search, confirm, fuzzy, help, filter)
+  - Support for modifier keys (Ctrl, Alt, Shift)
+  - Dynamic dispatch with `KeyBindingRegistry`
+- **Theme system**: Color customization via `~/.config/fileview/theme.toml`
+  - Base colors: background, foreground, selection, border, status bar
+  - File type colors: directory, executable, symlink, archive, image, etc.
+  - Git status colors: modified, staged, untracked, deleted, renamed, conflict
+  - Color formats: named colors, hex (#rgb, #rrggbb), rgb(), 256-color index
+- **CLI options**: Added `--hidden` / `-a` and `--no-hidden` flags
+
+### New Files
+
+- `src/app/config_file.rs`: Configuration file loading and parsing (~130 lines)
+- `src/handler/keymap.rs`: Keymap configuration and registry (~450 lines)
+- `src/render/theme.rs`: Theme configuration and color management (~470 lines)
+- `tests/e2e/config_cli.rs`: E2E tests for config CLI options (16 tests)
+
+### Changed
+
+- CLI arguments take precedence over config file settings
+- Tree and status bar now use theme colors instead of hardcoded values
+- Total test count: 433 → 804 tests (+371 tests including 44 new integration tests)
+
+### Dependencies
+
+- Added `toml = "0.8"` for TOML parsing
+- Added `dirs = "5.0"` for config directory detection
+- Added `serde = { version = "1.0", features = ["derive"] }` for deserialization
+
 ## [1.15.1] - 2026-01-31
 
 ### Added

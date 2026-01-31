@@ -2,12 +2,13 @@
 
 use ratatui::{
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
 
+use super::theme::theme;
 use crate::core::{AppState, FocusTarget};
 use crate::git::FileStatus;
 use crate::render::icons;
@@ -34,10 +35,11 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], 
     );
 
     // Highlight border when tree has focus (and preview is visible)
+    let t = theme();
     let border_style = if state.preview_visible && state.focus_target == FocusTarget::Tree {
-        Style::default().fg(Color::Cyan)
+        Style::default().fg(t.border_active)
     } else {
-        Style::default()
+        Style::default().fg(t.border)
     };
 
     let list = List::new(items).block(
@@ -52,6 +54,7 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], 
 
 /// Render a single tree entry as a ListItem
 fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'static> {
+    let t = theme();
     let indent = "  ".repeat(entry.depth);
 
     let icon = if state.icons_enabled {
@@ -89,17 +92,17 @@ fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'
 
     let mut style = Style::default();
 
-    // Apply git status color first
+    // Apply git status color first (using theme colors)
     style = match git_status {
-        FileStatus::Modified => style.fg(Color::Yellow),
-        FileStatus::Added | FileStatus::Untracked => style.fg(Color::Green),
-        FileStatus::Deleted => style.fg(Color::Red),
-        FileStatus::Renamed => style.fg(Color::Cyan),
-        FileStatus::Ignored => style.fg(Color::DarkGray),
-        FileStatus::Conflict => style.fg(Color::Magenta),
+        FileStatus::Modified => style.fg(t.git_modified),
+        FileStatus::Added | FileStatus::Untracked => style.fg(t.git_untracked),
+        FileStatus::Deleted => style.fg(t.git_deleted),
+        FileStatus::Renamed => style.fg(t.git_renamed),
+        FileStatus::Ignored => style.fg(t.git_ignored),
+        FileStatus::Conflict => style.fg(t.git_conflict),
         FileStatus::Clean => {
             if entry.is_dir {
-                style.fg(Color::Blue)
+                style.fg(t.directory)
             } else {
                 style
             }
@@ -108,25 +111,25 @@ fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'
 
     // Override with cut style if applicable
     if is_cut {
-        style = style.fg(Color::DarkGray);
+        style = style.fg(t.git_ignored);
     }
 
     // Apply focus style
     if is_focused {
-        style = style.bg(Color::DarkGray).add_modifier(Modifier::BOLD);
+        style = style.bg(t.selection).add_modifier(Modifier::BOLD);
     }
 
     // Stage indicator: + for staged, ~ for modified (unstaged)
     let stage_indicator = if is_staged {
-        Span::styled("+", Style::default().fg(Color::Green))
+        Span::styled("+", Style::default().fg(t.git_staged))
     } else if git_status == FileStatus::Modified {
-        Span::styled("~", Style::default().fg(Color::Yellow))
+        Span::styled("~", Style::default().fg(t.git_modified))
     } else {
         Span::raw(" ")
     };
 
     let line = Line::from(vec![
-        Span::styled(mark_indicator, Style::default().fg(Color::Yellow)),
+        Span::styled(mark_indicator, Style::default().fg(t.mark)),
         stage_indicator,
         Span::styled(format!("{}{} {}", indent, icon, entry.name), style),
     ]);
