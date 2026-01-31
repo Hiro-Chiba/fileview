@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.1] - 2026-01-31
+
+### Added
+
+- **Comprehensive test suite**: Added 93 new tests (80 unit tests + 13 e2e tests)
+  - `src/render/bulk_rename.rs`: Layout calculation tests for `centered_rect()`
+  - `src/handler/action/bulk_rename.rs`: Pattern matching and buffer update tests
+  - `src/core/tab.rs`: Tab management and navigation tests
+  - `src/git/diff.rs`: Diff parsing tests for multiple hunks, edge cases
+  - `src/git/operations.rs`: Real git repository stage/unstage tests
+  - `src/handler/action/git_ops.rs`: Action handler tests
+  - `tests/e2e/git_ops.rs`: Git repository e2e tests
+  - `tests/e2e/bulk_rename.rs`: File operations e2e tests
+
+### Changed
+
+- Total test count: 340 → 433 tests
+
 ## [1.15.0] - 2026-01-31
 
 ### Added

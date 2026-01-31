@@ -246,4 +246,140 @@ index 1234567..abcdefg 100644
         assert!(matches!(file_diff.lines[2], DiffLine::Removed(_)));
         assert!(matches!(file_diff.lines[3], DiffLine::Added(_)));
     }
+
+    #[test]
+    fn test_parse_diff_multiple_hunks() {
+        let diff = r#"diff --git a/test.txt b/test.txt
+--- a/test.txt
++++ b/test.txt
+@@ -1,3 +1,3 @@
+ line 1
+-old 1
++new 1
+ line 3
+@@ -10,3 +10,3 @@
+ line 10
+-old 2
++new 2
+ line 12
+"#;
+        let file_diff = parse_diff(diff, PathBuf::from("test.txt"));
+        assert_eq!(file_diff.hunks.len(), 2);
+        assert_eq!(file_diff.additions, 2);
+        assert_eq!(file_diff.deletions, 2);
+    }
+
+    #[test]
+    fn test_parse_diff_only_additions() {
+        let diff = r#"@@ -1,2 +1,4 @@
+ existing
++new line 1
++new line 2
+ more existing
+"#;
+        let file_diff = parse_diff(diff, PathBuf::from("test.txt"));
+        assert_eq!(file_diff.additions, 2);
+        assert_eq!(file_diff.deletions, 0);
+    }
+
+    #[test]
+    fn test_parse_diff_only_deletions() {
+        let diff = r#"@@ -1,4 +1,2 @@
+ existing
+-removed 1
+-removed 2
+ more existing
+"#;
+        let file_diff = parse_diff(diff, PathBuf::from("test.txt"));
+        assert_eq!(file_diff.additions, 0);
+        assert_eq!(file_diff.deletions, 2);
+    }
+
+    #[test]
+    fn test_parse_diff_empty() {
+        let file_diff = parse_diff("", PathBuf::from("test.txt"));
+        assert_eq!(file_diff.lines.len(), 0);
+        assert_eq!(file_diff.hunks.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_hunk_header_no_context() {
+        let (old_start, old_count, new_start, new_count) = parse_hunk_header("@@ -1,5 +1,7 @@");
+        assert_eq!(old_start, 1);
+        assert_eq!(old_count, 5);
+        assert_eq!(new_start, 1);
+        assert_eq!(new_count, 7);
+    }
+
+    #[test]
+    fn test_parse_hunk_header_malformed() {
+        // Too few parts
+        let (old_start, old_count, new_start, new_count) = parse_hunk_header("@@");
+        assert_eq!(old_start, 1);
+        assert_eq!(old_count, 0);
+        assert_eq!(new_start, 1);
+        assert_eq!(new_count, 0);
+    }
+
+    #[test]
+    fn test_parse_range_zero_count() {
+        assert_eq!(parse_range("5,0"), (5, 0));
+    }
+
+    #[test]
+    fn test_diff_hunk_structure() {
+        let diff = r#"@@ -5,3 +5,4 @@ function foo()
+ context before
+-deleted
++added
++another added
+ context after
+"#;
+        let file_diff = parse_diff(diff, PathBuf::from("test.txt"));
+        assert_eq!(file_diff.hunks.len(), 1);
+
+        let hunk = &file_diff.hunks[0];
+        assert_eq!(hunk.old_start, 5);
+        assert_eq!(hunk.old_count, 3);
+        assert_eq!(hunk.new_start, 5);
+        assert_eq!(hunk.new_count, 4);
+    }
+
+    #[test]
+    fn test_diff_line_content() {
+        let diff = r#"@@ -1,1 +1,1 @@
+-hello world
++goodbye world
+"#;
+        let file_diff = parse_diff(diff, PathBuf::from("test.txt"));
+
+        // Check the content of lines
+        if let DiffLine::Removed(content) = &file_diff.lines[1] {
+            assert_eq!(content, "hello world");
+        } else {
+            panic!("Expected Removed line");
+        }
+
+        if let DiffLine::Added(content) = &file_diff.lines[2] {
+            assert_eq!(content, "goodbye world");
+        } else {
+            panic!("Expected Added line");
+        }
+    }
+
+    #[test]
+    fn test_diff_context_line() {
+        let diff = r#"@@ -1,3 +1,3 @@
+ unchanged line
+-old
++new
+"#;
+        let file_diff = parse_diff(diff, PathBuf::from("test.txt"));
+
+        if let DiffLine::Context(content) = &file_diff.lines[1] {
+            assert_eq!(content, "unchanged line");
+        } else {
+            panic!("Expected Context line");
+        }
+    }
 }

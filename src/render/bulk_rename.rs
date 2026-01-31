@@ -135,3 +135,73 @@ fn centered_rect(percent_x: u16, height: u16, area: Rect) -> Rect {
 
     Rect::new(area.x + x, area.y + y, popup_width, height.min(area.height))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_centered_rect_basic() {
+        let area = Rect::new(0, 0, 100, 50);
+        let result = centered_rect(60, 12, area);
+
+        // 60% of 100 = 60, centered means x = 20
+        assert_eq!(result.width, 60);
+        assert_eq!(result.height, 12);
+        assert_eq!(result.x, 20);
+        assert_eq!(result.y, 19); // (50-12)/2 = 19
+    }
+
+    #[test]
+    fn test_centered_rect_minimum_width() {
+        let area = Rect::new(0, 0, 50, 30);
+        let result = centered_rect(10, 10, area);
+
+        // 10% of 50 = 5, but min is 40
+        assert_eq!(result.width, 40);
+        assert_eq!(result.x, 5); // (50-40)/2
+    }
+
+    #[test]
+    fn test_centered_rect_max_width() {
+        let area = Rect::new(0, 0, 30, 20);
+        let result = centered_rect(100, 10, area);
+
+        // 100% of 30 = 30, min 40 but max is area.width (30)
+        assert_eq!(result.width, 30);
+        assert_eq!(result.x, 0);
+    }
+
+    #[test]
+    fn test_centered_rect_height_exceeds_area() {
+        let area = Rect::new(0, 0, 100, 10);
+        let result = centered_rect(60, 20, area);
+
+        // Height should be capped at area.height
+        assert_eq!(result.height, 10);
+        assert_eq!(result.y, 0);
+    }
+
+    #[test]
+    fn test_centered_rect_with_offset() {
+        let area = Rect::new(10, 5, 100, 50);
+        let result = centered_rect(60, 12, area);
+
+        // Should account for area's x and y offset
+        assert_eq!(result.x, 30); // 10 + 20
+        assert_eq!(result.y, 24); // 5 + 19
+    }
+
+    #[test]
+    fn test_centered_rect_small_area() {
+        let area = Rect::new(0, 0, 20, 5);
+        let result = centered_rect(50, 10, area);
+
+        // Width: 50% of 20 = 10, min 40, max 20 -> 20
+        // Height: 10, max 5 -> 5
+        assert_eq!(result.width, 20);
+        assert_eq!(result.height, 5);
+        assert_eq!(result.x, 0);
+        assert_eq!(result.y, 0);
+    }
+}

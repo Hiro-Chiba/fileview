@@ -157,6 +157,18 @@ impl GitStatus {
 
         false
     }
+
+    /// Create a GitStatus with a specific repo root (for testing)
+    #[cfg(test)]
+    pub fn default_with_root(repo_root: PathBuf) -> Self {
+        Self {
+            repo_root,
+            statuses: std::collections::HashMap::new(),
+            dir_statuses: std::collections::HashMap::new(),
+            branch: None,
+            staged_files: std::collections::HashSet::new(),
+        }
+    }
 }
 
 /// Find the root of the git repository containing the given path

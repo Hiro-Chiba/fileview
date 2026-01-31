@@ -258,6 +258,7 @@ pub fn update_bulk_rename_buffer(key: crossterm::event::KeyEvent, state: &mut Ap
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     #[test]
     fn test_apply_pattern_suffix_wildcard() {
@@ -293,5 +294,226 @@ mod tests {
             apply_pattern("old_old_file.txt", "old", "new"),
             Some("new_new_file.txt".to_string())
         );
+    }
+
+    #[test]
+    fn test_apply_pattern_extension_only() {
+        // Change extension only
+        assert_eq!(
+            apply_pattern("document.doc", "*.doc", "*.docx"),
+            Some("document.docx".to_string())
+        );
+    }
+
+    #[test]
+    fn test_apply_pattern_remove_prefix() {
+        // Remove prefix entirely
+        assert_eq!(
+            apply_pattern("backup_file.txt", "backup_*", "*"),
+            Some("file.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_apply_pattern_add_prefix() {
+        // Add prefix - "*" matches empty prefix, so "file.txt" -> "backup_file.txt"
+        assert_eq!(
+            apply_pattern("file.txt", "*", "backup_*"),
+            Some("backup_file.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_apply_pattern_case_sensitive() {
+        // Should be case sensitive
+        assert_eq!(apply_pattern("TEST.txt", "*.TXT", "*.md"), None);
+        assert_eq!(
+            apply_pattern("TEST.TXT", "*.TXT", "*.md"),
+            Some("TEST.md".to_string())
+        );
+    }
+
+    #[test]
+    fn test_apply_pattern_empty_to_pattern() {
+        // Replace with empty string
+        assert_eq!(
+            apply_pattern("file_backup.txt", "_backup", ""),
+            Some("file.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_apply_pattern_no_match() {
+        assert_eq!(apply_pattern("file.txt", "*.rs", "*.md"), None);
+        assert_eq!(apply_pattern("file.txt", "old_*", "new_*"), None);
+        assert_eq!(apply_pattern("file.txt", "xyz", "abc"), None);
+    }
+
+    #[test]
+    fn test_update_bulk_rename_buffer_char_input() {
+        let mut state = AppState::new(PathBuf::from("/tmp"));
+        state.mode = ViewMode::BulkRename {
+            from_pattern: String::new(),
+            to_pattern: String::new(),
+            selected_field: 0,
+            cursor: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
+        let result = update_bulk_rename_buffer(key, &mut state);
+
+        assert!(result);
+        if let ViewMode::BulkRename {
+            from_pattern,
+            cursor,
+            ..
+        } = &state.mode
+        {
+            assert_eq!(from_pattern, "a");
+            assert_eq!(*cursor, 1);
+        } else {
+            panic!("Expected BulkRename mode");
+        }
+    }
+
+    #[test]
+    fn test_update_bulk_rename_buffer_backspace() {
+        let mut state = AppState::new(PathBuf::from("/tmp"));
+        state.mode = ViewMode::BulkRename {
+            from_pattern: "abc".to_string(),
+            to_pattern: String::new(),
+            selected_field: 0,
+            cursor: 3,
+        };
+
+        let key = KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE);
+        let result = update_bulk_rename_buffer(key, &mut state);
+
+        assert!(result);
+        if let ViewMode::BulkRename {
+            from_pattern,
+            cursor,
+            ..
+        } = &state.mode
+        {
+            assert_eq!(from_pattern, "ab");
+            assert_eq!(*cursor, 2);
+        } else {
+            panic!("Expected BulkRename mode");
+        }
+    }
+
+    #[test]
+    fn test_update_bulk_rename_buffer_cursor_movement() {
+        let mut state = AppState::new(PathBuf::from("/tmp"));
+        state.mode = ViewMode::BulkRename {
+            from_pattern: "test".to_string(),
+            to_pattern: String::new(),
+            selected_field: 0,
+            cursor: 2,
+        };
+
+        // Move left
+        let key = KeyEvent::new(KeyCode::Left, KeyModifiers::NONE);
+        update_bulk_rename_buffer(key, &mut state);
+
+        if let ViewMode::BulkRename { cursor, .. } = &state.mode {
+            assert_eq!(*cursor, 1);
+        }
+
+        // Move right
+        let key = KeyEvent::new(KeyCode::Right, KeyModifiers::NONE);
+        update_bulk_rename_buffer(key, &mut state);
+
+        if let ViewMode::BulkRename { cursor, .. } = &state.mode {
+            assert_eq!(*cursor, 2);
+        }
+    }
+
+    #[test]
+    fn test_update_bulk_rename_buffer_home_end() {
+        let mut state = AppState::new(PathBuf::from("/tmp"));
+        state.mode = ViewMode::BulkRename {
+            from_pattern: "test".to_string(),
+            to_pattern: String::new(),
+            selected_field: 0,
+            cursor: 2,
+        };
+
+        // Home
+        let key = KeyEvent::new(KeyCode::Home, KeyModifiers::NONE);
+        update_bulk_rename_buffer(key, &mut state);
+
+        if let ViewMode::BulkRename { cursor, .. } = &state.mode {
+            assert_eq!(*cursor, 0);
+        }
+
+        // End
+        let key = KeyEvent::new(KeyCode::End, KeyModifiers::NONE);
+        update_bulk_rename_buffer(key, &mut state);
+
+        if let ViewMode::BulkRename { cursor, .. } = &state.mode {
+            assert_eq!(*cursor, 4);
+        }
+    }
+
+    #[test]
+    fn test_update_bulk_rename_buffer_delete() {
+        let mut state = AppState::new(PathBuf::from("/tmp"));
+        state.mode = ViewMode::BulkRename {
+            from_pattern: "test".to_string(),
+            to_pattern: String::new(),
+            selected_field: 0,
+            cursor: 1,
+        };
+
+        let key = KeyEvent::new(KeyCode::Delete, KeyModifiers::NONE);
+        let result = update_bulk_rename_buffer(key, &mut state);
+
+        assert!(result);
+        if let ViewMode::BulkRename {
+            from_pattern,
+            cursor,
+            ..
+        } = &state.mode
+        {
+            assert_eq!(from_pattern, "tst");
+            assert_eq!(*cursor, 1);
+        }
+    }
+
+    #[test]
+    fn test_update_bulk_rename_buffer_second_field() {
+        let mut state = AppState::new(PathBuf::from("/tmp"));
+        state.mode = ViewMode::BulkRename {
+            from_pattern: "from".to_string(),
+            to_pattern: String::new(),
+            selected_field: 1, // Second field (to_pattern)
+            cursor: 0,
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE);
+        update_bulk_rename_buffer(key, &mut state);
+
+        if let ViewMode::BulkRename {
+            from_pattern,
+            to_pattern,
+            ..
+        } = &state.mode
+        {
+            assert_eq!(from_pattern, "from"); // Unchanged
+            assert_eq!(to_pattern, "x"); // Changed
+        }
+    }
+
+    #[test]
+    fn test_update_bulk_rename_buffer_wrong_mode() {
+        let mut state = AppState::new(PathBuf::from("/tmp"));
+        state.mode = ViewMode::Browse; // Not in BulkRename mode
+
+        let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
+        let result = update_bulk_rename_buffer(key, &mut state);
+
+        assert!(!result);
     }
 }
