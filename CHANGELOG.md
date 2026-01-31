@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2026-01-31
+
+### Documentation
+- Added market analysis document (`docs/MARKET_ANALYSIS.md`)
+- Updated ROADMAP with implemented features (v1.6.0-v1.8.0)
+
 ## [1.8.0] - 2026-01-31
 
 ### Added
