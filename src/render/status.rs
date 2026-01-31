@@ -324,18 +324,18 @@ fn draw_delete_confirm_popup(frame: &mut Frame, paths: &[std::path::PathBuf]) {
 
     if has_directories {
         content.push(Line::from(vec![Span::styled(
-            "!! WARNING: FOLDER DELETION !!",
+            "!! WARNING: FOLDER MOVE !!",
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         )]));
         content.push(Line::from(vec![Span::styled(
-            "Folders and all contents will be permanently deleted",
+            "Folders and all contents will be moved to trash",
             Style::default().fg(Color::Yellow),
         )]));
         content.push(Line::from(""));
     }
 
     content.push(Line::from(vec![Span::styled(
-        format!("Delete {} item(s):", paths.len()),
+        format!("Move {} item(s) to trash:", paths.len()),
         Style::default().add_modifier(Modifier::BOLD),
     )]));
 
@@ -378,9 +378,9 @@ fn draw_delete_confirm_popup(frame: &mut Frame, paths: &[std::path::PathBuf]) {
     ]));
 
     let title = if has_directories {
-        " !! DELETE FOLDERS !! "
+        " !! MOVE FOLDERS TO TRASH !! "
     } else {
-        " Confirm Delete "
+        " Move to Trash "
     };
 
     let title_style = if has_directories {
