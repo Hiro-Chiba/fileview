@@ -139,6 +139,38 @@ pub fn is_staged(repo_root: &Path, file: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::process::Command as StdCommand;
+    use tempfile::TempDir;
+
+    /// Initialize a git repository in the given directory
+    fn init_git_repo(dir: &TempDir) -> bool {
+        StdCommand::new("git")
+            .args(["init"])
+            .current_dir(dir.path())
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
+    /// Configure git user for commits
+    fn configure_git_user(dir: &TempDir) -> bool {
+        let config_name = StdCommand::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(dir.path())
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+
+        let config_email = StdCommand::new("git")
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(dir.path())
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+
+        config_name && config_email
+    }
 
     #[test]
     fn test_find_git_executable() {
@@ -175,5 +207,110 @@ mod tests {
             Path::new("/nonexistent/file.txt"),
         );
         assert!(!result);
+    }
+
+    #[test]
+    fn test_is_staged_not_in_repo() {
+        let temp = TempDir::new().unwrap();
+        let file = temp.path().join("test.txt");
+        fs::write(&file, "content").unwrap();
+
+        // Not a git repo, should return false
+        assert!(!is_staged(temp.path(), &file));
+    }
+
+    #[test]
+    fn test_stage_in_real_repo() {
+        let temp = TempDir::new().unwrap();
+
+        if find_git_executable().is_none() {
+            return; // Skip if git not available
+        }
+
+        if !init_git_repo(&temp) || !configure_git_user(&temp) {
+            return; // Skip if git init fails
+        }
+
+        // Create a file
+        let file = temp.path().join("test.txt");
+        fs::write(&file, "content").unwrap();
+
+        // Stage the file
+        let result = stage(temp.path(), &file);
+        assert!(result.is_ok());
+
+        // Verify it's staged
+        assert!(is_staged(temp.path(), &file));
+    }
+
+    #[test]
+    fn test_unstage_in_real_repo() {
+        let temp = TempDir::new().unwrap();
+
+        if find_git_executable().is_none() {
+            return;
+        }
+
+        if !init_git_repo(&temp) || !configure_git_user(&temp) {
+            return;
+        }
+
+        // Create and stage a file
+        let file = temp.path().join("test.txt");
+        fs::write(&file, "content").unwrap();
+
+        stage(temp.path(), &file).unwrap();
+        assert!(is_staged(temp.path(), &file));
+
+        // Unstage the file
+        let result = unstage(temp.path(), &file);
+        assert!(result.is_ok());
+
+        // Verify it's no longer staged
+        assert!(!is_staged(temp.path(), &file));
+    }
+
+    #[test]
+    fn test_stage_relative_path() {
+        let temp = TempDir::new().unwrap();
+
+        if find_git_executable().is_none() {
+            return;
+        }
+
+        if !init_git_repo(&temp) || !configure_git_user(&temp) {
+            return;
+        }
+
+        // Create a file in subdirectory
+        let subdir = temp.path().join("subdir");
+        fs::create_dir(&subdir).unwrap();
+        let file = subdir.join("test.txt");
+        fs::write(&file, "content").unwrap();
+
+        // Stage should work with absolute path
+        let result = stage(temp.path(), &file);
+        assert!(result.is_ok());
+        assert!(is_staged(temp.path(), &file));
+    }
+
+    #[test]
+    fn test_is_staged_untracked_file() {
+        let temp = TempDir::new().unwrap();
+
+        if find_git_executable().is_none() {
+            return;
+        }
+
+        if !init_git_repo(&temp) {
+            return;
+        }
+
+        // Create but don't stage a file
+        let file = temp.path().join("untracked.txt");
+        fs::write(&file, "content").unwrap();
+
+        // Should not be staged
+        assert!(!is_staged(temp.path(), &file));
     }
 }
