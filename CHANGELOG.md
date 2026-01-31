@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.3] - 2026-01-31
+
+### Security
+
+- **Archive DoS prevention**: Added 4KB limit for archive entry names to prevent memory exhaustion from malicious archives
+
+### Changed
+
+- **Code refactoring**: Extracted `get_border_style()` helper to eliminate 6 duplicated border styling blocks
+- **Code refactoring**: Added `truncate_entry_name()` helper for consistent entry name handling
+
 ## [1.14.2] - 2026-01-31
 
 ### Fixed
