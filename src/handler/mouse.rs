@@ -271,6 +271,10 @@ pub fn handle_mouse_event(
 mod tests {
     use super::*;
 
+    // ========================================
+    // ClickDetector tests
+    // ========================================
+
     #[test]
     fn click_detector_single() {
         let mut d = ClickDetector::new();
@@ -290,6 +294,36 @@ mod tests {
         assert!(!d.click(5));
         assert!(!d.click(6));
     }
+
+    #[test]
+    fn click_detector_resets_after_double_click() {
+        let mut d = ClickDetector::new();
+        assert!(!d.click(5)); // First click
+        assert!(d.click(5)); // Double click
+        assert!(!d.click(5)); // Should be single click again (reset)
+    }
+
+    #[test]
+    fn click_detector_default_creates_new() {
+        let d1 = ClickDetector::default();
+        let d2 = ClickDetector::new();
+        // Both should have no last click recorded
+        assert!(d1.last_click.is_none());
+        assert!(d2.last_click.is_none());
+    }
+
+    #[test]
+    fn click_detector_tracks_row() {
+        let mut d = ClickDetector::new();
+        d.click(10);
+        assert!(d.last_click.is_some());
+        let (_, row) = d.last_click.unwrap();
+        assert_eq!(row, 10);
+    }
+
+    // ========================================
+    // PathBuffer tests
+    // ========================================
 
     #[test]
     fn path_buffer_empty() {
@@ -315,6 +349,73 @@ mod tests {
     }
 
     #[test]
+    fn path_buffer_default_creates_new() {
+        let b1 = PathBuffer::default();
+        let b2 = PathBuffer::new();
+        assert!(b1.is_empty());
+        assert!(b2.is_empty());
+    }
+
+    #[test]
+    fn path_buffer_clear() {
+        let mut buf = PathBuffer::new();
+        buf.push('/');
+        buf.push('t');
+        assert!(!buf.is_empty());
+        buf.clear();
+        assert!(buf.is_empty());
+        assert_eq!(buf.content(), "");
+    }
+
+    #[test]
+    fn path_buffer_take_raw() {
+        let mut buf = PathBuffer::new();
+        buf.push('/');
+        buf.push('t');
+        buf.push('m');
+        buf.push('p');
+        let content = buf.take_raw();
+        assert_eq!(content, "/tmp");
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn path_buffer_take_paths_with_valid_path() {
+        let mut buf = PathBuffer::new();
+        let cwd = std::env::current_dir().unwrap();
+        for c in cwd.display().to_string().chars() {
+            buf.push(c);
+        }
+        let paths = buf.take_paths();
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths[0], cwd);
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn path_buffer_take_paths_with_invalid_path() {
+        let mut buf = PathBuffer::new();
+        for c in "/nonexistent/path/xyz".chars() {
+            buf.push(c);
+        }
+        let paths = buf.take_paths();
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn path_buffer_content_returns_current_buffer() {
+        let mut buf = PathBuffer::new();
+        buf.push('a');
+        buf.push('b');
+        buf.push('c');
+        assert_eq!(buf.content(), "abc");
+    }
+
+    // ========================================
+    // normalize_shell_path tests
+    // ========================================
+
+    #[test]
     fn normalize_quoted_path() {
         assert_eq!(normalize_shell_path("\"hello\""), "hello");
         assert_eq!(normalize_shell_path("'hello'"), "hello");
@@ -329,6 +430,39 @@ mod tests {
     fn normalize_url_encoded() {
         assert_eq!(normalize_shell_path("hello%20world"), "hello world");
     }
+
+    #[test]
+    fn normalize_empty_string() {
+        assert_eq!(normalize_shell_path(""), "");
+        assert_eq!(normalize_shell_path("  "), "");
+    }
+
+    #[test]
+    fn normalize_mismatched_quotes_unchanged() {
+        // Mismatched quotes should not be stripped
+        assert_eq!(normalize_shell_path("\"hello'"), "\"hello'");
+    }
+
+    #[test]
+    fn normalize_escaped_special_chars() {
+        assert_eq!(normalize_shell_path("a\\&b"), "a&b");
+        assert_eq!(normalize_shell_path("a\\;b"), "a;b");
+        assert_eq!(normalize_shell_path("a\\$b"), "a$b");
+    }
+
+    #[test]
+    fn normalize_url_encoded_hash() {
+        assert_eq!(normalize_shell_path("file%23name"), "file#name");
+    }
+
+    #[test]
+    fn normalize_url_encoded_brackets() {
+        assert_eq!(normalize_shell_path("file%5Bname%5D"), "file[name]");
+    }
+
+    // ========================================
+    // parse_paths tests
+    // ========================================
 
     #[test]
     fn parse_existing_path() {
@@ -358,5 +492,212 @@ mod tests {
         let input = format!("file://{}", cwd.display());
         let paths = parse_paths(&input);
         assert_eq!(paths.len(), 1);
+    }
+
+    #[test]
+    fn parse_empty_string() {
+        let paths = parse_paths("");
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn parse_whitespace_only() {
+        let paths = parse_paths("   \n  \n  ");
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn parse_mixed_valid_invalid_paths() {
+        let cwd = std::env::current_dir().unwrap();
+        let input = format!("{}\n/nonexistent/xyz", cwd.display());
+        let paths = parse_paths(&input);
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths[0], cwd);
+    }
+
+    // ========================================
+    // handle_mouse_event tests
+    // ========================================
+
+    #[test]
+    fn handle_mouse_event_click_in_tree_area() {
+        let mut detector = ClickDetector::new();
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 10,
+            row: 5, // tree_area_top = 2, so row > 2
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        let action = handle_mouse_event(event, &mut detector, 2);
+        match action {
+            MouseAction::Click { row, col } => {
+                assert_eq!(row, 2); // 5 - 2 - 1 = 2
+                assert_eq!(col, 10);
+            }
+            _ => panic!("Expected Click action"),
+        }
+    }
+
+    #[test]
+    fn handle_mouse_event_double_click() {
+        let mut detector = ClickDetector::new();
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 10,
+            row: 5,
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        // First click
+        handle_mouse_event(event, &mut detector, 2);
+        // Second click (same position)
+        let action = handle_mouse_event(event, &mut detector, 2);
+        match action {
+            MouseAction::DoubleClick { row, col } => {
+                assert_eq!(row, 2);
+                assert_eq!(col, 10);
+            }
+            _ => panic!("Expected DoubleClick action"),
+        }
+    }
+
+    #[test]
+    fn handle_mouse_event_click_above_tree_area() {
+        let mut detector = ClickDetector::new();
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 10,
+            row: 2, // tree_area_top = 2, row is not > 2
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        let action = handle_mouse_event(event, &mut detector, 2);
+        assert!(matches!(action, MouseAction::None));
+    }
+
+    #[test]
+    fn handle_mouse_event_scroll_up() {
+        let mut detector = ClickDetector::new();
+        let event = MouseEvent {
+            kind: MouseEventKind::ScrollUp,
+            column: 5,
+            row: 10,
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        let action = handle_mouse_event(event, &mut detector, 2);
+        match action {
+            MouseAction::ScrollUp { amount, col } => {
+                assert_eq!(amount, 3);
+                assert_eq!(col, 5);
+            }
+            _ => panic!("Expected ScrollUp action"),
+        }
+    }
+
+    #[test]
+    fn handle_mouse_event_scroll_down() {
+        let mut detector = ClickDetector::new();
+        let event = MouseEvent {
+            kind: MouseEventKind::ScrollDown,
+            column: 8,
+            row: 10,
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        let action = handle_mouse_event(event, &mut detector, 2);
+        match action {
+            MouseAction::ScrollDown { amount, col } => {
+                assert_eq!(amount, 3);
+                assert_eq!(col, 8);
+            }
+            _ => panic!("Expected ScrollDown action"),
+        }
+    }
+
+    #[test]
+    fn handle_mouse_event_right_click_returns_none() {
+        let mut detector = ClickDetector::new();
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Right),
+            column: 10,
+            row: 5,
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        let action = handle_mouse_event(event, &mut detector, 2);
+        assert!(matches!(action, MouseAction::None));
+    }
+
+    #[test]
+    fn handle_mouse_event_middle_click_returns_none() {
+        let mut detector = ClickDetector::new();
+        let event = MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Middle),
+            column: 10,
+            row: 5,
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        let action = handle_mouse_event(event, &mut detector, 2);
+        assert!(matches!(action, MouseAction::None));
+    }
+
+    #[test]
+    fn handle_mouse_event_drag_returns_none() {
+        let mut detector = ClickDetector::new();
+        let event = MouseEvent {
+            kind: MouseEventKind::Drag(MouseButton::Left),
+            column: 10,
+            row: 5,
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        let action = handle_mouse_event(event, &mut detector, 2);
+        assert!(matches!(action, MouseAction::None));
+    }
+
+    #[test]
+    fn handle_mouse_event_mouse_up_returns_none() {
+        let mut detector = ClickDetector::new();
+        let event = MouseEvent {
+            kind: MouseEventKind::Up(MouseButton::Left),
+            column: 10,
+            row: 5,
+            modifiers: crossterm::event::KeyModifiers::NONE,
+        };
+        let action = handle_mouse_event(event, &mut detector, 2);
+        assert!(matches!(action, MouseAction::None));
+    }
+
+    // ========================================
+    // MouseAction tests
+    // ========================================
+
+    #[test]
+    fn mouse_action_debug_format() {
+        let action = MouseAction::Click { row: 1, col: 2 };
+        let debug = format!("{:?}", action);
+        assert!(debug.contains("Click"));
+    }
+
+    #[test]
+    fn mouse_action_clone() {
+        let action = MouseAction::ScrollUp { amount: 3, col: 5 };
+        let cloned = action.clone();
+        match cloned {
+            MouseAction::ScrollUp { amount, col } => {
+                assert_eq!(amount, 3);
+                assert_eq!(col, 5);
+            }
+            _ => panic!("Clone failed"),
+        }
+    }
+
+    #[test]
+    fn mouse_action_file_drop() {
+        let paths = vec![PathBuf::from("/tmp/test")];
+        let action = MouseAction::FileDrop {
+            paths: paths.clone(),
+        };
+        match action {
+            MouseAction::FileDrop { paths: p } => {
+                assert_eq!(p, paths);
+            }
+            _ => panic!("Expected FileDrop"),
+        }
     }
 }
