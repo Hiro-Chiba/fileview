@@ -157,13 +157,16 @@ pub fn handle_preview_scroll(
         }
         KeyAction::PreviewScrollDown => {
             if let Some(ref mut tp) = text_preview {
-                tp.scroll += 1;
+                let max_scroll = tp.lines.len().saturating_sub(1);
+                tp.scroll = (tp.scroll + 1).min(max_scroll);
             }
             if let Some(ref mut hp) = hex_preview {
-                hp.scroll += 1;
+                let max_scroll = hp.line_count().saturating_sub(1);
+                hp.scroll = (hp.scroll + 1).min(max_scroll);
             }
             if let Some(ref mut ap) = archive_preview {
-                ap.scroll += 1;
+                let max_scroll = ap.line_count().saturating_sub(1);
+                ap.scroll = (ap.scroll + 1).min(max_scroll);
             }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll += 1;
@@ -185,13 +188,16 @@ pub fn handle_preview_scroll(
         }
         KeyAction::PreviewPageDown => {
             if let Some(ref mut tp) = text_preview {
-                tp.scroll += 20;
+                let max_scroll = tp.lines.len().saturating_sub(1);
+                tp.scroll = (tp.scroll + 20).min(max_scroll);
             }
             if let Some(ref mut hp) = hex_preview {
-                hp.scroll += 20;
+                let max_scroll = hp.line_count().saturating_sub(1);
+                hp.scroll = (hp.scroll + 20).min(max_scroll);
             }
             if let Some(ref mut ap) = archive_preview {
-                ap.scroll += 20;
+                let max_scroll = ap.line_count().saturating_sub(1);
+                ap.scroll = (ap.scroll + 20).min(max_scroll);
             }
             if let ViewMode::Preview { scroll } = &mut state.mode {
                 *scroll += 20;
@@ -213,13 +219,23 @@ pub fn handle_preview_scroll(
         }
         KeyAction::PreviewToBottom => {
             if let Some(ref mut tp) = text_preview {
-                tp.scroll = tp.lines.len().saturating_sub(20);
+                tp.scroll = tp.lines.len().saturating_sub(1);
             }
             if let Some(ref mut hp) = hex_preview {
-                hp.scroll = hp.line_count().saturating_sub(20);
+                hp.scroll = hp.line_count().saturating_sub(1);
             }
             if let Some(ref mut ap) = archive_preview {
-                ap.scroll = ap.line_count().saturating_sub(20);
+                ap.scroll = ap.line_count().saturating_sub(1);
+            }
+            if let ViewMode::Preview { scroll } = &mut state.mode {
+                // Set to max for ViewMode as well
+                if let Some(ref tp) = text_preview {
+                    *scroll = tp.lines.len().saturating_sub(1);
+                } else if let Some(ref hp) = hex_preview {
+                    *scroll = hp.line_count().saturating_sub(1);
+                } else if let Some(ref ap) = archive_preview {
+                    *scroll = ap.line_count().saturating_sub(1);
+                }
             }
         }
         _ => {}
