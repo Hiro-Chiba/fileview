@@ -77,8 +77,20 @@ pub fn run_app(
 ) -> anyhow::Result<AppResult> {
     let mut state = AppState::new(config.root.clone());
     state.pick_mode = config.pick_mode;
+
+    // Apply config file settings
+    state.show_hidden = config.show_hidden;
     if let Some(icons) = config.icons_enabled {
         state.icons_enabled = icons;
+    } else {
+        // Check environment variable, then fall back to config file setting
+        let env_icons = std::env::var("FILEVIEW_ICONS")
+            .map(|v| v != "0" && v.to_lowercase() != "false")
+            .ok();
+        if let Some(icons) = env_icons {
+            state.icons_enabled = icons;
+        }
+        // Note: config file icons setting is already applied in AppState::new via env var check
     }
 
     // Create navigator based on stdin mode
@@ -124,9 +136,9 @@ pub fn run_app(
         None
     };
 
-    // Git status polling timer (5 seconds balances responsiveness and CPU usage)
+    // Git status polling timer (configurable, default 5 seconds)
     let mut last_git_poll = Instant::now();
-    const GIT_POLL_INTERVAL: Duration = Duration::from_secs(5);
+    let git_poll_interval = config.git_poll_interval;
 
     // Track previous expanded paths for watcher sync
     let mut prev_expanded: Vec<PathBuf> = Vec::new();
@@ -223,8 +235,8 @@ pub fn run_app(
             }
         }
 
-        // Git status polling (every 3 seconds)
-        if last_git_poll.elapsed() >= GIT_POLL_INTERVAL {
+        // Git status polling (configurable interval)
+        if last_git_poll.elapsed() >= git_poll_interval {
             state.refresh_git_status();
             last_git_poll = Instant::now();
         }

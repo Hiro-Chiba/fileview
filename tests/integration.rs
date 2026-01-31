@@ -5962,3 +5962,446 @@ mod pdf_rendering_tests {
         }
     }
 }
+
+// =============================================================================
+// Config File Integration Tests
+// =============================================================================
+
+mod config_integration_tests {
+    use fileview::app::ConfigFile;
+    use std::fs;
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_config_file_default_values() {
+        let config = ConfigFile::default();
+
+        // General defaults
+        assert!(!config.general.show_hidden);
+        assert!(config.general.enable_icons);
+        assert!(config.general.mouse_enabled);
+
+        // Preview defaults
+        assert_eq!(config.preview.hex_max_bytes, 4096);
+        assert_eq!(config.preview.max_archive_entries, 500);
+        assert_eq!(config.preview.image_protocol, "auto");
+
+        // Performance defaults
+        assert_eq!(config.performance.git_poll_interval_secs, 5);
+
+        // UI defaults
+        assert!(config.ui.show_size);
+        assert!(!config.ui.show_permissions);
+        assert_eq!(config.ui.date_format, "%Y-%m-%d %H:%M");
+    }
+
+    #[test]
+    fn test_config_file_partial_override() {
+        let temp = TempDir::new().unwrap();
+        let config_path = temp.path().join("config.toml");
+
+        let mut file = fs::File::create(&config_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[general]
+show_hidden = true
+
+[performance]
+git_poll_interval_secs = 10
+"#
+        )
+        .unwrap();
+
+        let config = ConfigFile::load_from(&config_path).unwrap();
+
+        // Overridden values
+        assert!(config.general.show_hidden);
+        assert_eq!(config.performance.git_poll_interval_secs, 10);
+
+        // Defaults preserved
+        assert!(config.general.enable_icons);
+        assert_eq!(config.preview.hex_max_bytes, 4096);
+    }
+
+    #[test]
+    fn test_config_file_all_sections() {
+        let temp = TempDir::new().unwrap();
+        let config_path = temp.path().join("config.toml");
+
+        let mut file = fs::File::create(&config_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[general]
+show_hidden = true
+enable_icons = false
+mouse_enabled = false
+
+[preview]
+hex_max_bytes = 8192
+max_archive_entries = 1000
+image_protocol = "kitty"
+
+[performance]
+git_poll_interval_secs = 15
+
+[ui]
+show_size = false
+show_permissions = true
+date_format = "%d/%m/%Y"
+"#
+        )
+        .unwrap();
+
+        let config = ConfigFile::load_from(&config_path).unwrap();
+
+        assert!(config.general.show_hidden);
+        assert!(!config.general.enable_icons);
+        assert!(!config.general.mouse_enabled);
+
+        assert_eq!(config.preview.hex_max_bytes, 8192);
+        assert_eq!(config.preview.max_archive_entries, 1000);
+        assert_eq!(config.preview.image_protocol, "kitty");
+
+        assert_eq!(config.performance.git_poll_interval_secs, 15);
+
+        assert!(!config.ui.show_size);
+        assert!(config.ui.show_permissions);
+        assert_eq!(config.ui.date_format, "%d/%m/%Y");
+    }
+
+    #[test]
+    fn test_config_file_invalid_toml_returns_error() {
+        let temp = TempDir::new().unwrap();
+        let config_path = temp.path().join("config.toml");
+
+        let mut file = fs::File::create(&config_path).unwrap();
+        writeln!(file, "invalid {{ toml syntax").unwrap();
+
+        let result = ConfigFile::load_from(&config_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_config_file_unknown_keys_ignored() {
+        let temp = TempDir::new().unwrap();
+        let config_path = temp.path().join("config.toml");
+
+        let mut file = fs::File::create(&config_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[general]
+show_hidden = true
+unknown_key = "ignored"
+
+[unknown_section]
+foo = "bar"
+"#
+        )
+        .unwrap();
+
+        // Should not error on unknown keys
+        let config = ConfigFile::load_from(&config_path).unwrap();
+        assert!(config.general.show_hidden);
+    }
+}
+
+// =============================================================================
+// Keymap Integration Tests
+// =============================================================================
+
+mod keymap_integration_tests {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use fileview::core::{AppState, FocusTarget, ViewMode};
+    use fileview::handler::{handle_key_event_with_registry, KeyAction, KeyBindingRegistry};
+    use tempfile::TempDir;
+
+    fn create_test_state() -> AppState {
+        let temp = TempDir::new().unwrap();
+        AppState::new(temp.path().to_path_buf())
+    }
+
+    #[test]
+    fn test_registry_default_bindings() {
+        let registry = KeyBindingRegistry::new();
+        let state = create_test_state();
+
+        // Test j -> MoveDown
+        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::MoveDown));
+
+        // Test k -> MoveUp
+        let key = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::MoveUp));
+
+        // Test q -> Quit
+        let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::Quit));
+    }
+
+    #[test]
+    fn test_registry_ctrl_modifier() {
+        let registry = KeyBindingRegistry::new();
+        let state = create_test_state();
+
+        // Test Ctrl+P -> OpenFuzzyFinder
+        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::OpenFuzzyFinder));
+    }
+
+    #[test]
+    fn test_registry_context_aware_actions() {
+        let registry = KeyBindingRegistry::new();
+
+        // Test quit in pick mode -> Cancel
+        let mut state = create_test_state();
+        state.pick_mode = true;
+        let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_registry_preview_focus_navigation() {
+        let registry = KeyBindingRegistry::new();
+
+        // With preview visible and focus on preview, j scrolls preview
+        let mut state = create_test_state();
+        state.preview_visible = true;
+        state.focus_target = FocusTarget::Preview;
+
+        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::PreviewScrollDown));
+
+        // With focus on tree, j moves down
+        state.focus_target = FocusTarget::Tree;
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::MoveDown));
+    }
+
+    #[test]
+    fn test_registry_search_mode() {
+        let registry = KeyBindingRegistry::new();
+        let mut state = create_test_state();
+        state.mode = ViewMode::Search {
+            query: "test".to_string(),
+        };
+
+        // Enter confirms search
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::ConfirmInput { value } if value == "test"));
+
+        // Esc cancels
+        let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_registry_confirm_mode() {
+        let registry = KeyBindingRegistry::new();
+        let mut state = create_test_state();
+        state.mode = ViewMode::Confirm {
+            action: fileview::core::PendingAction::Delete {
+                targets: vec![std::path::PathBuf::from("/tmp/test")],
+            },
+        };
+
+        // y executes
+        let key = KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::ExecuteDelete));
+
+        // n cancels
+        let key = KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_registry_filter_mode() {
+        let registry = KeyBindingRegistry::new();
+        let mut state = create_test_state();
+        state.mode = ViewMode::Filter {
+            query: "*.rs".to_string(),
+        };
+
+        // Enter applies filter
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::ApplyFilter { pattern } if pattern == "*.rs"));
+    }
+
+    #[test]
+    fn test_registry_filter_mode_empty_clears() {
+        let registry = KeyBindingRegistry::new();
+        let mut state = create_test_state();
+        state.mode = ViewMode::Filter {
+            query: String::new(),
+        };
+
+        // Enter with empty query clears filter
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let action = handle_key_event_with_registry(&state, key, &registry);
+        assert!(matches!(action, KeyAction::ClearFilter));
+    }
+}
+
+// =============================================================================
+// Theme Integration Tests
+// =============================================================================
+
+mod theme_integration_tests {
+    use fileview::render::{parse_color, theme, Theme, ThemeFile};
+    use ratatui::style::Color;
+
+    #[test]
+    fn test_theme_singleton() {
+        // theme() returns the same instance
+        let t1 = theme();
+        let t2 = theme();
+        // Should be same reference (singleton)
+        assert!(std::ptr::eq(t1, t2));
+    }
+
+    #[test]
+    fn test_theme_default_colors() {
+        let theme = Theme::default();
+
+        // Check base colors
+        assert_eq!(theme.selection, Color::DarkGray);
+        assert_eq!(theme.border_active, Color::Cyan);
+
+        // Check file colors
+        assert_eq!(theme.directory, Color::Blue);
+        assert_eq!(theme.executable, Color::Green);
+        assert_eq!(theme.symlink, Color::Cyan);
+        assert_eq!(theme.archive, Color::Red);
+        assert_eq!(theme.image, Color::Magenta);
+
+        // Check git colors
+        assert_eq!(theme.git_modified, Color::Yellow);
+        assert_eq!(theme.git_staged, Color::Green);
+        assert_eq!(theme.git_deleted, Color::Red);
+        assert_eq!(theme.git_renamed, Color::Cyan);
+        assert_eq!(theme.git_ignored, Color::DarkGray);
+    }
+
+    #[test]
+    fn test_parse_color_named() {
+        assert_eq!(parse_color("red"), Color::Red);
+        assert_eq!(parse_color("blue"), Color::Blue);
+        assert_eq!(parse_color("green"), Color::Green);
+        assert_eq!(parse_color("yellow"), Color::Yellow);
+        assert_eq!(parse_color("magenta"), Color::Magenta);
+        assert_eq!(parse_color("cyan"), Color::Cyan);
+        assert_eq!(parse_color("white"), Color::White);
+        assert_eq!(parse_color("black"), Color::Black);
+        assert_eq!(parse_color("gray"), Color::Gray);
+        assert_eq!(parse_color("darkgray"), Color::DarkGray);
+    }
+
+    #[test]
+    fn test_parse_color_case_insensitive() {
+        assert_eq!(parse_color("RED"), Color::Red);
+        assert_eq!(parse_color("Blue"), Color::Blue);
+        assert_eq!(parse_color("GREEN"), Color::Green);
+        assert_eq!(parse_color("DarkGray"), Color::DarkGray);
+    }
+
+    #[test]
+    fn test_parse_color_hex_short() {
+        assert_eq!(parse_color("#f00"), Color::Rgb(255, 0, 0));
+        assert_eq!(parse_color("#0f0"), Color::Rgb(0, 255, 0));
+        assert_eq!(parse_color("#00f"), Color::Rgb(0, 0, 255));
+        assert_eq!(parse_color("#fff"), Color::Rgb(255, 255, 255));
+        assert_eq!(parse_color("#000"), Color::Rgb(0, 0, 0));
+    }
+
+    #[test]
+    fn test_parse_color_hex_long() {
+        assert_eq!(parse_color("#ff0000"), Color::Rgb(255, 0, 0));
+        assert_eq!(parse_color("#00ff00"), Color::Rgb(0, 255, 0));
+        assert_eq!(parse_color("#0000ff"), Color::Rgb(0, 0, 255));
+        assert_eq!(parse_color("#ffffff"), Color::Rgb(255, 255, 255));
+        assert_eq!(parse_color("#808080"), Color::Rgb(128, 128, 128));
+    }
+
+    #[test]
+    fn test_parse_color_rgb() {
+        assert_eq!(parse_color("rgb(255, 0, 0)"), Color::Rgb(255, 0, 0));
+        assert_eq!(parse_color("rgb(0, 255, 0)"), Color::Rgb(0, 255, 0));
+        assert_eq!(parse_color("rgb(128, 128, 128)"), Color::Rgb(128, 128, 128));
+    }
+
+    #[test]
+    fn test_parse_color_indexed() {
+        assert_eq!(parse_color("0"), Color::Indexed(0));
+        assert_eq!(parse_color("196"), Color::Indexed(196));
+        assert_eq!(parse_color("color123"), Color::Indexed(123));
+        assert_eq!(parse_color("color255"), Color::Indexed(255));
+    }
+
+    #[test]
+    fn test_parse_color_default() {
+        assert_eq!(parse_color("default"), Color::Reset);
+        assert_eq!(parse_color("reset"), Color::Reset);
+        assert_eq!(parse_color(""), Color::Reset);
+    }
+
+    #[test]
+    fn test_parse_color_invalid() {
+        assert_eq!(parse_color("invalid"), Color::Reset);
+        assert_eq!(parse_color("notacolor"), Color::Reset);
+        // Invalid hex characters result in 0 values from from_str_radix
+        assert_eq!(parse_color("#gggggg"), Color::Rgb(0, 0, 0));
+    }
+
+    #[test]
+    fn test_theme_file_defaults() {
+        let file = ThemeFile::default();
+
+        assert_eq!(file.colors.background, "default");
+        assert_eq!(file.colors.foreground, "white");
+        assert_eq!(file.colors.selection, "darkgray");
+        assert_eq!(file.colors.border_active, "cyan");
+
+        assert_eq!(file.file_colors.directory, "blue");
+        assert_eq!(file.file_colors.executable, "green");
+
+        assert_eq!(file.git_colors.modified, "yellow");
+        assert_eq!(file.git_colors.staged, "green");
+    }
+
+    #[test]
+    fn test_theme_purple_alias() {
+        // "purple" should be an alias for "magenta"
+        assert_eq!(parse_color("purple"), Color::Magenta);
+    }
+
+    #[test]
+    fn test_theme_grey_alias() {
+        // "grey" should be an alias for "gray"
+        assert_eq!(parse_color("grey"), Color::Gray);
+        assert_eq!(parse_color("darkgrey"), Color::DarkGray);
+    }
+
+    #[test]
+    fn test_theme_light_colors() {
+        assert_eq!(parse_color("lightred"), Color::LightRed);
+        assert_eq!(parse_color("lightgreen"), Color::LightGreen);
+        assert_eq!(parse_color("lightyellow"), Color::LightYellow);
+        assert_eq!(parse_color("lightblue"), Color::LightBlue);
+        assert_eq!(parse_color("lightmagenta"), Color::LightMagenta);
+        assert_eq!(parse_color("lightcyan"), Color::LightCyan);
+    }
+}
