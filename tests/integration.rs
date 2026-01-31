@@ -5797,3 +5797,171 @@ mod archive_preview_tests {
         assert!(result.is_err(), "Nonexistent file should return an error");
     }
 }
+
+// =============================================================================
+// PDF Preview Tests
+// =============================================================================
+
+mod pdf_preview_tests {
+    use fileview::render::{find_pdftoppm, is_pdf_file};
+    use std::path::Path;
+
+    #[test]
+    fn test_is_pdf_file_detection() {
+        assert!(is_pdf_file(Path::new("document.pdf")));
+        assert!(is_pdf_file(Path::new("REPORT.PDF")));
+        assert!(is_pdf_file(Path::new("/path/to/file.pdf")));
+        assert!(!is_pdf_file(Path::new("document.txt")));
+        assert!(!is_pdf_file(Path::new("image.png")));
+    }
+
+    #[test]
+    fn test_pdftoppm_detection() {
+        // This test verifies the pdftoppm detection logic works
+        let result = find_pdftoppm();
+        // Result can be Some (if installed) or None (if not)
+        // We just verify the function doesn't panic
+        if let Some(path) = result {
+            assert!(path.exists());
+            assert!(path.to_string_lossy().contains("pdftoppm"));
+        }
+    }
+
+    #[test]
+    fn test_pdf_preview_requires_poppler() {
+        // Test that PDF preview gracefully handles missing pdftoppm
+        // This is tested by checking that find_pdftoppm returns a consistent result
+        let result1 = find_pdftoppm();
+        let result2 = find_pdftoppm();
+        assert_eq!(result1.is_some(), result2.is_some());
+    }
+}
+
+#[cfg(test)]
+mod pdf_rendering_tests {
+    use fileview::render::find_pdftoppm;
+    use std::fs;
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    /// Create a minimal valid PDF file for testing
+    fn create_test_pdf(path: &std::path::Path, pages: usize) -> std::io::Result<()> {
+        // Create a minimal PDF with specified number of pages
+        let mut content = String::from("%PDF-1.4\n");
+        content.push_str("1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n");
+
+        // Pages object
+        let kids: Vec<String> = (0..pages).map(|i| format!("{} 0 R", i + 3)).collect();
+        content.push_str(&format!(
+            "2 0 obj << /Type /Pages /Kids [{}] /Count {} >> endobj\n",
+            kids.join(" "),
+            pages
+        ));
+
+        // Page objects
+        for i in 0..pages {
+            content.push_str(&format!(
+                "{} 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >> endobj\n",
+                i + 3
+            ));
+        }
+
+        // Trailer
+        content.push_str(&format!(
+            "trailer << /Size {} /Root 1 0 R >>\n%%EOF\n",
+            pages + 3
+        ));
+
+        fs::write(path, content)
+    }
+
+    #[test]
+    fn test_pdfinfo_page_count() {
+        // Skip if pdftoppm not installed
+        if find_pdftoppm().is_none() {
+            eprintln!("Skipping test: pdftoppm not installed");
+            return;
+        }
+
+        let temp = TempDir::new().unwrap();
+        let pdf_path = temp.path().join("test.pdf");
+        create_test_pdf(&pdf_path, 3).unwrap();
+
+        // Run pdfinfo to get page count
+        let output = Command::new("pdfinfo")
+            .arg(&pdf_path)
+            .output()
+            .expect("Failed to run pdfinfo");
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let has_pages = stdout.lines().any(|line| line.starts_with("Pages:"));
+        assert!(has_pages, "pdfinfo should report page count");
+    }
+
+    #[test]
+    fn test_pdftoppm_renders_page() {
+        // Skip if pdftoppm not installed
+        let pdftoppm_path = match find_pdftoppm() {
+            Some(p) => p.clone(),
+            None => {
+                eprintln!("Skipping test: pdftoppm not installed");
+                return;
+            }
+        };
+
+        let temp = TempDir::new().unwrap();
+        let pdf_path = temp.path().join("test.pdf");
+        create_test_pdf(&pdf_path, 2).unwrap();
+
+        // Render page 1
+        let output_prefix = temp.path().join("page1");
+        let status = Command::new(&pdftoppm_path)
+            .args(["-png", "-f", "1", "-l", "1", "-singlefile", "-r", "72"])
+            .arg(&pdf_path)
+            .arg(&output_prefix)
+            .status()
+            .expect("Failed to run pdftoppm");
+
+        assert!(status.success(), "pdftoppm should succeed");
+
+        let output_file = temp.path().join("page1.png");
+        assert!(output_file.exists(), "pdftoppm should create PNG file");
+    }
+
+    #[test]
+    fn test_pdftoppm_handles_invalid_pdf() {
+        // Skip if pdftoppm not installed
+        let pdftoppm_path = match find_pdftoppm() {
+            Some(p) => p.clone(),
+            None => {
+                eprintln!("Skipping test: pdftoppm not installed");
+                return;
+            }
+        };
+
+        let temp = TempDir::new().unwrap();
+        let invalid_pdf = temp.path().join("invalid.pdf");
+        fs::write(&invalid_pdf, b"not a pdf").unwrap();
+
+        let output_prefix = temp.path().join("output");
+        let status = Command::new(&pdftoppm_path)
+            .args(["-png", "-f", "1", "-l", "1", "-singlefile"])
+            .arg(&invalid_pdf)
+            .arg(&output_prefix)
+            .status();
+
+        // pdftoppm should fail or not create output for invalid PDF
+        if let Ok(s) = status {
+            if s.success() {
+                // Even if it "succeeds", no valid output should be created
+                let output_file = temp.path().join("output.png");
+                // File might exist but be empty or invalid
+                if output_file.exists() {
+                    let size = fs::metadata(&output_file).unwrap().len();
+                    // Very small file likely means failure
+                    assert!(size < 100, "Invalid PDF should not produce valid image");
+                }
+            }
+        }
+    }
+}

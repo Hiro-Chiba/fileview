@@ -1358,4 +1358,53 @@ mod tests {
         // Even empty archive has 2 header lines
         assert_eq!(preview.line_count(), 2);
     }
+
+    // =========================================================================
+    // is_pdf_file tests
+    // =========================================================================
+
+    #[test]
+    fn test_is_pdf_file() {
+        assert!(is_pdf_file(Path::new("document.pdf")));
+        assert!(is_pdf_file(Path::new("DOCUMENT.PDF")));
+        assert!(is_pdf_file(Path::new("Document.Pdf")));
+        assert!(is_pdf_file(Path::new("/path/to/file.pdf")));
+    }
+
+    #[test]
+    fn test_is_pdf_file_non_pdf() {
+        assert!(!is_pdf_file(Path::new("document.txt")));
+        assert!(!is_pdf_file(Path::new("document.doc")));
+        assert!(!is_pdf_file(Path::new("document.docx")));
+        assert!(!is_pdf_file(Path::new("image.png")));
+        assert!(!is_pdf_file(Path::new("no_extension")));
+    }
+
+    // =========================================================================
+    // find_pdftoppm tests
+    // =========================================================================
+
+    #[test]
+    fn test_find_pdftoppm_returns_consistent() {
+        // Call twice to verify OnceLock caching works
+        let result1 = find_pdftoppm();
+        let result2 = find_pdftoppm();
+
+        // Both calls should return the same result
+        assert_eq!(result1.is_some(), result2.is_some());
+        if let (Some(p1), Some(p2)) = (result1, result2) {
+            assert_eq!(p1, p2);
+        }
+    }
+
+    #[test]
+    fn test_find_pdftoppm_path_exists_if_found() {
+        if let Some(path) = find_pdftoppm() {
+            assert!(path.exists(), "pdftoppm path should exist");
+            assert!(
+                path.to_string_lossy().contains("pdftoppm"),
+                "Path should contain pdftoppm"
+            );
+        }
+    }
 }
