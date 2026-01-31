@@ -7,13 +7,35 @@ use tempfile::TempDir;
 use crate::core::{AppState, FocusTarget, ViewMode};
 use crate::handler::key::KeyAction;
 use crate::integrate::exit_code;
-use crate::render::{ArchiveEntry, ArchivePreview, HexPreview, TextPreview};
+use crate::render::{ArchiveEntry, ArchivePreview, HexPreview, PdfPreview, Picker, TextPreview};
 use crate::tree::TreeNavigator;
 
 use super::{
     get_filename_str, get_target_directory, handle_action, ActionContext, ActionResult,
     EntrySnapshot,
 };
+
+/// Helper macro to call handle_action with all required preview arguments
+macro_rules! call_handle_action {
+    ($action:expr, $state:expr, $navigator:expr, $path:expr, $entries:expr, $context:expr,
+     $text_preview:expr, $hex_preview:expr, $archive_preview:expr) => {{
+        let mut pdf_preview: Option<PdfPreview> = None;
+        let mut image_picker: Option<Picker> = None;
+        handle_action(
+            $action,
+            $state,
+            $navigator,
+            $path,
+            $entries,
+            $context,
+            $text_preview,
+            $hex_preview,
+            $archive_preview,
+            &mut pdf_preview,
+            &mut image_picker,
+        )
+    }};
+}
 
 fn create_test_state(root: &Path) -> AppState {
     AppState::new(root.to_path_buf())
@@ -94,7 +116,7 @@ fn test_move_up_action() {
     let mut archive_preview: Option<ArchivePreview> = None;
 
     state.focus_index = 2;
-    let result = handle_action(
+    let result = call_handle_action!(
         KeyAction::MoveUp,
         &mut state,
         &mut navigator,
@@ -103,7 +125,7 @@ fn test_move_up_action() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -126,7 +148,7 @@ fn test_move_down_action() {
     let mut archive_preview: Option<ArchivePreview> = None;
 
     state.focus_index = 0;
-    let result = handle_action(
+    let result = call_handle_action!(
         KeyAction::MoveDown,
         &mut state,
         &mut navigator,
@@ -135,7 +157,7 @@ fn test_move_down_action() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -154,7 +176,7 @@ fn test_quit_action() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    let result = handle_action(
+    let result = call_handle_action!(
         KeyAction::Quit,
         &mut state,
         &mut navigator,
@@ -163,7 +185,7 @@ fn test_quit_action() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -187,7 +209,7 @@ fn test_toggle_mark_action() {
     let focused = Some(file_path.clone());
 
     // Mark
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleMark,
         &mut state,
         &mut navigator,
@@ -196,13 +218,13 @@ fn test_toggle_mark_action() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(state.selected_paths.contains(&file_path));
 
     // Unmark
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleMark,
         &mut state,
         &mut navigator,
@@ -211,7 +233,7 @@ fn test_toggle_mark_action() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(!state.selected_paths.contains(&file_path));
@@ -230,7 +252,7 @@ fn test_toggle_hidden_action() {
 
     assert!(!state.show_hidden);
 
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleHidden,
         &mut state,
         &mut navigator,
@@ -239,7 +261,7 @@ fn test_toggle_hidden_action() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -258,7 +280,7 @@ fn test_open_preview_action() {
     let mut archive_preview: Option<ArchivePreview> = None;
 
     // Open preview
-    handle_action(
+    call_handle_action!(
         KeyAction::OpenPreview,
         &mut state,
         &mut navigator,
@@ -267,13 +289,13 @@ fn test_open_preview_action() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Preview { .. }));
 
     // Close preview
-    handle_action(
+    call_handle_action!(
         KeyAction::OpenPreview,
         &mut state,
         &mut navigator,
@@ -282,7 +304,7 @@ fn test_open_preview_action() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Browse));
@@ -301,7 +323,7 @@ fn test_toggle_quick_preview_action() {
 
     assert!(!state.preview_visible);
 
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleQuickPreview,
         &mut state,
         &mut navigator,
@@ -310,7 +332,7 @@ fn test_toggle_quick_preview_action() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -342,7 +364,7 @@ fn test_toggle_expand_file_with_side_preview_closes_panel() {
     state.preview_visible = true;
     let focused = Some(file_path);
 
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleExpand,
         &mut state,
         &mut navigator,
@@ -351,7 +373,7 @@ fn test_toggle_expand_file_with_side_preview_closes_panel() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -382,7 +404,7 @@ fn test_toggle_expand_file_without_preview_opens_fullscreen() {
     state.preview_visible = false;
     let focused = Some(file_path);
 
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleExpand,
         &mut state,
         &mut navigator,
@@ -391,7 +413,7 @@ fn test_toggle_expand_file_without_preview_opens_fullscreen() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -422,7 +444,7 @@ fn test_toggle_expand_directory_toggles_expand() {
     let initial_count = navigator.visible_count();
 
     // Expand
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleExpand,
         &mut state,
         &mut navigator,
@@ -431,7 +453,7 @@ fn test_toggle_expand_directory_toggles_expand() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -441,7 +463,7 @@ fn test_toggle_expand_directory_toggles_expand() {
     );
 
     // Collapse
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleExpand,
         &mut state,
         &mut navigator,
@@ -450,7 +472,7 @@ fn test_toggle_expand_directory_toggles_expand() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -476,7 +498,7 @@ fn test_cancel_in_preview_mode_returns_to_browse() {
     // Start in Preview mode
     state.mode = ViewMode::Preview { scroll: 5 };
 
-    handle_action(
+    call_handle_action!(
         KeyAction::Cancel,
         &mut state,
         &mut navigator,
@@ -485,7 +507,7 @@ fn test_cancel_in_preview_mode_returns_to_browse() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -509,7 +531,7 @@ fn test_cancel_in_browse_pick_mode_returns_cancelled() {
 
     state.pick_mode = true;
 
-    let result = handle_action(
+    let result = call_handle_action!(
         KeyAction::Cancel,
         &mut state,
         &mut navigator,
@@ -518,7 +540,7 @@ fn test_cancel_in_browse_pick_mode_returns_cancelled() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -543,7 +565,7 @@ fn test_cancel_in_browse_normal_mode_sets_quit() {
 
     state.pick_mode = false;
 
-    handle_action(
+    call_handle_action!(
         KeyAction::Cancel,
         &mut state,
         &mut navigator,
@@ -552,7 +574,7 @@ fn test_cancel_in_browse_normal_mode_sets_quit() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -578,7 +600,7 @@ fn test_cancel_in_input_mode_returns_to_browse() {
     };
     state.set_message("Creating file...");
 
-    handle_action(
+    call_handle_action!(
         KeyAction::Cancel,
         &mut state,
         &mut navigator,
@@ -587,7 +609,7 @@ fn test_cancel_in_input_mode_returns_to_browse() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -614,7 +636,7 @@ fn test_preview_scroll_updates_text_preview() {
     text_preview.as_mut().unwrap().scroll = 0;
 
     // Scroll down
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewScrollDown,
         &mut state,
         &mut navigator,
@@ -623,7 +645,7 @@ fn test_preview_scroll_updates_text_preview() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -634,7 +656,7 @@ fn test_preview_scroll_updates_text_preview() {
     );
 
     // Scroll up
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewScrollUp,
         &mut state,
         &mut navigator,
@@ -643,7 +665,7 @@ fn test_preview_scroll_updates_text_preview() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -669,7 +691,7 @@ fn test_preview_scroll_saturates_at_zero() {
     text_preview.as_mut().unwrap().scroll = 0;
 
     // Try to scroll up when already at 0
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewScrollUp,
         &mut state,
         &mut navigator,
@@ -678,7 +700,7 @@ fn test_preview_scroll_saturates_at_zero() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -704,7 +726,7 @@ fn test_preview_page_scroll() {
     text_preview.as_mut().unwrap().scroll = 0;
 
     // Page down
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewPageDown,
         &mut state,
         &mut navigator,
@@ -713,7 +735,7 @@ fn test_preview_page_scroll() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -724,7 +746,7 @@ fn test_preview_page_scroll() {
     );
 
     // Page up
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewPageUp,
         &mut state,
         &mut navigator,
@@ -733,7 +755,7 @@ fn test_preview_page_scroll() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -759,7 +781,7 @@ fn test_preview_scroll_updates_viewmode_scroll() {
     // Start in Preview mode with scroll at 0
     state.mode = ViewMode::Preview { scroll: 0 };
 
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewScrollDown,
         &mut state,
         &mut navigator,
@@ -768,7 +790,7 @@ fn test_preview_scroll_updates_viewmode_scroll() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -797,7 +819,7 @@ fn test_move_to_top() {
 
     state.focus_index = 3;
 
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveToTop,
         &mut state,
         &mut navigator,
@@ -806,7 +828,7 @@ fn test_move_to_top() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -831,7 +853,7 @@ fn test_move_to_bottom() {
     state.focus_index = 0;
     let last_index = entries.len().saturating_sub(1);
 
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveToBottom,
         &mut state,
         &mut navigator,
@@ -840,7 +862,7 @@ fn test_move_to_bottom() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -868,7 +890,7 @@ fn test_clear_marks() {
     state.selected_paths.insert(file2);
     assert_eq!(state.selected_paths.len(), 2);
 
-    handle_action(
+    call_handle_action!(
         KeyAction::ClearMarks,
         &mut state,
         &mut navigator,
@@ -877,7 +899,7 @@ fn test_clear_marks() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -896,7 +918,7 @@ fn test_start_search() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    handle_action(
+    call_handle_action!(
         KeyAction::StartSearch,
         &mut state,
         &mut navigator,
@@ -905,7 +927,7 @@ fn test_start_search() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -924,7 +946,7 @@ fn test_start_new_file() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    handle_action(
+    call_handle_action!(
         KeyAction::StartNewFile,
         &mut state,
         &mut navigator,
@@ -933,7 +955,7 @@ fn test_start_new_file() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -958,7 +980,7 @@ fn test_start_new_dir() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    handle_action(
+    call_handle_action!(
         KeyAction::StartNewDir,
         &mut state,
         &mut navigator,
@@ -967,7 +989,7 @@ fn test_start_new_dir() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1008,7 +1030,7 @@ fn test_sequence_navigation_with_preview() {
     assert!(matches!(state.mode, ViewMode::Browse));
 
     // Step 1: Move down (j)
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveDown,
         &mut state,
         &mut navigator,
@@ -1017,13 +1039,13 @@ fn test_sequence_navigation_with_preview() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert_eq!(state.focus_index, 1);
 
     // Step 2: Move down again (j)
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveDown,
         &mut state,
         &mut navigator,
@@ -1032,13 +1054,13 @@ fn test_sequence_navigation_with_preview() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert_eq!(state.focus_index, 2);
 
     // Step 3: Open preview (o)
-    handle_action(
+    call_handle_action!(
         KeyAction::OpenPreview,
         &mut state,
         &mut navigator,
@@ -1047,13 +1069,13 @@ fn test_sequence_navigation_with_preview() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Preview { .. }));
 
     // Step 4: Scroll in preview (j in preview = scroll down)
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewScrollDown,
         &mut state,
         &mut navigator,
@@ -1062,12 +1084,12 @@ fn test_sequence_navigation_with_preview() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
     // Step 5: Close preview (Cancel)
-    handle_action(
+    call_handle_action!(
         KeyAction::Cancel,
         &mut state,
         &mut navigator,
@@ -1076,7 +1098,7 @@ fn test_sequence_navigation_with_preview() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Browse));
@@ -1107,7 +1129,7 @@ fn test_sequence_side_preview_toggle_enter() {
     assert!(matches!(state.mode, ViewMode::Browse));
 
     // Step 1: Toggle quick preview (P)
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleQuickPreview,
         &mut state,
         &mut navigator,
@@ -1116,13 +1138,13 @@ fn test_sequence_side_preview_toggle_enter() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(state.preview_visible, "Side preview should be visible");
 
     // Step 2: ToggleExpand (Enter) should close side preview
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleExpand,
         &mut state,
         &mut navigator,
@@ -1131,7 +1153,7 @@ fn test_sequence_side_preview_toggle_enter() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(
@@ -1164,7 +1186,7 @@ fn test_sequence_search_workflow() {
     state.focus_index = 0;
 
     // Step 1: Start search (/)
-    handle_action(
+    call_handle_action!(
         KeyAction::StartSearch,
         &mut state,
         &mut navigator,
@@ -1173,14 +1195,14 @@ fn test_sequence_search_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Search { .. }));
 
     // Step 2: Simulate typing "ap" and confirm (Enter)
     // In real app, buffer is updated by update_input_buffer
-    handle_action(
+    call_handle_action!(
         KeyAction::ConfirmInput {
             value: "ap".to_string(),
         },
@@ -1191,7 +1213,7 @@ fn test_sequence_search_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1201,7 +1223,7 @@ fn test_sequence_search_workflow() {
     // Step 3: Search next (n) - should find next match
     // Need to update entries to have current search query in state
     let initial_focus = state.focus_index;
-    handle_action(
+    call_handle_action!(
         KeyAction::SearchNext,
         &mut state,
         &mut navigator,
@@ -1210,7 +1232,7 @@ fn test_sequence_search_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1256,7 +1278,7 @@ fn test_sequence_copy_paste_workflow() {
     let file1_path = entries[file1_idx].path.clone();
 
     // Step 1: Mark file1 (Space)
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleMark,
         &mut state,
         &mut navigator,
@@ -1265,13 +1287,13 @@ fn test_sequence_copy_paste_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(state.selected_paths.contains(&file1_path));
 
     // Step 2: Copy marked files (y)
-    handle_action(
+    call_handle_action!(
         KeyAction::Copy,
         &mut state,
         &mut navigator,
@@ -1280,7 +1302,7 @@ fn test_sequence_copy_paste_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(state.clipboard.is_some());
@@ -1292,7 +1314,7 @@ fn test_sequence_copy_paste_workflow() {
 
     // Step 4: Paste (p)
     let dest_path = Some(dest_dir.clone());
-    handle_action(
+    call_handle_action!(
         KeyAction::Paste,
         &mut state,
         &mut navigator,
@@ -1301,7 +1323,7 @@ fn test_sequence_copy_paste_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1334,7 +1356,7 @@ fn test_sequence_rename_cancel_rename_confirm() {
     let focused = Some(file_path.clone());
 
     // Step 1: Start rename (r)
-    handle_action(
+    call_handle_action!(
         KeyAction::StartRename,
         &mut state,
         &mut navigator,
@@ -1343,7 +1365,7 @@ fn test_sequence_rename_cancel_rename_confirm() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(
@@ -1355,7 +1377,7 @@ fn test_sequence_rename_cancel_rename_confirm() {
     ));
 
     // Step 2: Cancel (Esc)
-    handle_action(
+    call_handle_action!(
         KeyAction::Cancel,
         &mut state,
         &mut navigator,
@@ -1364,14 +1386,14 @@ fn test_sequence_rename_cancel_rename_confirm() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Browse));
     assert!(file_path.exists(), "File should not be renamed on cancel");
 
     // Step 3: Start rename again (r)
-    handle_action(
+    call_handle_action!(
         KeyAction::StartRename,
         &mut state,
         &mut navigator,
@@ -1380,13 +1402,13 @@ fn test_sequence_rename_cancel_rename_confirm() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Input { .. }));
 
     // Step 4: Confirm with new name (Enter)
-    handle_action(
+    call_handle_action!(
         KeyAction::ConfirmInput {
             value: "renamed.txt".to_string(),
         },
@@ -1397,7 +1419,7 @@ fn test_sequence_rename_cancel_rename_confirm() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1433,7 +1455,7 @@ fn test_sequence_expand_navigate_collapse_all() {
     let subdir_path = Some(subdir.clone());
 
     // Step 1: Expand directory (l or Enter on dir)
-    handle_action(
+    call_handle_action!(
         KeyAction::Expand,
         &mut state,
         &mut navigator,
@@ -1442,7 +1464,7 @@ fn test_sequence_expand_navigate_collapse_all() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     let expanded_count = navigator.visible_count();
@@ -1458,7 +1480,7 @@ fn test_sequence_expand_navigate_collapse_all() {
     state.focus_index = subdir_idx + 1; // Move to first child
 
     // Step 3: Collapse all (H)
-    handle_action(
+    call_handle_action!(
         KeyAction::CollapseAll,
         &mut state,
         &mut navigator,
@@ -1467,7 +1489,7 @@ fn test_sequence_expand_navigate_collapse_all() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1494,7 +1516,7 @@ fn test_sequence_create_delete_workflow() {
     let focused = Some(temp.path().to_path_buf());
 
     // Step 1: Start new file (a)
-    handle_action(
+    call_handle_action!(
         KeyAction::StartNewFile,
         &mut state,
         &mut navigator,
@@ -1503,13 +1525,13 @@ fn test_sequence_create_delete_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Input { .. }));
 
     // Step 2: Confirm file creation
-    handle_action(
+    call_handle_action!(
         KeyAction::ConfirmInput {
             value: "newfile.txt".to_string(),
         },
@@ -1520,7 +1542,7 @@ fn test_sequence_create_delete_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1532,7 +1554,7 @@ fn test_sequence_create_delete_workflow() {
     let new_file_focused = Some(new_file.clone());
 
     // Step 3: Delete (D) - starts confirmation
-    handle_action(
+    call_handle_action!(
         KeyAction::ConfirmDelete,
         &mut state,
         &mut navigator,
@@ -1541,13 +1563,13 @@ fn test_sequence_create_delete_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Confirm { .. }));
 
     // Step 4: Execute delete (y)
-    handle_action(
+    call_handle_action!(
         KeyAction::ExecuteDelete,
         &mut state,
         &mut navigator,
@@ -1556,7 +1578,7 @@ fn test_sequence_create_delete_workflow() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1588,7 +1610,7 @@ fn test_sequence_cut_paste_multiple() {
     state.selected_paths.insert(file2.clone());
 
     // Step 1: Cut (d)
-    handle_action(
+    call_handle_action!(
         KeyAction::Cut,
         &mut state,
         &mut navigator,
@@ -1597,7 +1619,7 @@ fn test_sequence_cut_paste_multiple() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(state.clipboard.is_some());
@@ -1608,7 +1630,7 @@ fn test_sequence_cut_paste_multiple() {
     assert!(file2.exists());
 
     // Step 2: Navigate to dest and paste
-    handle_action(
+    call_handle_action!(
         KeyAction::Paste,
         &mut state,
         &mut navigator,
@@ -1617,7 +1639,7 @@ fn test_sequence_cut_paste_multiple() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1657,7 +1679,7 @@ fn test_edge_empty_directory_navigation() {
     assert!(!entries.is_empty());
 
     // Move down should not panic
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveDown,
         &mut state,
         &mut navigator,
@@ -1666,12 +1688,12 @@ fn test_edge_empty_directory_navigation() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
     // Move up should not panic
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveUp,
         &mut state,
         &mut navigator,
@@ -1680,12 +1702,12 @@ fn test_edge_empty_directory_navigation() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
     // MoveToBottom should work
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveToBottom,
         &mut state,
         &mut navigator,
@@ -1694,12 +1716,12 @@ fn test_edge_empty_directory_navigation() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
     // MoveToTop should work
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveToTop,
         &mut state,
         &mut navigator,
@@ -1708,7 +1730,7 @@ fn test_edge_empty_directory_navigation() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 }
@@ -1732,7 +1754,7 @@ fn test_edge_empty_directory_expand() {
     let initial_count = navigator.visible_count();
 
     // Expand empty directory should not crash
-    handle_action(
+    call_handle_action!(
         KeyAction::Expand,
         &mut state,
         &mut navigator,
@@ -1741,7 +1763,7 @@ fn test_edge_empty_directory_expand() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1749,7 +1771,7 @@ fn test_edge_empty_directory_expand() {
     assert_eq!(navigator.visible_count(), initial_count);
 
     // Collapse should work
-    handle_action(
+    call_handle_action!(
         KeyAction::Collapse,
         &mut state,
         &mut navigator,
@@ -1758,7 +1780,7 @@ fn test_edge_empty_directory_expand() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 }
@@ -1790,7 +1812,7 @@ fn test_edge_symlink_file() {
     let focused = Some(link_file.clone());
 
     // Operations on symlink should work
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleMark,
         &mut state,
         &mut navigator,
@@ -1799,7 +1821,7 @@ fn test_edge_symlink_file() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert!(state.selected_paths.contains(&link_file));
@@ -1829,7 +1851,7 @@ fn test_edge_symlink_directory() {
     let focused = Some(link_dir.clone());
 
     // Expand symlink directory should work
-    handle_action(
+    call_handle_action!(
         KeyAction::Expand,
         &mut state,
         &mut navigator,
@@ -1838,7 +1860,7 @@ fn test_edge_symlink_directory() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1873,7 +1895,7 @@ fn test_edge_deep_directory_structure() {
     for dir_name in ["a", "b", "c", "d", "e", "f"] {
         path = path.join(dir_name);
         let entries = create_test_entries(&navigator);
-        handle_action(
+        call_handle_action!(
             KeyAction::Expand,
             &mut state,
             &mut navigator,
@@ -1882,7 +1904,7 @@ fn test_edge_deep_directory_structure() {
             &context,
             &mut text_preview,
             &mut hex_preview,
-            &mut archive_preview,
+            &mut archive_preview
         )
         .unwrap();
     }
@@ -1893,7 +1915,7 @@ fn test_edge_deep_directory_structure() {
     assert!(has_deep_file, "Deep file should be visible after expanding");
 
     // CollapseAll should work on deep structure
-    handle_action(
+    call_handle_action!(
         KeyAction::CollapseAll,
         &mut state,
         &mut navigator,
@@ -1902,7 +1924,7 @@ fn test_edge_deep_directory_structure() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1932,7 +1954,7 @@ fn test_edge_move_up_at_top() {
     state.focus_index = 0;
 
     // Move up at top should stay at 0 (saturating)
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveUp,
         &mut state,
         &mut navigator,
@@ -1941,7 +1963,7 @@ fn test_edge_move_up_at_top() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -1966,7 +1988,7 @@ fn test_edge_move_down_at_bottom() {
     state.focus_index = last_index;
 
     // Move down at bottom should stay at last
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveDown,
         &mut state,
         &mut navigator,
@@ -1975,7 +1997,7 @@ fn test_edge_move_down_at_bottom() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2005,7 +2027,7 @@ fn test_edge_special_characters_filename() {
     assert!(file_entry.is_some(), "Special filename should be in tree");
 
     // Operations should work
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleMark,
         &mut state,
         &mut navigator,
@@ -2014,7 +2036,7 @@ fn test_edge_special_characters_filename() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2050,7 +2072,7 @@ fn test_edge_unicode_filename() {
     assert!(file_entry.is_some(), "Unicode filename should be in tree");
 
     // Mark should work
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleMark,
         &mut state,
         &mut navigator,
@@ -2059,7 +2081,7 @@ fn test_edge_unicode_filename() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2080,7 +2102,7 @@ fn test_edge_copy_path_no_focus() {
     let mut archive_preview: Option<ArchivePreview> = None;
 
     // CopyPath with None should not crash
-    handle_action(
+    call_handle_action!(
         KeyAction::CopyPath,
         &mut state,
         &mut navigator,
@@ -2089,7 +2111,7 @@ fn test_edge_copy_path_no_focus() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2120,7 +2142,7 @@ fn test_edge_search_next_with_query() {
     state.focus_index = 0;
 
     // SearchNext should not crash even with no matches
-    handle_action(
+    call_handle_action!(
         KeyAction::SearchNext,
         &mut state,
         &mut navigator,
@@ -2129,7 +2151,7 @@ fn test_edge_search_next_with_query() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2154,7 +2176,7 @@ fn test_edge_paste_empty_clipboard() {
     assert!(state.clipboard.is_none());
 
     // Paste should not crash
-    handle_action(
+    call_handle_action!(
         KeyAction::Paste,
         &mut state,
         &mut navigator,
@@ -2163,7 +2185,7 @@ fn test_edge_paste_empty_clipboard() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 }
@@ -2184,7 +2206,7 @@ fn test_edge_confirm_delete_no_targets() {
     // No marks and no focused path
     state.selected_paths.clear();
 
-    handle_action(
+    call_handle_action!(
         KeyAction::ConfirmDelete,
         &mut state,
         &mut navigator,
@@ -2193,7 +2215,7 @@ fn test_edge_confirm_delete_no_targets() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2238,7 +2260,7 @@ fn test_edge_expand_all_depth_limit() {
     assert!(has_dir5, "dir5 should be visible after manual expansion");
 
     // Now call ExpandAll - it should NOT expand dir5 (depth 5 is not < 5)
-    handle_action(
+    call_handle_action!(
         KeyAction::ExpandAll,
         &mut state,
         &mut navigator,
@@ -2247,7 +2269,7 @@ fn test_edge_expand_all_depth_limit() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2285,7 +2307,7 @@ fn test_focus_toggle_switches_target() {
     assert_eq!(state.focus_target, FocusTarget::Tree);
 
     // Toggle focus
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleFocus,
         &mut state,
         &mut navigator,
@@ -2294,14 +2316,14 @@ fn test_focus_toggle_switches_target() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
     assert_eq!(state.focus_target, FocusTarget::Preview);
 
     // Toggle again
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleFocus,
         &mut state,
         &mut navigator,
@@ -2310,7 +2332,7 @@ fn test_focus_toggle_switches_target() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2335,7 +2357,7 @@ fn test_focus_toggle_no_effect_without_preview() {
     assert_eq!(state.focus_target, FocusTarget::Tree);
 
     // Try to toggle focus
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleFocus,
         &mut state,
         &mut navigator,
@@ -2344,7 +2366,7 @@ fn test_focus_toggle_no_effect_without_preview() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2371,7 +2393,7 @@ fn test_focus_reset_when_preview_closed() {
     state.focus_target = FocusTarget::Preview;
 
     // Close preview
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleQuickPreview,
         &mut state,
         &mut navigator,
@@ -2380,7 +2402,7 @@ fn test_focus_reset_when_preview_closed() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2408,7 +2430,7 @@ fn test_focus_preview_navigation_scrolls() {
     state.focus_target = FocusTarget::Preview;
 
     // PreviewScrollDown should scroll the text preview
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewScrollDown,
         &mut state,
         &mut navigator,
@@ -2417,7 +2439,7 @@ fn test_focus_preview_navigation_scrolls() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2445,7 +2467,7 @@ fn test_focus_tree_navigation_moves_files() {
     state.focus_index = 0;
 
     // MoveDown should move file selection
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveDown,
         &mut state,
         &mut navigator,
@@ -2454,7 +2476,7 @@ fn test_focus_tree_navigation_moves_files() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2482,7 +2504,7 @@ fn test_focus_sequence_toggle_scroll_navigate() {
     state.focus_index = 0;
 
     // Step 1: Toggle focus to Preview
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleFocus,
         &mut state,
         &mut navigator,
@@ -2491,13 +2513,13 @@ fn test_focus_sequence_toggle_scroll_navigate() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert_eq!(state.focus_target, FocusTarget::Preview);
 
     // Step 2: Scroll down (should affect preview, not file selection)
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewScrollDown,
         &mut state,
         &mut navigator,
@@ -2506,14 +2528,14 @@ fn test_focus_sequence_toggle_scroll_navigate() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert_eq!(text_preview.as_ref().unwrap().scroll, 1);
     assert_eq!(state.focus_index, 0); // File selection unchanged
 
     // Step 3: Toggle focus back to Tree
-    handle_action(
+    call_handle_action!(
         KeyAction::ToggleFocus,
         &mut state,
         &mut navigator,
@@ -2522,14 +2544,14 @@ fn test_focus_sequence_toggle_scroll_navigate() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert_eq!(state.focus_target, FocusTarget::Tree);
 
     // Step 4: Navigate down (should affect file selection, not scroll)
     let scroll_before = text_preview.as_ref().unwrap().scroll;
-    handle_action(
+    call_handle_action!(
         KeyAction::MoveDown,
         &mut state,
         &mut navigator,
@@ -2538,7 +2560,7 @@ fn test_focus_sequence_toggle_scroll_navigate() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
     assert_eq!(state.focus_index, 1);
@@ -2563,7 +2585,7 @@ fn test_focus_preview_page_scroll() {
     state.focus_target = FocusTarget::Preview;
 
     // Page down
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewPageDown,
         &mut state,
         &mut navigator,
@@ -2572,14 +2594,14 @@ fn test_focus_preview_page_scroll() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
     assert_eq!(text_preview.as_ref().unwrap().scroll, 20);
 
     // Page up
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewPageUp,
         &mut state,
         &mut navigator,
@@ -2588,7 +2610,7 @@ fn test_focus_preview_page_scroll() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2613,7 +2635,7 @@ fn test_focus_preview_jump_to_top_bottom() {
     state.focus_target = FocusTarget::Preview;
 
     // Jump to top
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewToTop,
         &mut state,
         &mut navigator,
@@ -2622,14 +2644,14 @@ fn test_focus_preview_jump_to_top_bottom() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
     assert_eq!(text_preview.as_ref().unwrap().scroll, 0);
 
     // Jump to bottom (large value, will be clamped during render)
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewToBottom,
         &mut state,
         &mut navigator,
@@ -2638,7 +2660,7 @@ fn test_focus_preview_jump_to_top_bottom() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2667,7 +2689,7 @@ fn test_preview_scroll_down_capped_at_max() {
 
     // Scroll down multiple times - should stop at max (4, since 5 lines means max scroll = 4)
     for _ in 0..10 {
-        handle_action(
+        call_handle_action!(
             KeyAction::PreviewScrollDown,
             &mut state,
             &mut navigator,
@@ -2676,7 +2698,7 @@ fn test_preview_scroll_down_capped_at_max() {
             &context,
             &mut text_preview,
             &mut hex_preview,
-            &mut archive_preview,
+            &mut archive_preview
         )
         .unwrap();
     }
@@ -2705,7 +2727,7 @@ fn test_preview_page_down_capped_at_max() {
     text_preview.as_mut().unwrap().scroll = 0;
 
     // Page down once (should try to scroll by 20, but cap at 9)
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewPageDown,
         &mut state,
         &mut navigator,
@@ -2714,7 +2736,7 @@ fn test_preview_page_down_capped_at_max() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2745,7 +2767,7 @@ fn test_preview_to_bottom_syncs_viewmode() {
     state.mode = ViewMode::Preview { scroll: 0 };
 
     // Jump to bottom
-    handle_action(
+    call_handle_action!(
         KeyAction::PreviewToBottom,
         &mut state,
         &mut navigator,
@@ -2754,7 +2776,7 @@ fn test_preview_to_bottom_syncs_viewmode() {
         &context,
         &mut text_preview,
         &mut hex_preview,
-        &mut archive_preview,
+        &mut archive_preview
     )
     .unwrap();
 
@@ -2793,7 +2815,7 @@ fn test_hex_preview_scroll_capped() {
 
     // Scroll down multiple times
     for _ in 0..10 {
-        handle_action(
+        call_handle_action!(
             KeyAction::PreviewScrollDown,
             &mut state,
             &mut navigator,
@@ -2802,7 +2824,7 @@ fn test_hex_preview_scroll_capped() {
             &context,
             &mut text_preview,
             &mut hex_preview,
-            &mut archive_preview,
+            &mut archive_preview
         )
         .unwrap();
     }
@@ -2867,7 +2889,7 @@ fn test_archive_preview_scroll_capped() {
 
     // Scroll down multiple times
     for _ in 0..20 {
-        handle_action(
+        call_handle_action!(
             KeyAction::PreviewScrollDown,
             &mut state,
             &mut navigator,
@@ -2876,7 +2898,7 @@ fn test_archive_preview_scroll_capped() {
             &context,
             &mut text_preview,
             &mut hex_preview,
-            &mut archive_preview,
+            &mut archive_preview
         )
         .unwrap();
     }
