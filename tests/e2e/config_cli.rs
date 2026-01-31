@@ -257,3 +257,241 @@ modified = "yellow"
         .assert()
         .success();
 }
+
+// =============================================================================
+// Custom Commands Configuration (Phase 4)
+// =============================================================================
+
+#[test]
+fn config_with_commands_section_does_not_crash() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_dir = temp_dir.path().join(".config").join("fileview");
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let config_path = config_dir.join("config.toml");
+    let mut file = fs::File::create(&config_path).unwrap();
+    writeln!(
+        file,
+        r#"
+[commands]
+open = "open $f"
+edit = "nvim $f"
+terminal = "cd $d && $SHELL"
+compress = "zip -r archive.zip $S"
+"#
+    )
+    .unwrap();
+
+    fv().env("HOME", temp_dir.path())
+        .arg("--help")
+        .assert()
+        .success();
+}
+
+#[test]
+fn keymap_with_command_binding_does_not_crash() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_dir = temp_dir.path().join(".config").join("fileview");
+    fs::create_dir_all(&config_dir).unwrap();
+
+    // Create config with commands
+    let config_path = config_dir.join("config.toml");
+    let mut file = fs::File::create(&config_path).unwrap();
+    writeln!(
+        file,
+        r#"
+[commands]
+open = "open $f"
+edit = "nvim $f"
+"#
+    )
+    .unwrap();
+
+    // Create keymap that binds to commands
+    let keymap_path = config_dir.join("keymap.toml");
+    let mut file = fs::File::create(&keymap_path).unwrap();
+    writeln!(
+        file,
+        r#"
+[browse]
+"e" = "command:edit"
+"O" = "command:open"
+"x" = "command:nonexistent"
+"#
+    )
+    .unwrap();
+
+    fv().env("HOME", temp_dir.path())
+        .arg("--help")
+        .assert()
+        .success();
+}
+
+#[test]
+fn commands_with_all_placeholders_does_not_crash() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_dir = temp_dir.path().join(".config").join("fileview");
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let config_path = config_dir.join("config.toml");
+    let mut file = fs::File::create(&config_path).unwrap();
+    writeln!(
+        file,
+        r#"
+[commands]
+# All placeholders: $f (path), $d (dir), $n (name), $s (stem), $e (ext), $S (selected)
+full = "echo $f $d $n $s $e"
+selected = "zip archive.zip $S"
+"#
+    )
+    .unwrap();
+
+    fv().env("HOME", temp_dir.path())
+        .arg("--help")
+        .assert()
+        .success();
+}
+
+// =============================================================================
+// Custom Preview Configuration (Phase 5)
+// =============================================================================
+
+#[test]
+fn config_with_custom_preview_does_not_crash() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_dir = temp_dir.path().join(".config").join("fileview");
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let config_path = config_dir.join("config.toml");
+    let mut file = fs::File::create(&config_path).unwrap();
+    writeln!(
+        file,
+        r#"
+[preview]
+hex_max_bytes = 4096
+
+[preview.custom]
+md = "glow -s dark $f"
+json = "jq -C . $f"
+csv = "column -s, -t $f | head -50"
+yaml = "yq . $f"
+"#
+    )
+    .unwrap();
+
+    fv().env("HOME", temp_dir.path())
+        .arg("--help")
+        .assert()
+        .success();
+}
+
+#[test]
+fn empty_custom_preview_section_does_not_crash() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_dir = temp_dir.path().join(".config").join("fileview");
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let config_path = config_dir.join("config.toml");
+    let mut file = fs::File::create(&config_path).unwrap();
+    writeln!(
+        file,
+        r#"
+[preview]
+hex_max_bytes = 8192
+
+[preview.custom]
+# Empty custom preview section
+"#
+    )
+    .unwrap();
+
+    fv().env("HOME", temp_dir.path())
+        .arg("--help")
+        .assert()
+        .success();
+}
+
+#[test]
+fn full_config_with_all_features_does_not_crash() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_dir = temp_dir.path().join(".config").join("fileview");
+    fs::create_dir_all(&config_dir).unwrap();
+
+    // Full config with all Phase 1-5 features
+    let config_path = config_dir.join("config.toml");
+    let mut file = fs::File::create(&config_path).unwrap();
+    writeln!(
+        file,
+        r#"
+[general]
+show_hidden = true
+enable_icons = true
+mouse_enabled = true
+
+[preview]
+hex_max_bytes = 8192
+max_archive_entries = 1000
+image_protocol = "auto"
+
+[preview.custom]
+md = "glow $f"
+json = "jq . $f"
+
+[performance]
+git_poll_interval_secs = 10
+
+[ui]
+show_size = true
+show_permissions = true
+date_format = "%Y-%m-%d"
+
+[commands]
+open = "open $f"
+edit = "nvim $f"
+terminal = "cd $d && $SHELL"
+"#
+    )
+    .unwrap();
+
+    // Keymap with command bindings
+    let keymap_path = config_dir.join("keymap.toml");
+    let mut file = fs::File::create(&keymap_path).unwrap();
+    writeln!(
+        file,
+        r##"
+[browse]
+"j" = "move_down"
+"k" = "move_up"
+"e" = "command:edit"
+"O" = "command:open"
+
+[preview]
+"q" = "cancel"
+"##
+    )
+    .unwrap();
+
+    // Theme
+    let theme_path = config_dir.join("theme.toml");
+    let mut file = fs::File::create(&theme_path).unwrap();
+    writeln!(
+        file,
+        r##"
+[colors]
+background = "#1e1e1e"
+foreground = "#d4d4d4"
+
+[file_colors]
+directory = "blue"
+
+[git_colors]
+modified = "yellow"
+"##
+    )
+    .unwrap();
+
+    fv().env("HOME", temp_dir.path())
+        .arg("--help")
+        .assert()
+        .success();
+}

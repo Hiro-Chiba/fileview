@@ -3,6 +3,7 @@
 //! Loads configuration from `~/.config/fileview/config.toml`
 
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -18,6 +19,8 @@ pub struct ConfigFile {
     pub performance: PerformanceConfig,
     /// UI display settings
     pub ui: UiConfig,
+    /// Custom commands
+    pub commands: CommandsConfig,
 }
 
 /// General application settings
@@ -43,7 +46,7 @@ impl Default for GeneralConfig {
 }
 
 /// Preview-related settings
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct PreviewConfig {
     /// Maximum bytes to show in hex preview
@@ -52,6 +55,9 @@ pub struct PreviewConfig {
     pub max_archive_entries: usize,
     /// Image protocol: "auto", "sixel", "kitty", "iterm2", "halfblocks"
     pub image_protocol: String,
+    /// Custom preview scripts: extension -> command
+    /// The command can use $f for the file path
+    pub custom: HashMap<String, String>,
 }
 
 impl Default for PreviewConfig {
@@ -60,6 +66,7 @@ impl Default for PreviewConfig {
             hex_max_bytes: 4096,
             max_archive_entries: 500,
             image_protocol: "auto".to_string(),
+            custom: HashMap::new(),
         }
     }
 }
@@ -99,6 +106,51 @@ impl Default for UiConfig {
             show_permissions: false,
             date_format: "%Y-%m-%d %H:%M".to_string(),
         }
+    }
+}
+
+/// Custom commands configuration
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct CommandsConfig {
+    /// Named commands: name -> command template
+    /// Placeholders: $f (file path), $d (directory), $n (filename), $s (stem), $e (extension)
+    #[serde(flatten)]
+    pub commands: HashMap<String, String>,
+}
+
+impl CommandsConfig {
+    /// Get a command by name
+    pub fn get(&self, name: &str) -> Option<&String> {
+        self.commands.get(name)
+    }
+
+    /// Expand placeholders in a command template
+    pub fn expand(template: &str, file_path: &std::path::Path) -> String {
+        let path_str = file_path.display().to_string();
+        let dir = file_path
+            .parent()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default();
+        let name = file_path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let stem = file_path
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let ext = file_path
+            .extension()
+            .map(|e| e.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        template
+            .replace("$f", &path_str)
+            .replace("$d", &dir)
+            .replace("$n", &name)
+            .replace("$s", &stem)
+            .replace("$e", &ext)
     }
 }
 

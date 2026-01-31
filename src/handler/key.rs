@@ -146,6 +146,8 @@ pub enum KeyAction {
     NextTab,
     /// Switch to the previous tab
     PrevTab,
+    /// Run a custom command
+    RunCommand { name: String },
 }
 
 /// Handle key event and return the resulting action
