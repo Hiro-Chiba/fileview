@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.4] - 2026-01-31
+
+### Documentation
+
+- **README**: Added positioning diagram and competitive comparison
+- **README_ja**: Updated Japanese README with same improvements, fixed MSRV badge
+- **BENCHMARKS.md**: Added performance comparison table with yazi, lf, ranger, nnn
+- **COMPARISON.md**: New comprehensive comparison guide with feature matrix
+
 ## [1.14.3] - 2026-01-31
 
 ### Security
