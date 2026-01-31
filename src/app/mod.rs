@@ -11,7 +11,7 @@ mod preview;
 mod render;
 
 pub use config::Config;
-pub use config_file::ConfigFile;
+pub use config_file::{CommandsConfig, ConfigFile, PreviewConfig};
 pub use event_loop::{run_app, AppResult};
 pub use image_loader::ImageLoader;
 pub use preview::PreviewState;
