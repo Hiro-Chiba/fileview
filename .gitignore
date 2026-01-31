@@ -1,3 +1,17 @@
 /target
 .claude/*
 !.claude/skills/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.bak
+*.log
