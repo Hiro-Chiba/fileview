@@ -480,6 +480,68 @@ impl ArchivePreview {
         })
     }
 
+    /// Load archive preview from tar.gz file
+    pub fn load_tar_gz(path: &Path) -> anyhow::Result<Self> {
+        let file = std::fs::File::open(path)?;
+        let decompressed = flate2::read::GzDecoder::new(file);
+        let mut archive = tar::Archive::new(decompressed);
+
+        let mut entries = Vec::new();
+        let mut total_size = 0u64;
+        let mut file_count = 0usize;
+
+        for (i, entry_result) in archive.entries()?.enumerate() {
+            if i >= ARCHIVE_MAX_ENTRIES {
+                break;
+            }
+
+            let entry = entry_result?;
+            let header = entry.header();
+            let is_dir = header.entry_type().is_dir();
+            let size = header.size().unwrap_or(0);
+            let name = entry.path()?.to_string_lossy().to_string();
+
+            // Format modified time if available
+            let modified = header.mtime().ok().map(|mtime| {
+                // Convert Unix timestamp to date string
+                let secs = mtime as i64;
+                // Simple date calculation (approximate)
+                let days = secs / 86400;
+                let years = 1970 + days / 365;
+                let remaining_days = days % 365;
+                let month = remaining_days / 30 + 1;
+                let day = remaining_days % 30 + 1;
+                format!("{:04}-{:02}-{:02}", years, month.min(12), day.min(28))
+            });
+
+            if !is_dir {
+                total_size += size;
+                file_count += 1;
+            }
+
+            entries.push(ArchiveEntry {
+                name,
+                size,
+                is_dir,
+                modified,
+            });
+        }
+
+        // Sort entries: directories first, then files, both alphabetically
+        entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.cmp(&b.name),
+        });
+
+        Ok(Self {
+            entries,
+            total_size,
+            file_count,
+            scroll: 0,
+        })
+    }
+
     /// Get visible line count
     pub fn line_count(&self) -> usize {
         self.entries.len() + 2 // +2 for header lines
@@ -812,8 +874,19 @@ pub fn is_image_file(path: &std::path::Path) -> bool {
     )
 }
 
-/// Check if a file is a zip archive
+/// Check if a file is a tar.gz archive (handles double extension)
+pub fn is_tar_gz_file(path: &std::path::Path) -> bool {
+    let path_str = path.to_string_lossy().to_lowercase();
+    path_str.ends_with(".tar.gz") || path_str.ends_with(".tgz")
+}
+
+/// Check if a file is an archive (zip or tar.gz)
 pub fn is_archive_file(path: &std::path::Path) -> bool {
+    // Check tar.gz first (has double extension)
+    if is_tar_gz_file(path) {
+        return true;
+    }
+
     let ext = path
         .extension()
         .and_then(|e| e.to_str())
@@ -912,11 +985,47 @@ mod tests {
         assert!(!is_archive_file(Path::new("image.png")));
         assert!(!is_archive_file(Path::new("image.jpg")));
 
-        // Unsupported archive formats (tar.gz, 7z, etc.)
-        assert!(!is_archive_file(Path::new("file.tar.gz")));
+        // Unsupported archive formats (7z, rar, plain tar)
         assert!(!is_archive_file(Path::new("file.7z")));
         assert!(!is_archive_file(Path::new("file.rar")));
         assert!(!is_archive_file(Path::new("file.tar")));
+    }
+
+    // =========================================================================
+    // is_tar_gz_file tests
+    // =========================================================================
+
+    #[test]
+    fn test_is_tar_gz_file() {
+        // Standard tar.gz
+        assert!(is_tar_gz_file(Path::new("file.tar.gz")));
+
+        // tgz extension
+        assert!(is_tar_gz_file(Path::new("file.tgz")));
+
+        // Case insensitive
+        assert!(is_tar_gz_file(Path::new("FILE.TAR.GZ")));
+        assert!(is_tar_gz_file(Path::new("FILE.TGZ")));
+        assert!(is_tar_gz_file(Path::new("File.Tar.Gz")));
+    }
+
+    #[test]
+    fn test_is_tar_gz_file_is_archive() {
+        // tar.gz files should be recognized as archives
+        assert!(is_archive_file(Path::new("file.tar.gz")));
+        assert!(is_archive_file(Path::new("file.tgz")));
+    }
+
+    #[test]
+    fn test_is_tar_gz_file_non_tar_gz() {
+        // Plain tar is not tar.gz
+        assert!(!is_tar_gz_file(Path::new("file.tar")));
+
+        // gz without tar is not tar.gz
+        assert!(!is_tar_gz_file(Path::new("file.gz")));
+
+        // Other archives
+        assert!(!is_tar_gz_file(Path::new("file.zip")));
     }
 
     #[test]
