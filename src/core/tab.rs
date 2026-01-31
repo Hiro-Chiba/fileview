@@ -246,4 +246,111 @@ mod tests {
         manager.switch_to(1);
         assert_eq!(manager.active_index, 1);
     }
+
+    #[test]
+    fn test_tab_short_name_exact_length() {
+        let (_temp, mut tab) = create_temp_tab();
+        tab.name = "exactly10!".to_string();
+
+        assert_eq!(tab.short_name(10), "exactly10!");
+    }
+
+    #[test]
+    fn test_tab_short_name_shorter() {
+        let (_temp, mut tab) = create_temp_tab();
+        tab.name = "short".to_string();
+
+        assert_eq!(tab.short_name(10), "short");
+    }
+
+    #[test]
+    fn test_tab_manager_active_mut() {
+        let temp = TempDir::new().unwrap();
+        let mut manager = TabManager::new(temp.path().to_path_buf(), false).unwrap();
+
+        manager.active_mut().focus_index = 5;
+        assert_eq!(manager.active().focus_index, 5);
+    }
+
+    #[test]
+    fn test_tab_manager_switch_to_invalid() {
+        let temp = TempDir::new().unwrap();
+        let mut manager = TabManager::new(temp.path().to_path_buf(), false).unwrap();
+
+        manager.switch_to(100); // Invalid index
+        assert_eq!(manager.active_index, 0); // Should not change
+    }
+
+    #[test]
+    fn test_tab_manager_close_active_middle() {
+        let temp1 = TempDir::new().unwrap();
+        let temp2 = TempDir::new().unwrap();
+        let temp3 = TempDir::new().unwrap();
+
+        let mut manager = TabManager::new(temp1.path().to_path_buf(), false).unwrap();
+        manager.new_tab(temp2.path().to_path_buf(), false).unwrap();
+        manager.new_tab(temp3.path().to_path_buf(), false).unwrap();
+
+        // Switch to middle tab and close
+        manager.switch_to(1);
+        assert!(manager.close_tab());
+        assert_eq!(manager.len(), 2);
+        assert_eq!(manager.active_index, 1); // Should stay at 1 (now the last tab)
+    }
+
+    #[test]
+    fn test_tab_manager_close_last_position() {
+        let temp1 = TempDir::new().unwrap();
+        let temp2 = TempDir::new().unwrap();
+
+        let mut manager = TabManager::new(temp1.path().to_path_buf(), false).unwrap();
+        manager.new_tab(temp2.path().to_path_buf(), false).unwrap();
+
+        // Close tab at last position (index 1)
+        assert!(manager.close_tab());
+        assert_eq!(manager.active_index, 0); // Should adjust to 0
+    }
+
+    #[test]
+    fn test_tab_manager_is_empty() {
+        let temp = TempDir::new().unwrap();
+        let manager = TabManager::new(temp.path().to_path_buf(), false).unwrap();
+
+        assert!(!manager.is_empty());
+    }
+
+    #[test]
+    fn test_tab_selection() {
+        let (_temp, mut tab) = create_temp_tab();
+
+        tab.selected_paths.insert(PathBuf::from("/test/file1.txt"));
+        tab.selected_paths.insert(PathBuf::from("/test/file2.txt"));
+
+        assert_eq!(tab.selected_paths.len(), 2);
+        assert!(tab
+            .selected_paths
+            .contains(&PathBuf::from("/test/file1.txt")));
+    }
+
+    #[test]
+    fn test_tab_bookmarks() {
+        let (_temp, mut tab) = create_temp_tab();
+
+        tab.bookmarks[0] = Some(PathBuf::from("/bookmark/1"));
+        tab.bookmarks[8] = Some(PathBuf::from("/bookmark/9"));
+
+        assert_eq!(tab.bookmarks[0], Some(PathBuf::from("/bookmark/1")));
+        assert_eq!(tab.bookmarks[8], Some(PathBuf::from("/bookmark/9")));
+        assert_eq!(tab.bookmarks[1], None);
+    }
+
+    #[test]
+    fn test_tab_filter_pattern() {
+        let (_temp, mut tab) = create_temp_tab();
+
+        assert!(tab.filter_pattern.is_none());
+
+        tab.filter_pattern = Some("*.rs".to_string());
+        assert_eq!(tab.filter_pattern, Some("*.rs".to_string()));
+    }
 }
