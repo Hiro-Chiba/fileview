@@ -2,12 +2,13 @@
 //!
 //! Tests for the --pick flag behavior and output formats.
 
+use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
 use tempfile::TempDir;
 
 fn fv() -> Command {
-    Command::cargo_bin("fv").unwrap()
+    cargo_bin_cmd!("fv")
 }
 
 // =============================================================================
