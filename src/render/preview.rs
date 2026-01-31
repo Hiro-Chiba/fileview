@@ -1,4 +1,4 @@
-//! Preview rendering (text, images, and directory info)
+//! Preview rendering (text, images, directory info, and archives)
 
 use std::path::Path;
 
@@ -20,6 +20,9 @@ const HEX_PREVIEW_MAX_BYTES: usize = 4096;
 
 /// Number of bytes per line in hex preview
 const HEX_BYTES_PER_LINE: usize = 16;
+
+/// Maximum entries to display in archive preview
+const ARCHIVE_MAX_ENTRIES: usize = 500;
 
 /// Text preview content
 pub struct TextPreview {
@@ -403,6 +406,177 @@ impl HexPreview {
     }
 }
 
+/// Archive entry information
+#[derive(Debug, Clone)]
+pub struct ArchiveEntry {
+    /// File/directory name (full path within archive)
+    pub name: String,
+    /// Size in bytes (0 for directories)
+    pub size: u64,
+    /// Whether this is a directory
+    pub is_dir: bool,
+    /// Last modified time (optional)
+    pub modified: Option<String>,
+}
+
+/// Archive preview content
+pub struct ArchivePreview {
+    /// Archive entries
+    pub entries: Vec<ArchiveEntry>,
+    /// Total uncompressed size
+    pub total_size: u64,
+    /// Number of files (not directories)
+    pub file_count: usize,
+    /// Scroll position
+    pub scroll: usize,
+}
+
+impl ArchivePreview {
+    /// Load archive preview from zip file
+    pub fn load_zip(path: &Path) -> anyhow::Result<Self> {
+        let file = std::fs::File::open(path)?;
+        let mut archive = zip::ZipArchive::new(file)?;
+
+        let mut entries = Vec::new();
+        let mut total_size = 0u64;
+        let mut file_count = 0usize;
+
+        for i in 0..archive.len().min(ARCHIVE_MAX_ENTRIES) {
+            let entry = archive.by_index(i)?;
+            let is_dir = entry.is_dir();
+            let size = entry.size();
+            let name = entry.name().to_string();
+
+            // Format modified time if available
+            let modified = entry
+                .last_modified()
+                .map(|dt| format!("{:04}-{:02}-{:02}", dt.year(), dt.month(), dt.day()));
+
+            if !is_dir {
+                total_size += size;
+                file_count += 1;
+            }
+
+            entries.push(ArchiveEntry {
+                name,
+                size,
+                is_dir,
+                modified,
+            });
+        }
+
+        // Sort entries: directories first, then files, both alphabetically
+        entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.cmp(&b.name),
+        });
+
+        Ok(Self {
+            entries,
+            total_size,
+            file_count,
+            scroll: 0,
+        })
+    }
+
+    /// Get visible line count
+    pub fn line_count(&self) -> usize {
+        self.entries.len() + 2 // +2 for header lines
+    }
+}
+
+/// Render archive preview
+pub fn render_archive_preview(
+    frame: &mut Frame,
+    preview: &ArchivePreview,
+    area: Rect,
+    title: &str,
+    focused: bool,
+) {
+    let visible_height = area.height.saturating_sub(2) as usize;
+    let separator = "─".repeat(area.width.saturating_sub(4) as usize);
+
+    let mut lines: Vec<Line> = Vec::new();
+
+    // Header: archive info
+    lines.push(Line::from(vec![Span::styled(
+        format!(
+            "  {} files, {}",
+            preview.file_count,
+            format_size(preview.total_size)
+        ),
+        Style::default().fg(Color::Cyan),
+    )]));
+
+    lines.push(Line::from(vec![Span::styled(
+        format!("  {}", separator),
+        Style::default().fg(Color::DarkGray),
+    )]));
+
+    // Skip header lines in scroll calculation
+    let header_lines = 2;
+    let content_start = preview.scroll.saturating_sub(header_lines);
+
+    // Entry list
+    for entry in preview
+        .entries
+        .iter()
+        .skip(content_start)
+        .take(visible_height.saturating_sub(header_lines))
+    {
+        let (icon, color) = if entry.is_dir {
+            ("\u{f07b}", Color::Blue) // Folder icon
+        } else {
+            ("\u{f016}", Color::White) // File icon
+        };
+
+        let size_str = if entry.is_dir {
+            String::new()
+        } else {
+            format_size(entry.size)
+        };
+
+        let date_str = entry.modified.as_deref().unwrap_or("");
+
+        // Calculate name display width
+        let max_name_width = area.width.saturating_sub(24) as usize;
+        let display_name = if entry.name.len() > max_name_width {
+            format!("{}...", &entry.name[..max_name_width.saturating_sub(3)])
+        } else {
+            entry.name.clone()
+        };
+
+        lines.push(Line::from(vec![
+            Span::styled(format!("  {} ", icon), Style::default().fg(color)),
+            Span::styled(
+                format!("{:<width$}", display_name, width = max_name_width),
+                Style::default().fg(color),
+            ),
+            Span::styled(
+                format!("{:>8}  ", size_str),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(date_str.to_string(), Style::default().fg(Color::DarkGray)),
+        ]));
+    }
+
+    let border_style = if focused {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default()
+    };
+
+    let widget = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(format!(" {} ", title))
+            .border_style(border_style),
+    );
+
+    frame.render_widget(widget, area);
+}
+
 /// Render hex preview (xxd-style)
 pub fn render_hex_preview(
     frame: &mut Frame,
@@ -505,10 +679,10 @@ fn render_hex_line(offset: usize, bytes: &[u8]) -> Line<'static> {
     Line::from(spans)
 }
 
-/// Check if a file is likely a binary file (not text, not image)
+/// Check if a file is likely a binary file (not text, not image, not archive)
 pub fn is_binary_file(path: &Path) -> bool {
-    // If it's a known text or image file, it's not binary
-    if is_text_file(path) || is_image_file(path) {
+    // If it's a known text, image, or archive file, it's not binary
+    if is_text_file(path) || is_image_file(path) || is_archive_file(path) {
         return false;
     }
 
@@ -635,6 +809,19 @@ pub fn is_image_file(path: &std::path::Path) -> bool {
     matches!(
         ext.as_deref(),
         Some("png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp" | "ico")
+    )
+}
+
+/// Check if a file is a zip archive
+pub fn is_archive_file(path: &std::path::Path) -> bool {
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase());
+
+    matches!(
+        ext.as_deref(),
+        Some("zip" | "jar" | "apk" | "ipa" | "xpi" | "epub")
     )
 }
 
