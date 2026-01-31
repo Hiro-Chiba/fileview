@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use crate::core::AppState;
 use crate::render::{
-    is_binary_file, is_image_file, is_text_file, DirectoryInfo, HexPreview, ImagePreview, Picker,
-    TextPreview,
+    is_archive_file, is_binary_file, is_image_file, is_text_file, ArchivePreview, DirectoryInfo,
+    HexPreview, ImagePreview, Picker, TextPreview,
 };
 
 /// Preview state container
@@ -15,6 +15,7 @@ pub struct PreviewState {
     pub image: Option<ImagePreview>,
     pub dir_info: Option<DirectoryInfo>,
     pub hex: Option<HexPreview>,
+    pub archive: Option<ArchivePreview>,
     pub last_path: Option<PathBuf>,
 }
 
@@ -29,6 +30,7 @@ impl PreviewState {
         self.image = None;
         self.dir_info = None;
         self.hex = None;
+        self.archive = None;
     }
 
     /// Update preview for the given path if it has changed
@@ -57,6 +59,7 @@ impl PreviewState {
                 self.text = None;
                 self.image = None;
                 self.hex = None;
+                self.archive = None;
             }
         } else if is_text_file(path) {
             match std::fs::read_to_string(path) {
@@ -65,6 +68,7 @@ impl PreviewState {
                     self.image = None;
                     self.dir_info = None;
                     self.hex = None;
+                    self.archive = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -79,11 +83,26 @@ impl PreviewState {
                         self.text = None;
                         self.dir_info = None;
                         self.hex = None;
+                        self.archive = None;
                     }
                     Err(e) => {
                         state.set_message(format!("Failed: preview - {}", e));
                         self.clear_all();
                     }
+                }
+            }
+        } else if is_archive_file(path) {
+            match ArchivePreview::load_zip(path) {
+                Ok(archive) => {
+                    self.archive = Some(archive);
+                    self.text = None;
+                    self.image = None;
+                    self.dir_info = None;
+                    self.hex = None;
+                }
+                Err(e) => {
+                    state.set_message(format!("Failed: preview - {}", e));
+                    self.clear_all();
                 }
             }
         } else if is_binary_file(path) || path.is_file() {
@@ -94,6 +113,7 @@ impl PreviewState {
                     self.text = None;
                     self.image = None;
                     self.dir_info = None;
+                    self.archive = None;
                 }
                 Err(e) => {
                     state.set_message(format!("Failed: preview - {}", e));
@@ -107,6 +127,10 @@ impl PreviewState {
 
     /// Check if any preview content is available
     pub fn has_content(&self) -> bool {
-        self.text.is_some() || self.image.is_some() || self.dir_info.is_some() || self.hex.is_some()
+        self.text.is_some()
+            || self.image.is_some()
+            || self.dir_info.is_some()
+            || self.hex.is_some()
+            || self.archive.is_some()
     }
 }

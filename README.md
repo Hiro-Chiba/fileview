@@ -31,7 +31,7 @@ fv
 |---------|-------------|
 | Tree navigation | Expand/collapse with vim keys |
 | Multi-select | Batch operations on files |
-| Preview panel | Text, images, hex dump |
+| Preview panel | Text, images, archives, hex dump |
 | File operations | Create, rename, delete, copy/paste |
 | Fuzzy finder | `Ctrl+P` for quick search |
 | Mouse support | Click, scroll, drag |
