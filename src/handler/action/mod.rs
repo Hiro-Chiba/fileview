@@ -4,14 +4,18 @@
 //! actual state changes and side effects.
 
 mod bookmark;
+mod bulk_rename;
 mod display;
 mod file_ops;
 mod filter;
+mod git_ops;
 mod input;
 mod navigation;
 mod search;
 mod selection;
 mod tree_ops;
+
+pub use bulk_rename::update_bulk_rename_buffer;
 
 pub use filter::matches_filter;
 
@@ -20,7 +24,7 @@ use std::path::{Path, PathBuf};
 use crate::core::AppState;
 use crate::handler::key::KeyAction;
 use crate::integrate::{Callback, OutputFormat};
-use crate::render::{ArchivePreview, HexPreview, PdfPreview, Picker, TextPreview};
+use crate::render::{ArchivePreview, DiffPreview, HexPreview, PdfPreview, Picker, TextPreview};
 use crate::tree::TreeNavigator;
 
 /// Result of action execution
@@ -93,6 +97,7 @@ pub fn handle_action(
     hex_preview: &mut Option<HexPreview>,
     archive_preview: &mut Option<ArchivePreview>,
     pdf_preview: &mut Option<PdfPreview>,
+    diff_preview: &mut Option<DiffPreview>,
     image_picker: &mut Option<Picker>,
 ) -> anyhow::Result<ActionResult> {
     // Disable CRUD operations in stdin mode
@@ -199,6 +204,7 @@ pub fn handle_action(
                 text_preview,
                 hex_preview,
                 archive_preview,
+                diff_preview,
             );
             Ok(ActionResult::Continue)
         }
@@ -235,6 +241,25 @@ pub fn handle_action(
         // PDF navigation
         KeyAction::PdfPrevPage | KeyAction::PdfNextPage => {
             display::handle_pdf_navigation(action, state, pdf_preview, image_picker);
+            Ok(ActionResult::Continue)
+        }
+
+        // Git operations
+        KeyAction::GitStage | KeyAction::GitUnstage => {
+            git_ops::handle(action, state, focused_path.as_ref());
+            Ok(ActionResult::Continue)
+        }
+
+        // Bulk rename operations
+        KeyAction::StartBulkRename
+        | KeyAction::BulkRenameNextField
+        | KeyAction::ExecuteBulkRename { .. } => {
+            bulk_rename::handle(action, state, navigator)?;
+            Ok(ActionResult::Continue)
+        }
+
+        // Tab operations (handled in event loop)
+        KeyAction::NewTab | KeyAction::CloseTab | KeyAction::NextTab | KeyAction::PrevTab => {
             Ok(ActionResult::Continue)
         }
     }

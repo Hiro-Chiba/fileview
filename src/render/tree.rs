@@ -75,12 +75,17 @@ fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'
 
     let mark_indicator = if is_selected { "*" } else { " " };
 
-    // Get git status color
+    // Get git status color and staging info
     let git_status = state
         .git_status
         .as_ref()
         .map(|g| g.get_status(&entry.path))
         .unwrap_or(FileStatus::Clean);
+
+    let is_staged = state
+        .git_status
+        .as_ref()
+        .is_some_and(|g| g.is_staged(&entry.path));
 
     let mut style = Style::default();
 
@@ -111,8 +116,18 @@ fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'
         style = style.bg(Color::DarkGray).add_modifier(Modifier::BOLD);
     }
 
+    // Stage indicator: + for staged, ~ for modified (unstaged)
+    let stage_indicator = if is_staged {
+        Span::styled("+", Style::default().fg(Color::Green))
+    } else if git_status == FileStatus::Modified {
+        Span::styled("~", Style::default().fg(Color::Yellow))
+    } else {
+        Span::raw(" ")
+    };
+
     let line = Line::from(vec![
         Span::styled(mark_indicator, Style::default().fg(Color::Yellow)),
+        stage_indicator,
         Span::styled(format!("{}{} {}", indent, icon, entry.name), style),
     ]);
 

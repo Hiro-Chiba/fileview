@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-01-31
+
+### Added
+
+- **Async image loading**: Background image loading using std::thread + mpsc channels prevents UI freezing on large images
+- **Git stage/unstage**: Press `s` to stage files, `u` to unstage files with visual indicators (`+` staged, `~` modified)
+- **Git diff preview**: Color-coded diff display for modified files (green for additions, red for deletions)
+- **Bulk rename**: Press `R` with multiple files selected for pattern-based renaming (supports wildcards like `*.txt` → `*.md`)
+- **Tab support (foundation)**: Tab and TabManager structures with key bindings (`Ctrl+T`, `Ctrl+W`, `Alt+t`, `Alt+T`)
+
+### New Files
+
+- `src/app/image_loader.rs`: Background image loader
+- `src/git/operations.rs`: Git stage/unstage operations
+- `src/git/diff.rs`: Git diff parsing
+- `src/handler/action/git_ops.rs`: Git action handler
+- `src/handler/action/bulk_rename.rs`: Bulk rename logic
+- `src/render/bulk_rename.rs`: Bulk rename dialog rendering
+- `src/core/tab.rs`: Tab and TabManager structures
+- `src/render/tabs.rs`: Tab bar rendering
+
 ## [1.14.4] - 2026-01-31
 
 ### Documentation
