@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] - 2026-01-31
+
+### Fixed
+- **Scroll bounds checking**: Preview scroll now properly stops at the end of content
+  - `PreviewScrollDown` (j) stops at last line instead of scrolling infinitely
+  - `PreviewPageDown` (Ctrl+d) respects content boundaries
+  - `PreviewToBottom` (G) now syncs with ViewMode scroll state
+  - Applies to text, hex, and archive previews
+
+### Added
+- **Unit tests**: Added scroll bounds tests for all preview types
+
 ## [1.9.1] - 2026-01-31
 
 ### Fixed
