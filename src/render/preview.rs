@@ -101,6 +101,27 @@ const HEX_BYTES_PER_LINE: usize = 16;
 /// Maximum entries to display in archive preview
 const ARCHIVE_MAX_ENTRIES: usize = 500;
 
+/// Maximum length for archive entry names (prevent DoS from malicious archives)
+const MAX_ENTRY_NAME_LEN: usize = 4096;
+
+/// Get border style based on focus state
+fn get_border_style(focused: bool) -> Style {
+    if focused {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default()
+    }
+}
+
+/// Truncate archive entry name if too long
+fn truncate_entry_name(name: String) -> String {
+    if name.len() > MAX_ENTRY_NAME_LEN {
+        format!("{}...", &name[..MAX_ENTRY_NAME_LEN - 3])
+    } else {
+        name
+    }
+}
+
 /// Text preview content
 pub struct TextPreview {
     pub lines: Vec<String>,
@@ -355,17 +376,11 @@ pub fn render_text_preview(
             .collect()
     };
 
-    let border_style = if focused {
-        Style::default().fg(Color::Cyan)
-    } else {
-        Style::default()
-    };
-
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
             .title(format!(" {} ", title))
-            .border_style(border_style),
+            .border_style(get_border_style(focused)),
     );
 
     frame.render_widget(widget, area);
@@ -431,16 +446,10 @@ pub fn render_image_preview(
     focused: bool,
     font_size: FontSize,
 ) {
-    let border_style = if focused {
-        Style::default().fg(Color::Cyan)
-    } else {
-        Style::default()
-    };
-
     let block = Block::default()
         .borders(Borders::ALL)
         .title(format!(" {} ({}x{}) ", title, img.width, img.height))
-        .border_style(border_style);
+        .border_style(get_border_style(focused));
 
     let inner_area = block.inner(area);
     frame.render_widget(block, area);
@@ -504,17 +513,11 @@ pub fn render_directory_info(frame: &mut Frame, info: &DirectoryInfo, area: Rect
         ]),
     ];
 
-    let border_style = if focused {
-        Style::default().fg(Color::Cyan)
-    } else {
-        Style::default()
-    };
-
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
             .title(" Directory Info ")
-            .border_style(border_style),
+            .border_style(get_border_style(focused)),
     );
 
     frame.render_widget(widget, area);
@@ -606,7 +609,7 @@ impl ArchivePreview {
             let entry = archive.by_index(i)?;
             let is_dir = entry.is_dir();
             let size = entry.size();
-            let name = entry.name().to_string();
+            let name = truncate_entry_name(entry.name().to_string());
 
             // Format modified time if available
             let modified = entry
@@ -656,7 +659,7 @@ impl ArchivePreview {
             let header = entry.header();
             let is_dir = header.entry_type().is_dir();
             let size = header.size().unwrap_or(0);
-            let name = entry.path()?.to_string_lossy().to_string();
+            let name = truncate_entry_name(entry.path()?.to_string_lossy().to_string());
 
             // Format modified time if available
             let modified = header
@@ -769,17 +772,11 @@ pub fn render_archive_preview(
         ]));
     }
 
-    let border_style = if focused {
-        Style::default().fg(Color::Cyan)
-    } else {
-        Style::default()
-    };
-
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
             .title(format!(" {} ", title))
-            .border_style(border_style),
+            .border_style(get_border_style(focused)),
     );
 
     frame.render_widget(widget, area);
@@ -807,18 +804,12 @@ pub fn render_hex_preview(
         })
         .collect();
 
-    let border_style = if focused {
-        Style::default().fg(Color::Cyan)
-    } else {
-        Style::default()
-    };
-
     let size_str = format_size(preview.size);
     let widget = Paragraph::new(lines).block(
         Block::default()
             .borders(Borders::ALL)
             .title(format!(" {} ({}) ", title, size_str))
-            .border_style(border_style),
+            .border_style(get_border_style(focused)),
     );
 
     frame.render_widget(widget, area);
@@ -1257,12 +1248,6 @@ pub fn render_pdf_preview(
     focused: bool,
     font_size: FontSize,
 ) {
-    let border_style = if focused {
-        Style::default().fg(Color::Cyan)
-    } else {
-        Style::default()
-    };
-
     // Title with page info and navigation hint
     let full_title = format!(
         " {} ({}/{}) [/] prev/next ",
@@ -1272,7 +1257,7 @@ pub fn render_pdf_preview(
     let block = Block::default()
         .borders(Borders::ALL)
         .title(full_title)
-        .border_style(border_style);
+        .border_style(get_border_style(focused));
 
     let inner_area = block.inner(area);
     frame.render_widget(block, area);
