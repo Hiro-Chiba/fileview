@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use crate::core::AppState;
 use crate::handler::key::KeyAction;
 use crate::integrate::{Callback, OutputFormat};
-use crate::render::TextPreview;
+use crate::render::{ArchivePreview, HexPreview, TextPreview};
 use crate::tree::TreeNavigator;
 
 /// Result of action execution
@@ -81,6 +81,7 @@ pub fn reload_tree(navigator: &mut TreeNavigator, state: &mut AppState) -> anyho
 }
 
 /// Handle a KeyAction and update state accordingly
+#[allow(clippy::too_many_arguments)]
 pub fn handle_action(
     action: KeyAction,
     state: &mut AppState,
@@ -89,6 +90,8 @@ pub fn handle_action(
     entries: &[EntrySnapshot],
     context: &ActionContext,
     text_preview: &mut Option<TextPreview>,
+    hex_preview: &mut Option<HexPreview>,
+    archive_preview: &mut Option<ArchivePreview>,
 ) -> anyhow::Result<ActionResult> {
     // Disable CRUD operations in stdin mode
     if state.stdin_mode {
@@ -188,7 +191,13 @@ pub fn handle_action(
         | KeyAction::PreviewPageDown
         | KeyAction::PreviewToTop
         | KeyAction::PreviewToBottom => {
-            display::handle_preview_scroll(action, state, text_preview);
+            display::handle_preview_scroll(
+                action,
+                state,
+                text_preview,
+                hex_preview,
+                archive_preview,
+            );
             Ok(ActionResult::Continue)
         }
 

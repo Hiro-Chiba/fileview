@@ -7,7 +7,7 @@ use tempfile::TempDir;
 use crate::core::{AppState, FocusTarget, ViewMode};
 use crate::handler::key::KeyAction;
 use crate::integrate::exit_code;
-use crate::render::TextPreview;
+use crate::render::{ArchivePreview, HexPreview, TextPreview};
 use crate::tree::TreeNavigator;
 
 use super::{
@@ -89,7 +89,9 @@ fn test_move_up_action() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.focus_index = 2;
     let result = handle_action(
@@ -100,6 +102,8 @@ fn test_move_up_action() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -117,7 +121,9 @@ fn test_move_down_action() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.focus_index = 0;
     let result = handle_action(
@@ -128,6 +134,8 @@ fn test_move_down_action() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -142,7 +150,9 @@ fn test_quit_action() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     let result = handle_action(
         KeyAction::Quit,
@@ -152,6 +162,8 @@ fn test_quit_action() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -169,7 +181,9 @@ fn test_toggle_mark_action() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     let focused = Some(file_path.clone());
 
     // Mark
@@ -181,6 +195,8 @@ fn test_toggle_mark_action() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(state.selected_paths.contains(&file_path));
@@ -194,6 +210,8 @@ fn test_toggle_mark_action() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(!state.selected_paths.contains(&file_path));
@@ -206,7 +224,9 @@ fn test_toggle_hidden_action() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     assert!(!state.show_hidden);
 
@@ -218,6 +238,8 @@ fn test_toggle_hidden_action() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -231,7 +253,9 @@ fn test_open_preview_action() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Open preview
     handle_action(
@@ -242,6 +266,8 @@ fn test_open_preview_action() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Preview { .. }));
@@ -255,6 +281,8 @@ fn test_open_preview_action() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Browse));
@@ -267,7 +295,9 @@ fn test_toggle_quick_preview_action() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     assert!(!state.preview_visible);
 
@@ -279,6 +309,8 @@ fn test_toggle_quick_preview_action() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -302,7 +334,9 @@ fn test_toggle_expand_file_with_side_preview_closes_panel() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Side preview is visible
     state.preview_visible = true;
@@ -316,6 +350,8 @@ fn test_toggle_expand_file_with_side_preview_closes_panel() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -338,7 +374,9 @@ fn test_toggle_expand_file_without_preview_opens_fullscreen() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Side preview is NOT visible
     state.preview_visible = false;
@@ -352,6 +390,8 @@ fn test_toggle_expand_file_without_preview_opens_fullscreen() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -374,7 +414,9 @@ fn test_toggle_expand_directory_toggles_expand() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     let focused = Some(dir_path.clone());
     let initial_count = navigator.visible_count();
@@ -388,6 +430,8 @@ fn test_toggle_expand_directory_toggles_expand() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -405,6 +449,8 @@ fn test_toggle_expand_directory_toggles_expand() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -423,7 +469,9 @@ fn test_cancel_in_preview_mode_returns_to_browse() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Start in Preview mode
     state.mode = ViewMode::Preview { scroll: 5 };
@@ -436,6 +484,8 @@ fn test_cancel_in_preview_mode_returns_to_browse() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -453,7 +503,9 @@ fn test_cancel_in_browse_pick_mode_returns_cancelled() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.pick_mode = true;
 
@@ -465,6 +517,8 @@ fn test_cancel_in_browse_pick_mode_returns_cancelled() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -483,7 +537,9 @@ fn test_cancel_in_browse_normal_mode_sets_quit() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.pick_mode = false;
 
@@ -495,6 +551,8 @@ fn test_cancel_in_browse_normal_mode_sets_quit() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -509,7 +567,9 @@ fn test_cancel_in_input_mode_returns_to_browse() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.mode = ViewMode::Input {
         purpose: crate::core::InputPurpose::CreateFile,
@@ -526,6 +586,8 @@ fn test_cancel_in_input_mode_returns_to_browse() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -547,6 +609,8 @@ fn test_preview_scroll_updates_text_preview() {
 
     // Create a text preview with some lines
     let mut text_preview = Some(TextPreview::new("line1\nline2\nline3\nline4\nline5"));
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 0;
 
     // Scroll down
@@ -558,6 +622,8 @@ fn test_preview_scroll_updates_text_preview() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -576,6 +642,8 @@ fn test_preview_scroll_updates_text_preview() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -596,6 +664,8 @@ fn test_preview_scroll_saturates_at_zero() {
     let context = ActionContext::default();
 
     let mut text_preview = Some(TextPreview::new("line1\nline2"));
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 0;
 
     // Try to scroll up when already at 0
@@ -607,6 +677,8 @@ fn test_preview_scroll_saturates_at_zero() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -627,6 +699,8 @@ fn test_preview_page_scroll() {
     let context = ActionContext::default();
 
     let mut text_preview = Some(TextPreview::new("a\n".repeat(100).as_str()));
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 0;
 
     // Page down
@@ -638,6 +712,8 @@ fn test_preview_page_scroll() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -656,6 +732,8 @@ fn test_preview_page_scroll() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -674,7 +752,9 @@ fn test_preview_scroll_updates_viewmode_scroll() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Start in Preview mode with scroll at 0
     state.mode = ViewMode::Preview { scroll: 0 };
@@ -687,6 +767,8 @@ fn test_preview_scroll_updates_viewmode_scroll() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -709,7 +791,9 @@ fn test_move_to_top() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.focus_index = 3;
 
@@ -721,6 +805,8 @@ fn test_move_to_top() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -738,7 +824,9 @@ fn test_move_to_bottom() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.focus_index = 0;
     let last_index = entries.len().saturating_sub(1);
@@ -751,6 +839,8 @@ fn test_move_to_bottom() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -770,7 +860,9 @@ fn test_clear_marks() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.selected_paths.insert(file1);
     state.selected_paths.insert(file2);
@@ -784,6 +876,8 @@ fn test_clear_marks() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -798,7 +892,9 @@ fn test_start_search() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     handle_action(
         KeyAction::StartSearch,
@@ -808,6 +904,8 @@ fn test_start_search() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -822,7 +920,9 @@ fn test_start_new_file() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     handle_action(
         KeyAction::StartNewFile,
@@ -832,6 +932,8 @@ fn test_start_new_file() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -852,7 +954,9 @@ fn test_start_new_dir() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     handle_action(
         KeyAction::StartNewDir,
@@ -862,6 +966,8 @@ fn test_start_new_dir() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -893,7 +999,9 @@ fn test_sequence_navigation_with_preview() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Initial state
     state.focus_index = 0;
@@ -908,6 +1016,8 @@ fn test_sequence_navigation_with_preview() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert_eq!(state.focus_index, 1);
@@ -921,6 +1031,8 @@ fn test_sequence_navigation_with_preview() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert_eq!(state.focus_index, 2);
@@ -934,6 +1046,8 @@ fn test_sequence_navigation_with_preview() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Preview { .. }));
@@ -947,6 +1061,8 @@ fn test_sequence_navigation_with_preview() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -959,6 +1075,8 @@ fn test_sequence_navigation_with_preview() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Browse));
@@ -979,7 +1097,9 @@ fn test_sequence_side_preview_toggle_enter() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     let focused = Some(file_path);
 
     // Initial state: Browse mode, no preview
@@ -995,6 +1115,8 @@ fn test_sequence_side_preview_toggle_enter() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(state.preview_visible, "Side preview should be visible");
@@ -1008,6 +1130,8 @@ fn test_sequence_side_preview_toggle_enter() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(
@@ -1033,7 +1157,9 @@ fn test_sequence_search_workflow() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.focus_index = 0;
 
@@ -1046,6 +1172,8 @@ fn test_sequence_search_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Search { .. }));
@@ -1062,6 +1190,8 @@ fn test_sequence_search_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1079,6 +1209,8 @@ fn test_sequence_search_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1111,7 +1243,9 @@ fn test_sequence_copy_paste_workflow() {
     let mut navigator = create_test_navigator(temp.path());
     let mut entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Find file1.txt in entries
     let file1_idx = entries
@@ -1130,6 +1264,8 @@ fn test_sequence_copy_paste_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(state.selected_paths.contains(&file1_path));
@@ -1143,6 +1279,8 @@ fn test_sequence_copy_paste_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(state.clipboard.is_some());
@@ -1162,6 +1300,8 @@ fn test_sequence_copy_paste_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1188,7 +1328,9 @@ fn test_sequence_rename_cancel_rename_confirm() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     let focused = Some(file_path.clone());
 
     // Step 1: Start rename (r)
@@ -1200,6 +1342,8 @@ fn test_sequence_rename_cancel_rename_confirm() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(
@@ -1219,6 +1363,8 @@ fn test_sequence_rename_cancel_rename_confirm() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Browse));
@@ -1233,6 +1379,8 @@ fn test_sequence_rename_cancel_rename_confirm() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Input { .. }));
@@ -1248,6 +1396,8 @@ fn test_sequence_rename_cancel_rename_confirm() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1272,7 +1422,9 @@ fn test_sequence_expand_navigate_collapse_all() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     let initial_count = navigator.visible_count();
 
@@ -1289,6 +1441,8 @@ fn test_sequence_expand_navigate_collapse_all() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     let expanded_count = navigator.visible_count();
@@ -1312,6 +1466,8 @@ fn test_sequence_expand_navigate_collapse_all() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1331,7 +1487,9 @@ fn test_sequence_create_delete_workflow() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     let focused = Some(temp.path().to_path_buf());
 
     // Step 1: Start new file (a)
@@ -1343,6 +1501,8 @@ fn test_sequence_create_delete_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Input { .. }));
@@ -1358,6 +1518,8 @@ fn test_sequence_create_delete_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1377,6 +1539,8 @@ fn test_sequence_create_delete_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Confirm { .. }));
@@ -1390,6 +1554,8 @@ fn test_sequence_create_delete_workflow() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1412,7 +1578,9 @@ fn test_sequence_cut_paste_multiple() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Mark both files
     state.selected_paths.insert(file1.clone());
@@ -1427,6 +1595,8 @@ fn test_sequence_cut_paste_multiple() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(state.clipboard.is_some());
@@ -1445,6 +1615,8 @@ fn test_sequence_cut_paste_multiple() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1476,7 +1648,9 @@ fn test_edge_empty_directory_navigation() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Root is always present, so entries should have at least 1
     assert!(!entries.is_empty());
@@ -1490,6 +1664,8 @@ fn test_edge_empty_directory_navigation() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1502,6 +1678,8 @@ fn test_edge_empty_directory_navigation() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1514,6 +1692,8 @@ fn test_edge_empty_directory_navigation() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1526,6 +1706,8 @@ fn test_edge_empty_directory_navigation() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 }
@@ -1541,7 +1723,9 @@ fn test_edge_empty_directory_expand() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     let focused = Some(empty_dir.clone());
     let initial_count = navigator.visible_count();
@@ -1555,6 +1739,8 @@ fn test_edge_empty_directory_expand() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1570,6 +1756,8 @@ fn test_edge_empty_directory_expand() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 }
@@ -1590,7 +1778,9 @@ fn test_edge_symlink_file() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Find the symlink in entries
     let link_entry = entries.iter().find(|e| e.name == "link.txt");
@@ -1607,6 +1797,8 @@ fn test_edge_symlink_file() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert!(state.selected_paths.contains(&link_file));
@@ -1629,7 +1821,9 @@ fn test_edge_symlink_directory() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     let focused = Some(link_dir.clone());
 
@@ -1642,6 +1836,8 @@ fn test_edge_symlink_directory() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1667,7 +1863,9 @@ fn test_edge_deep_directory_structure() {
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Expand all levels
     let mut path = temp.path().to_path_buf();
@@ -1682,6 +1880,8 @@ fn test_edge_deep_directory_structure() {
             &entries,
             &context,
             &mut text_preview,
+            &mut hex_preview,
+            &mut archive_preview,
         )
         .unwrap();
     }
@@ -1700,6 +1900,8 @@ fn test_edge_deep_directory_structure() {
         &final_entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1722,7 +1924,9 @@ fn test_edge_move_up_at_top() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     state.focus_index = 0;
 
@@ -1735,6 +1939,8 @@ fn test_edge_move_up_at_top() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1751,7 +1957,9 @@ fn test_edge_move_down_at_bottom() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     let last_index = entries.len().saturating_sub(1);
     state.focus_index = last_index;
@@ -1765,6 +1973,8 @@ fn test_edge_move_down_at_bottom() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1782,7 +1992,9 @@ fn test_edge_special_characters_filename() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Find the file
     let file_entry = entries
@@ -1800,6 +2012,8 @@ fn test_edge_special_characters_filename() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1823,7 +2037,9 @@ fn test_edge_unicode_filename() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Find the file
     let file_entry = entries
@@ -1841,6 +2057,8 @@ fn test_edge_unicode_filename() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1856,7 +2074,9 @@ fn test_edge_copy_path_no_focus() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // CopyPath with None should not crash
     handle_action(
@@ -1867,6 +2087,8 @@ fn test_edge_copy_path_no_focus() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1886,7 +2108,9 @@ fn test_edge_search_next_with_query() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Set search mode with a query that has no matches
     state.mode = ViewMode::Search {
@@ -1903,6 +2127,8 @@ fn test_edge_search_next_with_query() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1919,7 +2145,9 @@ fn test_edge_paste_empty_clipboard() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Clipboard is None
     assert!(state.clipboard.is_none());
@@ -1933,6 +2161,8 @@ fn test_edge_paste_empty_clipboard() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 }
@@ -1946,7 +2176,9 @@ fn test_edge_confirm_delete_no_targets() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // No marks and no focused path
     state.selected_paths.clear();
@@ -1959,6 +2191,8 @@ fn test_edge_confirm_delete_no_targets() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -1985,7 +2219,9 @@ fn test_edge_expand_all_depth_limit() {
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Manually expand to depth 5 so we can test the depth limit
     // Expand dir0 through dir4 to make dir5 visible
@@ -2009,6 +2245,8 @@ fn test_edge_expand_all_depth_limit() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2037,7 +2275,9 @@ fn test_focus_toggle_switches_target() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Enable side preview
     state.preview_visible = true;
@@ -2052,6 +2292,8 @@ fn test_focus_toggle_switches_target() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2066,6 +2308,8 @@ fn test_focus_toggle_switches_target() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2081,7 +2325,9 @@ fn test_focus_toggle_no_effect_without_preview() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Preview not visible
     state.preview_visible = false;
@@ -2096,6 +2342,8 @@ fn test_focus_toggle_no_effect_without_preview() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2113,7 +2361,9 @@ fn test_focus_reset_when_preview_closed() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Enable preview and set focus to Preview
     state.preview_visible = true;
@@ -2128,6 +2378,8 @@ fn test_focus_reset_when_preview_closed() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2146,6 +2398,8 @@ fn test_focus_preview_navigation_scrolls() {
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
     let mut text_preview = Some(TextPreview::new("line1\nline2\nline3\nline4\nline5"));
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 0;
 
     // Enable preview and set focus to Preview
@@ -2161,6 +2415,8 @@ fn test_focus_preview_navigation_scrolls() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2178,7 +2434,9 @@ fn test_focus_tree_navigation_moves_files() {
     let mut navigator = create_test_navigator(temp.path());
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
-    let mut text_preview = None;
+    let mut text_preview: Option<TextPreview> = None;
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
 
     // Enable preview but keep focus on Tree
     state.preview_visible = true;
@@ -2194,6 +2452,8 @@ fn test_focus_tree_navigation_moves_files() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2212,6 +2472,8 @@ fn test_focus_sequence_toggle_scroll_navigate() {
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
     let mut text_preview = Some(TextPreview::new("line1\nline2\nline3\nline4\nline5"));
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 0;
 
     // Enable preview
@@ -2227,6 +2489,8 @@ fn test_focus_sequence_toggle_scroll_navigate() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert_eq!(state.focus_target, FocusTarget::Preview);
@@ -2240,6 +2504,8 @@ fn test_focus_sequence_toggle_scroll_navigate() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert_eq!(text_preview.as_ref().unwrap().scroll, 1);
@@ -2254,6 +2520,8 @@ fn test_focus_sequence_toggle_scroll_navigate() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert_eq!(state.focus_target, FocusTarget::Tree);
@@ -2268,6 +2536,8 @@ fn test_focus_sequence_toggle_scroll_navigate() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
     assert_eq!(state.focus_index, 1);
@@ -2284,6 +2554,8 @@ fn test_focus_preview_page_scroll() {
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
     let mut text_preview = Some(TextPreview::new(&"line\n".repeat(100)));
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 0;
 
     state.preview_visible = true;
@@ -2298,6 +2570,8 @@ fn test_focus_preview_page_scroll() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2312,6 +2586,8 @@ fn test_focus_preview_page_scroll() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2328,6 +2604,8 @@ fn test_focus_preview_jump_to_top_bottom() {
     let entries = create_test_entries(&navigator);
     let context = ActionContext::default();
     let mut text_preview = Some(TextPreview::new(&"line\n".repeat(100)));
+    let mut hex_preview: Option<HexPreview> = None;
+    let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 50;
 
     state.preview_visible = true;
@@ -2342,6 +2620,8 @@ fn test_focus_preview_jump_to_top_bottom() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 
@@ -2356,6 +2636,8 @@ fn test_focus_preview_jump_to_top_bottom() {
         &entries,
         &context,
         &mut text_preview,
+        &mut hex_preview,
+        &mut archive_preview,
     )
     .unwrap();
 

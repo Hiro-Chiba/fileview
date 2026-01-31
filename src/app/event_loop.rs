@@ -354,6 +354,8 @@ pub fn run_app(
                         &snapshots,
                         &action_context,
                         &mut preview.text,
+                        &mut preview.hex,
+                        &mut preview.archive,
                     )? {
                         ActionResult::Continue => {}
                         ActionResult::Quit(code) => {
@@ -438,9 +440,15 @@ pub fn run_app(
                         }
                         MouseAction::ScrollUp { amount, col } => {
                             if state.preview_visible && col >= preview_boundary {
-                                // Scroll preview
+                                // Scroll preview (text, hex, or archive)
                                 if let Some(ref mut tp) = preview.text {
                                     tp.scroll = tp.scroll.saturating_sub(amount);
+                                }
+                                if let Some(ref mut hp) = preview.hex {
+                                    hp.scroll = hp.scroll.saturating_sub(amount);
+                                }
+                                if let Some(ref mut ap) = preview.archive {
+                                    ap.scroll = ap.scroll.saturating_sub(amount);
                                 }
                             } else {
                                 // Scroll file list
@@ -449,9 +457,15 @@ pub fn run_app(
                         }
                         MouseAction::ScrollDown { amount, col } => {
                             if state.preview_visible && col >= preview_boundary {
-                                // Scroll preview
+                                // Scroll preview (text, hex, or archive)
                                 if let Some(ref mut tp) = preview.text {
                                     tp.scroll += amount;
+                                }
+                                if let Some(ref mut hp) = preview.hex {
+                                    hp.scroll += amount;
+                                }
+                                if let Some(ref mut ap) = preview.archive {
+                                    ap.scroll += amount;
                                 }
                             } else {
                                 // Scroll file list
