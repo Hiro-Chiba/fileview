@@ -12,8 +12,8 @@ use crate::app::{Config, PreviewState};
 use crate::core::{AppState, FocusTarget, ViewMode};
 use crate::handler::{
     action::{
-        get_target_directory, handle_action, reload_tree, ActionContext, ActionResult,
-        EntrySnapshot,
+        get_target_directory, handle_action, reload_tree, update_bulk_rename_buffer, ActionContext,
+        ActionResult, EntrySnapshot,
     },
     key::{handle_key_event, update_input_buffer, KeyAction},
     mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer},
@@ -229,6 +229,9 @@ pub fn run_app(
             last_git_poll = Instant::now();
         }
 
+        // Poll for completed async image loads
+        preview.poll_image_result(image_picker, &mut state);
+
         // Check drop buffer timeout (for file drop detection via rapid key input)
         if path_buffer.is_ready() {
             let paths = path_buffer.take_paths();
@@ -302,6 +305,13 @@ pub fn run_app(
                         }
                     }
 
+                    // Handle bulk rename text input
+                    if matches!(state.mode, ViewMode::BulkRename { .. })
+                        && update_bulk_rename_buffer(key, &mut state)
+                    {
+                        continue;
+                    }
+
                     // Buffer characters for potential file drop detection (Ghostty, etc.)
                     // Only in Browse mode to avoid interfering with text input
                     if matches!(state.mode, ViewMode::Browse) {
@@ -321,6 +331,27 @@ pub fn run_app(
                     }
 
                     let mut action = handle_key_event(&state, key);
+
+                    // Handle tab operations (placeholder - full implementation requires refactoring)
+                    match &action {
+                        KeyAction::NewTab => {
+                            state.set_message("Tab: Ctrl+T pressed (multi-tab feature)");
+                            continue;
+                        }
+                        KeyAction::CloseTab => {
+                            state.set_message("Tab: Ctrl+W pressed (multi-tab feature)");
+                            continue;
+                        }
+                        KeyAction::NextTab => {
+                            state.set_message("Tab: Alt+t pressed (multi-tab feature)");
+                            continue;
+                        }
+                        KeyAction::PrevTab => {
+                            state.set_message("Tab: Alt+T pressed (multi-tab feature)");
+                            continue;
+                        }
+                        _ => {}
+                    }
 
                     // Handle fuzzy finder special actions
                     if matches!(action, KeyAction::OpenFuzzyFinder) {
@@ -357,6 +388,7 @@ pub fn run_app(
                         &mut preview.hex,
                         &mut preview.archive,
                         &mut preview.pdf,
+                        &mut preview.diff,
                         image_picker,
                     )? {
                         ActionResult::Continue => {}
