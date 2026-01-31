@@ -21,6 +21,45 @@ use tempfile::NamedTempFile;
 /// Maximum depth for recursive directory size calculation (for performance)
 const MAX_DIR_SIZE_DEPTH: u32 = 3;
 
+/// Convert Unix timestamp to date string (YYYY-MM-DD)
+fn unix_timestamp_to_date(secs: i64) -> String {
+    const SECONDS_PER_DAY: i64 = 86400;
+    const DAYS_IN_MONTH: [i64; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+    let mut days = secs / SECONDS_PER_DAY;
+    let mut year = 1970i64;
+
+    // Find year
+    loop {
+        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+        if days < days_in_year {
+            break;
+        }
+        days -= days_in_year;
+        year += 1;
+    }
+
+    // Find month and day
+    let leap = is_leap_year(year);
+    let mut month = 1;
+    for (i, &d) in DAYS_IN_MONTH.iter().enumerate() {
+        let days_in_month = if i == 1 && leap { 29 } else { d };
+        if days < days_in_month {
+            break;
+        }
+        days -= days_in_month;
+        month += 1;
+    }
+    let day = days + 1;
+
+    format!("{:04}-{:02}-{:02}", year, month, day)
+}
+
+/// Check if a year is a leap year
+fn is_leap_year(year: i64) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+}
+
 /// Lazy-initialized syntax set (100+ languages)
 static SYNTAX_SET: OnceLock<SyntaxSet> = OnceLock::new();
 
@@ -620,17 +659,10 @@ impl ArchivePreview {
             let name = entry.path()?.to_string_lossy().to_string();
 
             // Format modified time if available
-            let modified = header.mtime().ok().map(|mtime| {
-                // Convert Unix timestamp to date string
-                let secs = mtime as i64;
-                // Simple date calculation (approximate)
-                let days = secs / 86400;
-                let years = 1970 + days / 365;
-                let remaining_days = days % 365;
-                let month = remaining_days / 30 + 1;
-                let day = remaining_days % 30 + 1;
-                format!("{:04}-{:02}-{:02}", years, month.min(12), day.min(28))
-            });
+            let modified = header
+                .mtime()
+                .ok()
+                .map(|mtime| unix_timestamp_to_date(mtime as i64));
 
             if !is_dir {
                 total_size += size;
