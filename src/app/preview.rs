@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use crate::core::AppState;
 use crate::render::{
-    is_archive_file, is_binary_file, is_image_file, is_text_file, ArchivePreview, DirectoryInfo,
-    HexPreview, ImagePreview, Picker, TextPreview,
+    is_archive_file, is_binary_file, is_image_file, is_tar_gz_file, is_text_file, ArchivePreview,
+    DirectoryInfo, HexPreview, ImagePreview, Picker, TextPreview,
 };
 
 /// Preview state container
@@ -89,6 +89,21 @@ impl PreviewState {
                         state.set_message(format!("Failed: preview - {}", e));
                         self.clear_all();
                     }
+                }
+            }
+        } else if is_tar_gz_file(path) {
+            // Handle tar.gz files separately (before is_archive_file check)
+            match ArchivePreview::load_tar_gz(path) {
+                Ok(archive) => {
+                    self.archive = Some(archive);
+                    self.text = None;
+                    self.image = None;
+                    self.dir_info = None;
+                    self.hex = None;
+                }
+                Err(e) => {
+                    state.set_message(format!("Failed: preview - {}", e));
+                    self.clear_all();
                 }
             }
         } else if is_archive_file(path) {
