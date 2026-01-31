@@ -11,6 +11,7 @@ use ratatui::{
     Frame,
 };
 
+use super::theme::theme;
 use crate::core::{AppState, InputPurpose, PendingAction, SortMode, ViewMode};
 
 /// Render the status bar
@@ -58,13 +59,14 @@ pub fn render_status_bar(
         .map(|(current, total)| format!("{}/{} matches |", current, total))
         .unwrap_or_default();
 
+    let t = theme();
     let message = state.message.as_deref().unwrap_or("? for help");
     let left_content = Line::from(vec![
-        Span::styled(watch_indicator, Style::default().fg(Color::Blue)),
-        Span::styled(filter_indicator, Style::default().fg(Color::Yellow)),
-        Span::styled(branch_info, Style::default().fg(Color::Green)),
-        Span::styled(sort_indicator, Style::default().fg(Color::Magenta)),
-        Span::styled(search_indicator, Style::default().fg(Color::Cyan)),
+        Span::styled(watch_indicator, Style::default().fg(t.info)),
+        Span::styled(filter_indicator, Style::default().fg(t.warning)),
+        Span::styled(branch_info, Style::default().fg(t.git_staged)),
+        Span::styled(sort_indicator, Style::default().fg(t.git_conflict)),
+        Span::styled(search_indicator, Style::default().fg(t.border_active)),
         Span::raw(format!(" {}", message)),
     ]);
     let msg_widget = Paragraph::new(left_content).block(Block::default().borders(Borders::ALL));
@@ -275,10 +277,11 @@ pub fn render_input_popup(frame: &mut Frame, state: &AppState) {
 
 /// Draw a simple input popup
 fn draw_input_popup(frame: &mut Frame, title: &str, content: &str) {
+    let t = theme();
     let area = centered_rect(60, 3, frame.area());
 
     let input = Paragraph::new(content)
-        .style(Style::default().fg(Color::Yellow))
+        .style(Style::default().fg(t.warning))
         .block(Block::default().borders(Borders::ALL).title(title));
 
     frame.render_widget(Clear, area);
@@ -287,11 +290,12 @@ fn draw_input_popup(frame: &mut Frame, title: &str, content: &str) {
 
 /// Draw a small notification popup (for bookmark modes, etc.)
 fn draw_mini_popup(frame: &mut Frame, message: &str) {
+    let t = theme();
     let width = (message.len() + 4).min(50) as u16;
     let area = centered_rect(width, 3, frame.area());
 
     let popup = Paragraph::new(message)
-        .style(Style::default().fg(Color::Cyan))
+        .style(Style::default().fg(t.border_active))
         .block(Block::default().borders(Borders::ALL));
 
     frame.render_widget(Clear, area);
@@ -431,6 +435,8 @@ pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
         return;
     }
 
+    let t = theme();
+
     let help_lines = vec![
         Line::from(vec![Span::styled(
             "Navigation",
@@ -495,7 +501,7 @@ pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
         Line::from(""),
         Line::from(vec![Span::styled(
             "  Press ? or Esc to close",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(t.git_ignored),
         )]),
     ];
 
@@ -506,7 +512,7 @@ pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
         Block::default()
             .borders(Borders::ALL)
             .title(" Help ")
-            .border_style(Style::default().fg(Color::Cyan)),
+            .border_style(Style::default().fg(t.border_active)),
     );
 
     frame.render_widget(Clear, area);
