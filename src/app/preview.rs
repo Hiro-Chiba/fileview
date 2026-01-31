@@ -68,7 +68,7 @@ impl PreviewState {
         } else if is_text_file(path) {
             match std::fs::read_to_string(path) {
                 Ok(content) => {
-                    self.text = Some(TextPreview::new(&content));
+                    self.text = Some(TextPreview::with_highlighting(&content, path));
                     self.image = None;
                     self.dir_info = None;
                     self.hex = None;

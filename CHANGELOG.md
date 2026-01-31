@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-01-31
+
+### Added
+
+- **Syntax highlighting**: Code files now display with syntax highlighting
+  - Uses `syntect` crate (same engine as bat/delta)
+  - Supports 100+ languages: Rust, Python, JavaScript, TypeScript, Go, C/C++, Java, Ruby, PHP, Swift, Kotlin, Scala, HTML, CSS, JSON, YAML, TOML, XML, Markdown, SQL, Shell/Bash, and more
+  - Theme: base16-ocean.dark (terminal-compatible)
+  - Language detection via file extension or shebang
+  - Falls back to plain text for unsupported languages
+
+### Dependencies
+
+- Added `syntect` crate (v5) for syntax highlighting
+
 ## [1.13.0] - 2026-01-31
 
 ### Added
