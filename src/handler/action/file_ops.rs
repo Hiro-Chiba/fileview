@@ -62,7 +62,7 @@ pub fn handle(
                 for path in targets {
                     file_ops::delete(path)?;
                 }
-                state.set_message(format!("Deleted {} item(s)", targets.len()));
+                state.set_message(format!("Moved {} item(s) to trash", targets.len()));
                 state.selected_paths.clear();
                 state.mode = ViewMode::Browse;
                 reload_tree(navigator, state)?;
