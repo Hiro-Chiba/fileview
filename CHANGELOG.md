@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.1] - 2026-01-31
+
+### Changed
+
+- **MSRV badge**: Updated README badge from 1.70 to 1.75 to match actual requirement
+- **ROADMAP.md**: Updated current status to v1.14.0, added v1.9.0-v1.14.0 features
+
+### Fixed
+
+- **Clippy warnings**: Fixed all clippy warnings for cleaner builds
+  - `src/render/fuzzy.rs`: Use `const { assert!(..) }` for compile-time checks
+  - `tests/integration.rs`: Remove redundant `.clone()` calls on Copy types
+  - `tests/integration.rs`: Use `!is_empty()` instead of `len() >= 1`
+  - `tests/integration.rs`: Remove redundant single-component imports
+  - `tests/e2e/*.rs`: Use `cargo_bin_cmd!` macro instead of deprecated `cargo_bin`
+
+### Other
+
+- **.gitignore**: Added patterns for IDE files, OS files, and misc temp files
+
 ## [1.14.0] - 2026-01-31
 
 ### Added

@@ -507,8 +507,8 @@ mod tests {
 
     #[test]
     fn test_max_results_constant() {
-        // Verify constant is reasonable
-        assert!(MAX_RESULTS > 0);
-        assert!(MAX_RESULTS <= 100); // Should not be too large
+        // Verify constant is reasonable (compile-time check)
+        const { assert!(MAX_RESULTS > 0) };
+        const { assert!(MAX_RESULTS <= 100) }; // Should not be too large
     }
 }
