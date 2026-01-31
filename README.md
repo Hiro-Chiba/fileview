@@ -6,17 +6,24 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](https://www.rust-lang.org)
 
-> A minimal, fast terminal file browser with vim-like keybindings
+> Zero-config terminal file browser with automatic image preview
 
 English | [日本語](README_ja.md)
 
 ## Why fv?
 
-- **Instant startup** - No config needed, just `cargo install fileview`
-- **Image preview** - Kitty/iTerm2/Sixel support with auto-detection
-- **Git integration** - Color-coded file status at a glance
+```
+Lightweight ◄───────────────────────► Feature-rich
+
+   nnn    lf    fv    ranger    yazi
+  3.4MB  12MB  8MB    28MB     38MB
+```
+
+- **Zero config** - Install and run. No setup required.
+- **Auto image preview** - Detects Kitty/iTerm2/Sixel/Halfblocks automatically
+- **Fast** - 2.3ms startup, 8MB memory (vs ranger 400ms/28MB)
+- **Batteries included** - Git status, syntax highlighting, PDF preview
 - **Vim keybindings** - Navigate with j/k/h/l
-- **Fuzzy finder** - Quick file search with `Ctrl+P`
 
 ## Quick Start
 
@@ -106,6 +113,13 @@ cargo install fileview
 brew install chafa  # or apt install libchafa-dev
 cargo install fileview --features chafa
 ```
+
+## Documentation
+
+- [Keybindings](docs/KEYBINDINGS.md) - Complete keybinding reference
+- [Comparison](docs/COMPARISON.md) - vs yazi, lf, ranger, nnn
+- [Benchmarks](docs/BENCHMARKS.md) - Performance data
+- [Security](docs/SECURITY.md) - Security model
 
 ## License
 

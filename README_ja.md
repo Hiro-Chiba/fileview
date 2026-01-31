@@ -4,19 +4,26 @@
 [![Downloads](https://img.shields.io/crates/d/fileview.svg)](https://crates.io/crates/fileview)
 [![CI](https://github.com/Hiro-Chiba/fileview/actions/workflows/ci.yml/badge.svg)](https://github.com/Hiro-Chiba/fileview/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![MSRV](https://img.shields.io/badge/MSRV-1.70-blue.svg)](https://www.rust-lang.org)
+[![MSRV](https://img.shields.io/badge/MSRV-1.75-blue.svg)](https://www.rust-lang.org)
 
-> ミニマルで高速なターミナルファイルブラウザ（Vimキーバインド対応）
+> 設定不要のターミナルファイルブラウザ（画像プレビュー自動検出）
 
 [English](README.md) | 日本語
 
 ## なぜ fv？
 
-- **即起動** - 設定不要、`cargo install fileview` だけ
-- **画像プレビュー** - Kitty/iTerm2/Sixel 自動検出対応
-- **Git連携** - ファイル状態を色で一目確認
-- **Vimキーバインド** - j/k/h/l で高速操作
-- **ファジーファインダー** - `Ctrl+P` で素早く検索
+```
+軽量 ◄───────────────────────────────► 高機能
+
+  nnn    lf    fv    ranger    yazi
+ 3.4MB  12MB  8MB    28MB     38MB
+```
+
+- **設定不要** - インストールして即使える
+- **画像自動プレビュー** - Kitty/iTerm2/Sixel/Halfblocks を自動検出
+- **高速** - 起動 2.3ms、メモリ 8MB（ranger: 400ms/28MB）
+- **バッテリー同梱** - Git連携、シンタックスハイライト、PDFプレビュー
+- **Vimキーバインド** - j/k/h/l で操作
 
 ## クイックスタート
 
@@ -31,7 +38,8 @@ fv
 |------|------|
 | ツリーナビゲーション | Vimキーで展開/折りたたみ |
 | 複数選択 | バッチ操作対応 |
-| プレビューパネル | テキスト、画像、Hexダンプ |
+| プレビューパネル | テキスト、画像、アーカイブ、PDF、Hex |
+| シンタックスハイライト | 100+言語対応 |
 | ファイル操作 | 作成、リネーム、削除、コピー/ペースト |
 | ファジーファインダー | `Ctrl+P` で素早く検索 |
 | マウス対応 | クリック、スクロール、ドラッグ |
@@ -106,6 +114,13 @@ cargo install fileview
 brew install chafa  # または apt install libchafa-dev
 cargo install fileview --features chafa
 ```
+
+## ドキュメント
+
+- [キーバインド](docs/KEYBINDINGS_ja.md) - 完全なキーバインド一覧
+- [競合比較](docs/COMPARISON.md) - yazi, lf, ranger, nnn との比較
+- [ベンチマーク](docs/BENCHMARKS.md) - パフォーマンスデータ
+- [セキュリティ](docs/SECURITY.md) - セキュリティモデル
 
 ## ライセンス
 
