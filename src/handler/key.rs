@@ -124,6 +124,27 @@ pub enum KeyAction {
     PdfPrevPage,
     /// Go to next PDF page
     PdfNextPage,
+    /// Stage file(s) for git commit
+    GitStage,
+    /// Unstage file(s) from git commit
+    GitUnstage,
+    /// Start bulk rename mode
+    StartBulkRename,
+    /// Switch to next field in bulk rename
+    BulkRenameNextField,
+    /// Execute bulk rename
+    ExecuteBulkRename {
+        from_pattern: String,
+        to_pattern: String,
+    },
+    /// Open a new tab
+    NewTab,
+    /// Close the current tab
+    CloseTab,
+    /// Switch to the next tab
+    NextTab,
+    /// Switch to the previous tab
+    PrevTab,
 }
 
 /// Handle key event and return the resulting action
@@ -139,6 +160,11 @@ pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
         ViewMode::BookmarkSet => handle_bookmark_set_mode(key),
         ViewMode::BookmarkJump => handle_bookmark_jump_mode(key),
         ViewMode::Filter { query } => handle_filter_mode(key, query),
+        ViewMode::BulkRename {
+            from_pattern,
+            to_pattern,
+            ..
+        } => handle_bulk_rename_mode(key, from_pattern, to_pattern),
     }
 }
 
@@ -285,8 +311,16 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Sort
         KeyCode::Char('S') => KeyAction::CycleSort,
 
-        // Refresh and toggle
-        KeyCode::Char('R') | KeyCode::F(5) => KeyAction::Refresh,
+        // Refresh, bulk rename, and toggle
+        KeyCode::Char('R') => {
+            // R for bulk rename when files are selected, F5 for refresh
+            if !state.selected_paths.is_empty() {
+                KeyAction::StartBulkRename
+            } else {
+                KeyAction::Refresh
+            }
+        }
+        KeyCode::F(5) => KeyAction::Refresh,
         KeyCode::Char('.') => KeyAction::ToggleHidden,
 
         // Copy to system clipboard
@@ -316,6 +350,17 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
                 KeyAction::StartFilter
             }
         }
+
+        // Git operations
+        KeyCode::Char('s') => KeyAction::GitStage,
+        KeyCode::Char('u') => KeyAction::GitUnstage,
+
+        // Tab operations
+        KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => KeyAction::NewTab,
+        KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => KeyAction::CloseTab,
+        // Note: gt/gT (vim-style) requires two keystrokes, simplified to Tab for demo
+        KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::NextTab,
+        KeyCode::Char('T') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::PrevTab,
 
         _ => KeyAction::None,
     }
@@ -514,6 +559,19 @@ fn handle_filter_mode(key: KeyEvent, current_query: &str) -> KeyAction {
         }
         // Same key to cancel (toggle behavior)
         KeyCode::Char('F') | KeyCode::Esc => KeyAction::Cancel,
+        _ => KeyAction::None, // Text input handled separately
+    }
+}
+
+/// Handle keys in bulk rename mode
+fn handle_bulk_rename_mode(key: KeyEvent, from_pattern: &str, to_pattern: &str) -> KeyAction {
+    match key.code {
+        KeyCode::Tab => KeyAction::BulkRenameNextField,
+        KeyCode::Enter => KeyAction::ExecuteBulkRename {
+            from_pattern: from_pattern.to_string(),
+            to_pattern: to_pattern.to_string(),
+        },
+        KeyCode::Esc => KeyAction::Cancel,
         _ => KeyAction::None, // Text input handled separately
     }
 }
