@@ -1480,6 +1480,7 @@ fn test_sequence_expand_navigate_collapse_all() {
 
 /// Sequence: Create file -> Verify exists -> Delete -> Confirm
 #[test]
+#[ignore] // Requires Finder/trash permissions; run manually
 fn test_sequence_create_delete_workflow() {
     let temp = TempDir::new().unwrap();
 
