@@ -7,6 +7,7 @@ pub mod preview;
 pub mod status;
 pub mod tabs;
 pub mod terminal;
+pub mod theme;
 pub mod tree;
 
 pub use bulk_rename::render_bulk_rename_dialog;
@@ -24,6 +25,7 @@ pub use ratatui_image::FontSize;
 pub use status::{render_help_popup, render_input_popup, render_status_bar};
 pub use tabs::render_tab_bar;
 pub use terminal::{RecommendedProtocol, TerminalBrand};
+pub use theme::{parse_color, theme, Theme, ThemeFile};
 pub use tree::{render_tree, visible_height};
 
 /// Create an image picker for protocol detection

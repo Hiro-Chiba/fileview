@@ -3,6 +3,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::path::PathBuf;
 
+use super::keymap::KeyBindingRegistry;
 use crate::core::{AppState, FocusTarget, ViewMode};
 
 /// Actions that can result from key handling
@@ -165,6 +166,168 @@ pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
             to_pattern,
             ..
         } => handle_bulk_rename_mode(key, from_pattern, to_pattern),
+    }
+}
+
+/// Handle key event with custom registry
+pub fn handle_key_event_with_registry(
+    state: &AppState,
+    key: KeyEvent,
+    registry: &KeyBindingRegistry,
+) -> KeyAction {
+    match &state.mode {
+        ViewMode::Browse => {
+            // Try registry first, fall back to built-in
+            if let Some(action) = registry.lookup_browse(&key) {
+                // Handle special cases that need state context
+                apply_browse_context(state, action)
+            } else {
+                handle_browse_mode(state, key)
+            }
+        }
+        ViewMode::Search { query } => {
+            if let Some(mut action) = registry.lookup_search(&key) {
+                if let KeyAction::ConfirmInput { ref mut value } = action {
+                    *value = query.clone();
+                }
+                action
+            } else {
+                handle_search_mode(key, query)
+            }
+        }
+        ViewMode::Input { buffer, .. } => handle_input_mode(key, buffer),
+        ViewMode::Confirm { .. } => registry
+            .lookup_confirm(&key)
+            .unwrap_or_else(|| handle_confirm_mode(key)),
+        ViewMode::Preview { .. } => registry
+            .lookup_preview(&key)
+            .unwrap_or_else(|| handle_preview_mode(key)),
+        ViewMode::FuzzyFinder { .. } => registry
+            .lookup_fuzzy(&key)
+            .unwrap_or_else(|| handle_fuzzy_finder_mode(key)),
+        ViewMode::Help => registry
+            .lookup_help(&key)
+            .unwrap_or_else(|| handle_help_mode(key)),
+        ViewMode::BookmarkSet => handle_bookmark_set_mode(key),
+        ViewMode::BookmarkJump => handle_bookmark_jump_mode(key),
+        ViewMode::Filter { query } => {
+            if let Some(mut action) = registry.lookup_filter(&key) {
+                if let KeyAction::ApplyFilter { ref mut pattern } = action {
+                    if query.is_empty() {
+                        return KeyAction::ClearFilter;
+                    }
+                    *pattern = query.clone();
+                }
+                action
+            } else {
+                handle_filter_mode(key, query)
+            }
+        }
+        ViewMode::BulkRename {
+            from_pattern,
+            to_pattern,
+            ..
+        } => handle_bulk_rename_mode(key, from_pattern, to_pattern),
+    }
+}
+
+/// Apply browse mode context to action
+fn apply_browse_context(state: &AppState, action: KeyAction) -> KeyAction {
+    match action {
+        KeyAction::Quit => {
+            if state.pick_mode {
+                KeyAction::Cancel
+            } else {
+                KeyAction::Quit
+            }
+        }
+        KeyAction::Cancel => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::ToggleFocus
+            } else if !state.selected_paths.is_empty() {
+                KeyAction::ClearMarks
+            } else {
+                KeyAction::Cancel
+            }
+        }
+        KeyAction::MoveUp => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewScrollUp
+            } else {
+                KeyAction::MoveUp
+            }
+        }
+        KeyAction::MoveDown => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewScrollDown
+            } else {
+                KeyAction::MoveDown
+            }
+        }
+        KeyAction::MoveToTop => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewToTop
+            } else {
+                KeyAction::MoveToTop
+            }
+        }
+        KeyAction::MoveToBottom => {
+            if state.focus_target == FocusTarget::Preview {
+                KeyAction::PreviewToBottom
+            } else {
+                KeyAction::MoveToBottom
+            }
+        }
+        KeyAction::Expand => {
+            if state.preview_visible {
+                KeyAction::FocusPreview
+            } else {
+                KeyAction::Expand
+            }
+        }
+        KeyAction::Collapse => {
+            if state.preview_visible {
+                KeyAction::FocusTree
+            } else {
+                KeyAction::Collapse
+            }
+        }
+        KeyAction::ToggleExpand => {
+            if state.preview_visible {
+                KeyAction::ToggleFocus
+            } else {
+                KeyAction::ToggleExpand
+            }
+        }
+        KeyAction::PickSelect => {
+            if state.pick_mode {
+                KeyAction::PickSelect
+            } else {
+                KeyAction::ToggleExpand
+            }
+        }
+        KeyAction::Refresh => {
+            if !state.selected_paths.is_empty() {
+                KeyAction::StartBulkRename
+            } else {
+                KeyAction::Refresh
+            }
+        }
+        KeyAction::StartFilter => {
+            if state.filter_pattern.is_some() {
+                KeyAction::ClearFilter
+            } else {
+                KeyAction::StartFilter
+            }
+        }
+        KeyAction::PreviewPageUp | KeyAction::PreviewPageDown => {
+            if state.focus_target == FocusTarget::Preview {
+                action
+            } else {
+                KeyAction::None
+            }
+        }
+        _ => action,
     }
 }
 
