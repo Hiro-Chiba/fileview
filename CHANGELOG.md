@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-01-31
+
+### Added
+- **Archive preview**: Preview contents of zip archives
+  - Supported formats: `.zip`, `.jar`, `.apk`, `.ipa`, `.xpi`, `.epub`
+  - Shows file list with sizes and dates
+  - Directories sorted first, then files alphabetically
+- **Benchmark documentation**: Added `docs/BENCHMARKS.md`
+  - Startup time: ~2.1ms (measured with hyperfine)
+
+### Dependencies
+- Added `zip` crate (v2.4) for archive reading
+
 ## [1.8.1] - 2026-01-31
 
 ### Documentation
