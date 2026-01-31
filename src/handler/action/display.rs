@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use crate::core::{AppState, ViewMode};
 use crate::handler::key::KeyAction;
 use crate::integrate::{exit_code, PickResult};
-use crate::render::{ArchivePreview, HexPreview, TextPreview};
+use crate::render::{ArchivePreview, HexPreview, PdfPreview, Picker, TextPreview};
 use crate::tree::TreeNavigator;
 
 use super::{get_filename_str, reload_tree, ActionContext, ActionResult};
@@ -235,6 +235,39 @@ pub fn handle_preview_scroll(
                     *scroll = hp.line_count().saturating_sub(1);
                 } else if let Some(ref ap) = archive_preview {
                     *scroll = ap.line_count().saturating_sub(1);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Handle PDF page navigation actions
+pub fn handle_pdf_navigation(
+    action: KeyAction,
+    state: &mut AppState,
+    pdf_preview: &mut Option<PdfPreview>,
+    image_picker: &mut Option<Picker>,
+) {
+    let Some(ref mut pdf) = pdf_preview else {
+        return;
+    };
+    let Some(ref mut picker) = image_picker else {
+        return;
+    };
+
+    match action {
+        KeyAction::PdfPrevPage => {
+            if pdf.current_page > 1 {
+                if let Err(e) = pdf.prev_page(picker) {
+                    state.set_message(format!("Failed: prev page - {}", e));
+                }
+            }
+        }
+        KeyAction::PdfNextPage => {
+            if pdf.current_page < pdf.total_pages {
+                if let Err(e) = pdf.next_page(picker) {
+                    state.set_message(format!("Failed: next page - {}", e));
                 }
             }
         }

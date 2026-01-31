@@ -90,6 +90,8 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 | `o` | Open fullscreen preview |
 | `Tab` | Toggle focus between tree and preview (when preview visible) |
 | `←` / `→` | Switch focus to tree (left) / preview (right) |
+| `[` | Previous PDF page |
+| `]` | Next PDF page |
 
 ### Side Preview Focus Mode
 
@@ -104,6 +106,19 @@ When the side preview panel is open, use `Tab` or arrow keys to switch focus:
 - Scroll wheel works on the focused panel
 - `Esc` returns focus to tree
 - Focused panel has cyan border highlight
+
+### PDF Preview
+
+PDF files are rendered as images using `pdftoppm` from poppler-utils:
+
+| Key | Action |
+|-----|--------|
+| `[` | Go to previous page |
+| `]` | Go to next page |
+
+- Requires `pdftoppm` (poppler-utils) to be installed
+- Current page and total pages shown in title bar: `document.pdf (3/10)`
+- Falls back to hex preview if poppler-utils is not installed
 
 ## System Clipboard
 

@@ -356,6 +356,8 @@ pub fn run_app(
                         &mut preview.text,
                         &mut preview.hex,
                         &mut preview.archive,
+                        &mut preview.pdf,
+                        image_picker,
                     )? {
                         ActionResult::Continue => {}
                         ActionResult::Quit(code) => {

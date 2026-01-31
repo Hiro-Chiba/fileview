@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use crate::core::AppState;
 use crate::handler::key::KeyAction;
 use crate::integrate::{Callback, OutputFormat};
-use crate::render::{ArchivePreview, HexPreview, TextPreview};
+use crate::render::{ArchivePreview, HexPreview, PdfPreview, Picker, TextPreview};
 use crate::tree::TreeNavigator;
 
 /// Result of action execution
@@ -92,6 +92,8 @@ pub fn handle_action(
     text_preview: &mut Option<TextPreview>,
     hex_preview: &mut Option<HexPreview>,
     archive_preview: &mut Option<ArchivePreview>,
+    pdf_preview: &mut Option<PdfPreview>,
+    image_picker: &mut Option<Picker>,
 ) -> anyhow::Result<ActionResult> {
     // Disable CRUD operations in stdin mode
     if state.stdin_mode {
@@ -227,6 +229,12 @@ pub fn handle_action(
         // Filter
         KeyAction::StartFilter | KeyAction::ApplyFilter { .. } | KeyAction::ClearFilter => {
             filter::handle(action, state);
+            Ok(ActionResult::Continue)
+        }
+
+        // PDF navigation
+        KeyAction::PdfPrevPage | KeyAction::PdfNextPage => {
+            display::handle_pdf_navigation(action, state, pdf_preview, image_picker);
             Ok(ActionResult::Continue)
         }
     }
