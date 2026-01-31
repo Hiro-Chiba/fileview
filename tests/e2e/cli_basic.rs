@@ -113,6 +113,61 @@ fn temp_directory_is_accepted() {
     fv().arg("--help").arg(temp_dir.path()).assert().success();
 }
 
+#[test]
+fn absolute_path_is_accepted() {
+    let temp_dir = TempDir::new().unwrap();
+    let abs_path = temp_dir.path().canonicalize().unwrap();
+    fv().arg("--help").arg(&abs_path).assert().success();
+}
+
+#[test]
+fn file_path_is_accepted() {
+    let temp_dir = TempDir::new().unwrap();
+    let file_path = temp_dir.path().join("test.txt");
+    std::fs::write(&file_path, "content").unwrap();
+    // When given a file path, fv should start in its parent directory
+    fv().arg("--help").arg(&file_path).assert().success();
+}
+
+#[test]
+fn nested_directory_path_is_accepted() {
+    let temp_dir = TempDir::new().unwrap();
+    let nested = temp_dir.path().join("a").join("b").join("c");
+    std::fs::create_dir_all(&nested).unwrap();
+    fv().arg("--help").arg(&nested).assert().success();
+}
+
+// =============================================================================
+// Multiple Paths
+// =============================================================================
+
+#[test]
+fn multiple_paths_accepted() {
+    let temp_dir = TempDir::new().unwrap();
+    let dir1 = temp_dir.path().join("dir1");
+    let dir2 = temp_dir.path().join("dir2");
+    std::fs::create_dir(&dir1).unwrap();
+    std::fs::create_dir(&dir2).unwrap();
+
+    // Multiple paths are accepted (uses stdin mode internally)
+    fv().arg("--help").arg(&dir1).arg(&dir2).assert().success();
+}
+
+#[test]
+fn multiple_file_paths_accepted() {
+    let temp_dir = TempDir::new().unwrap();
+    let file1 = temp_dir.path().join("file1.txt");
+    let file2 = temp_dir.path().join("file2.txt");
+    std::fs::write(&file1, "content1").unwrap();
+    std::fs::write(&file2, "content2").unwrap();
+
+    fv().arg("--help")
+        .arg(&file1)
+        .arg(&file2)
+        .assert()
+        .success();
+}
+
 // =============================================================================
 // Format Option Values
 // =============================================================================
