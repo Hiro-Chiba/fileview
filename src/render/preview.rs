@@ -448,14 +448,9 @@ impl ArchivePreview {
             let name = entry.name().to_string();
 
             // Format modified time if available
-            let modified = entry.last_modified().map(|dt| {
-                format!(
-                    "{:04}-{:02}-{:02}",
-                    dt.year(),
-                    dt.month(),
-                    dt.day()
-                )
-            });
+            let modified = entry
+                .last_modified()
+                .map(|dt| format!("{:04}-{:02}-{:02}", dt.year(), dt.month(), dt.day()));
 
             if !is_dir {
                 total_size += size;
@@ -505,16 +500,14 @@ pub fn render_archive_preview(
     let mut lines: Vec<Line> = Vec::new();
 
     // Header: archive info
-    lines.push(Line::from(vec![
-        Span::styled(
-            format!(
-                "  {} files, {}",
-                preview.file_count,
-                format_size(preview.total_size)
-            ),
-            Style::default().fg(Color::Cyan),
+    lines.push(Line::from(vec![Span::styled(
+        format!(
+            "  {} files, {}",
+            preview.file_count,
+            format_size(preview.total_size)
         ),
-    ]));
+        Style::default().fg(Color::Cyan),
+    )]));
 
     lines.push(Line::from(vec![Span::styled(
         format!("  {}", separator),
@@ -526,7 +519,12 @@ pub fn render_archive_preview(
     let content_start = preview.scroll.saturating_sub(header_lines);
 
     // Entry list
-    for entry in preview.entries.iter().skip(content_start).take(visible_height.saturating_sub(header_lines)) {
+    for entry in preview
+        .entries
+        .iter()
+        .skip(content_start)
+        .take(visible_height.saturating_sub(header_lines))
+    {
         let (icon, color) = if entry.is_dir {
             ("\u{f07b}", Color::Blue) // Folder icon
         } else {
