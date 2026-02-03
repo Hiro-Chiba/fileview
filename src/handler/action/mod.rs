@@ -301,6 +301,17 @@ pub fn handle_action(
             Ok(ActionResult::Continue)
         }
 
+        // Smart selection
+        KeyAction::SelectGitChanged => {
+            selection::select_git_changed(state, entries);
+            Ok(ActionResult::Continue)
+        }
+
+        KeyAction::SelectTestPair => {
+            selection::select_test_pair(state, focused_path);
+            Ok(ActionResult::Continue)
+        }
+
         // Custom command execution
         KeyAction::RunCommand { name } => {
             let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();

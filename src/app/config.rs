@@ -58,6 +58,8 @@ pub struct Config {
     pub multi_select: bool,
     /// MCP server mode
     pub mcp_server: bool,
+    /// Context generation mode
+    pub context_mode: bool,
 }
 
 impl Config {
@@ -82,6 +84,7 @@ impl Config {
         let mut select_mode = false;
         let mut multi_select = false;
         let mut mcp_server = false;
+        let mut context_mode = false;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -120,6 +123,7 @@ impl Config {
                 "--select-mode" => select_mode = true,
                 "--multi" => multi_select = true,
                 "--mcp-server" => mcp_server = true,
+                "--context" => context_mode = true,
                 "--icons" | "-i" => icons_enabled = Some(true),
                 "--no-icons" => icons_enabled = Some(false),
                 "--hidden" | "-a" => show_hidden = Some(true),
@@ -216,6 +220,7 @@ impl Config {
             select_mode,
             multi_select,
             mcp_server,
+            context_mode,
         })
     }
 }
@@ -326,6 +331,7 @@ CLAUDE CODE INTEGRATION:
     --select-mode       Simple selection mode: Enter to select, output to stdout
     --multi             Allow multiple selection in select mode
     --mcp-server        Run as MCP server (JSON-RPC over stdin/stdout)
+    --context           Output project context in AI-friendly markdown format
 
 CONFIG FILE:
     ~/.config/fileview/config.toml    Main configuration file
@@ -367,6 +373,10 @@ KEYBINDINGS:
     q/Esc       Quit (or cancel in pick mode)
     Q           Quit and cd to current directory (with --choosedir)
     ?           Show help
+
+SMART SELECTION:
+    Ctrl+G      Select all git changed files
+    Ctrl+T      Select test pair for focused file
 
 TABS:
     Ctrl+T      New tab
