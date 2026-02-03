@@ -5,6 +5,25 @@
 
 use std::path::PathBuf;
 
+/// Actions that can be triggered from plugins
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PluginAction {
+    /// Navigate to a directory
+    Navigate(PathBuf),
+    /// Add a file to selection
+    Select(PathBuf),
+    /// Remove a file from selection
+    Deselect(PathBuf),
+    /// Clear all selections
+    ClearSelection,
+    /// Refresh the tree view
+    Refresh,
+    /// Set clipboard text
+    SetClipboard(String),
+    /// Focus on a specific file (reveal and select)
+    Focus(PathBuf),
+}
+
 /// Context shared between FileView and Lua plugins
 ///
 /// This structure holds the current state that plugins can read and
@@ -19,6 +38,8 @@ pub struct PluginContext {
     selected_files: Vec<PathBuf>,
     /// Pending notifications from plugins
     notifications: Vec<String>,
+    /// Pending actions from plugins
+    actions: Vec<PluginAction>,
 }
 
 impl PluginContext {
@@ -29,6 +50,7 @@ impl PluginContext {
             current_dir: PathBuf::new(),
             selected_files: Vec::new(),
             notifications: Vec::new(),
+            actions: Vec::new(),
         }
     }
 
@@ -75,6 +97,21 @@ impl PluginContext {
     /// Check if there are pending notifications
     pub fn has_notifications(&self) -> bool {
         !self.notifications.is_empty()
+    }
+
+    /// Queue an action to be executed
+    pub fn queue_action(&mut self, action: PluginAction) {
+        self.actions.push(action);
+    }
+
+    /// Take all pending actions
+    pub fn take_actions(&mut self) -> Vec<PluginAction> {
+        std::mem::take(&mut self.actions)
+    }
+
+    /// Check if there are pending actions
+    pub fn has_actions(&self) -> bool {
+        !self.actions.is_empty()
     }
 }
 
@@ -134,5 +171,55 @@ mod tests {
         // After take, should be empty
         assert!(!ctx.has_notifications());
         assert!(ctx.take_notifications().is_empty());
+    }
+
+    #[test]
+    fn test_actions() {
+        let mut ctx = PluginContext::new();
+        assert!(!ctx.has_actions());
+
+        ctx.queue_action(PluginAction::Navigate(PathBuf::from("/test")));
+        assert!(ctx.has_actions());
+
+        ctx.queue_action(PluginAction::Refresh);
+        ctx.queue_action(PluginAction::SetClipboard("hello".to_string()));
+
+        let actions = ctx.take_actions();
+        assert_eq!(actions.len(), 3);
+        assert_eq!(actions[0], PluginAction::Navigate(PathBuf::from("/test")));
+        assert_eq!(actions[1], PluginAction::Refresh);
+        assert_eq!(actions[2], PluginAction::SetClipboard("hello".to_string()));
+
+        // After take, should be empty
+        assert!(!ctx.has_actions());
+        assert!(ctx.take_actions().is_empty());
+    }
+
+    #[test]
+    fn test_selection_actions() {
+        let mut ctx = PluginContext::new();
+
+        ctx.queue_action(PluginAction::Select(PathBuf::from("/a.txt")));
+        ctx.queue_action(PluginAction::Select(PathBuf::from("/b.txt")));
+        ctx.queue_action(PluginAction::Deselect(PathBuf::from("/a.txt")));
+        ctx.queue_action(PluginAction::ClearSelection);
+
+        let actions = ctx.take_actions();
+        assert_eq!(actions.len(), 4);
+        assert_eq!(actions[0], PluginAction::Select(PathBuf::from("/a.txt")));
+        assert_eq!(actions[3], PluginAction::ClearSelection);
+    }
+
+    #[test]
+    fn test_focus_action() {
+        let mut ctx = PluginContext::new();
+        ctx.queue_action(PluginAction::Focus(PathBuf::from("/test/file.txt")));
+
+        let actions = ctx.take_actions();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0],
+            PluginAction::Focus(PathBuf::from("/test/file.txt"))
+        );
     }
 }

@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2026-02-03
+
+### Added
+
+- **Lua plugin action API (Phase 12b)**: Plugins can now trigger FileView actions
+  - `fv.navigate(path)`: Navigate to a directory
+  - `fv.select(path)`: Add a file to selection
+  - `fv.deselect(path)`: Remove a file from selection
+  - `fv.clear_selection()`: Clear all selections
+  - `fv.refresh()`: Refresh the tree view
+  - `fv.set_clipboard(text)`: Set clipboard text
+  - `fv.focus(path)`: Focus on a specific file (reveal and select)
+  - Actions are queued and processed by the event loop
+
+### Changed
+
+- `PluginContext` now includes action queue for plugin-triggered actions
+- `PluginManager` collects actions alongside notifications
+
+### Tests
+
+- Added 15 new unit tests for action API (12 lua + 3 api)
+- Total plugin tests: 30
+
 ## [1.19.0] - 2026-02-03
 
 ### Added
