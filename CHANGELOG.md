@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-02-03
+
+### Added
+
+- **Lua plugin system (Phase 12a)**: Scripting support via Lua 5.4
+  - Plugin location: `~/.config/fileview/plugins/init.lua`
+  - Uses `mlua` crate with vendored Lua 5.4
+  - Read-only API for accessing FileView state:
+    - `fv.current_file()`: Get currently focused file path
+    - `fv.current_dir()`: Get current directory path
+    - `fv.selected_files()`: Get list of selected files
+    - `fv.notify(msg)`: Display notification message
+    - `fv.version()`: Get FileView version
+    - `fv.is_dir(path)`: Check if path is directory
+    - `fv.file_exists(path)`: Check if path exists
+
+### New Files
+
+- `src/plugin/mod.rs`: Plugin system module entry (~30 lines)
+- `src/plugin/lua.rs`: Lua runtime management and API setup (~280 lines)
+- `src/plugin/api.rs`: Plugin context for state sharing (~100 lines)
+
+### Dependencies
+
+- Added `mlua = { version = "0.10", features = ["lua54", "vendored"] }`
+
+### Tests
+
+- Added 18 new unit tests for plugin module
+- Total test count: 436 tests (346 unit + 72 E2E + 18 plugin)
+
+### Documentation
+
+- Added `docs/ROADMAP_V4.md`: Future development roadmap for v4+ features
+
 ## [1.18.0] - 2026-02-03
 
 ### Added
