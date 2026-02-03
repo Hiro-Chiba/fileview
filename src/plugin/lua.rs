@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use mlua::Lua;
 
-use super::api::PluginContext;
+use super::api::{PluginAction, PluginContext};
 
 /// Plugin system error
 #[derive(Debug)]
@@ -46,6 +46,8 @@ pub struct PluginManager {
     loaded: bool,
     /// Notifications to display (queued from plugins)
     pending_notifications: Vec<String>,
+    /// Actions to execute (queued from plugins)
+    pending_actions: Vec<PluginAction>,
 }
 
 impl PluginManager {
@@ -62,6 +64,7 @@ impl PluginManager {
             context,
             loaded: false,
             pending_notifications: Vec::new(),
+            pending_actions: Vec::new(),
         })
     }
 
@@ -154,6 +157,108 @@ impl PluginManager {
                 .map_err(PluginError::from)?;
         }
 
+        // === Action API (Phase 12b) ===
+
+        // fv.navigate(path) -> nil
+        // Navigate to a directory
+        {
+            let ctx = Arc::clone(&context);
+            let navigate = lua
+                .create_function(move |_, path: String| {
+                    let mut ctx = ctx.lock().unwrap();
+                    ctx.queue_action(PluginAction::Navigate(PathBuf::from(path)));
+                    Ok(())
+                })
+                .map_err(PluginError::from)?;
+            fv.set("navigate", navigate).map_err(PluginError::from)?;
+        }
+
+        // fv.select(path) -> nil
+        // Add a file to selection
+        {
+            let ctx = Arc::clone(&context);
+            let select = lua
+                .create_function(move |_, path: String| {
+                    let mut ctx = ctx.lock().unwrap();
+                    ctx.queue_action(PluginAction::Select(PathBuf::from(path)));
+                    Ok(())
+                })
+                .map_err(PluginError::from)?;
+            fv.set("select", select).map_err(PluginError::from)?;
+        }
+
+        // fv.deselect(path) -> nil
+        // Remove a file from selection
+        {
+            let ctx = Arc::clone(&context);
+            let deselect = lua
+                .create_function(move |_, path: String| {
+                    let mut ctx = ctx.lock().unwrap();
+                    ctx.queue_action(PluginAction::Deselect(PathBuf::from(path)));
+                    Ok(())
+                })
+                .map_err(PluginError::from)?;
+            fv.set("deselect", deselect).map_err(PluginError::from)?;
+        }
+
+        // fv.clear_selection() -> nil
+        // Clear all selections
+        {
+            let ctx = Arc::clone(&context);
+            let clear_selection = lua
+                .create_function(move |_, ()| {
+                    let mut ctx = ctx.lock().unwrap();
+                    ctx.queue_action(PluginAction::ClearSelection);
+                    Ok(())
+                })
+                .map_err(PluginError::from)?;
+            fv.set("clear_selection", clear_selection)
+                .map_err(PluginError::from)?;
+        }
+
+        // fv.refresh() -> nil
+        // Refresh the tree view
+        {
+            let ctx = Arc::clone(&context);
+            let refresh = lua
+                .create_function(move |_, ()| {
+                    let mut ctx = ctx.lock().unwrap();
+                    ctx.queue_action(PluginAction::Refresh);
+                    Ok(())
+                })
+                .map_err(PluginError::from)?;
+            fv.set("refresh", refresh).map_err(PluginError::from)?;
+        }
+
+        // fv.set_clipboard(text) -> nil
+        // Set clipboard text
+        {
+            let ctx = Arc::clone(&context);
+            let set_clipboard = lua
+                .create_function(move |_, text: String| {
+                    let mut ctx = ctx.lock().unwrap();
+                    ctx.queue_action(PluginAction::SetClipboard(text));
+                    Ok(())
+                })
+                .map_err(PluginError::from)?;
+            fv.set("set_clipboard", set_clipboard)
+                .map_err(PluginError::from)?;
+        }
+
+        // fv.focus(path) -> nil
+        // Focus on a specific file (reveal and select)
+        {
+            let ctx = Arc::clone(&context);
+            let focus = lua
+                .create_function(move |_, path: String| {
+                    let mut ctx = ctx.lock().unwrap();
+                    ctx.queue_action(PluginAction::Focus(PathBuf::from(path)));
+                    Ok(())
+                })
+                .map_err(PluginError::from)?;
+            fv.set("focus", focus).map_err(PluginError::from)?;
+        }
+
         // Set the fv table as a global
         globals.set("fv", fv).map_err(PluginError::from)?;
 
@@ -221,8 +326,7 @@ impl PluginManager {
     /// Collect pending notifications from the context
     fn collect_notifications(&mut self) {
         let mut ctx = self.context.lock().unwrap();
-        self.pending_notifications
-            .extend(ctx.take_notifications());
+        self.pending_notifications.extend(ctx.take_notifications());
     }
 
     /// Take pending notifications
@@ -231,10 +335,23 @@ impl PluginManager {
         std::mem::take(&mut self.pending_notifications)
     }
 
+    /// Collect pending actions from the context
+    fn collect_actions(&mut self) {
+        let mut ctx = self.context.lock().unwrap();
+        self.pending_actions.extend(ctx.take_actions());
+    }
+
+    /// Take pending actions
+    pub fn take_actions(&mut self) -> Vec<PluginAction> {
+        self.collect_actions();
+        std::mem::take(&mut self.pending_actions)
+    }
+
     /// Execute a Lua string (for testing or REPL)
     pub fn exec(&mut self, code: &str) -> Result<(), PluginError> {
         self.lua.load(code).exec().map_err(PluginError::from)?;
         self.collect_notifications();
+        self.collect_actions();
         Ok(())
     }
 
@@ -419,5 +536,144 @@ mod tests {
         assert_eq!(notifications[0], "First");
         assert_eq!(notifications[1], "Second");
         assert_eq!(notifications[2], "Third");
+    }
+
+    // === Phase 12b: Action API Tests ===
+
+    #[test]
+    fn test_fv_navigate() {
+        let mut manager = PluginManager::new().unwrap();
+        manager.exec("fv.navigate('/home/user')").unwrap();
+
+        let actions = manager.take_actions();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0],
+            PluginAction::Navigate(PathBuf::from("/home/user"))
+        );
+    }
+
+    #[test]
+    fn test_fv_select() {
+        let mut manager = PluginManager::new().unwrap();
+        manager.exec("fv.select('/test/file.txt')").unwrap();
+
+        let actions = manager.take_actions();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0],
+            PluginAction::Select(PathBuf::from("/test/file.txt"))
+        );
+    }
+
+    #[test]
+    fn test_fv_deselect() {
+        let mut manager = PluginManager::new().unwrap();
+        manager.exec("fv.deselect('/test/file.txt')").unwrap();
+
+        let actions = manager.take_actions();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0],
+            PluginAction::Deselect(PathBuf::from("/test/file.txt"))
+        );
+    }
+
+    #[test]
+    fn test_fv_clear_selection() {
+        let mut manager = PluginManager::new().unwrap();
+        manager.exec("fv.clear_selection()").unwrap();
+
+        let actions = manager.take_actions();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0], PluginAction::ClearSelection);
+    }
+
+    #[test]
+    fn test_fv_refresh() {
+        let mut manager = PluginManager::new().unwrap();
+        manager.exec("fv.refresh()").unwrap();
+
+        let actions = manager.take_actions();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0], PluginAction::Refresh);
+    }
+
+    #[test]
+    fn test_fv_set_clipboard() {
+        let mut manager = PluginManager::new().unwrap();
+        manager.exec("fv.set_clipboard('copied text')").unwrap();
+
+        let actions = manager.take_actions();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0],
+            PluginAction::SetClipboard("copied text".to_string())
+        );
+    }
+
+    #[test]
+    fn test_fv_focus() {
+        let mut manager = PluginManager::new().unwrap();
+        manager.exec("fv.focus('/test/target.txt')").unwrap();
+
+        let actions = manager.take_actions();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0],
+            PluginAction::Focus(PathBuf::from("/test/target.txt"))
+        );
+    }
+
+    #[test]
+    fn test_multiple_actions() {
+        let mut manager = PluginManager::new().unwrap();
+        manager
+            .exec(
+                r#"
+            fv.navigate("/home")
+            fv.select("/home/file1.txt")
+            fv.select("/home/file2.txt")
+            fv.refresh()
+        "#,
+            )
+            .unwrap();
+
+        let actions = manager.take_actions();
+        assert_eq!(actions.len(), 4);
+        assert_eq!(actions[0], PluginAction::Navigate(PathBuf::from("/home")));
+        assert_eq!(
+            actions[1],
+            PluginAction::Select(PathBuf::from("/home/file1.txt"))
+        );
+        assert_eq!(
+            actions[2],
+            PluginAction::Select(PathBuf::from("/home/file2.txt"))
+        );
+        assert_eq!(actions[3], PluginAction::Refresh);
+    }
+
+    #[test]
+    fn test_actions_and_notifications_combined() {
+        let mut manager = PluginManager::new().unwrap();
+        manager
+            .exec(
+                r#"
+            fv.notify("Starting...")
+            fv.navigate("/test")
+            fv.notify("Done!")
+        "#,
+            )
+            .unwrap();
+
+        let notifications = manager.take_notifications();
+        let actions = manager.take_actions();
+
+        assert_eq!(notifications.len(), 2);
+        assert_eq!(notifications[0], "Starting...");
+        assert_eq!(notifications[1], "Done!");
+
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0], PluginAction::Navigate(PathBuf::from("/test")));
     }
 }
