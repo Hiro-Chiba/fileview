@@ -709,92 +709,231 @@ fn centered_rect(percent_x: u16, height: u16, area: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
-/// Render help popup overlay
+// Help overlay constants
+const HELP_OVERLAY_BG_COLOR: Color = Color::Rgb(30, 30, 40);
+const HELP_OVERLAY_MIN_WIDTH: u16 = 24;
+const HELP_OVERLAY_MARGIN: u16 = 2;
+
+/// Render help popup overlay (gitstack-style responsive design)
 pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
     if !matches!(state.mode, ViewMode::Help) {
         return;
     }
 
-    let t = theme();
+    let area = frame.area();
 
-    let help_lines = vec![
-        Line::from(vec![Span::styled(
-            "Navigation",
-            Style::default().add_modifier(Modifier::BOLD),
-        )]),
-        Line::from("  j/\u{2193}      Move down"),
-        Line::from("  k/\u{2191}      Move up"),
-        Line::from("  g        Go to top"),
-        Line::from("  G        Go to bottom"),
-        Line::from(""),
-        Line::from(vec![Span::styled(
-            "Tree",
-            Style::default().add_modifier(Modifier::BOLD),
-        )]),
-        Line::from("  l/\u{2192}      Expand"),
-        Line::from("  h/\u{2190}      Collapse"),
-        Line::from("  H        Collapse all"),
-        Line::from("  L        Expand all"),
-        Line::from(""),
-        Line::from(vec![Span::styled(
-            "Selection",
-            Style::default().add_modifier(Modifier::BOLD),
-        )]),
-        Line::from("  Space    Toggle mark"),
-        Line::from("  Enter    Toggle expand"),
-        Line::from(""),
-        Line::from(vec![Span::styled(
-            "File Operations",
-            Style::default().add_modifier(Modifier::BOLD),
-        )]),
-        Line::from("  a        New file"),
-        Line::from("  A        New directory"),
-        Line::from("  r        Rename"),
-        Line::from("  D        Delete"),
-        Line::from("  y/d      Copy/Cut"),
-        Line::from("  p        Paste"),
-        Line::from(""),
-        Line::from(vec![Span::styled(
-            "Bookmarks",
-            Style::default().add_modifier(Modifier::BOLD),
-        )]),
-        Line::from("  m1-9     Set bookmark"),
-        Line::from("  '1-9     Jump to bookmark"),
-        Line::from(""),
-        Line::from(vec![Span::styled(
-            "Filter",
-            Style::default().add_modifier(Modifier::BOLD),
-        )]),
-        Line::from("  F        Set/clear filter"),
-        Line::from(""),
-        Line::from(vec![Span::styled(
-            "Other",
-            Style::default().add_modifier(Modifier::BOLD),
-        )]),
-        Line::from("  P        Toggle preview"),
-        Line::from("  Ctrl+P   Fuzzy finder"),
-        Line::from("  /        Search"),
-        Line::from("  n/N      Next/prev match"),
-        Line::from("  S        Cycle sort mode"),
-        Line::from("  .        Toggle hidden"),
-        Line::from("  q        Quit"),
-        Line::from(""),
-        Line::from(vec![Span::styled(
-            "  Press ? or Esc to close",
-            Style::default().fg(t.git_ignored),
-        )]),
-    ];
+    // Calculate overlay size with minimum width guarantee
+    let overlay_width = 54u16
+        .min(area.width.saturating_sub(HELP_OVERLAY_MARGIN))
+        .max(HELP_OVERLAY_MIN_WIDTH);
+    let overlay_height = 38u16.min(area.height.saturating_sub(HELP_OVERLAY_MARGIN));
+    let overlay_x = (area.width.saturating_sub(overlay_width)) / 2;
+    let overlay_y = (area.height.saturating_sub(overlay_height)) / 2;
+    let inner_width = overlay_width.saturating_sub(2) as usize;
 
-    let height = (help_lines.len() + 2) as u16; // +2 for border
-    let area = centered_rect(50, height, frame.area());
+    let overlay_area = Rect::new(overlay_x, overlay_y, overlay_width, overlay_height);
 
-    let popup = Paragraph::new(help_lines).block(
+    // Style definitions
+    let label_style = Style::default().fg(Color::Yellow);
+    let key_style = Style::default().fg(Color::Cyan);
+    let desc_style = Style::default().fg(Color::White);
+    let hint_style = Style::default().fg(Color::DarkGray);
+
+    // Width-based display control
+    let compact = inner_width < 40;
+    let very_compact = inner_width < 28;
+
+    let content = if very_compact {
+        // Ultra-compact: essential keys only
+        vec![
+            Line::from(Span::styled("Nav", label_style)),
+            Line::from(vec![Span::styled("j/k ↑↓ g/G", key_style)]),
+            Line::from(""),
+            Line::from(Span::styled("Tree", label_style)),
+            Line::from(vec![Span::styled("l/h H/L Tab", key_style)]),
+            Line::from(""),
+            Line::from(Span::styled("File", label_style)),
+            Line::from(vec![Span::styled("a A r D y d p", key_style)]),
+            Line::from(""),
+            Line::from(Span::styled("Other", label_style)),
+            Line::from(vec![Span::styled("/ ^P P . q ?", key_style)]),
+        ]
+    } else if compact {
+        // Compact: keys with short descriptions
+        vec![
+            Line::from(Span::styled("Navigation", label_style)),
+            Line::from(vec![
+                Span::styled(" j/k  ", key_style),
+                Span::styled("up/down", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled(" g/G  ", key_style),
+                Span::styled("top/bottom", desc_style),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled("Tree", label_style)),
+            Line::from(vec![
+                Span::styled(" l/h  ", key_style),
+                Span::styled("expand/collapse", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled(" H/L  ", key_style),
+                Span::styled("all collapse/expand", desc_style),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled("Selection", label_style)),
+            Line::from(vec![
+                Span::styled(" Space", key_style),
+                Span::styled(" toggle mark", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled(" ^G   ", key_style),
+                Span::styled("git changed", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled(" ^T   ", key_style),
+                Span::styled("test pair", desc_style),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled("File Ops", label_style)),
+            Line::from(vec![
+                Span::styled(" a/A  ", key_style),
+                Span::styled("new file/dir", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled(" r D  ", key_style),
+                Span::styled("rename/delete", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled(" y d p", key_style),
+                Span::styled("copy/cut/paste", desc_style),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled("Other", label_style)),
+            Line::from(vec![
+                Span::styled(" / ^P ", key_style),
+                Span::styled("search/fuzzy", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled(" P .  ", key_style),
+                Span::styled("preview/hidden", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled(" ?/q  ", key_style),
+                Span::styled("help/quit", desc_style),
+            ]),
+        ]
+    } else {
+        // Normal: full display
+        vec![
+            Line::from(Span::styled("Navigation", label_style)),
+            Line::from(vec![
+                Span::styled("  j/↓    ", key_style),
+                Span::styled("Move down", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  k/↑    ", key_style),
+                Span::styled("Move up", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  g      ", key_style),
+                Span::styled("Go to top", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  G      ", key_style),
+                Span::styled("Go to bottom", desc_style),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled("Tree", label_style)),
+            Line::from(vec![
+                Span::styled("  l/→    ", key_style),
+                Span::styled("Expand", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  h/←    ", key_style),
+                Span::styled("Collapse", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  H      ", key_style),
+                Span::styled("Collapse all", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  L      ", key_style),
+                Span::styled("Expand all", desc_style),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled("Selection", label_style)),
+            Line::from(vec![
+                Span::styled("  Space  ", key_style),
+                Span::styled("Toggle mark", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  Ctrl+G ", key_style),
+                Span::styled("Select git changed", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  Ctrl+T ", key_style),
+                Span::styled("Select test pair", desc_style),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled("File Operations", label_style)),
+            Line::from(vec![
+                Span::styled("  a      ", key_style),
+                Span::styled("New file", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  A      ", key_style),
+                Span::styled("New directory", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  r      ", key_style),
+                Span::styled("Rename", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  D      ", key_style),
+                Span::styled("Delete", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  y/d/p  ", key_style),
+                Span::styled("Copy/Cut/Paste", desc_style),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled("Other", label_style)),
+            Line::from(vec![
+                Span::styled("  P      ", key_style),
+                Span::styled("Toggle preview", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  Ctrl+P ", key_style),
+                Span::styled("Fuzzy finder", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  /      ", key_style),
+                Span::styled("Search", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  .      ", key_style),
+                Span::styled("Toggle hidden", desc_style),
+            ]),
+            Line::from(vec![
+                Span::styled("  q      ", key_style),
+                Span::styled("Quit", desc_style),
+            ]),
+            Line::from(""),
+            Line::from(vec![Span::styled("  Press ? or Esc to close", hint_style)]),
+        ]
+    };
+
+    // Clear background and render
+    frame.render_widget(Clear, overlay_area);
+
+    let paragraph = Paragraph::new(content).block(
         Block::default()
-            .borders(Borders::ALL)
             .title(" Help ")
-            .border_style(Style::default().fg(t.border_active)),
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Cyan))
+            .style(Style::default().bg(HELP_OVERLAY_BG_COLOR)),
     );
 
-    frame.render_widget(Clear, area);
-    frame.render_widget(popup, area);
+    frame.render_widget(paragraph, overlay_area);
 }
