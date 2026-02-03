@@ -40,6 +40,15 @@ impl SortMode {
             SortMode::Date => "date",
         }
     }
+
+    /// Get short name for narrow displays
+    pub fn short_name(&self) -> &'static str {
+        match self {
+            SortMode::Name => "N",
+            SortMode::Size => "S",
+            SortMode::Date => "D",
+        }
+    }
 }
 
 /// Main application state
