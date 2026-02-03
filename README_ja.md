@@ -142,12 +142,12 @@ fv.register_command("copy-path", function()
 end)
 ```
 
-**[プラグイン API リファレンス](docs/PLUGINS.md)**
+**[プラグイン API リファレンス](docs/PLUGINS_ja.md)**
 
 ## ドキュメント
 
 - [キーバインド](docs/KEYBINDINGS_ja.md) - 完全なキーバインド一覧
-- [プラグイン](docs/PLUGINS.md) - Lua プラグインシステム
+- [プラグイン](docs/PLUGINS_ja.md) - Lua プラグインシステム
 - [競合比較](docs/COMPARISON.md) - yazi, lf, ranger, nnn との比較
 - [ベンチマーク](docs/BENCHMARKS.md) - パフォーマンスデータ
 - [セキュリティ](docs/SECURITY.md) - セキュリティモデル
