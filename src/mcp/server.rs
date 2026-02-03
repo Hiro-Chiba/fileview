@@ -132,6 +132,50 @@ fn handle_tools_list(id: Option<serde_json::Value>) -> JsonRpcResponse {
                 "required": ["path"]
             }),
         },
+        Tool {
+            name: "get_git_status".to_string(),
+            description: "Get git status showing changed and staged files".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {}
+            }),
+        },
+        Tool {
+            name: "get_git_diff".to_string(),
+            description: "Get git diff for a specific file".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Relative path to the file"
+                    },
+                    "staged": {
+                        "type": "boolean",
+                        "description": "If true, show staged changes (--cached). Default: false"
+                    }
+                },
+                "required": ["path"]
+            }),
+        },
+        Tool {
+            name: "search_code".to_string(),
+            description: "Search for code patterns in the repository using grep/ripgrep".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "The search pattern (regex supported)"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Optional relative path to limit search scope"
+                    }
+                },
+                "required": ["pattern"]
+            }),
+        },
     ];
 
     let result = ToolListResult { tools };
@@ -176,6 +220,40 @@ fn handle_tools_call(
                 None => ToolCallResult {
                     content: vec![ToolContent::text(
                         "Missing required parameter: path".to_string(),
+                    )],
+                    is_error: Some(true),
+                },
+            }
+        }
+        "get_git_status" => handlers::get_git_status(root),
+        "get_git_diff" => {
+            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
+            let staged = call_params
+                .arguments
+                .get("staged")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            match path {
+                Some(p) => handlers::get_git_diff(root, p, staged),
+                None => ToolCallResult {
+                    content: vec![ToolContent::text(
+                        "Missing required parameter: path".to_string(),
+                    )],
+                    is_error: Some(true),
+                },
+            }
+        }
+        "search_code" => {
+            let pattern = call_params
+                .arguments
+                .get("pattern")
+                .and_then(|v| v.as_str());
+            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
+            match pattern {
+                Some(p) => handlers::search_code(root, p, path),
+                None => ToolCallResult {
+                    content: vec![ToolContent::text(
+                        "Missing required parameter: pattern".to_string(),
                     )],
                     is_error: Some(true),
                 },

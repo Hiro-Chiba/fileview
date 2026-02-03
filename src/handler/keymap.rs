@@ -184,6 +184,8 @@ impl KeyBindingRegistry {
         browse.insert("pagedown".to_string(), "preview_page_down".to_string());
         browse.insert("b".to_string(), "preview_page_up_if_preview".to_string());
         browse.insert("f".to_string(), "preview_page_down_if_preview".to_string());
+        browse.insert("ctrl+g".to_string(), "select_git_changed".to_string());
+        browse.insert("ctrl+T".to_string(), "select_test_pair".to_string());
 
         // Preview mode defaults
         let preview = &mut self.preview;
@@ -436,6 +438,10 @@ fn parse_browse_action(action: &str) -> Option<KeyAction> {
         "preview_page_down" | "preview_page_down_if_preview" => Some(KeyAction::PreviewPageDown),
         "preview_to_top" => Some(KeyAction::PreviewToTop),
         "preview_to_bottom" => Some(KeyAction::PreviewToBottom),
+        "select_git_changed" => Some(KeyAction::SelectGitChanged),
+        "select_test_pair" => Some(KeyAction::SelectTestPair),
+        "select_all" => Some(KeyAction::SelectAll),
+        "invert_selection" => Some(KeyAction::InvertSelection),
         _ => {
             // Check for command:name pattern
             action
