@@ -18,6 +18,11 @@ pub enum ViewMode {
     /// Normal browsing mode
     #[default]
     Browse,
+    /// Visual selection mode (range selection)
+    VisualSelect {
+        /// Starting index of selection
+        anchor: usize,
+    },
     /// Search mode with query
     Search { query: String },
     /// Text input mode

@@ -18,6 +18,10 @@ pub struct Config {
     pub icons_enabled: Option<bool>,
     /// Shell integration: output directory path on exit (for cd)
     pub choosedir_mode: bool,
+    /// Shell integration: file to write directory path on exit
+    pub choosedir_file: Option<PathBuf>,
+    /// Shell integration: file to write selection on exit
+    pub selection_path_file: Option<PathBuf>,
     /// Paths read from stdin (for pipeline integration)
     pub stdin_paths: Option<Vec<PathBuf>>,
     /// Show hidden files by default (from config file)
@@ -56,13 +60,30 @@ impl Config {
         let mut callback: Option<Callback> = None;
         let mut icons_enabled: Option<bool> = None;
         let mut choosedir_mode = false;
+        let mut choosedir_file: Option<PathBuf> = None;
+        let mut selection_path_file: Option<PathBuf> = None;
         let mut stdin_mode = false;
         let mut show_hidden: Option<bool> = None;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--pick" | "-p" => pick_mode = true,
-                "--choosedir" => choosedir_mode = true,
+                "--choosedir" => {
+                    choosedir_mode = true;
+                    // Check if next arg is a file path (not starting with -)
+                    if let Some(next) = args.peek() {
+                        if !next.starts_with('-') {
+                            choosedir_file = Some(PathBuf::from(args.next().unwrap()));
+                        }
+                    }
+                }
+                "--selection-path" => {
+                    if let Some(file) = args.next() {
+                        selection_path_file = Some(PathBuf::from(file));
+                    } else {
+                        anyhow::bail!("--selection-path requires a file path");
+                    }
+                }
                 "--stdin" => stdin_mode = true,
                 "--icons" | "-i" => icons_enabled = Some(true),
                 "--no-icons" => icons_enabled = Some(false),
@@ -139,6 +160,8 @@ impl Config {
             callback,
             icons_enabled,
             choosedir_mode,
+            choosedir_file,
+            selection_path_file,
             stdin_paths,
             // Settings from config file (CLI can override some)
             show_hidden: show_hidden.unwrap_or(config_file.general.show_hidden),
@@ -246,7 +269,8 @@ OPTIONS:
     -f, --format FMT    Output format for pick mode: lines, null, json
     --stdin             Read paths from stdin (one per line)
     --on-select CMD     Run command when file is selected (use {{path}}, {{name}}, etc.)
-    --choosedir         Output directory path on exit (press Q to cd there)
+    --choosedir [FILE]  Write directory path to FILE on exit (for shell cd integration)
+    --selection-path F  Write selected file paths to FILE on exit
     -i, --icons         Enable Nerd Fonts icons (default)
     --no-icons          Disable icons
     -a, --hidden        Show hidden files
@@ -290,9 +314,16 @@ KEYBINDINGS:
     P           Toggle quick preview panel
     c           Copy path to system clipboard
     C           Copy filename to system clipboard
+    Alt+S       Open subshell in current directory
     q/Esc       Quit (or cancel in pick mode)
     Q           Quit and cd to current directory (with --choosedir)
     ?           Show help
+
+TABS:
+    Ctrl+T      New tab
+    Ctrl+W      Close tab
+    Alt+t       Next tab
+    Alt+T       Previous tab
 
 PLACEHOLDERS for --on-select:
     {{path}}    Full path
@@ -309,6 +340,17 @@ EXIT CODES:
     1           Cancelled (user cancelled selection in pick mode)
     2           Error (runtime error)
     3           Invalid arguments (unknown option or invalid value)
+
+SHELL INTEGRATION:
+    Add to ~/.bashrc or ~/.zshrc:
+
+    fv() {{
+        local tmp=$(mktemp)
+        command fv --choosedir "$tmp" "$@"
+        local dir=$(cat "$tmp")
+        rm -f "$tmp"
+        [ -n "$dir" ] && cd "$dir"
+    }}
 "#
     );
 }
