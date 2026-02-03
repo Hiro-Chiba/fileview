@@ -115,7 +115,9 @@ pub fn handle(
                 state.set_message("No file selected");
             } else {
                 match copy_file_contents_claude_format(&paths) {
-                    Ok(count) => state.set_message(format!("Copied {} file(s) (Claude format)", count)),
+                    Ok(count) => {
+                        state.set_message(format!("Copied {} file(s) (Claude format)", count))
+                    }
                     Err(e) => state.set_message(format!("Failed: {}", e)),
                 }
             }
@@ -405,10 +407,7 @@ fn copy_file_contents_claude_format(paths: &[PathBuf]) -> anyhow::Result<usize> 
             }
 
             // Detect file extension for syntax highlighting
-            let ext = path
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("");
+            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
             contents.push(format!("### File: {}", path.display()));
             contents.push(format!("```{}", ext));

@@ -72,7 +72,9 @@ fn handle_initialize(id: Option<serde_json::Value>) -> JsonRpcResponse {
     let result = InitializeResult {
         protocol_version: "2024-11-05".to_string(),
         capabilities: ServerCapabilities {
-            tools: ToolsCapability { list_changed: false },
+            tools: ToolsCapability {
+                list_changed: false,
+            },
         },
         server_info: ServerInfo {
             name: "fileview".to_string(),
@@ -172,7 +174,9 @@ fn handle_tools_call(
             match path {
                 Some(p) => handlers::read_file(root, p),
                 None => ToolCallResult {
-                    content: vec![ToolContent::text("Missing required parameter: path".to_string())],
+                    content: vec![ToolContent::text(
+                        "Missing required parameter: path".to_string(),
+                    )],
                     is_error: Some(true),
                 },
             }
