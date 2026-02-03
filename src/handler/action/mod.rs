@@ -192,6 +192,8 @@ pub fn handle_action(
         | KeyAction::FocusPreview
         | KeyAction::CopyPath
         | KeyAction::CopyFilename
+        | KeyAction::CopyContent
+        | KeyAction::CopyForClaude
         | KeyAction::Refresh
         | KeyAction::CycleSort => {
             display::handle(action, state, navigator, focused_path)?;
@@ -219,6 +221,9 @@ pub fn handle_action(
 
         // Pick mode selection
         KeyAction::PickSelect => display::handle_pick_select(state, focused_path, context),
+
+        // Select mode confirmation
+        KeyAction::SelectConfirm => display::handle_select_confirm(state, focused_path, context),
 
         // Fuzzy finder
         KeyAction::OpenFuzzyFinder | KeyAction::FuzzyUp | KeyAction::FuzzyDown => {

@@ -78,6 +78,8 @@ pub fn run_app(
 ) -> anyhow::Result<AppResult> {
     let mut state = AppState::new(config.root.clone());
     state.pick_mode = config.pick_mode;
+    state.select_mode = config.select_mode;
+    state.multi_select = config.multi_select;
 
     // Apply config file settings
     state.show_hidden = config.show_hidden;

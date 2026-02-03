@@ -65,6 +65,10 @@ pub enum KeyAction {
     CopyPath,
     /// Copy filename to system clipboard
     CopyFilename,
+    /// Copy file content to system clipboard
+    CopyContent,
+    /// Copy file content in Claude format to system clipboard
+    CopyForClaude,
     /// Open preview
     OpenPreview,
     /// Toggle quick preview panel
@@ -87,6 +91,8 @@ pub enum KeyAction {
     PreviewToBottom,
     /// Select and quit (pick mode)
     PickSelect,
+    /// Select and quit (select mode)
+    SelectConfirm,
     /// Show help message
     ShowHelp,
     /// Toggle focus between tree and preview (side preview mode)
@@ -453,14 +459,19 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Selection
         KeyCode::Char(' ') => KeyAction::ToggleMark,
         KeyCode::Enter => {
-            if state.pick_mode {
+            if state.select_mode {
+                KeyAction::SelectConfirm
+            } else if state.pick_mode {
                 KeyAction::PickSelect
             } else {
                 KeyAction::ToggleExpand
             }
         }
 
-        // Clipboard
+        // Clipboard (Ctrl+Y for Claude format must come before plain 'y')
+        KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::CopyForClaude
+        }
         KeyCode::Char('y') => KeyAction::Copy,
         KeyCode::Char('d') => {
             if key.modifiers.contains(KeyModifiers::SHIFT) {
@@ -504,6 +515,8 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Copy to system clipboard
         KeyCode::Char('c') => KeyAction::CopyPath,
         KeyCode::Char('C') => KeyAction::CopyFilename,
+        // Copy content to clipboard (Y for content)
+        KeyCode::Char('Y') => KeyAction::CopyContent,
 
         // Preview
         KeyCode::Char('o') => KeyAction::OpenPreview,

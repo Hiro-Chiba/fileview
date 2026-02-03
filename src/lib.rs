@@ -9,6 +9,7 @@ pub mod core;
 pub mod git;
 pub mod handler;
 pub mod integrate;
+pub mod mcp;
 pub mod plugin;
 pub mod render;
 pub mod tree;
