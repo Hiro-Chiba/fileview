@@ -172,7 +172,9 @@ fn print_structure<W: Write>(
 
     // Show key files at root level
     if depth == 0 {
-        let key_files = ["main.rs", "lib.rs", "mod.rs", "index.ts", "app.ts", "main.py"];
+        let key_files = [
+            "main.rs", "lib.rs", "mod.rs", "index.ts", "app.ts", "main.py",
+        ];
         let src_path = path.join("src");
         if src_path.exists() {
             for file in &key_files {
@@ -281,7 +283,11 @@ mod tests {
         let temp = TempDir::new().unwrap();
         fs::create_dir(temp.path().join("src")).unwrap();
         fs::create_dir(temp.path().join("src/app")).unwrap();
-        fs::write(temp.path().join("src/main.rs"), "fn main() {\n    println!(\"Hello\");\n}").unwrap();
+        fs::write(
+            temp.path().join("src/main.rs"),
+            "fn main() {\n    println!(\"Hello\");\n}",
+        )
+        .unwrap();
         fs::write(temp.path().join("src/lib.rs"), "pub mod app;").unwrap();
         fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
         temp

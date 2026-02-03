@@ -110,7 +110,10 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
         render_tab_bar(frame, tm, tab_area);
     }
 
-    let main_chunks = if ctx.state.preview_visible {
+    // Use effective_preview_visible to auto-hide preview on narrow terminals
+    let effective_preview = ctx.state.effective_preview_visible(main_area.width);
+
+    let main_chunks = if effective_preview {
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -134,8 +137,8 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
     // Render status bar
     render_status_bar(frame, ctx.state, ctx.focused_path, tree_chunks[1]);
 
-    // Render preview if visible
-    if ctx.state.preview_visible && main_chunks.len() > 1 {
+    // Render preview if visible (using effective visibility)
+    if effective_preview && main_chunks.len() > 1 {
         render_side_preview(frame, ctx, main_chunks[1], font_size);
     }
 
