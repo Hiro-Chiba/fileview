@@ -5,6 +5,46 @@
 
 use std::path::PathBuf;
 
+/// Plugin events that can be listened to
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PluginEvent {
+    /// Triggered when a file is focused/selected
+    FileSelected,
+    /// Triggered when navigating to a new directory
+    DirectoryChanged,
+    /// Triggered when the selection set changes
+    SelectionChanged,
+    /// Triggered on application start (after plugins load)
+    Start,
+    /// Triggered before quitting
+    BeforeQuit,
+}
+
+impl PluginEvent {
+    /// Get the event name as used in Lua
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PluginEvent::FileSelected => "file_selected",
+            PluginEvent::DirectoryChanged => "directory_changed",
+            PluginEvent::SelectionChanged => "selection_changed",
+            PluginEvent::Start => "start",
+            PluginEvent::BeforeQuit => "before_quit",
+        }
+    }
+
+    /// Parse event name from string
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "file_selected" => Some(PluginEvent::FileSelected),
+            "directory_changed" => Some(PluginEvent::DirectoryChanged),
+            "selection_changed" => Some(PluginEvent::SelectionChanged),
+            "start" => Some(PluginEvent::Start),
+            "before_quit" => Some(PluginEvent::BeforeQuit),
+            _ => None,
+        }
+    }
+}
+
 /// Actions that can be triggered from plugins
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PluginAction {
@@ -221,5 +261,39 @@ mod tests {
             actions[0],
             PluginAction::Focus(PathBuf::from("/test/file.txt"))
         );
+    }
+
+    // === PluginEvent tests ===
+
+    #[test]
+    fn test_plugin_event_as_str() {
+        assert_eq!(PluginEvent::FileSelected.as_str(), "file_selected");
+        assert_eq!(PluginEvent::DirectoryChanged.as_str(), "directory_changed");
+        assert_eq!(PluginEvent::SelectionChanged.as_str(), "selection_changed");
+        assert_eq!(PluginEvent::Start.as_str(), "start");
+        assert_eq!(PluginEvent::BeforeQuit.as_str(), "before_quit");
+    }
+
+    #[test]
+    fn test_plugin_event_parse() {
+        assert_eq!(
+            PluginEvent::parse("file_selected"),
+            Some(PluginEvent::FileSelected)
+        );
+        assert_eq!(
+            PluginEvent::parse("directory_changed"),
+            Some(PluginEvent::DirectoryChanged)
+        );
+        assert_eq!(
+            PluginEvent::parse("selection_changed"),
+            Some(PluginEvent::SelectionChanged)
+        );
+        assert_eq!(PluginEvent::parse("start"), Some(PluginEvent::Start));
+        assert_eq!(
+            PluginEvent::parse("before_quit"),
+            Some(PluginEvent::BeforeQuit)
+        );
+        assert_eq!(PluginEvent::parse("invalid"), None);
+        assert_eq!(PluginEvent::parse(""), None);
     }
 }
