@@ -18,6 +18,7 @@ use crate::handler::{
     key::{handle_key_event, update_input_buffer, KeyAction},
     mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer},
 };
+use crate::plugin::{PluginAction, PluginEvent, PluginManager};
 use crate::render::{collect_paths, fuzzy_match, visible_height, FuzzyMatch, Picker};
 use crate::tree::TreeNavigator;
 use crate::watcher::FileWatcher;
@@ -146,6 +147,32 @@ pub fn run_app(
 
     // Track previous expanded paths for watcher sync
     let mut prev_expanded: Vec<PathBuf> = Vec::new();
+
+    // Initialize plugin manager
+    let mut plugin_manager = PluginManager::new().ok();
+    if let Some(ref mut pm) = plugin_manager {
+        // Load plugins from ~/.config/fileview/plugins/init.lua
+        if let Err(e) = pm.load_plugins() {
+            state.set_message(format!("Plugin error: {}", e));
+        } else {
+            // Update context with initial state
+            let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();
+            pm.update_context(None, config.root.clone(), selected);
+
+            // Fire Start event
+            let _ = pm.fire_event(PluginEvent::Start, None);
+
+            // Process any startup notifications
+            for msg in pm.take_notifications() {
+                state.set_message(msg);
+            }
+        }
+    }
+
+    // Track previous state for plugin events
+    let mut prev_focused_path: Option<PathBuf> = None;
+    let mut prev_root = config.root.clone();
+    let mut prev_selection_count = state.selected_paths.len();
 
     loop {
         // Initialize git status after the first frame is rendered.
@@ -510,10 +537,14 @@ pub fn run_app(
                     )? {
                         ActionResult::Continue => {}
                         ActionResult::Quit(code) => {
+                            // Fire BeforeQuit event
+                            if let Some(ref mut pm) = plugin_manager {
+                                let _ = pm.fire_event(PluginEvent::BeforeQuit, None);
+                            }
                             return Ok(AppResult {
                                 exit_code: code,
                                 choosedir_path: state.choosedir_path.clone(),
-                            })
+                            });
                         }
                     }
 
@@ -659,8 +690,97 @@ pub fn run_app(
             }
         }
 
+        // === Plugin event handling ===
+        if let Some(ref mut pm) = plugin_manager {
+            // Update plugin context with current state
+            let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();
+            pm.update_context(focused_path.clone(), state.root.clone(), selected);
+
+            // Fire FileSelected event when focus changes
+            if focused_path != prev_focused_path {
+                if let Some(ref path) = focused_path {
+                    let _ = pm.fire_event(PluginEvent::FileSelected, Some(&path.to_string_lossy()));
+                }
+                prev_focused_path = focused_path.clone();
+            }
+
+            // Fire DirectoryChanged event when root changes
+            if state.root != prev_root {
+                let _ = pm.fire_event(
+                    PluginEvent::DirectoryChanged,
+                    Some(&state.root.to_string_lossy()),
+                );
+                prev_root = state.root.clone();
+            }
+
+            // Fire SelectionChanged event when selection count changes
+            if state.selected_paths.len() != prev_selection_count {
+                let _ = pm.fire_event(PluginEvent::SelectionChanged, None);
+                prev_selection_count = state.selected_paths.len();
+            }
+
+            // Process plugin notifications
+            for msg in pm.take_notifications() {
+                state.set_message(msg);
+            }
+
+            // Process plugin actions
+            for action in pm.take_actions() {
+                match action {
+                    PluginAction::Navigate(path) => {
+                        if path.is_dir() {
+                            match TreeNavigator::new(&path, state.show_hidden) {
+                                Ok(new_nav) => {
+                                    navigator = new_nav;
+                                    state.root = path;
+                                    state.focus_index = 0;
+                                    state.viewport_top = 0;
+                                }
+                                Err(e) => {
+                                    state.set_message(format!("Navigate failed: {}", e));
+                                }
+                            }
+                        }
+                    }
+                    PluginAction::Select(path) => {
+                        state.selected_paths.insert(path);
+                    }
+                    PluginAction::Deselect(path) => {
+                        state.selected_paths.remove(&path);
+                    }
+                    PluginAction::ClearSelection => {
+                        state.selected_paths.clear();
+                    }
+                    PluginAction::Refresh => {
+                        let _ = reload_tree(&mut navigator, &mut state);
+                    }
+                    PluginAction::SetClipboard(text) => {
+                        if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                            let _ = clipboard.set_text(&text);
+                        }
+                    }
+                    PluginAction::Focus(path) => {
+                        // Expand parent directories to make the target visible
+                        if let Err(e) = navigator.reveal_path(&path) {
+                            state.set_message(format!("Focus failed: {}", e));
+                        } else {
+                            // Find the target in visible entries and set focus
+                            let entries = navigator.visible_entries();
+                            if let Some(idx) = entries.iter().position(|e| e.path == path) {
+                                state.focus_index = idx;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Check quit flag
         if state.should_quit {
+            // Fire BeforeQuit event
+            if let Some(ref mut pm) = plugin_manager {
+                let _ = pm.fire_event(PluginEvent::BeforeQuit, None);
+            }
             return Ok(AppResult {
                 exit_code: crate::integrate::exit_code::SUCCESS,
                 choosedir_path: state.choosedir_path.clone(),

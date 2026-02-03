@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.0] - 2026-02-03
+
+### Added
+
+- **Lua plugin loader integration (Phase 12d)**: Full plugin system integration
+  - Plugins are automatically loaded from `~/.config/fileview/plugins/init.lua` at startup
+  - Plugin events are fired automatically:
+    - `start`: After plugins load
+    - `file_selected`: When focused file changes
+    - `directory_changed`: When navigating to a new directory
+    - `selection_changed`: When multi-selection changes
+    - `before_quit`: Before application exits
+  - Plugin actions are processed each frame:
+    - `fv.navigate(path)`: Navigate to directory
+    - `fv.select(path)` / `fv.deselect(path)`: Modify selection
+    - `fv.clear_selection()`: Clear all selections
+    - `fv.refresh()`: Reload tree view
+    - `fv.set_clipboard(text)`: Set clipboard content
+    - `fv.focus(path)`: Focus on specific file
+  - Plugin notifications are displayed in the status bar
+
+### Example Plugin
+
+```lua
+-- ~/.config/fileview/plugins/init.lua
+
+-- Show notification on startup
+fv.notify("Plugin loaded! FileView v" .. fv.version())
+
+-- React to file selection
+fv.on("file_selected", function(path)
+    if path and path:match("%.secret$") then
+        fv.notify("Warning: Secret file!")
+    end
+end)
+
+-- Custom command to copy file path
+fv.register_command("copy-path", function()
+    local file = fv.current_file()
+    if file then
+        fv.set_clipboard(file)
+        fv.notify("Copied: " .. file)
+    end
+end)
+```
+
 ## [1.21.0] - 2026-02-03
 
 ### Added
