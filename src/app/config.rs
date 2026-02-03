@@ -9,6 +9,17 @@ use std::time::Duration;
 use super::config_file::{CommandsConfig, ConfigFile, PreviewConfig};
 use crate::integrate::{exit_code, Callback, OutputFormat};
 
+/// Session action (save, restore, clear)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionAction {
+    /// Save current selection to session file
+    Save,
+    /// Restore selection from session file
+    Restore,
+    /// Clear session file
+    Clear,
+}
+
 /// Application configuration from CLI args and config file
 pub struct Config {
     pub root: PathBuf,
@@ -60,6 +71,8 @@ pub struct Config {
     pub mcp_server: bool,
     /// Context generation mode
     pub context_mode: bool,
+    /// Session action (save/restore/clear) - non-interactive
+    pub session_action: Option<SessionAction>,
 }
 
 impl Config {
@@ -85,6 +98,7 @@ impl Config {
         let mut multi_select = false;
         let mut mcp_server = false;
         let mut context_mode = false;
+        let mut session_action: Option<SessionAction> = None;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -124,6 +138,23 @@ impl Config {
                 "--multi" => multi_select = true,
                 "--mcp-server" => mcp_server = true,
                 "--context" => context_mode = true,
+                "--session" => {
+                    if let Some(action) = args.next() {
+                        session_action = Some(match action.as_str() {
+                            "save" => SessionAction::Save,
+                            "restore" => SessionAction::Restore,
+                            "clear" => SessionAction::Clear,
+                            _ => {
+                                anyhow::bail!(
+                                    "--session requires 'save', 'restore', or 'clear', got '{}'",
+                                    action
+                                );
+                            }
+                        });
+                    } else {
+                        anyhow::bail!("--session requires 'save', 'restore', or 'clear'");
+                    }
+                }
                 "--icons" | "-i" => icons_enabled = Some(true),
                 "--no-icons" => icons_enabled = Some(false),
                 "--hidden" | "-a" => show_hidden = Some(true),
@@ -221,6 +252,7 @@ impl Config {
             multi_select,
             mcp_server,
             context_mode,
+            session_action,
         })
     }
 }
@@ -332,6 +364,7 @@ CLAUDE CODE INTEGRATION:
     --multi             Allow multiple selection in select mode
     --mcp-server        Run as MCP server (JSON-RPC over stdin/stdout)
     --context           Output project context in AI-friendly markdown format
+    --session ACTION    Session management: save, restore, or clear
 
 CONFIG FILE:
     ~/.config/fileview/config.toml    Main configuration file

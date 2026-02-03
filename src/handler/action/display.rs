@@ -154,6 +154,25 @@ pub fn handle(
             navigator.set_sort_mode(new_mode)?;
             state.set_message(format!("Sort: {}", new_mode.display_name()));
         }
+        KeyAction::TogglePeekMode => {
+            state.toggle_peek_mode();
+            let mode_name = match state.preview_display_mode {
+                crate::core::PreviewDisplayMode::Normal => "Normal",
+                crate::core::PreviewDisplayMode::Peek => "Peek",
+            };
+            state.set_message(format!("Preview: {}", mode_name));
+        }
+        KeyAction::CopyCompact => {
+            let paths = get_copy_target_paths(state, focused_path);
+            if paths.is_empty() {
+                state.set_message("No file selected");
+            } else {
+                match copy_file_contents_compact(&paths) {
+                    Ok(count) => state.set_message(format!("Copied {} file(s) (compact)", count)),
+                    Err(e) => state.set_message(format!("Failed: {}", e)),
+                }
+            }
+        }
         _ => {}
     }
     Ok(())
@@ -422,6 +441,39 @@ fn copy_file_contents_claude_format(paths: &[PathBuf]) -> anyhow::Result<usize> 
     }
 
     let text = contents.join("\n");
+    arboard::Clipboard::new()
+        .and_then(|mut cb| cb.set_text(text))
+        .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;
+
+    Ok(count)
+}
+
+/// Copy file contents to clipboard in compact format (for small AI contexts)
+/// Uses minimal formatting: just filename and content, no markdown headers
+fn copy_file_contents_compact(paths: &[PathBuf]) -> anyhow::Result<usize> {
+    let mut contents = Vec::new();
+    let mut count = 0;
+
+    for path in paths.iter() {
+        if let Ok(content) = fs::read_to_string(path) {
+            // Use just filename for compact format
+            let filename = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+
+            contents.push(format!("// {}", filename));
+            contents.push(content.trim_end().to_string());
+            contents.push(String::new()); // Empty line separator
+            count += 1;
+        }
+    }
+
+    if count == 0 {
+        anyhow::bail!("No readable files");
+    }
+
+    let text = contents.join("\n").trim_end().to_string();
     arboard::Clipboard::new()
         .and_then(|mut cb| cb.set_text(text))
         .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;

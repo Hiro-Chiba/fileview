@@ -902,7 +902,7 @@ dependencies = [
 
 [[package]]
 name = "fileview"
-version = "1.25.2"
+version = "1.26.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -918,6 +918,7 @@ dependencies = [
  "predicates",
  "ratatui",
  "ratatui-image",
+ "regex",
  "serde",
  "serde_json",
  "syntect",
