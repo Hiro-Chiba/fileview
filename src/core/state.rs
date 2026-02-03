@@ -75,6 +75,10 @@ pub struct AppState {
     pub should_quit: bool,
     /// Pick mode (--pick option)
     pub pick_mode: bool,
+    /// Select mode (--select-mode option)
+    pub select_mode: bool,
+    /// Multi-select enabled in select mode
+    pub multi_select: bool,
     /// Clipboard for copy/cut/paste
     pub clipboard: Option<Clipboard>,
     /// Git repository status
@@ -122,6 +126,8 @@ impl AppState {
             show_hidden: false,
             should_quit: false,
             pick_mode: false,
+            select_mode: false,
+            multi_select: false,
             clipboard: None,
             git_status: None, // Lazy-initialized for faster startup
             icons_enabled,

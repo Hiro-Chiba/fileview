@@ -182,7 +182,19 @@ fn render_full_status(
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    // Left: message or help hint, with git branch, watch, filter, sort, and search indicators
+    // Left: message or help hint, with mode, git branch, watch, filter, sort, and search indicators
+    let mode_indicator = if state.select_mode {
+        if state.multi_select {
+            "\u{f05c}\u{f05c} " // Multi-select icon
+        } else {
+            "\u{f05c} " // Select icon (nf-fa-circle_o)
+        }
+    } else if state.pick_mode {
+        "\u{f046} " // Pick icon (nf-fa-check_square_o)
+    } else {
+        ""
+    };
+
     let watch_indicator = if state.watch_enabled {
         "\u{f06e} " // Eye icon (nf-fa-eye) for file watching
     } else {
@@ -218,6 +230,7 @@ fn render_full_status(
     let t = theme();
     let message = state.message.as_deref().unwrap_or("? for help");
     let left_content = Line::from(vec![
+        Span::styled(mode_indicator, Style::default().fg(t.selection)),
         Span::styled(watch_indicator, Style::default().fg(t.info)),
         Span::styled(filter_indicator, Style::default().fg(t.warning)),
         Span::styled(branch_info, Style::default().fg(t.git_staged)),

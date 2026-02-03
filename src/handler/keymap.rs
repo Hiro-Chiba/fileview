@@ -164,6 +164,8 @@ impl KeyBindingRegistry {
         browse.insert(".".to_string(), "toggle_hidden".to_string());
         browse.insert("c".to_string(), "copy_path".to_string());
         browse.insert("C".to_string(), "copy_filename".to_string());
+        browse.insert("Y".to_string(), "copy_content".to_string());
+        browse.insert("ctrl+y".to_string(), "copy_for_claude".to_string());
         browse.insert("o".to_string(), "open_preview".to_string());
         browse.insert("P".to_string(), "toggle_quick_preview".to_string());
         browse.insert("?".to_string(), "show_help".to_string());
@@ -402,6 +404,8 @@ fn parse_browse_action(action: &str) -> Option<KeyAction> {
         "toggle_hidden" => Some(KeyAction::ToggleHidden),
         "copy_path" => Some(KeyAction::CopyPath),
         "copy_filename" => Some(KeyAction::CopyFilename),
+        "copy_content" => Some(KeyAction::CopyContent),
+        "copy_for_claude" => Some(KeyAction::CopyForClaude),
         "open_preview" => Some(KeyAction::OpenPreview),
         "toggle_quick_preview" => Some(KeyAction::ToggleQuickPreview),
         "show_help" => Some(KeyAction::ShowHelp),
@@ -425,6 +429,7 @@ fn parse_browse_action(action: &str) -> Option<KeyAction> {
         "prev_tab" => Some(KeyAction::PrevTab),
         "open_subshell" => Some(KeyAction::OpenSubshell),
         "pick_select" | "pick_or_toggle" => Some(KeyAction::PickSelect),
+        "select_confirm" => Some(KeyAction::SelectConfirm),
         "preview_scroll_up" => Some(KeyAction::PreviewScrollUp),
         "preview_scroll_down" => Some(KeyAction::PreviewScrollDown),
         "preview_page_up" | "preview_page_up_if_preview" => Some(KeyAction::PreviewPageUp),
