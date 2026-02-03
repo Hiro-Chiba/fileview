@@ -1,5 +1,21 @@
 # FileView vs Other Terminal File Managers
 
+## Score Comparison (Objective)
+
+| Category | fileview | yazi | lf | nnn | ranger |
+|----------|:--------:|:----:|:--:|:---:|:------:|
+| **Ease of Setup** | 10 | 6 | 4 | 7 | 5 |
+| **Image Preview** | 9 | 10 | 5 | 6 | 7 |
+| **Plugin/Extensibility** | 6 | 10 | 8 | 8 | 9 |
+| **Feature Richness** | 7 | 10 | 6 | 7 | 8 |
+| **Startup Speed** | 9 | 8 | 9 | 10 | 3 |
+| **Memory Efficiency** | 8 | 5 | 8 | 10 | 5 |
+| **Large Directory Handling** | 7 | 10 | 8 | 9 | 4 |
+| **Docs/Community** | 4 | 9 | 7 | 8 | 10 |
+| **Customizability** | 6 | 10 | 9 | 7 | 9 |
+| **Stability/Maturity** | 6 | 7 | 9 | 10 | 10 |
+| **Total** | **72** | **85** | **73** | **82** | **70** |
+
 ## At a Glance
 
 ```
@@ -7,49 +23,115 @@ Lightweight ◄─────────────────────�
 
    nnn    fileview    lf    joshuto    ranger    yazi
     │        │        │        │          │        │
-  3.4MB    3.4MB    12MB    5.4MB      28MB     38MB
+  0.1MB    3.4MB    3.5MB    5.4MB      28MB     4.5MB
 ```
 
 ## Feature Comparison
 
 | Feature | fileview | yazi | lf | ranger | nnn |
 |---------|:--------:|:----:|:--:|:------:|:---:|
-| Zero config | **Yes** | No | No | No | Partial |
+| Zero config | **Yes** | Partial | No | No | Partial |
 | Image preview | **Auto** | Yes | Script | Script | Plugin |
+| Video preview | **Yes** | Yes | No | No | No |
 | Syntax highlighting | **Yes** | Yes | No | Yes | No |
 | PDF preview | **Yes** | Yes | No | No | No |
 | Archive preview | **Yes** | Yes | No | Yes | Plugin |
 | Git integration | **Yes** | Yes | Script | Yes | No |
 | Fuzzy finder | **Yes** | Yes | Yes | Yes | Plugin |
-| Plugin system | **Lua (optional)** | Lua | Shell | Python | Shell |
+| Tab support | **Yes** | Yes | No | Yes | Yes |
+| Plugin system | Lua | Lua | Shell | Python | Shell |
+| Async I/O | Partial | **Full** | Partial | No | No |
 | Config file | Optional | TOML | Config | rc | Env |
 | Mouse support | **Yes** | Yes | No | Yes | No |
 | Vim keybindings | **Yes** | Yes | Yes | Yes | Custom |
+| Adaptive UI | **Yes** | No | No | No | No |
 
-## When to Use FileView
+## Strengths and Weaknesses
 
-**Choose fileview if you want:**
-- Install and use immediately (no configuration)
-- Image preview that "just works" (auto-detects terminal)
-- Lightweight memory footprint (~8MB vs yazi's 38MB)
-- Fast startup (2.3ms vs ranger's 400ms)
-- Simple tool for quick file browsing
+### FileView
 
-**Choose yazi if you want:**
-- Maximum features and customization
-- Lua scripting for automation
-- Async operations for large directories
-- Active community and plugins
+**Strengths:**
+- Zero configuration required (works out of the box)
+- Auto-detects terminal image protocol (Kitty/iTerm2/Sixel/etc.)
+- Compact 3.4MB binary (including Lua support)
+- Fast startup (2.3ms)
+- Adaptive status bar for narrow terminals
 
-**Choose lf if you want:**
-- Minimal footprint with shell scripting
-- Go-based single binary
-- Maximum control via scripts
+**Weaknesses:**
+- Small community (single developer)
+- Immature plugin ecosystem
+- Partial async I/O (yazi has full async)
+- Limited documentation
 
-**Choose nnn if you want:**
-- Absolute minimum resource usage (3.4MB)
-- C-based, POSIX compliant
-- Plugin-based extensibility
+### Yazi
+
+**Strengths:**
+- Full async I/O (UI never blocks, even with large directories)
+- Mature Lua plugin ecosystem with package manager
+- Active community and extensive documentation
+- Type definitions for plugin development
+
+**Weaknesses:**
+- Requires configuration for optimal experience
+- Higher memory usage (~38MB)
+- Still in heavy development (breaking changes)
+
+### nnn
+
+**Strengths:**
+- Extremely lightweight (0.1MB binary, 3.4MB memory)
+- 10+ years of stability and maturity
+- POSIX compliant, runs everywhere
+- Environment variable based (no config file)
+
+**Weaknesses:**
+- No built-in image preview
+- Custom keybindings (not vim-like by default)
+- Requires plugins for modern features
+
+### lf
+
+**Strengths:**
+- Single Go binary, no dependencies
+- Server/client architecture (copy between terminals)
+- Highly customizable via shell scripts
+- Stable and mature
+
+**Weaknesses:**
+- Requires extensive scripting for previews
+- No built-in image preview
+- No mouse support
+
+### ranger
+
+**Strengths:**
+- Most mature and well-documented
+- Large community and plugin ecosystem
+- Python-based (easy to extend)
+
+**Weaknesses:**
+- Slow startup (400ms)
+- High memory usage (28MB)
+- Python dependency required
+
+## Recommendation by Use Case
+
+| Use Case | Recommended |
+|----------|-------------|
+| No setup, just works | **fileview** |
+| Maximum features & customization | **yazi** |
+| Extreme lightweight | **nnn** |
+| Shell script extensibility | **lf** |
+| Stability & documentation | **ranger** / **nnn** |
+| Narrow terminal (80x24) | **fileview** |
+
+## Performance Comparison
+
+| Metric | fileview | yazi | lf | ranger | nnn |
+|--------|----------|------|-----|--------|-----|
+| Startup | 2.3ms | 15ms | 3ms | 400ms | 1.5ms |
+| Memory | 8MB | 38MB | 12MB | 28MB | 3.4MB |
+| Binary | 3.4MB | 4.5MB | 3.5MB | - | 0.1MB |
 
 ## Image Preview Comparison
 
@@ -63,26 +145,19 @@ Lightweight ◄─────────────────────�
 
 FileView automatically detects your terminal and uses the best available protocol.
 
-## Performance Comparison
+## Honest Assessment
 
-| Metric | fileview | yazi | lf | ranger | nnn |
-|--------|----------|------|-----|--------|-----|
-| Startup | 2.3ms | 15ms | 3ms | 400ms | 1.5ms |
-| Memory | 8MB | 38MB | 12MB | 28MB | 3.4MB |
-| Binary | 3.4MB | 4.5MB | 3.5MB | - | 0.1MB |
+FileView positions itself as a "balanced" option, but is squeezed between:
+- **yazi**: Superior in features, async I/O, and ecosystem
+- **nnn**: Superior in lightweight and stability
 
-## Philosophy
+The main differentiator is **zero configuration**, but yazi also works reasonably well without configuration, limiting this advantage.
 
-FileView follows the Unix philosophy with a twist:
-
-> "Do one thing well, but include batteries"
-
-- **One thing**: Browse files in terminal
-- **Batteries**: Image preview, Git status, syntax highlighting
-
-Unlike traditional Unix tools that require external scripts for previews,
-FileView includes everything needed for a modern file browsing experience
-while staying lightweight.
+FileView is best suited for users who:
+1. Want something that works immediately without reading documentation
+2. Use narrow terminals (Claude Code, tmux splits)
+3. Value simplicity over maximum features
+4. Don't need extensive plugin customization
 
 ## Migration from Other Tools
 
@@ -90,6 +165,7 @@ while staying lightweight.
 - Same vim keybindings (j/k/h/l)
 - Preview works without configuration
 - No Python dependency
+- Much faster startup
 
 ### From lf
 - Similar keybindings
@@ -100,3 +176,11 @@ while staying lightweight.
 - Simpler, no configuration needed
 - Lower memory usage
 - Fewer features (intentional)
+- Better narrow screen support
+
+## References
+
+- [yazi](https://github.com/sxyazi/yazi) - Blazing fast terminal file manager
+- [lf](https://github.com/gokcehan/lf) - Terminal file manager
+- [nnn](https://github.com/jarun/nnn) - The unorthodox terminal file manager
+- [ranger](https://github.com/ranger/ranger) - Console file manager with VI key bindings
