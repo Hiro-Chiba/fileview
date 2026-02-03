@@ -72,22 +72,31 @@ FileView auto-detects your terminal:
 
 ## Claude Code Integration
 
-FileView is optimized for AI pair programming with Claude Code:
+FileView is the **only terminal file manager with native AI tooling support**.
 
 ```bash
-# Output directory tree for context
+# Project context for AI
+fv --context
+
+# Output directory tree
 fv --tree --depth 2 ./src
 
 # Quick file selection
 selected=$(fv --select-mode --multi)
 
-# Copy file content in Claude-friendly format
-# Press Ctrl+Y in fileview to copy with syntax hints
+# Copy in Claude-friendly format (Ctrl+Y in fileview)
 ```
+
+### Smart Selection
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+G` | Select all git changed files |
+| `Ctrl+T` | Select test file pair |
 
 ### MCP Server
 
-Use FileView as a Claude Code MCP server:
+Use FileView as a Claude Code MCP server with Git integration:
 
 ```json
 {
@@ -99,6 +108,16 @@ Use FileView as a Claude Code MCP server:
   }
 }
 ```
+
+**MCP Tools:**
+| Tool | Description |
+|------|-------------|
+| `list_directory` | List files in directory |
+| `get_tree` | Directory tree structure |
+| `read_file` | Read file contents |
+| `get_git_status` | Git changed/staged files |
+| `get_git_diff` | File diff (staged/unstaged) |
+| `search_code` | Code search with grep/rg |
 
 ## CLI Options
 
@@ -116,6 +135,7 @@ Options:
 Claude Code:
   -t, --tree          Output directory tree to stdout
   --depth N           Limit tree depth
+  --context           Output project context (AI-friendly)
   --with-content      Include file contents in output
   --select-mode       Simple selection mode
   --multi             Allow multiple selection

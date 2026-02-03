@@ -9,14 +9,41 @@ FileView is designed to work seamlessly with Claude Code and other AI coding ass
 cargo install fileview
 
 # Basic usage with Claude Code
-fv --tree --depth 2 ./src          # Show context
+fv --context                       # Project overview
+fv --tree --depth 2 ./src          # Show tree
 selected=$(fv --select-mode)       # Pick files
 fv --mcp-server                    # Run as MCP server
 ```
 
 ## Features
 
-### 1. Tree Output (`--tree`)
+### 1. Project Context (`--context`)
+
+Output AI-friendly project overview:
+
+```bash
+fv --context
+```
+
+Output:
+```markdown
+## Project: myapp
+
+**Branch:** main (clean)
+**Recent:** feat: add user auth (2h ago)
+
+### Structure:
+├── src/
+│   ├── app/
+│   ├── handlers/
+│   └── main.rs
+└── tests/
+
+### Stats: 45 Rust files, ~12k lines
+Types: 40 Rust files, 3 TOML files, 2 Markdown files
+```
+
+### 2. Tree Output (`--tree`)
 
 Output directory structure for AI context:
 
@@ -121,6 +148,9 @@ Or for Claude Code CLI (`~/.claude.json`):
 | `list_directory` | List files in a directory |
 | `get_tree` | Get directory tree structure |
 | `read_file` | Read file contents |
+| `get_git_status` | Get git changed/staged files |
+| `get_git_diff` | Get file diff (staged/unstaged) |
+| `search_code` | Search code with grep/ripgrep |
 
 #### Example Requests
 
@@ -133,6 +163,15 @@ Or for Claude Code CLI (`~/.claude.json`):
 
 // Read file
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"src/main.rs"}}}
+
+// Git status
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_git_status","arguments":{}}}
+
+// Git diff
+{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_git_diff","arguments":{"path":"src/main.rs","staged":false}}}
+
+// Code search
+{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"search_code","arguments":{"pattern":"fn main"}}}
 ```
 
 ## Workflow Examples
@@ -175,6 +214,7 @@ fv --tree --with-content ./src/module
 
 | Option | Description |
 |--------|-------------|
+| `--context` | Output project context (AI-friendly markdown) |
 | `--tree` | Output directory tree to stdout |
 | `--depth N` | Limit tree depth (default: unlimited) |
 | `--with-content` | Include file contents in tree output |
@@ -185,6 +225,20 @@ fv --tree --with-content ./src/module
 | `--format FMT` | Output format: lines, null, json |
 
 ## Keybindings
+
+### Smart Selection
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+G` | Select all git changed files |
+| `Ctrl+T` | Select test file pair (auto-detect) |
+
+Test pair patterns:
+- `foo.rs` → `foo_test.rs`, `test_foo.rs`, `tests/foo.rs`
+- `foo.ts` → `foo.test.ts`, `foo.spec.ts`
+- `foo.py` → `test_foo.py`, `foo_test.py`
+
+### Copy & Selection
 
 | Key | Action |
 |-----|--------|
@@ -205,8 +259,14 @@ fv --tree --with-content ./src/module
 | Feature | fileview | yazi | lf | ranger |
 |---------|:--------:|:----:|:--:|:------:|
 | MCP Server | Yes | No | No | No |
+| Git status via MCP | Yes | No | No | No |
+| Git diff via MCP | Yes | No | No | No |
+| Code search via MCP | Yes | No | No | No |
+| Context generation | Yes | No | No | No |
+| Smart git selection | Yes | No | No | No |
+| Test pair selection | Yes | No | No | No |
 | Tree output | Yes | No | No | No |
 | Claude format | Yes | No | No | No |
-| Select mode | Yes | No | No | No |
+| Narrow terminal | Yes | Yes | Yes | No |
 
 FileView is the only terminal file manager with native AI tooling support.
