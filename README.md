@@ -109,15 +109,18 @@ Use FileView as a Claude Code MCP server with Git integration:
 }
 ```
 
-**MCP Tools:**
-| Tool | Description |
-|------|-------------|
-| `list_directory` | List files in directory |
-| `get_tree` | Directory tree structure |
-| `read_file` | Read file contents |
-| `get_git_status` | Git changed/staged files |
-| `get_git_diff` | File diff (staged/unstaged) |
-| `search_code` | Code search with grep/rg |
+**MCP 2.0 Tools (21 tools):**
+
+| Category | Tools |
+|----------|-------|
+| File | `list_directory`, `get_tree`, `read_file`, `read_files`, `write_file`, `delete_file`, `search_code` |
+| Git | `get_git_status`, `get_git_diff`, `git_log`, `stage_files`, `create_commit` |
+| Analysis | `get_file_symbols`, `get_definitions`, `get_references`, `get_diagnostics` |
+| Dependency | `get_dependency_graph`, `get_import_tree`, `find_circular_deps` |
+| Context | `get_smart_context`, `estimate_tokens`, `compress_context` |
+| Project | `run_build`, `run_test`, `run_lint`, `get_project_stats` |
+
+**[Full MCP documentation](docs/CLAUDE_CODE.md)**
 
 ## CLI Options
 
