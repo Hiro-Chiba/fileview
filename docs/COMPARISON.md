@@ -5,9 +5,9 @@
 ```
 Lightweight ◄─────────────────────────────────► Feature-rich
 
-   nnn      lf    fileview    joshuto    ranger    yazi
-    │        │        │          │          │        │
-  3.4MB    12MB     8MB       5.4MB      28MB     38MB
+   nnn    fileview    lf    joshuto    ranger    yazi
+    │        │        │        │          │        │
+  3.4MB    3.4MB    12MB    5.4MB      28MB     38MB
 ```
 
 ## Feature Comparison
@@ -21,8 +21,8 @@ Lightweight ◄─────────────────────�
 | Archive preview | **Yes** | Yes | No | Yes | Plugin |
 | Git integration | **Yes** | Yes | Script | Yes | No |
 | Fuzzy finder | **Yes** | Yes | Yes | Yes | Plugin |
-| Plugin system | No | Lua | Shell | Python | Shell |
-| Config file | No | TOML | Config | rc | Env |
+| Plugin system | **Lua (optional)** | Lua | Shell | Python | Shell |
+| Config file | Optional | TOML | Config | rc | Env |
 | Mouse support | **Yes** | Yes | No | Yes | No |
 | Vim keybindings | **Yes** | Yes | Yes | Yes | Custom |
 
@@ -69,7 +69,7 @@ FileView automatically detects your terminal and uses the best available protoco
 |--------|----------|------|-----|--------|-----|
 | Startup | 2.3ms | 15ms | 3ms | 400ms | 1.5ms |
 | Memory | 8MB | 38MB | 12MB | 28MB | 3.4MB |
-| Binary | 2.9MB | 4.5MB | 3.5MB | - | 0.1MB |
+| Binary | 3.4MB | 4.5MB | 3.5MB | - | 0.1MB |
 
 ## Philosophy
 
