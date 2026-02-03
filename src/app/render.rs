@@ -6,13 +6,14 @@ use ratatui::prelude::*;
 use ratatui::widgets::{Block, Borders, Paragraph};
 
 use crate::app::PreviewState;
-use crate::core::{AppState, FocusTarget, ViewMode};
+use crate::core::{AppState, FocusTarget, TabManager, ViewMode};
 use crate::handler::action::get_filename_str;
 use crate::render::{
     render_archive_preview, render_bulk_rename_dialog, render_custom_preview, render_diff_preview,
     render_directory_info, render_fuzzy_finder, render_help_popup, render_hex_preview,
     render_image_preview, render_input_popup, render_pdf_preview, render_status_bar,
-    render_text_preview, render_tree, FontSize, FuzzyMatch, Picker,
+    render_tab_bar, render_text_preview, render_tree, render_video_preview, FontSize, FuzzyMatch,
+    Picker,
 };
 use crate::tree::TreeEntry;
 
@@ -24,6 +25,7 @@ pub struct RenderContext<'a> {
     pub preview: &'a mut PreviewState,
     pub fuzzy_results: &'a [FuzzyMatch],
     pub image_picker: &'a mut Option<Picker>,
+    pub tab_manager: Option<&'a TabManager>,
 }
 
 /// Render a complete frame
@@ -71,6 +73,8 @@ fn render_fullscreen_preview(
         render_text_preview(frame, tp, size, &title, false);
     } else if let Some(ref mut ip) = ctx.preview.image {
         render_image_preview(frame, ip, size, &title, false, font_size);
+    } else if let Some(ref mut vp) = ctx.preview.video {
+        render_video_preview(frame, vp, size, &title, false, font_size);
     } else if let Some(ref mut pdf) = ctx.preview.pdf {
         render_pdf_preview(frame, pdf, size, &filename, false, font_size);
     } else if let Some(ref hp) = ctx.preview.hex {
@@ -86,16 +90,36 @@ fn render_fullscreen_preview(
 
 /// Render normal mode (tree with optional side preview)
 fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, font_size: FontSize) {
+    // Check if we need to render tab bar
+    let has_tabs = ctx.tab_manager.is_some_and(|tm| tm.len() > 1);
+    let tab_bar_height = if has_tabs { 1u16 } else { 0u16 };
+
+    // Split for tab bar if needed
+    let (tab_area, main_area) = if has_tabs {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(tab_bar_height), Constraint::Min(0)])
+            .split(size);
+        (Some(chunks[0]), chunks[1])
+    } else {
+        (None, size)
+    };
+
+    // Render tab bar if multiple tabs
+    if let (Some(tab_area), Some(tm)) = (tab_area, ctx.tab_manager) {
+        render_tab_bar(frame, tm, tab_area);
+    }
+
     let main_chunks = if ctx.state.preview_visible {
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(size)
+            .split(main_area)
     } else {
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(100)])
-            .split(size)
+            .split(main_area)
     };
 
     // Tree area with status bar
@@ -158,6 +182,8 @@ fn render_side_preview(
         render_text_preview(frame, tp, area, &title, preview_focused);
     } else if let Some(ref mut ip) = ctx.preview.image {
         render_image_preview(frame, ip, area, &title, preview_focused, font_size);
+    } else if let Some(ref mut vp) = ctx.preview.video {
+        render_video_preview(frame, vp, area, &title, preview_focused, font_size);
     } else if let Some(ref mut pdf) = ctx.preview.pdf {
         render_pdf_preview(frame, pdf, area, &title, preview_focused, font_size);
     } else if let Some(ref hp) = ctx.preview.hex {
