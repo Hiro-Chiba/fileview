@@ -646,7 +646,7 @@ mod tests {
         let manager = PluginManager::new().unwrap();
         let result = manager.eval("fv.version()");
         assert!(result.is_ok());
-        assert!(result.unwrap().contains("1.")); // Should contain version like "1.19.0"
+        assert!(result.unwrap().contains(".")); // Should contain version like "2.0.0-alpha"
     }
 
     #[test]
