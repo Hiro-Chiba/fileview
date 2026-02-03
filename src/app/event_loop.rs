@@ -9,7 +9,7 @@ use ratatui::prelude::*;
 
 use crate::action::file as file_ops;
 use crate::app::{Config, PreviewState};
-use crate::core::{AppState, FocusTarget, ViewMode};
+use crate::core::{AppState, FocusTarget, TabManager, ViewMode};
 use crate::handler::{
     action::{
         get_target_directory, handle_action, reload_tree, update_bulk_rename_buffer, ActionContext,
@@ -93,8 +93,11 @@ pub fn run_app(
         // Note: config file icons setting is already applied in AppState::new via env var check
     }
 
+    // Create tab manager with initial tab
+    let mut tab_manager = TabManager::new(config.root.clone(), state.show_hidden)?;
+
     // Create navigator based on stdin mode
-    let mut navigator = if let Some(paths) = config.stdin_paths {
+    let mut navigator = if let Some(paths) = config.stdin_paths.clone() {
         state.stdin_mode = true;
         TreeNavigator::from_paths(&config.root, paths, state.show_hidden)?
     } else {
@@ -221,6 +224,7 @@ pub fn run_app(
             preview: &mut preview,
             fuzzy_results: &fuzzy_results,
             image_picker,
+            tab_manager: Some(&tab_manager),
         };
         terminal.draw(|frame| render_frame(frame, render_context))?;
 
@@ -350,22 +354,116 @@ pub fn run_app(
 
                     let mut action = handle_key_event(&state, key);
 
-                    // Handle tab operations (placeholder - full implementation requires refactoring)
+                    // Handle tab operations
                     match &action {
                         KeyAction::NewTab => {
-                            state.set_message("Tab: Ctrl+T pressed (multi-tab feature)");
+                            // Create new tab with current directory
+                            let current_dir = focused_path
+                                .as_ref()
+                                .and_then(|p| {
+                                    if p.is_dir() {
+                                        Some(p.clone())
+                                    } else {
+                                        p.parent().map(|p| p.to_path_buf())
+                                    }
+                                })
+                                .unwrap_or_else(|| state.root.clone());
+
+                            match tab_manager.new_tab(current_dir, state.show_hidden) {
+                                Ok(()) => {
+                                    // Sync state from new tab
+                                    let tab = tab_manager.active();
+                                    navigator = tab.navigator.clone();
+                                    state.root = tab.root.clone();
+                                    state.focus_index = 0;
+                                    state.viewport_top = 0;
+                                    state.selected_paths.clear();
+                                    state.mode = ViewMode::Browse;
+                                    state.set_message(format!(
+                                        "Tab {}: {}",
+                                        tab_manager.len(),
+                                        tab.name
+                                    ));
+                                }
+                                Err(e) => {
+                                    state.set_message(format!("Failed to create tab: {}", e));
+                                }
+                            }
                             continue;
                         }
                         KeyAction::CloseTab => {
-                            state.set_message("Tab: Ctrl+W pressed (multi-tab feature)");
+                            if tab_manager.len() > 1 {
+                                // Save current tab state before closing
+                                tab_manager.active_mut().navigator = navigator.clone();
+                                tab_manager.active_mut().focus_index = state.focus_index;
+                                tab_manager.active_mut().viewport_top = state.viewport_top;
+                                tab_manager.active_mut().selected_paths =
+                                    state.selected_paths.clone();
+                                tab_manager.active_mut().mode = state.mode.clone();
+
+                                if tab_manager.close_tab() {
+                                    // Restore state from new active tab
+                                    let tab = tab_manager.active();
+                                    navigator = tab.navigator.clone();
+                                    state.root = tab.root.clone();
+                                    state.focus_index = tab.focus_index;
+                                    state.viewport_top = tab.viewport_top;
+                                    state.selected_paths = tab.selected_paths.clone();
+                                    state.mode = tab.mode.clone();
+                                    state.set_message(format!(
+                                        "Closed tab, {} remaining",
+                                        tab_manager.len()
+                                    ));
+                                }
+                            } else {
+                                state.set_message("Cannot close last tab");
+                            }
                             continue;
                         }
                         KeyAction::NextTab => {
-                            state.set_message("Tab: Alt+t pressed (multi-tab feature)");
+                            if tab_manager.len() > 1 {
+                                // Save current tab state
+                                tab_manager.active_mut().navigator = navigator.clone();
+                                tab_manager.active_mut().focus_index = state.focus_index;
+                                tab_manager.active_mut().viewport_top = state.viewport_top;
+                                tab_manager.active_mut().selected_paths =
+                                    state.selected_paths.clone();
+                                tab_manager.active_mut().mode = state.mode.clone();
+
+                                tab_manager.next_tab();
+
+                                // Restore state from new active tab
+                                let tab = tab_manager.active();
+                                navigator = tab.navigator.clone();
+                                state.root = tab.root.clone();
+                                state.focus_index = tab.focus_index;
+                                state.viewport_top = tab.viewport_top;
+                                state.selected_paths = tab.selected_paths.clone();
+                                state.mode = tab.mode.clone();
+                            }
                             continue;
                         }
                         KeyAction::PrevTab => {
-                            state.set_message("Tab: Alt+T pressed (multi-tab feature)");
+                            if tab_manager.len() > 1 {
+                                // Save current tab state
+                                tab_manager.active_mut().navigator = navigator.clone();
+                                tab_manager.active_mut().focus_index = state.focus_index;
+                                tab_manager.active_mut().viewport_top = state.viewport_top;
+                                tab_manager.active_mut().selected_paths =
+                                    state.selected_paths.clone();
+                                tab_manager.active_mut().mode = state.mode.clone();
+
+                                tab_manager.prev_tab();
+
+                                // Restore state from new active tab
+                                let tab = tab_manager.active();
+                                navigator = tab.navigator.clone();
+                                state.root = tab.root.clone();
+                                state.focus_index = tab.focus_index;
+                                state.viewport_top = tab.viewport_top;
+                                state.selected_paths = tab.selected_paths.clone();
+                                state.mode = tab.mode.clone();
+                            }
                             continue;
                         }
                         _ => {}
