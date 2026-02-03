@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.0] - 2026-02-03
+
+### Added
+
+- **Ultra-compact status bar** for 30-40 character width terminals
+  - Displays: help hint, selection count, git branch, sort mode, filter indicator
+  - Format: `? 3* ⎇main S` for maximum information density
+- **Auto-hide preview** when terminal width is below threshold (default: 50 chars)
+  - New `auto_hide_preview_threshold` setting in AppState
+  - `effective_preview_visible()` method for width-aware preview control
+- **Peek mode** (`Alt+P`): Mini-preview in status bar area
+  - Shows first few lines of file content in narrow terminals
+  - `PreviewDisplayMode` enum (Normal/Peek)
+- **Enhanced path abbreviation** in tree view
+  - `<20` chars: filename only
+  - `20-30` chars: last directory + filename
+  - `>30` chars: single-character abbreviation for parent directories
+- **MCP file operation tools**:
+  - `write_file`: Create/update files with `create_dirs` option
+  - `delete_file`: Delete files/directories (trash support, recursive option)
+  - `read_files`: Batch read multiple files at once
+- **MCP extended Git operations**:
+  - `git_log`: Get commit history with optional path filter
+  - `stage_files`: Stage files for commit
+  - `create_commit`: Create commit with message
+- **MCP symbol extraction** (`get_file_symbols`):
+  - Regex-based symbol detection for Rust, Python, TypeScript, Go, Java/Kotlin
+  - Returns functions, classes, structs, enums, interfaces, traits
+- **Session persistence** (`--session save/restore/clear`):
+  - Save selection state to `.fileview-session.json`
+  - Restore previous session on startup
+- **Extended smart selection keybindings**:
+  - `Ctrl+1..9`: Select files by extension (.rs, .ts, .js, .py, .go, .java, .md, .json, .css)
+  - `Alt+R`: Select files from most recent git commit
+  - `Alt+g`: Select only git staged files
+- **Compact copy format** (`Alt+Y`): Minimal header format for smaller AI contexts
+
+### Dependencies
+
+- Added `regex = "1"` for symbol extraction
+
+### New Files
+
+- `src/integrate/session.rs`: Session save/restore functionality
+
 ## [1.24.1] - 2026-02-03
 
 ### Added

@@ -11,7 +11,7 @@ mod preview;
 mod render;
 mod video;
 
-pub use config::Config;
+pub use config::{Config, SessionAction};
 pub use config_file::{CommandsConfig, ConfigFile, HooksConfig, PreviewConfig};
 pub use event_loop::{run_app, AppResult};
 pub use image_loader::ImageLoader;

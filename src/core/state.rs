@@ -51,6 +51,16 @@ impl SortMode {
     }
 }
 
+/// Preview display mode for narrow terminals
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PreviewDisplayMode {
+    /// Normal preview panel (default)
+    #[default]
+    Normal,
+    /// Peek mode - show file preview in status bar area
+    Peek,
+}
+
 /// Main application state
 pub struct AppState {
     /// Root directory path
@@ -101,6 +111,10 @@ pub struct AppState {
     pub sort_mode: SortMode,
     /// Search match info (current_index, total_count)
     pub search_matches: Option<(usize, usize)>,
+    /// Threshold width below which preview auto-hides (default: 50)
+    pub auto_hide_preview_threshold: u16,
+    /// Preview display mode (Normal or Peek)
+    pub preview_display_mode: PreviewDisplayMode,
 }
 
 impl AppState {
@@ -139,6 +153,8 @@ impl AppState {
             filter_pattern: None,
             sort_mode: SortMode::default(),
             search_matches: None,
+            auto_hide_preview_threshold: 50,
+            preview_display_mode: PreviewDisplayMode::default(),
         }
     }
 
@@ -195,5 +211,19 @@ impl AppState {
     /// Reset focus to Tree (call when closing preview)
     pub fn reset_focus(&mut self) {
         self.focus_target = FocusTarget::Tree;
+    }
+
+    /// Check if preview should be visible given the current terminal width
+    /// Returns false if width is below auto_hide_preview_threshold
+    pub fn effective_preview_visible(&self, width: u16) -> bool {
+        self.preview_visible && width >= self.auto_hide_preview_threshold
+    }
+
+    /// Toggle peek mode (status bar preview for narrow terminals)
+    pub fn toggle_peek_mode(&mut self) {
+        self.preview_display_mode = match self.preview_display_mode {
+            PreviewDisplayMode::Normal => PreviewDisplayMode::Peek,
+            PreviewDisplayMode::Peek => PreviewDisplayMode::Normal,
+        };
     }
 }

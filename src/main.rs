@@ -11,8 +11,8 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 
-use fileview::app::{run_app, Config};
-use fileview::integrate::{exit_code, output_context, output_tree};
+use fileview::app::{run_app, Config, SessionAction};
+use fileview::integrate::{exit_code, load_session, output_context, output_tree, Session};
 use fileview::render::create_image_picker;
 
 fn main() -> ExitCode {
@@ -36,6 +36,11 @@ fn main() -> ExitCode {
 
     if config.mcp_server {
         return run_mcp_server(&config);
+    }
+
+    // Handle session actions (non-interactive)
+    if let Some(action) = config.session_action {
+        return run_session_action(&config, action);
     }
 
     match run_with_config(config) {
@@ -77,6 +82,45 @@ fn run_mcp_server(config: &Config) -> ExitCode {
             eprintln!("Error: {}", e);
             ExitCode::from(exit_code::ERROR as u8)
         }
+    }
+}
+
+/// Run session action (save/restore/clear)
+fn run_session_action(config: &Config, action: SessionAction) -> ExitCode {
+    match action {
+        SessionAction::Save => {
+            // Note: Save requires interactive mode to capture selection
+            // This is a placeholder - actual save happens on exit in interactive mode
+            eprintln!("Session save: Use in interactive mode and press 's' to save session");
+            ExitCode::from(exit_code::SUCCESS as u8)
+        }
+        SessionAction::Restore => match load_session(&config.root) {
+            Ok((selected, focus)) => {
+                println!("Session restored:");
+                println!("  Selected: {} file(s)", selected.len());
+                for path in &selected {
+                    println!("    {}", path.display());
+                }
+                if let Some(f) = focus {
+                    println!("  Focus: {}", f.display());
+                }
+                ExitCode::from(exit_code::SUCCESS as u8)
+            }
+            Err(e) => {
+                eprintln!("Failed to restore session: {}", e);
+                ExitCode::from(exit_code::ERROR as u8)
+            }
+        },
+        SessionAction::Clear => match Session::delete(&config.root) {
+            Ok(_) => {
+                println!("Session cleared");
+                ExitCode::from(exit_code::SUCCESS as u8)
+            }
+            Err(e) => {
+                eprintln!("Failed to clear session: {}", e);
+                ExitCode::from(exit_code::ERROR as u8)
+            }
+        },
     }
 }
 

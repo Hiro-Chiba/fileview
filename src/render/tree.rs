@@ -138,9 +138,14 @@ fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'
 }
 
 /// Abbreviate a path to fit within max_width
+/// Adaptive abbreviation based on available width:
+/// - max_width < 20: filename only, truncated if needed
+/// - max_width 20-30: last directory + filename
+/// - max_width > 30: single-char abbreviation for parent dirs
 fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
     let full_path = path.display().to_string();
 
+    // If it fits, return as-is
     if full_path.len() <= max_width {
         return full_path;
     }
@@ -152,6 +157,37 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
 
     let last = components.last().unwrap_or(&"");
 
+    // Ultra-narrow: filename only (< 20 chars)
+    if max_width < 20 {
+        if last.len() > max_width {
+            // Truncate filename with ellipsis
+            return format!("…{}", &last[last.len().saturating_sub(max_width - 1)..]);
+        }
+        return (*last).to_string();
+    }
+
+    // Very narrow (20-30): show last dir + filename
+    if max_width < 30 {
+        if components.len() >= 2 {
+            let parent = components[components.len() - 2];
+            let short_parent = if parent.len() > 8 {
+                format!("{}…", &parent[..7])
+            } else {
+                parent.to_string()
+            };
+            let result = format!("{}/{}", short_parent, last);
+            if result.len() <= max_width {
+                return result;
+            }
+        }
+        // Fall back to just filename
+        if last.len() > max_width {
+            return format!("…{}", &last[last.len().saturating_sub(max_width - 1)..]);
+        }
+        return (*last).to_string();
+    }
+
+    // Standard narrow: single-char abbreviation for all parent dirs
     let mut abbreviated: Vec<String> = components[..components.len() - 1]
         .iter()
         .map(|c| {
@@ -168,7 +204,7 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
 
     if result.len() > max_width {
         if last.len() > max_width {
-            format!("...{}", &last[last.len().saturating_sub(max_width - 3)..])
+            format!("…{}", &last[last.len().saturating_sub(max_width - 1)..])
         } else {
             (*last).to_string()
         }
