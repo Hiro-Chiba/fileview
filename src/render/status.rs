@@ -14,8 +14,164 @@ use ratatui::{
 use super::theme::theme;
 use crate::core::{AppState, InputPurpose, PendingAction, SortMode, ViewMode};
 
-/// Render the status bar
+/// Render the status bar with adaptive layout based on screen width
 pub fn render_status_bar(
+    frame: &mut Frame,
+    state: &AppState,
+    focused_path: Option<&PathBuf>,
+    area: Rect,
+) {
+    let width = area.width;
+
+    // Adaptive layout based on screen width
+    if width < 60 {
+        // Very narrow: single panel with minimal info
+        render_compact_status(frame, state, focused_path, area);
+    } else if width < 100 {
+        // Narrow: abbreviated display
+        render_narrow_status(frame, state, focused_path, area);
+    } else {
+        // Wide: full display (original implementation)
+        render_full_status(frame, state, focused_path, area);
+    }
+}
+
+/// Render compact status bar for very narrow screens (< 60 chars)
+/// Shows only the most essential information in a single panel
+fn render_compact_status(
+    frame: &mut Frame,
+    state: &AppState,
+    focused_path: Option<&PathBuf>,
+    area: Rect,
+) {
+    let t = theme();
+
+    // Build compact content: "? | 1.2KB | main | Sel:3"
+    let mut spans = Vec::new();
+
+    // Help or message (highest priority)
+    let message = state.message.as_deref().unwrap_or("?");
+    spans.push(Span::raw(format!(" {}", message)));
+
+    // File size only (no modification time)
+    if let Some(size) = focused_path.and_then(|p| get_file_size_only(p.as_path())) {
+        spans.push(Span::styled(" | ", Style::default().fg(t.git_ignored)));
+        spans.push(Span::raw(size));
+    }
+
+    // Git branch (abbreviated, medium priority)
+    if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
+        spans.push(Span::styled(" | ", Style::default().fg(t.git_ignored)));
+        spans.push(Span::styled(
+            format!("\u{e0a0}{}", branch),
+            Style::default().fg(t.git_staged),
+        ));
+    }
+
+    // Selection count (abbreviated)
+    let selected_count = state.selected_paths.len();
+    if selected_count > 0 {
+        spans.push(Span::styled(" | ", Style::default().fg(t.git_ignored)));
+        spans.push(Span::raw(format!("Sel:{}", selected_count)));
+    }
+
+    let content = Line::from(spans);
+    let widget = Paragraph::new(content).block(Block::default().borders(Borders::ALL));
+    frame.render_widget(widget, area);
+}
+
+/// Render narrow status bar for medium screens (60-99 chars)
+/// Shows abbreviated information in two panels
+fn render_narrow_status(
+    frame: &mut Frame,
+    state: &AppState,
+    focused_path: Option<&PathBuf>,
+    area: Rect,
+) {
+    // Dynamic split: adjust based on content
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
+        .split(area);
+
+    let t = theme();
+
+    // Left panel: message/help + git branch
+    let mut left_spans = Vec::new();
+
+    // Watch indicator (if enabled, keep it compact)
+    if state.watch_enabled {
+        left_spans.push(Span::styled("\u{f06e} ", Style::default().fg(t.info)));
+    }
+
+    // Git branch (abbreviated)
+    if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
+        left_spans.push(Span::styled(
+            format!("\u{e0a0}{} |", branch),
+            Style::default().fg(t.git_staged),
+        ));
+    }
+
+    // Sort mode (abbreviated, only if non-default)
+    if state.sort_mode != SortMode::Name {
+        left_spans.push(Span::styled(
+            format!("\u{f0dc}{}|", state.sort_mode.short_name()),
+            Style::default().fg(t.git_conflict),
+        ));
+    }
+
+    // Search matches (abbreviated)
+    if let Some((current, total)) = state.search_matches {
+        left_spans.push(Span::styled(
+            format!("{}/{}|", current, total),
+            Style::default().fg(t.border_active),
+        ));
+    }
+
+    // Help or message
+    let message = state.message.as_deref().unwrap_or("? help");
+    left_spans.push(Span::raw(format!(" {}", message)));
+
+    let left_content = Line::from(left_spans);
+    let left_widget = Paragraph::new(left_content).block(Block::default().borders(Borders::ALL));
+    frame.render_widget(left_widget, chunks[0]);
+
+    // Right panel: file info + selection (abbreviated)
+    let file_info = focused_path
+        .map(|p| p.as_path())
+        .and_then(get_file_info_narrow)
+        .unwrap_or_else(|| "--".to_string());
+
+    let selected_count = state.selected_paths.len();
+    let clipboard_info = state
+        .clipboard
+        .as_ref()
+        .map(|c| {
+            if c.is_cut() {
+                format!(" | Cut:{}", c.paths().len())
+            } else {
+                format!(" | Cp:{}", c.paths().len())
+            }
+        })
+        .unwrap_or_default();
+
+    let stats = format!(
+        "{}{}{}",
+        file_info,
+        if selected_count > 0 {
+            format!(" | Sel:{}", selected_count)
+        } else {
+            String::new()
+        },
+        clipboard_info
+    );
+    let stats_widget = Paragraph::new(stats).block(Block::default().borders(Borders::ALL));
+    frame.render_widget(stats_widget, chunks[1]);
+}
+
+/// Render full status bar for wide screens (>= 100 chars)
+/// Original implementation with full information display
+fn render_full_status(
     frame: &mut Frame,
     state: &AppState,
     focused_path: Option<&PathBuf>,
@@ -105,7 +261,7 @@ pub fn render_status_bar(
     frame.render_widget(stats_widget, chunks[1]);
 }
 
-/// Get file size and modification time as a formatted string
+/// Get file size and modification time as a formatted string (full display)
 fn get_file_info(path: &std::path::Path) -> Option<String> {
     let metadata = path.metadata().ok()?;
 
@@ -124,6 +280,38 @@ fn get_file_info(path: &std::path::Path) -> Option<String> {
         .unwrap_or_else(|| "--".to_string());
 
     Some(format!("{} · {}", size_str, mtime_str))
+}
+
+/// Get file size and abbreviated modification time (narrow display)
+fn get_file_info_narrow(path: &std::path::Path) -> Option<String> {
+    let metadata = path.metadata().ok()?;
+
+    // Format size
+    let size_str = if metadata.is_dir() {
+        "--".to_string()
+    } else {
+        format_size(metadata.len())
+    };
+
+    // Format modification time (abbreviated)
+    let mtime_str = metadata
+        .modified()
+        .ok()
+        .map(format_relative_time_short)
+        .unwrap_or_else(|| "--".to_string());
+
+    Some(format!("{} · {}", size_str, mtime_str))
+}
+
+/// Get file size only (compact display)
+fn get_file_size_only(path: &std::path::Path) -> Option<String> {
+    let metadata = path.metadata().ok()?;
+
+    if metadata.is_dir() {
+        Some("--".to_string())
+    } else {
+        Some(format_size(metadata.len()))
+    }
 }
 
 /// Format file size in human-readable format
@@ -175,6 +363,85 @@ fn format_relative_time(time: SystemTime) -> String {
             .as_secs();
         format_date_from_timestamp(timestamp)
     }
+}
+
+/// Format time as short relative (e.g., "2m", "5h", "3d") for narrow displays
+fn format_relative_time_short(time: SystemTime) -> String {
+    let now = SystemTime::now();
+    let duration = match now.duration_since(time) {
+        Ok(d) => d,
+        Err(_) => return "?".to_string(),
+    };
+
+    let secs = duration.as_secs();
+    let mins = secs / 60;
+    let hours = mins / 60;
+    let days = hours / 24;
+
+    if secs < 60 {
+        "now".to_string()
+    } else if mins < 60 {
+        format!("{}m", mins)
+    } else if hours < 24 {
+        format!("{}h", hours)
+    } else if days < 30 {
+        format!("{}d", days)
+    } else {
+        // Use abbreviated date for older files
+        use std::time::UNIX_EPOCH;
+        let timestamp = time
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        format_date_short_from_timestamp(timestamp)
+    }
+}
+
+/// Format timestamp as "M/D" for narrow displays
+fn format_date_short_from_timestamp(timestamp: u64) -> String {
+    let secs_per_day: u64 = 86400;
+    let days_since_epoch = timestamp / secs_per_day;
+
+    let mut year = 1970u32;
+    let mut remaining_days = days_since_epoch as u32;
+
+    loop {
+        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+        if remaining_days < days_in_year {
+            break;
+        }
+        remaining_days -= days_in_year;
+        year += 1;
+    }
+
+    let months = [
+        31,
+        if is_leap_year(year) { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+
+    let mut month = 1u32;
+    let mut day = remaining_days + 1;
+
+    for (i, &days) in months.iter().enumerate() {
+        if remaining_days < days {
+            month = (i + 1) as u32;
+            day = remaining_days + 1;
+            break;
+        }
+        remaining_days -= days;
+    }
+
+    format!("{}/{}", month, day)
 }
 
 /// Format timestamp as "Mon DD" or "Mon DD YYYY" if not current year
