@@ -334,11 +334,47 @@ pub fn extract_symbols(content: &str, ext: &str) -> Vec<CodeSymbol> {
     }
 }
 
-/// Extract symbols from Rust code
-fn extract_rust_symbols(content: &str) -> Vec<CodeSymbol> {
+/// Generic symbol extraction with pre-compiled regexes
+fn extract_symbols_with_patterns(
+    content: &str,
+    patterns: &[(&str, SymbolKind)],
+    skip_dunder: bool,
+) -> Vec<CodeSymbol> {
+    // Pre-compile regexes once
+    let compiled: Vec<_> = patterns
+        .iter()
+        .filter_map(|(pattern, kind)| Regex::new(pattern).ok().map(|re| (re, *kind)))
+        .collect();
+
     let mut symbols = Vec::new();
 
-    let patterns: Vec<(&str, SymbolKind)> = vec![
+    for (line_num, line) in content.lines().enumerate() {
+        for (re, kind) in &compiled {
+            if let Some(caps) = re.captures(line) {
+                if let Some(name) = caps.get(1) {
+                    let name_str = name.as_str();
+                    // Skip dunder methods if requested
+                    if skip_dunder && name_str.starts_with("__") && name_str.ends_with("__") {
+                        continue;
+                    }
+                    symbols.push(CodeSymbol {
+                        kind: *kind,
+                        name: name_str.to_string(),
+                        line: line_num + 1,
+                        signature: Some(line.trim().to_string()),
+                    });
+                    break;
+                }
+            }
+        }
+    }
+
+    symbols
+}
+
+/// Extract symbols from Rust code
+fn extract_rust_symbols(content: &str) -> Vec<CodeSymbol> {
+    let patterns: &[(&str, SymbolKind)] = &[
         (r"^\s*(?:pub\s+)?fn\s+(\w+)", SymbolKind::Function),
         (r"^\s*(?:pub\s+)?struct\s+(\w+)", SymbolKind::Struct),
         (r"^\s*(?:pub\s+)?enum\s+(\w+)", SymbolKind::Enum),
@@ -347,76 +383,26 @@ fn extract_rust_symbols(content: &str) -> Vec<CodeSymbol> {
         (r"^\s*(?:pub\s+)?const\s+(\w+)", SymbolKind::Const),
         (r"^\s*(?:pub\s+)?mod\s+(\w+)", SymbolKind::Module),
     ];
-
-    for (line_num, line) in content.lines().enumerate() {
-        for (pattern, kind) in &patterns {
-            if let Ok(re) = Regex::new(pattern) {
-                if let Some(caps) = re.captures(line) {
-                    if let Some(name) = caps.get(1) {
-                        symbols.push(CodeSymbol {
-                            kind: *kind,
-                            name: name.as_str().to_string(),
-                            line: line_num + 1,
-                            signature: Some(line.trim().to_string()),
-                        });
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    symbols
+    extract_symbols_with_patterns(content, patterns, false)
 }
 
 /// Extract symbols from Python code
 fn extract_python_symbols(content: &str) -> Vec<CodeSymbol> {
-    let mut symbols = Vec::new();
-
-    let patterns: Vec<(&str, SymbolKind)> = vec![
+    let patterns: &[(&str, SymbolKind)] = &[
         (r"^def\s+(\w+)", SymbolKind::Function),
         (r"^class\s+(\w+)", SymbolKind::Class),
         (r"^\s{4}def\s+(\w+)", SymbolKind::Function), // Method
         (r"^(\w+)\s*=", SymbolKind::Variable),        // Top-level variable
     ];
-
-    for (line_num, line) in content.lines().enumerate() {
-        for (pattern, kind) in &patterns {
-            if let Ok(re) = Regex::new(pattern) {
-                if let Some(caps) = re.captures(line) {
-                    if let Some(name) = caps.get(1) {
-                        // Skip dunder methods for cleaner output
-                        let name_str = name.as_str();
-                        if name_str.starts_with("__") && name_str.ends_with("__") {
-                            continue;
-                        }
-                        symbols.push(CodeSymbol {
-                            kind: *kind,
-                            name: name_str.to_string(),
-                            line: line_num + 1,
-                            signature: Some(line.trim().to_string()),
-                        });
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    symbols
+    extract_symbols_with_patterns(content, patterns, true) // skip dunder
 }
 
 /// Extract symbols from TypeScript/JavaScript code
 fn extract_typescript_symbols(content: &str) -> Vec<CodeSymbol> {
-    let mut symbols = Vec::new();
-
-    let patterns: Vec<(&str, SymbolKind)> = vec![
+    let patterns: &[(&str, SymbolKind)] = &[
         (r"^\s*(?:export\s+)?function\s+(\w+)", SymbolKind::Function),
         (r"^\s*(?:export\s+)?class\s+(\w+)", SymbolKind::Class),
-        (
-            r"^\s*(?:export\s+)?interface\s+(\w+)",
-            SymbolKind::Interface,
-        ),
+        (r"^\s*(?:export\s+)?interface\s+(\w+)", SymbolKind::Interface),
         (r"^\s*(?:export\s+)?type\s+(\w+)", SymbolKind::Type),
         (r"^\s*(?:export\s+)?enum\s+(\w+)", SymbolKind::Enum),
         (
@@ -424,66 +410,24 @@ fn extract_typescript_symbols(content: &str) -> Vec<CodeSymbol> {
             SymbolKind::Function,
         ),
     ];
-
-    for (line_num, line) in content.lines().enumerate() {
-        for (pattern, kind) in &patterns {
-            if let Ok(re) = Regex::new(pattern) {
-                if let Some(caps) = re.captures(line) {
-                    if let Some(name) = caps.get(1) {
-                        symbols.push(CodeSymbol {
-                            kind: *kind,
-                            name: name.as_str().to_string(),
-                            line: line_num + 1,
-                            signature: Some(line.trim().to_string()),
-                        });
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    symbols
+    extract_symbols_with_patterns(content, patterns, false)
 }
 
 /// Extract symbols from Go code
 fn extract_go_symbols(content: &str) -> Vec<CodeSymbol> {
-    let mut symbols = Vec::new();
-
-    let patterns: Vec<(&str, SymbolKind)> = vec![
+    let patterns: &[(&str, SymbolKind)] = &[
         (r"^func\s+(?:\([^)]+\)\s+)?(\w+)", SymbolKind::Function),
         (r"^type\s+(\w+)\s+struct", SymbolKind::Struct),
         (r"^type\s+(\w+)\s+interface", SymbolKind::Interface),
         (r"^const\s+(\w+)", SymbolKind::Const),
         (r"^var\s+(\w+)", SymbolKind::Variable),
     ];
-
-    for (line_num, line) in content.lines().enumerate() {
-        for (pattern, kind) in &patterns {
-            if let Ok(re) = Regex::new(pattern) {
-                if let Some(caps) = re.captures(line) {
-                    if let Some(name) = caps.get(1) {
-                        symbols.push(CodeSymbol {
-                            kind: *kind,
-                            name: name.as_str().to_string(),
-                            line: line_num + 1,
-                            signature: Some(line.trim().to_string()),
-                        });
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    symbols
+    extract_symbols_with_patterns(content, patterns, false)
 }
 
 /// Extract symbols from Java/Kotlin code
 fn extract_java_symbols(content: &str) -> Vec<CodeSymbol> {
-    let mut symbols = Vec::new();
-
-    let patterns: Vec<(&str, SymbolKind)> = vec![
+    let patterns: &[(&str, SymbolKind)] = &[
         (
             r"^\s*(?:public|private|protected)?\s*class\s+(\w+)",
             SymbolKind::Class,
@@ -501,57 +445,14 @@ fn extract_java_symbols(content: &str) -> Vec<CodeSymbol> {
             SymbolKind::Function,
         ),
     ];
-
-    for (line_num, line) in content.lines().enumerate() {
-        for (pattern, kind) in &patterns {
-            if let Ok(re) = Regex::new(pattern) {
-                if let Some(caps) = re.captures(line) {
-                    if let Some(name) = caps.get(1) {
-                        symbols.push(CodeSymbol {
-                            kind: *kind,
-                            name: name.as_str().to_string(),
-                            line: line_num + 1,
-                            signature: Some(line.trim().to_string()),
-                        });
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    symbols
+    extract_symbols_with_patterns(content, patterns, false)
 }
 
 /// Extract symbols from generic code (fallback)
 fn extract_generic_symbols(content: &str) -> Vec<CodeSymbol> {
-    let mut symbols = Vec::new();
-
-    let patterns: Vec<(&str, SymbolKind)> = vec![
-        (
-            r"^\s*(?:function|def|fn|func)\s+(\w+)",
-            SymbolKind::Function,
-        ),
+    let patterns: &[(&str, SymbolKind)] = &[
+        (r"^\s*(?:function|def|fn|func)\s+(\w+)", SymbolKind::Function),
         (r"^\s*class\s+(\w+)", SymbolKind::Class),
     ];
-
-    for (line_num, line) in content.lines().enumerate() {
-        for (pattern, kind) in &patterns {
-            if let Ok(re) = Regex::new(pattern) {
-                if let Some(caps) = re.captures(line) {
-                    if let Some(name) = caps.get(1) {
-                        symbols.push(CodeSymbol {
-                            kind: *kind,
-                            name: name.as_str().to_string(),
-                            line: line_num + 1,
-                            signature: Some(line.trim().to_string()),
-                        });
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    symbols
+    extract_symbols_with_patterns(content, patterns, false)
 }

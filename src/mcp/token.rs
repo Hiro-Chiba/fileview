@@ -146,7 +146,7 @@ pub fn truncate_to_tokens(content: &str, max_tokens: usize) -> String {
         }
         format!("{}...", chars[..end].iter().collect::<String>())
     } else {
-        format!("{}\\n... (truncated)", lines[..low].join("\n"))
+        format!("{}\n... (truncated)", lines[..low].join("\n"))
     }
 }
 
