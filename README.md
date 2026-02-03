@@ -114,9 +114,39 @@ brew install chafa  # or apt install libchafa-dev
 cargo install fileview --features chafa
 ```
 
+## Lua Plugin System
+
+Extend FileView with Lua scripts:
+
+```lua
+-- ~/.config/fileview/plugins/init.lua
+
+-- Startup notification
+fv.notify("Plugin loaded!")
+
+-- React to events
+fv.on("file_selected", function(path)
+    if path and path:match("%.secret$") then
+        fv.notify("Warning: Secret file!")
+    end
+end)
+
+-- Custom command
+fv.register_command("copy-path", function()
+    local file = fv.current_file()
+    if file then
+        fv.set_clipboard(file)
+        fv.notify("Copied: " .. file)
+    end
+end)
+```
+
+**[Plugin API Reference](docs/PLUGINS.md)**
+
 ## Documentation
 
 - [Keybindings](docs/KEYBINDINGS.md) - Complete keybinding reference
+- [Plugins](docs/PLUGINS.md) - Lua plugin system
 - [Comparison](docs/COMPARISON.md) - vs yazi, lf, ranger, nnn
 - [Benchmarks](docs/BENCHMARKS.md) - Performance data
 - [Security](docs/SECURITY.md) - Security model
