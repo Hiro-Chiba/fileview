@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.1] - 2026-02-03
+
+### Added
+
+- **docs/CLAUDE_CODE.md**: Comprehensive Claude Code integration guide
+  - MCP server configuration examples
+  - Workflow examples (code review, bug investigation, refactoring)
+  - CLI reference and keybindings
+- **AI Integration section in COMPARISON.md**: Unique differentiator scoring
+  - fileview scores 10/10 in AI Integration (competitors: 0)
+  - Updated total score: 72 → 82
+- **Plugin examples** in `examples/plugins/`:
+  - `claude_code.lua`: Claude Code integration plugin
+  - `git_actions.lua`: Quick git operations
+  - `productivity.lua`: General productivity commands
+
 ## [1.24.0] - 2026-02-03
 
 ### Added
