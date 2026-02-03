@@ -2,6 +2,9 @@
 .claude/*
 !.claude/skills/
 
+# Internal docs
+docs/ROADMAP_V4.md
+
 # IDE
 .vscode/
 .idea/
