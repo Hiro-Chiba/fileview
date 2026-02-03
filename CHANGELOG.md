@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1-alpha] - 2026-02-03
+
+### Security
+
+- **Command Injection Prevention** (`project.rs`)
+  - Added command whitelist for `run_build` (cargo, npm, yarn, etc.)
+  - Reject shell metacharacters in command arguments
+
+- **DoS Prevention**
+  - `project.rs`: Added depth limit (50) and file size limit (10MB) for `get_project_stats`
+  - `file.rs`: Added maximum tree depth (20) for `get_tree`
+  - `file.rs`: Added search pattern length limit (500 chars) for `search_code`
+
+- **Path Traversal Prevention** (`git.rs`)
+  - Added path validation to `git_log` and `stage_files`
+
+- **Shell Injection Prevention** (`custom.rs`)
+  - Added shell escaping for file paths in custom preview commands
+
+### Fixed
+
+- `server.rs`: Replaced `unwrap()` with proper error handling for JSON serialization
+- `file.rs`: Reject null bytes in search patterns to prevent injection
+- `token.rs`: Fixed escaped newline bug (\\n → \n)
+- `analysis.rs`: Refactored to eliminate code duplication with generic `extract_symbols_with_patterns`
+- `common.rs`: Added negative timestamp handling for pre-1970 dates
+
 ## [2.0.0-alpha] - 2026-02-03
 
 ### Added
