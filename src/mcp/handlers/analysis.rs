@@ -402,7 +402,10 @@ fn extract_typescript_symbols(content: &str) -> Vec<CodeSymbol> {
     let patterns: &[(&str, SymbolKind)] = &[
         (r"^\s*(?:export\s+)?function\s+(\w+)", SymbolKind::Function),
         (r"^\s*(?:export\s+)?class\s+(\w+)", SymbolKind::Class),
-        (r"^\s*(?:export\s+)?interface\s+(\w+)", SymbolKind::Interface),
+        (
+            r"^\s*(?:export\s+)?interface\s+(\w+)",
+            SymbolKind::Interface,
+        ),
         (r"^\s*(?:export\s+)?type\s+(\w+)", SymbolKind::Type),
         (r"^\s*(?:export\s+)?enum\s+(\w+)", SymbolKind::Enum),
         (
@@ -451,7 +454,10 @@ fn extract_java_symbols(content: &str) -> Vec<CodeSymbol> {
 /// Extract symbols from generic code (fallback)
 fn extract_generic_symbols(content: &str) -> Vec<CodeSymbol> {
     let patterns: &[(&str, SymbolKind)] = &[
-        (r"^\s*(?:function|def|fn|func)\s+(\w+)", SymbolKind::Function),
+        (
+            r"^\s*(?:function|def|fn|func)\s+(\w+)",
+            SymbolKind::Function,
+        ),
         (r"^\s*class\s+(\w+)", SymbolKind::Class),
     ];
     extract_symbols_with_patterns(content, patterns, false)

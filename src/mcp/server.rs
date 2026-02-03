@@ -83,7 +83,10 @@ fn handle_initialize(id: Option<serde_json::Value>) -> JsonRpcResponse {
         },
     };
 
-    JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
+    match serde_json::to_value(result) {
+        Ok(v) => JsonRpcResponse::success(id, v),
+        Err(e) => JsonRpcResponse::error(id, error_codes::INTERNAL_ERROR, e.to_string()),
+    }
 }
 
 /// Handle tools/list request
@@ -91,7 +94,10 @@ fn handle_tools_list(id: Option<serde_json::Value>) -> JsonRpcResponse {
     // Use registry to get all tools
     let tools = registry::to_mcp_tools();
     let result = ToolListResult { tools };
-    JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
+    match serde_json::to_value(result) {
+        Ok(v) => JsonRpcResponse::success(id, v),
+        Err(e) => JsonRpcResponse::error(id, error_codes::INTERNAL_ERROR, e.to_string()),
+    }
 }
 
 /// Handle tools/call request
@@ -112,7 +118,10 @@ fn handle_tools_call(
     };
 
     let result = dispatch_tool_call(root, &call_params);
-    JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
+    match serde_json::to_value(result) {
+        Ok(v) => JsonRpcResponse::success(id, v),
+        Err(e) => JsonRpcResponse::error(id, error_codes::INTERNAL_ERROR, e.to_string()),
+    }
 }
 
 /// Dispatch tool call to appropriate handler

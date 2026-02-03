@@ -114,7 +114,8 @@ pub fn get_git_diff(root: &Path, path: &str, staged: bool) -> ToolCallResult {
 
 /// Get git commit log
 pub fn git_log(root: &Path, limit: Option<usize>, path: Option<&str>) -> ToolCallResult {
-    let limit = limit.unwrap_or(10);
+    // Security: Limit to reasonable number of commits
+    let limit = limit.unwrap_or(10).min(1000);
 
     let mut args = vec![
         "log".to_string(),
@@ -122,7 +123,11 @@ pub fn git_log(root: &Path, limit: Option<usize>, path: Option<&str>) -> ToolCal
         "--pretty=format:%h|%an|%ar|%s".to_string(),
     ];
 
+    // Security: Validate path if specified
     if let Some(p) = path {
+        if let Err(e) = validate_path(root, p) {
+            return error_result(&format!("Invalid path: {}", e));
+        }
         args.push("--".to_string());
         args.push(p.to_string());
     }
@@ -161,6 +166,13 @@ pub fn git_log(root: &Path, limit: Option<usize>, path: Option<&str>) -> ToolCal
 
 /// Stage files for git commit
 pub fn stage_files(root: &Path, paths: &[&str]) -> ToolCallResult {
+    // Security: Validate all paths before staging
+    for p in paths {
+        if let Err(e) = validate_path(root, p) {
+            return error_result(&format!("Invalid path '{}': {}", p, e));
+        }
+    }
+
     let args: Vec<&str> = if paths.is_empty() {
         vec!["add", "-A"]
     } else {
