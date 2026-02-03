@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.0] - 2026-02-03
+
+### Added
+
+- **Lua plugin registration API (Phase 12c)**: Register custom commands, event handlers, and previewers
+  - `fv.register_command(name, fn)`: Register a custom command callable from FileView
+  - `fv.on(event, fn)`: Register event handlers for FileView events
+    - Supported events: `file_selected`, `directory_changed`, `selection_changed`, `start`, `before_quit`
+    - Multiple handlers can be registered for the same event
+  - `fv.register_previewer(pattern, fn)`: Register custom file previewers by glob pattern
+    - Pattern supports `*` (any characters) and `?` (single character)
+    - Returns preview content as string
+  - Internal storage tables: `fv._commands`, `fv._events`, `fv._previewers`
+
+### New Methods (PluginManager)
+
+- `has_command(name)`: Check if command is registered
+- `list_commands()`: List all registered command names
+- `invoke_command(name)`: Execute a registered command
+- `fire_event(event, arg)`: Fire event and call all handlers
+- `has_previewer(pattern)`: Check if previewer is registered
+- `list_previewers()`: List all registered previewer patterns
+- `find_previewer(filename)`: Find matching previewer for filename
+- `invoke_previewer(pattern, path)`: Execute previewer and get result
+
+### Tests
+
+- Added 20 new unit tests for registration API
+- Total plugin tests: 50
+
 ## [1.20.0] - 2026-02-03
 
 ### Added
