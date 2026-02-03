@@ -8,8 +8,9 @@ use ratatui::{
     Frame,
 };
 
+use super::layout::LayoutEngine;
 use super::theme::theme;
-use crate::core::{AppState, FocusTarget};
+use crate::core::{AppState, FocusTarget, UiDensity};
 use crate::git::FileStatus;
 use crate::render::icons;
 use crate::tree::TreeEntry;
@@ -17,6 +18,8 @@ use crate::tree::TreeEntry;
 /// Render the file tree widget
 pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], area: Rect) {
     let visible_height = area.height.saturating_sub(2) as usize;
+    let layout = LayoutEngine::from_rect(area);
+    let tree_cols = layout.tree_columns(area);
 
     let items: Vec<ListItem> = entries
         .iter()
@@ -25,7 +28,7 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], 
         .enumerate()
         .map(|(i, entry)| {
             let absolute_index = state.viewport_top + i;
-            render_entry(state, entry, absolute_index)
+            render_entry(state, entry, absolute_index, &layout, &tree_cols)
         })
         .collect();
 
@@ -53,20 +56,34 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], 
 }
 
 /// Render a single tree entry as a ListItem
-fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'static> {
+fn render_entry(
+    state: &AppState,
+    entry: &TreeEntry,
+    index: usize,
+    layout: &LayoutEngine,
+    tree_cols: &super::layout::TreeColumns,
+) -> ListItem<'static> {
     let t = theme();
-    let indent = "  ".repeat(entry.depth);
+    let density = layout.density;
 
-    let icon = if state.icons_enabled {
+    // Adjust indent based on density
+    let indent_str = match density {
+        UiDensity::Ultra | UiDensity::Narrow => " ".repeat(entry.depth),
+        UiDensity::Compact | UiDensity::Full => "  ".repeat(entry.depth),
+    };
+
+    // Icon selection based on density and settings
+    let icon = if tree_cols.show_icons && state.icons_enabled {
         icons::get_icon(&entry.path, entry.is_dir, entry.is_expanded())
     } else if entry.is_dir {
+        // Use compact indicators in narrow modes
         if entry.is_expanded() {
-            "▼"
+            "▾"
         } else {
-            "▶"
+            "▸"
         }
     } else {
-        " "
+        ""
     };
 
     let is_focused = index == state.focus_index;
@@ -76,6 +93,7 @@ fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'
         .as_ref()
         .is_some_and(|c| c.is_cut() && c.paths().contains(&entry.path));
 
+    // Compact mark indicator for ultra mode
     let mark_indicator = if is_selected { "*" } else { " " };
 
     // Get git status color and staging info
@@ -119,20 +137,82 @@ fn render_entry(state: &AppState, entry: &TreeEntry, index: usize) -> ListItem<'
         style = style.bg(t.selection).add_modifier(Modifier::BOLD);
     }
 
-    // Stage indicator: + for staged, ~ for modified (unstaged)
-    let stage_indicator = if is_staged {
-        Span::styled("+", Style::default().fg(t.git_staged))
-    } else if git_status == FileStatus::Modified {
-        Span::styled("~", Style::default().fg(t.git_modified))
-    } else {
-        Span::raw(" ")
+    // Stage indicator: compact in ultra mode
+    let stage_indicator = match density {
+        UiDensity::Ultra => {
+            // In ultra mode, combine mark and stage into one char
+            if is_staged {
+                Span::styled("✓", Style::default().fg(t.git_staged))
+            } else if git_status == FileStatus::Modified {
+                Span::styled("M", Style::default().fg(t.git_modified))
+            } else {
+                Span::raw("")
+            }
+        }
+        _ => {
+            if is_staged {
+                Span::styled("+", Style::default().fg(t.git_staged))
+            } else if git_status == FileStatus::Modified {
+                Span::styled("~", Style::default().fg(t.git_modified))
+            } else {
+                Span::raw(" ")
+            }
+        }
     };
 
-    let line = Line::from(vec![
-        Span::styled(mark_indicator, Style::default().fg(t.mark)),
-        stage_indicator,
-        Span::styled(format!("{}{} {}", indent, icon, entry.name), style),
-    ]);
+    // Truncate filename if needed for narrow modes
+    let max_name_width = tree_cols.filename_width_at_depth(entry.depth) as usize;
+    let display_name = if entry.name.len() > max_name_width && max_name_width > 3 {
+        format!("{}…", &entry.name[..max_name_width - 1])
+    } else {
+        entry.name.clone()
+    };
+
+    // Build the line based on density
+    let line = match density {
+        UiDensity::Ultra => {
+            // Ultra compact: mark + indent + icon + name + stage (at end)
+            let entry_text = if icon.is_empty() {
+                format!("{}{}", indent_str, display_name)
+            } else {
+                format!("{}{} {}", indent_str, icon, display_name)
+            };
+            Line::from(vec![
+                Span::styled(mark_indicator, Style::default().fg(t.mark)),
+                Span::styled(entry_text, style),
+                stage_indicator,
+            ])
+        }
+        UiDensity::Narrow => {
+            // Narrow: mark + stage + indent + icon + name
+            let entry_text = if icon.is_empty() {
+                format!("{}{}", indent_str, display_name)
+            } else {
+                format!("{}{} {}", indent_str, icon, display_name)
+            };
+            Line::from(vec![
+                Span::styled(mark_indicator, Style::default().fg(t.mark)),
+                stage_indicator,
+                Span::styled(entry_text, style),
+            ])
+        }
+        _ => {
+            // Full/Compact: standard layout with space after icon
+            let icon_with_space = if icon.is_empty() {
+                String::new()
+            } else {
+                format!("{} ", icon)
+            };
+            Line::from(vec![
+                Span::styled(mark_indicator, Style::default().fg(t.mark)),
+                stage_indicator,
+                Span::styled(
+                    format!("{}{}{}", indent_str, icon_with_space, display_name),
+                    style,
+                ),
+            ])
+        }
+    };
 
     ListItem::new(line)
 }

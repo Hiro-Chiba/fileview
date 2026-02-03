@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-alpha] - 2026-02-03
+
+### Added
+
+- **Ultra-Narrow UI (20文字幅対応)**
+  - `UiDensity` enum (Full/Compact/Narrow/Ultra) for responsive terminal adaptation
+  - `LayoutEngine` for dynamic width-based layout computation
+  - Tree rendering optimization for 20-24 character terminals
+  - Icon hiding in Ultra/Narrow modes for space efficiency
+  - Adaptive filename truncation based on available width
+
+- **MCP 2.0: AI-Native Development Tools**
+  - **Auto Tool Registration** (`registry.rs`): 21 tools across 6 categories
+  - **Security Utilities** (`security.rs`): Path validation, sensitive file detection, filename sanitization
+  - **Token Estimation** (`token.rs`): tiktoken-rs integration for AI context optimization
+  - **Smart Context** (`get_smart_context`): AI-optimized context with dependency awareness
+  - **Dependency Analysis** (`get_dependency_graph`, `get_import_tree`, `find_circular_deps`)
+  - **Code Analysis** (`get_definitions`, `get_references`, `get_diagnostics`)
+  - **Project Management** (`run_build`, `run_test`, `run_lint`, `get_project_stats`)
+
+- **Unified Error Handling** (`src/error.rs`)
+  - `FileviewError` enum with thiserror derivation
+  - Consistent error types: IO, Git, MCP, Preview, Path, Render, Token, Analysis
+
+### Changed
+
+- **MCP Handler Restructure**: Split monolithic `handlers.rs` into focused modules
+  - `handlers/file.rs`: File operations (read, write, delete, search)
+  - `handlers/git.rs`: Git operations (status, diff, log, stage, commit)
+  - `handlers/context.rs`: AI context generation
+  - `handlers/analysis.rs`: Code analysis and symbols
+  - `handlers/dependency.rs`: Dependency graph analysis
+  - `handlers/project.rs`: Build, test, lint operations
+
+- **Preview Module Split**: Refactored 1880-line `preview.rs` into 11 focused modules
+  - `preview/common.rs`: Shared utilities
+  - `preview/text.rs`: Syntax-highlighted text preview
+  - `preview/hex.rs`: Binary file hex dump
+  - `preview/archive.rs`: ZIP/tar.gz archive preview
+  - `preview/pdf.rs`: PDF preview (pdftoppm)
+  - `preview/image.rs`: Image preview (Sixel/Kitty/iTerm2)
+  - `preview/video.rs`: Video thumbnail and metadata
+  - `preview/diff.rs`: Git diff preview
+  - `preview/custom.rs`: External command preview
+  - `preview/directory.rs`: Directory info preview
+
+### Dependencies
+
+- Added `thiserror = "2"` for unified error types
+- Added `petgraph = "0.6"` for dependency graph analysis
+- Added `tiktoken-rs = "0.5"` for token estimation
+
 ## [1.26.0] - 2026-02-03
 
 ### Added
