@@ -71,6 +71,36 @@ fv
 
 **[完全なキーバインド一覧](docs/KEYBINDINGS_ja.md)**
 
+## Claude Code 連携
+
+FileView は Claude Code との AI ペアプログラミングに最適化されています:
+
+```bash
+# ディレクトリツリーをコンテキストとして出力
+fv --tree --depth 2 ./src
+
+# ファイルをすばやく選択
+selected=$(fv --select-mode --multi)
+
+# Claude 向けフォーマットでファイル内容をコピー
+# fileview 内で Ctrl+Y を押すとシンタックスヒント付きでコピー
+```
+
+### MCP サーバー
+
+FileView を Claude Code の MCP サーバーとして使用:
+
+```json
+{
+  "mcpServers": {
+    "fileview": {
+      "command": "fv",
+      "args": ["--mcp-server"]
+    }
+  }
+}
+```
+
 ## CLIオプション
 
 ```bash
@@ -83,6 +113,14 @@ fv [OPTIONS] [PATH]
   --on-select CMD     選択時にコマンド実行
   --choosedir         終了時にディレクトリを出力
   --no-icons          Nerd Fontsアイコンを無効化
+
+Claude Code連携:
+  -t, --tree          ディレクトリツリーをstdoutに出力
+  --depth N           ツリー深度を制限
+  --with-content      出力にファイル内容を含める
+  --select-mode       シンプル選択モード
+  --multi             複数選択を許可
+  --mcp-server        MCPサーバーとして起動
 ```
 
 ### 終了コード
