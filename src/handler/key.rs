@@ -166,6 +166,16 @@ pub enum KeyAction {
     SelectGitChanged,
     /// Select test pair for current file
     SelectTestPair,
+    /// Toggle peek mode (mini preview in status bar)
+    TogglePeekMode,
+    /// Select files by extension (Ctrl+1..9)
+    SelectByExtension { index: u8 },
+    /// Select files from recent git commit
+    SelectRecentCommit,
+    /// Select git staged files only
+    SelectGitStaged,
+    /// Copy content in compact format (for small AI contexts)
+    CopyCompact,
 }
 
 /// Handle key event and return the resulting action
@@ -398,6 +408,10 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::SelectGitChanged
         }
+        // Select git staged files (Alt+g)
+        KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::ALT) => {
+            KeyAction::SelectGitStaged
+        }
         KeyCode::Char('g') => {
             if state.focus_target == FocusTarget::Preview {
                 KeyAction::PreviewToTop
@@ -475,10 +489,11 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
 
-        // Clipboard (Ctrl+Y for Claude format must come before plain 'y')
+        // Clipboard (Ctrl+Y and Alt+Y must come before plain 'y')
         KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::CopyForClaude
         }
+        KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::CopyCompact,
         KeyCode::Char('y') => KeyAction::Copy,
         KeyCode::Char('d') => {
             if key.modifiers.contains(KeyModifiers::SHIFT) {
@@ -488,11 +503,19 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
         KeyCode::Char('D') | KeyCode::Delete => KeyAction::ConfirmDelete,
-        // Fuzzy finder (Ctrl+P) - must be checked before plain 'p'
+        // Fuzzy finder (Ctrl+P) and Peek mode (Alt+P) - must be checked before plain 'p'
         KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::OpenFuzzyFinder
         }
+        KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
+            KeyAction::TogglePeekMode
+        }
         KeyCode::Char('p') => KeyAction::Paste,
+
+        // Select recent commit files (Alt+R) - before plain 'r'
+        KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::ALT) => {
+            KeyAction::SelectRecentCommit
+        }
 
         // File operations
         KeyCode::Char('r') => KeyAction::StartRename,
@@ -573,6 +596,13 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Smart selection (Ctrl+T for test pair)
         KeyCode::Char('T') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::SelectTestPair
+        }
+
+        // Select by extension (Ctrl+1..9 for common extensions)
+        KeyCode::Char(c @ '1'..='9') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::SelectByExtension {
+                index: c as u8 - b'0',
+            }
         }
 
         _ => KeyAction::None,

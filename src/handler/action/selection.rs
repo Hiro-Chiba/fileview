@@ -1,9 +1,10 @@
 //! Selection and clipboard action handlers
 //!
 //! Handles ToggleMark, ClearMarks, Copy, Cut, SelectAll, InvertSelection,
-//! SelectGitChanged, SelectTestPair
+//! SelectGitChanged, SelectTestPair, SelectByExtension, SelectRecentCommit, SelectGitStaged
 
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use crate::action::Clipboard;
 use crate::core::AppState;
@@ -11,6 +12,19 @@ use crate::git::FileStatus;
 use crate::handler::key::KeyAction;
 
 use super::EntrySnapshot;
+
+/// Common file extensions mapped to Ctrl+1..9
+const EXTENSION_SLOTS: [&[&str]; 9] = [
+    &["rs"],                   // Ctrl+1: Rust
+    &["ts", "tsx"],            // Ctrl+2: TypeScript
+    &["js", "jsx"],            // Ctrl+3: JavaScript
+    &["py"],                   // Ctrl+4: Python
+    &["go"],                   // Ctrl+5: Go
+    &["java", "kt"],           // Ctrl+6: Java/Kotlin
+    &["md", "mdx"],            // Ctrl+7: Markdown
+    &["json", "yaml", "toml"], // Ctrl+8: Config files
+    &["css", "scss", "sass"],  // Ctrl+9: Stylesheets
+];
 
 /// Handle selection and clipboard actions
 pub fn handle(action: KeyAction, state: &mut AppState, focused_path: &Option<PathBuf>) {
@@ -175,6 +189,102 @@ pub fn select_test_pair(state: &mut AppState, focused_path: &Option<PathBuf>) {
         state.set_message("Test file not found");
         // Remove the source file from selection if no test found
         state.selected_paths.remove(path);
+    }
+}
+
+/// Select files by extension index (Ctrl+1..9)
+pub fn select_by_extension(state: &mut AppState, entries: &[EntrySnapshot], index: u8) {
+    if !(1..=9).contains(&index) {
+        state.set_message("Invalid extension slot");
+        return;
+    }
+
+    let extensions = EXTENSION_SLOTS[(index - 1) as usize];
+
+    let mut count = 0;
+    for entry in entries {
+        if let Some(ext) = entry.path.extension().and_then(|e| e.to_str()) {
+            if extensions.contains(&ext) {
+                state.selected_paths.insert(entry.path.clone());
+                count += 1;
+            }
+        }
+    }
+
+    if count > 0 {
+        let ext_list = extensions.join("/");
+        state.set_message(format!("Selected {} .{} file(s)", count, ext_list));
+    } else {
+        let ext_list = extensions.join("/");
+        state.set_message(format!("No .{} files in view", ext_list));
+    }
+}
+
+/// Select files changed in the most recent git commit
+pub fn select_recent_commit(state: &mut AppState, entries: &[EntrySnapshot]) {
+    // Get files from the last commit using git
+    let output = Command::new("git")
+        .args(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"])
+        .current_dir(&state.root)
+        .output();
+
+    let changed_files: Vec<String> = match output {
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout)
+            .lines()
+            .map(|s| s.to_string())
+            .collect(),
+        _ => {
+            state.set_message("Failed to get recent commit files");
+            return;
+        }
+    };
+
+    if changed_files.is_empty() {
+        state.set_message("No files in recent commit");
+        return;
+    }
+
+    let mut count = 0;
+    for entry in entries {
+        // Get relative path
+        if let Ok(rel_path) = entry.path.strip_prefix(&state.root) {
+            let rel_str = rel_path.display().to_string();
+            if changed_files.contains(&rel_str) {
+                state.selected_paths.insert(entry.path.clone());
+                count += 1;
+            }
+        }
+    }
+
+    if count > 0 {
+        state.set_message(format!("Selected {} file(s) from recent commit", count));
+    } else {
+        state.set_message("Recent commit files not in view");
+    }
+}
+
+/// Select only git staged files
+pub fn select_git_staged(state: &mut AppState, entries: &[EntrySnapshot]) {
+    let git_status = match &state.git_status {
+        Some(status) => status,
+        None => {
+            state.set_message("Not in a git repository");
+            return;
+        }
+    };
+
+    let mut count = 0;
+    for entry in entries {
+        if git_status.is_staged(&entry.path) {
+            state.selected_paths.insert(entry.path.clone());
+            count += 1;
+        }
+    }
+
+    if count > 0 {
+        state.set_message(format!("Selected {} staged file(s)", count));
+    } else {
+        state.set_message("No staged files in current view");
     }
 }
 
