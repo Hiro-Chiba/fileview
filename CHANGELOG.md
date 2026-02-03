@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2026-02-03
+
+### Added
+
+- **Claude Code integration features**: Comprehensive AI pair programming support
+  - **CLI output mode** (`--tree`, `-t`): Output directory tree to stdout (non-interactive)
+    - `--depth N`: Limit tree traversal depth
+    - `--with-content`: Include file contents in pick output (Claude-friendly format)
+  - **Clipboard enhancements**:
+    - `Y`: Copy file content to system clipboard
+    - `Ctrl+Y`: Copy in Claude-friendly markdown format with syntax highlighting hints
+  - **Interactive select mode** (`--select-mode`): Simplified file selection
+    - Enter to select and output path to stdout immediately
+    - `--multi`: Allow multiple selection before confirmation
+  - **MCP server** (`--mcp-server`): JSON-RPC server for Claude Code integration
+    - `list_directory`: List files and directories
+    - `get_tree`: Get directory tree structure
+    - `read_file`: Read file content
+    - Protocol version: 2024-11-05
+
+### New Files
+
+- `src/integrate/tree.rs`: Tree output logic for CLI mode
+- `src/mcp/mod.rs`: MCP module entry point
+- `src/mcp/server.rs`: JSON-RPC server implementation
+- `src/mcp/handlers.rs`: MCP tool handlers
+- `src/mcp/types.rs`: MCP protocol type definitions
+
+### Dependencies
+
+- Added `serde_json = "1.0"` for MCP JSON-RPC serialization
+
+### Example Usage
+
+```bash
+# Output directory tree
+fv --tree --depth 2 ./src
+
+# Copy files with content for Claude
+fv --pick --with-content
+
+# Use as MCP server in Claude Code
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | fv --mcp-server
+
+# Quick file selection
+selected=$(fv --select-mode --multi)
+```
+
 ## [1.23.0] - 2026-02-03
 
 ### Added
