@@ -115,9 +115,39 @@ brew install chafa  # または apt install libchafa-dev
 cargo install fileview --features chafa
 ```
 
+## Lua プラグインシステム
+
+Lua スクリプトで FileView を拡張できます:
+
+```lua
+-- ~/.config/fileview/plugins/init.lua
+
+-- 起動時通知
+fv.notify("プラグイン読み込み完了!")
+
+-- イベントに反応
+fv.on("file_selected", function(path)
+    if path and path:match("%.secret$") then
+        fv.notify("警告: 秘密ファイル!")
+    end
+end)
+
+-- カスタムコマンド
+fv.register_command("copy-path", function()
+    local file = fv.current_file()
+    if file then
+        fv.set_clipboard(file)
+        fv.notify("コピー: " .. file)
+    end
+end)
+```
+
+**[プラグイン API リファレンス](docs/PLUGINS.md)**
+
 ## ドキュメント
 
 - [キーバインド](docs/KEYBINDINGS_ja.md) - 完全なキーバインド一覧
+- [プラグイン](docs/PLUGINS.md) - Lua プラグインシステム
 - [競合比較](docs/COMPARISON.md) - yazi, lf, ranger, nnn との比較
 - [ベンチマーク](docs/BENCHMARKS.md) - パフォーマンスデータ
 - [セキュリティ](docs/SECURITY.md) - セキュリティモデル
