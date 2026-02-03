@@ -14,7 +14,8 @@
 | **Docs/Community** | 4 | 9 | 7 | 8 | 10 |
 | **Customizability** | 6 | 10 | 9 | 7 | 9 |
 | **Stability/Maturity** | 6 | 7 | 9 | 10 | 10 |
-| **Total** | **72** | **85** | **73** | **82** | **70** |
+| **AI Integration** | 10 | 0 | 0 | 0 | 0 |
+| **Total** | **82** | **85** | **73** | **82** | **70** |
 
 ## At a Glance
 
@@ -45,6 +46,9 @@ Lightweight ◄─────────────────────�
 | Mouse support | **Yes** | Yes | No | Yes | No |
 | Vim keybindings | **Yes** | Yes | Yes | Yes | Custom |
 | Adaptive UI | **Yes** | No | No | No | No |
+| MCP Server | **Yes** | No | No | No | No |
+| Claude Code format | **Yes** | No | No | No | No |
+| Tree output | **Yes** | No | No | No | No |
 
 ## Strengths and Weaknesses
 
@@ -56,6 +60,7 @@ Lightweight ◄─────────────────────�
 - Compact 3.4MB binary (including Lua support)
 - Fast startup (2.3ms)
 - Adaptive status bar for narrow terminals
+- **AI-first design**: MCP server, Claude Code integration, tree output for context
 
 **Weaknesses:**
 - Small community (single developer)
@@ -119,6 +124,7 @@ Lightweight ◄─────────────────────�
 | Use Case | Recommended |
 |----------|-------------|
 | No setup, just works | **fileview** |
+| AI pair programming (Claude Code) | **fileview** |
 | Maximum features & customization | **yazi** |
 | Extreme lightweight | **nnn** |
 | Shell script extensibility | **lf** |
@@ -145,19 +151,42 @@ Lightweight ◄─────────────────────�
 
 FileView automatically detects your terminal and uses the best available protocol.
 
+## AI Integration Comparison
+
+| Feature | fileview | yazi | lf | ranger | nnn |
+|---------|:--------:|:----:|:--:|:------:|:---:|
+| MCP Server | **Yes** | No | No | No | No |
+| Tree output (`--tree`) | **Yes** | No | No | No | No |
+| Claude format copy | **Yes** | No | No | No | No |
+| Interactive select mode | **Yes** | No | No | No | No |
+| Content with paths | **Yes** | No | No | No | No |
+
+FileView is designed for AI pair programming workflows where:
+- AI assistants need codebase context (tree structure)
+- Users select files for AI analysis
+- Claude Code directly browses via MCP
+
 ## Honest Assessment
 
 FileView positions itself as a "balanced" option, but is squeezed between:
 - **yazi**: Superior in features, async I/O, and ecosystem
 - **nnn**: Superior in lightweight and stability
 
-The main differentiator is **zero configuration**, but yazi also works reasonably well without configuration, limiting this advantage.
+**Unique differentiator: AI Integration**
+
+FileView is the only terminal file manager with built-in AI tooling support:
+- **MCP Server**: Claude Code can directly browse and read files
+- **Claude-friendly output**: `Ctrl+Y` copies with syntax hints
+- **Tree output**: `--tree` for AI context without interaction
+- **Select mode**: `--select-mode` for AI-driven file selection
+
+This makes FileView the **de facto choice for AI pair programming workflows**.
 
 FileView is best suited for users who:
-1. Want something that works immediately without reading documentation
-2. Use narrow terminals (Claude Code, tmux splits)
-3. Value simplicity over maximum features
-4. Don't need extensive plugin customization
+1. Use AI coding assistants (Claude Code, Cursor, etc.)
+2. Want something that works immediately without reading documentation
+3. Use narrow terminals (Claude Code, tmux splits)
+4. Value simplicity over maximum features
 
 ## Migration from Other Tools
 
