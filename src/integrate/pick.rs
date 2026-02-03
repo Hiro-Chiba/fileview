@@ -146,10 +146,7 @@ pub fn output_paths_claude_format(paths: &[PathBuf]) -> io::Result<()> {
         writeln!(handle, "### File: {}", path.display())?;
 
         // Detect file extension for syntax highlighting
-        let ext = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
         writeln!(handle, "```{}", ext)?;
 

@@ -83,7 +83,11 @@ pub fn get_tree(root: &Path, path: Option<&str>, depth: Option<usize>) -> ToolCa
 }
 
 /// Write tree to output
-fn write_tree<W: std::io::Write>(out: &mut W, path: &Path, depth: Option<usize>) -> std::io::Result<()> {
+fn write_tree<W: std::io::Write>(
+    out: &mut W,
+    path: &Path,
+    depth: Option<usize>,
+) -> std::io::Result<()> {
     writeln!(out, "{}", path.display())?;
     crate::integrate::tree::print_tree_recursive_pub(out, path, "", depth, 0, false)
 }

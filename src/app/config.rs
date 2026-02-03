@@ -107,7 +107,10 @@ impl Config {
                 "--depth" => {
                     if let Some(depth_str) = args.next() {
                         tree_depth = Some(depth_str.parse().map_err(|_| {
-                            anyhow::anyhow!("--depth requires a positive integer, got '{}'", depth_str)
+                            anyhow::anyhow!(
+                                "--depth requires a positive integer, got '{}'",
+                                depth_str
+                            )
                         })?);
                     } else {
                         anyhow::bail!("--depth requires a value");
