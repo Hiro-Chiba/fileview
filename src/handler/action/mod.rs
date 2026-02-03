@@ -23,7 +23,7 @@ pub use filter::matches_filter;
 use std::path::{Path, PathBuf};
 
 use crate::app::CommandsConfig;
-use crate::core::AppState;
+use crate::core::{AppState, ViewMode};
 use crate::handler::key::KeyAction;
 use crate::integrate::{Callback, OutputFormat};
 use crate::render::{
@@ -268,6 +268,31 @@ pub fn handle_action(
 
         // Tab operations (handled in event loop)
         KeyAction::NewTab | KeyAction::CloseTab | KeyAction::NextTab | KeyAction::PrevTab => {
+            Ok(ActionResult::Continue)
+        }
+
+        // Shell integration - open subshell
+        KeyAction::OpenSubshell => {
+            command::open_subshell(state, focused_path.as_ref());
+            Ok(ActionResult::Continue)
+        }
+
+        // Visual selection mode
+        KeyAction::StartVisualSelect => {
+            state.mode = ViewMode::VisualSelect {
+                anchor: state.focus_index,
+            };
+            // Select current item
+            if let Some(entry) = entries.get(state.focus_index) {
+                state.selected_paths.insert(entry.path.clone());
+            }
+            state.set_message("Visual select mode (V to exit, j/k to extend)");
+            Ok(ActionResult::Continue)
+        }
+
+        // Batch selection operations
+        KeyAction::SelectAll | KeyAction::InvertSelection => {
+            selection::handle_with_entries(action, state, entries);
             Ok(ActionResult::Continue)
         }
 

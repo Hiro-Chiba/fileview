@@ -7,6 +7,7 @@ use super::TreeEntry;
 use crate::core::SortMode;
 
 /// Manages file tree navigation
+#[derive(Clone)]
 pub struct TreeNavigator {
     /// Root entry
     root: TreeEntry,

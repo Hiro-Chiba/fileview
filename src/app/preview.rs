@@ -5,13 +5,14 @@ use std::path::PathBuf;
 
 use image::GenericImageView;
 
+use crate::app::video::{extract_thumbnail, find_ffprobe, get_metadata, is_video_file};
 use crate::app::ImageLoader;
 use crate::core::AppState;
 use crate::git::{self, FileStatus};
 use crate::render::{
     find_pdftoppm, is_archive_file, is_binary_file, is_image_file, is_pdf_file, is_tar_gz_file,
     is_text_file, ArchivePreview, CustomPreview, DiffPreview, DirectoryInfo, HexPreview,
-    ImagePreview, PdfPreview, Picker, TextPreview,
+    ImagePreview, PdfPreview, Picker, TextPreview, VideoPreview,
 };
 
 /// Preview state container
@@ -25,11 +26,14 @@ pub struct PreviewState {
     pub pdf: Option<PdfPreview>,
     pub diff: Option<DiffPreview>,
     pub custom: Option<CustomPreview>,
+    pub video: Option<VideoPreview>,
     pub last_path: Option<PathBuf>,
     /// Background image loader
     image_loader: ImageLoader,
     /// Path currently being loaded asynchronously
     pub loading_image_path: Option<PathBuf>,
+    /// Video path currently loading thumbnail
+    pub loading_video_thumbnail: Option<PathBuf>,
 }
 
 impl PreviewState {
@@ -47,6 +51,7 @@ impl PreviewState {
         self.pdf = None;
         self.diff = None;
         self.custom = None;
+        self.video = None;
     }
 
     /// Update preview for the given path if it has changed
@@ -185,7 +190,50 @@ impl PreviewState {
                 self.pdf = None;
                 self.diff = None;
                 self.custom = None;
+                self.video = None;
                 self.loading_image_path = Some(path.to_path_buf());
+            }
+        } else if is_video_file(path) {
+            // Video preview - requires ffprobe for metadata
+            if find_ffprobe().is_some() {
+                match get_metadata(path) {
+                    Ok(metadata) => {
+                        let mut video_preview = VideoPreview::new(path, metadata);
+
+                        // Try to extract thumbnail
+                        match extract_thumbnail(path) {
+                            Ok(thumb_path) => {
+                                // Request thumbnail loading
+                                if self.image_loader.request(thumb_path.clone()) {
+                                    self.loading_video_thumbnail = Some(path.to_path_buf());
+                                }
+                            }
+                            Err(e) => {
+                                video_preview.thumbnail_error =
+                                    Some(format!("Failed to extract: {}", e));
+                            }
+                        }
+
+                        self.video = Some(video_preview);
+                        self.text = None;
+                        self.image = None;
+                        self.dir_info = None;
+                        self.hex = None;
+                        self.archive = None;
+                        self.pdf = None;
+                        self.diff = None;
+                        self.custom = None;
+                    }
+                    Err(e) => {
+                        state.set_message(format!("Failed: video preview - {}", e));
+                        // Fall back to hex preview
+                        self.load_hex_fallback(path, state);
+                    }
+                }
+            } else {
+                // ffprobe not installed - show message and fall back to hex preview
+                state.set_message("Video preview requires ffprobe (ffmpeg)");
+                self.load_hex_fallback(path, state);
             }
         } else if is_tar_gz_file(path) {
             // Handle tar.gz files separately (before is_archive_file check)
@@ -305,6 +353,7 @@ impl PreviewState {
             || self.pdf.is_some()
             || self.diff.is_some()
             || self.custom.is_some()
+            || self.video.is_some()
     }
 
     /// Poll for completed image load results
@@ -319,7 +368,7 @@ impl PreviewState {
         state: &mut AppState,
     ) -> bool {
         if let Some(result) = self.image_loader.try_recv() {
-            // Only process if this is the image we're still waiting for
+            // Check if this is for regular image preview
             if self.loading_image_path.as_ref() == Some(&result.path) {
                 self.loading_image_path = None;
 
@@ -341,12 +390,38 @@ impl PreviewState {
                     }
                 }
             }
+            // Check if this is for video thumbnail
+            else if self.loading_video_thumbnail.is_some() {
+                // The result path is the thumbnail path, not the video path
+                // But we need to attach it to the current video preview
+                if let Some(ref mut video) = self.video {
+                    match result.result {
+                        Ok(dyn_img) => {
+                            if let Some(ref mut picker) = image_picker {
+                                let (width, height) = dyn_img.dimensions();
+                                let protocol = picker.new_resize_protocol(dyn_img);
+                                video.thumbnail = Some(ImagePreview {
+                                    width,
+                                    height,
+                                    protocol,
+                                });
+                                self.loading_video_thumbnail = None;
+                                return true;
+                            }
+                        }
+                        Err(e) => {
+                            video.thumbnail_error = Some(format!("Load failed: {}", e));
+                            self.loading_video_thumbnail = None;
+                        }
+                    }
+                }
+            }
         }
         false
     }
 
     /// Check if an image is currently being loaded
     pub fn is_loading_image(&self) -> bool {
-        self.loading_image_path.is_some()
+        self.loading_image_path.is_some() || self.loading_video_thumbnail.is_some()
     }
 }

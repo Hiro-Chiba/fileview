@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-02-03
+
+### Added
+
+- **Video preview**: Preview video files with thumbnails and metadata
+  - Supported formats: mp4, mkv, webm, avi, mov, wmv, flv, m4v
+  - Displays thumbnail extracted via ffmpeg (1 second position)
+  - Shows metadata: duration, resolution, codec, audio codec, bitrate, frame rate
+  - Graceful fallback when ffmpeg/ffprobe is not installed
+- **Tab support**: Full tab integration for multiple directories
+  - `Ctrl+T`: Open new tab in current directory
+  - `Ctrl+W`: Close current tab
+  - `Alt+t`: Switch to next tab
+  - `Alt+T`: Switch to previous tab
+  - Tab bar displayed when multiple tabs are open
+  - Each tab maintains independent state (navigation, selection, preview)
+- **Event hooks system**: Execute scripts on file operations
+  - Configure in `~/.config/fileview/config.toml` under `[hooks]` section
+  - Available hooks: `on_create`, `on_delete`, `on_rename`, `on_cd`, `on_start`, `on_exit`
+  - Environment variables: `$FILEVIEW_PATH`, `$FILEVIEW_OLD_PATH`, `$FILEVIEW_DIR`, `$FILEVIEW_SELECTED`
+  - Supports tilde expansion in script paths
+- **Shell integration**: Enhanced shell integration options
+  - `--choosedir [FILE]`: Write directory path to file on exit (for cd integration)
+  - `--selection-path FILE`: Write selected file paths to file on exit
+  - `Alt+S`: Open subshell in current directory (returns to fileview on exit)
+  - Added shell function example in help text for automatic cd on exit
+- **Batch operations**: Enhanced multi-file selection
+  - `V`: Enter visual select mode (vim-like range selection)
+  - `*`: Select all / deselect all (toggle)
+  - `Alt+i`: Invert selection
+  - Visual select mode: j/k extends selection, y/d/D operates on selection
+
+### New Files
+
+- `src/app/video.rs`: Video metadata extraction and thumbnail generation (~200 lines)
+- `src/handler/hooks.rs`: Event hooks configuration and execution (~150 lines)
+
+### Changed
+
+- `src/handler/action/navigation.rs`: Navigation now updates selection range in visual select mode
+- `src/handler/action/mod.rs`: Added handlers for visual select, select all, invert selection
+- `src/handler/action/selection.rs`: Added `handle_with_entries()` and `select_range()` functions
+- `src/handler/key.rs`: Added `handle_visual_select_mode()` function
+- `src/core/mode.rs`: Added `ViewMode::VisualSelect` variant
+- `src/app/event_loop.rs`: Integrated TabManager for full tab support
+- `src/app/render.rs`: Added tab bar rendering
+- `src/app/config.rs`: Added `--choosedir` and `--selection-path` CLI options
+- `src/tree/navigator.rs`: Added `Clone` derive for tab state copying
+
+### Tests
+
+- Added 6 new unit tests for video module (metadata parsing, file detection)
+- Added 6 new unit tests for hooks module (config, environment, script expansion)
+- Total test count: 434 tests (431 passing, 3 ignored)
+
 ## [1.17.0] - 2026-01-31
 
 ### Added

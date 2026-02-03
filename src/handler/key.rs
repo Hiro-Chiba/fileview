@@ -148,12 +148,21 @@ pub enum KeyAction {
     PrevTab,
     /// Run a custom command
     RunCommand { name: String },
+    /// Open subshell in current directory
+    OpenSubshell,
+    /// Start visual selection mode
+    StartVisualSelect,
+    /// Select all items
+    SelectAll,
+    /// Invert selection
+    InvertSelection,
 }
 
 /// Handle key event and return the resulting action
 pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
     match &state.mode {
         ViewMode::Browse => handle_browse_mode(state, key),
+        ViewMode::VisualSelect { .. } => handle_visual_select_mode(state, key),
         ViewMode::Search { query } => handle_search_mode(key, query),
         ViewMode::Input { buffer, .. } => handle_input_mode(key, buffer),
         ViewMode::Confirm { .. } => handle_confirm_mode(key),
@@ -186,6 +195,10 @@ pub fn handle_key_event_with_registry(
             } else {
                 handle_browse_mode(state, key)
             }
+        }
+        ViewMode::VisualSelect { .. } => {
+            // Visual select mode uses browse bindings but with different actions
+            handle_visual_select_mode(state, key)
         }
         ViewMode::Search { query } => {
             if let Some(mut action) = registry.lookup_search(&key) {
@@ -499,6 +512,13 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Help
         KeyCode::Char('?') => KeyAction::ShowHelp,
 
+        // Visual selection and batch operations
+        KeyCode::Char('V') => KeyAction::StartVisualSelect,
+        KeyCode::Char('*') => KeyAction::SelectAll,
+        KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::ALT) => {
+            KeyAction::InvertSelection
+        }
+
         // PDF navigation
         KeyCode::Char('[') => KeyAction::PdfPrevPage,
         KeyCode::Char(']') => KeyAction::PdfNextPage,
@@ -515,6 +535,9 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
                 KeyAction::StartFilter
             }
         }
+
+        // Shell integration - Alt+S for subshell (before Git operations)
+        KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::OpenSubshell,
 
         // Git operations
         KeyCode::Char('s') => KeyAction::GitStage,
@@ -612,6 +635,37 @@ fn handle_help_mode(key: KeyEvent) -> KeyAction {
         KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') | KeyCode::Char('?') => {
             KeyAction::Cancel
         }
+        _ => KeyAction::None,
+    }
+}
+
+/// Handle keys in visual select mode
+fn handle_visual_select_mode(state: &AppState, key: KeyEvent) -> KeyAction {
+    match key.code {
+        // Cancel visual mode
+        KeyCode::Esc | KeyCode::Char('V') => KeyAction::Cancel,
+
+        // Navigation (same as browse mode, but extends selection)
+        KeyCode::Up | KeyCode::Char('k') => KeyAction::MoveUp,
+        KeyCode::Down | KeyCode::Char('j') => KeyAction::MoveDown,
+        KeyCode::Char('g') => KeyAction::MoveToTop,
+        KeyCode::Char('G') => KeyAction::MoveToBottom,
+
+        // Actions on selected items
+        KeyCode::Char('y') => KeyAction::Copy,
+        KeyCode::Char('d') => KeyAction::Cut,
+        KeyCode::Char('D') | KeyCode::Delete => KeyAction::ConfirmDelete,
+
+        // Confirm selection and exit visual mode
+        KeyCode::Enter => {
+            // Just confirm (exit visual mode is handled in action handler)
+            if state.pick_mode {
+                KeyAction::PickSelect
+            } else {
+                KeyAction::Cancel
+            }
+        }
+
         _ => KeyAction::None,
     }
 }
