@@ -56,15 +56,23 @@ pub fn format_size(bytes: u64) -> String {
 }
 
 /// Convert Unix timestamp to date string (YYYY-MM-DD)
+///
+/// Note: Only handles timestamps from 1970 onwards. Pre-1970 timestamps
+/// return "1970-01-01" as a fallback.
 pub fn unix_timestamp_to_date(secs: i64) -> String {
+    // Handle negative timestamps (pre-1970)
+    if secs < 0 {
+        return "1970-01-01".to_string();
+    }
+
     const SECONDS_PER_DAY: i64 = 86400;
     const DAYS_IN_MONTH: [i64; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
     let mut days = secs / SECONDS_PER_DAY;
     let mut year = 1970i64;
 
-    // Find year
-    loop {
+    // Find year (with safety limit to prevent infinite loop)
+    for _ in 0..10000 {
         let days_in_year = if is_leap_year(year) { 366 } else { 365 };
         if days < days_in_year {
             break;
@@ -75,7 +83,7 @@ pub fn unix_timestamp_to_date(secs: i64) -> String {
 
     // Find month and day
     let leap = is_leap_year(year);
-    let mut month = 1;
+    let mut month = 1u8;
     for (i, &d) in DAYS_IN_MONTH.iter().enumerate() {
         let days_in_month = if i == 1 && leap { 29 } else { d };
         if days < days_in_month {
@@ -84,7 +92,9 @@ pub fn unix_timestamp_to_date(secs: i64) -> String {
         days -= days_in_month;
         month += 1;
     }
-    let day = days + 1;
+    // Clamp month to valid range (1-12)
+    let month = month.min(12);
+    let day = (days + 1).max(1);
 
     format!("{:04}-{:02}-{:02}", year, month, day)
 }

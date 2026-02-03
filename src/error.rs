@@ -119,18 +119,6 @@ impl FileviewError {
     }
 }
 
-/// Extension trait for converting anyhow errors to FileviewError
-pub trait AnyhowExt<T> {
-    /// Convert to FileviewError with a context message
-    fn map_fileview_err(self, f: impl FnOnce(anyhow::Error) -> FileviewError) -> Result<T>;
-}
-
-impl<T> AnyhowExt<T> for anyhow::Result<T> {
-    fn map_fileview_err(self, f: impl FnOnce(anyhow::Error) -> FileviewError) -> Result<T> {
-        self.map_err(f)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
