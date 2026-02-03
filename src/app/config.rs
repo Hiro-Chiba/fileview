@@ -46,6 +46,18 @@ pub struct Config {
     pub commands: CommandsConfig,
     /// Custom preview configuration
     pub preview_custom: PreviewConfig,
+    /// Tree output mode (non-interactive, output to stdout)
+    pub tree_mode: bool,
+    /// Maximum depth for tree output (None = unlimited)
+    pub tree_depth: Option<usize>,
+    /// Include file content with pick output
+    pub with_content: bool,
+    /// Select mode (simpler interactive selection)
+    pub select_mode: bool,
+    /// Allow multiple selection in select mode
+    pub multi_select: bool,
+    /// MCP server mode
+    pub mcp_server: bool,
 }
 
 impl Config {
@@ -64,6 +76,12 @@ impl Config {
         let mut selection_path_file: Option<PathBuf> = None;
         let mut stdin_mode = false;
         let mut show_hidden: Option<bool> = None;
+        let mut tree_mode = false;
+        let mut tree_depth: Option<usize> = None;
+        let mut with_content = false;
+        let mut select_mode = false;
+        let mut multi_select = false;
+        let mut mcp_server = false;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -85,6 +103,20 @@ impl Config {
                     }
                 }
                 "--stdin" => stdin_mode = true,
+                "--tree" | "-t" => tree_mode = true,
+                "--depth" => {
+                    if let Some(depth_str) = args.next() {
+                        tree_depth = Some(depth_str.parse().map_err(|_| {
+                            anyhow::anyhow!("--depth requires a positive integer, got '{}'", depth_str)
+                        })?);
+                    } else {
+                        anyhow::bail!("--depth requires a value");
+                    }
+                }
+                "--with-content" => with_content = true,
+                "--select-mode" => select_mode = true,
+                "--multi" => multi_select = true,
+                "--mcp-server" => mcp_server = true,
                 "--icons" | "-i" => icons_enabled = Some(true),
                 "--no-icons" => icons_enabled = Some(false),
                 "--hidden" | "-a" => show_hidden = Some(true),
@@ -175,6 +207,12 @@ impl Config {
             date_format: config_file.ui.date_format,
             commands: config_file.commands,
             preview_custom: config_file.preview,
+            tree_mode,
+            tree_depth,
+            with_content,
+            select_mode,
+            multi_select,
+            mcp_server,
         })
     }
 }
@@ -277,6 +315,14 @@ OPTIONS:
     --no-hidden         Hide hidden files (default)
     -h, --help          Show this help message
     -V, --version       Show version
+
+CLAUDE CODE INTEGRATION:
+    -t, --tree          Output directory tree to stdout (non-interactive)
+    --depth N           Limit tree depth to N levels
+    --with-content      Include file contents in pick output (Claude format)
+    --select-mode       Simple selection mode: Enter to select, output to stdout
+    --multi             Allow multiple selection in select mode
+    --mcp-server        Run as MCP server (JSON-RPC over stdin/stdout)
 
 CONFIG FILE:
     ~/.config/fileview/config.toml    Main configuration file

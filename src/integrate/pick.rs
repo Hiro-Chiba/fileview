@@ -3,6 +3,7 @@
 //! Allows external tools to use fileview as a file picker.
 //! Selected path(s) are output to stdout when user confirms selection.
 
+use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -77,6 +78,96 @@ pub fn output_paths(paths: &[PathBuf], format: OutputFormat) -> io::Result<()> {
             let json_paths: Vec<String> = paths.iter().map(|p| p.display().to_string()).collect();
             writeln!(handle, "{}", serde_json_mini(&json_paths))?;
         }
+    }
+
+    handle.flush()?;
+    Ok(())
+}
+
+/// Output selected paths with their file contents
+///
+/// Format:
+/// ```text
+/// --- path/to/file.rs ---
+/// <file content>
+///
+/// --- path/to/other.rs ---
+/// <file content>
+/// ```
+pub fn output_paths_with_content(paths: &[PathBuf]) -> io::Result<()> {
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    for (i, path) in paths.iter().enumerate() {
+        if i > 0 {
+            writeln!(handle)?;
+        }
+
+        writeln!(handle, "--- {} ---", path.display())?;
+
+        // Read and output file content
+        match fs::read_to_string(path) {
+            Ok(content) => {
+                write!(handle, "{}", content)?;
+                // Ensure trailing newline
+                if !content.ends_with('\n') {
+                    writeln!(handle)?;
+                }
+            }
+            Err(e) => {
+                // For binary files or read errors, show error message
+                writeln!(handle, "[Error reading file: {}]", e)?;
+            }
+        }
+    }
+
+    handle.flush()?;
+    Ok(())
+}
+
+/// Output paths with content in Claude-friendly markdown format
+///
+/// Format:
+/// ```markdown
+/// ### File: path/to/file.rs
+/// ```rs
+/// <file content>
+/// ```
+/// ```
+pub fn output_paths_claude_format(paths: &[PathBuf]) -> io::Result<()> {
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    for (i, path) in paths.iter().enumerate() {
+        if i > 0 {
+            writeln!(handle)?;
+        }
+
+        writeln!(handle, "### File: {}", path.display())?;
+
+        // Detect file extension for syntax highlighting
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("");
+
+        writeln!(handle, "```{}", ext)?;
+
+        // Read and output file content
+        match fs::read_to_string(path) {
+            Ok(content) => {
+                write!(handle, "{}", content)?;
+                // Ensure trailing newline before closing fence
+                if !content.ends_with('\n') {
+                    writeln!(handle)?;
+                }
+            }
+            Err(e) => {
+                writeln!(handle, "[Error reading file: {}]", e)?;
+            }
+        }
+
+        writeln!(handle, "```")?;
     }
 
     handle.flush()?;

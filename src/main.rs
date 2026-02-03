@@ -12,7 +12,7 @@ use crossterm::{
 use ratatui::prelude::*;
 
 use fileview::app::{run_app, Config};
-use fileview::integrate::exit_code;
+use fileview::integrate::{exit_code, output_tree};
 use fileview::render::create_image_picker;
 
 fn main() -> ExitCode {
@@ -25,8 +25,39 @@ fn main() -> ExitCode {
         }
     };
 
+    // Handle non-interactive modes first
+    if config.tree_mode {
+        return run_tree_mode(&config);
+    }
+
+    if config.mcp_server {
+        return run_mcp_server(&config);
+    }
+
     match run_with_config(config) {
         Ok(code) => ExitCode::from(code as u8),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+/// Run in tree output mode (non-interactive)
+fn run_tree_mode(config: &Config) -> ExitCode {
+    match output_tree(&config.root, config.tree_depth, config.show_hidden) {
+        Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+/// Run as MCP server (JSON-RPC over stdin/stdout)
+fn run_mcp_server(config: &Config) -> ExitCode {
+    match fileview::mcp::run_server(&config.root) {
+        Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
         Err(e) => {
             eprintln!("Error: {}", e);
             ExitCode::from(exit_code::ERROR as u8)

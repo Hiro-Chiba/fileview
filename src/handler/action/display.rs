@@ -2,6 +2,7 @@
 //!
 //! Handles TogglePreview, OpenPreview, Refresh, ToggleHidden, ShowHelp, etc.
 
+use std::fs;
 use std::path::PathBuf;
 
 use crate::core::{AppState, ViewMode};
@@ -94,6 +95,28 @@ pub fn handle(
                 match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(name)) {
                     Ok(_) => state.set_message("Copied filename"),
                     Err(_) => state.set_message("Failed: copy filename"),
+                }
+            }
+        }
+        KeyAction::CopyContent => {
+            let paths = get_copy_target_paths(state, focused_path);
+            if paths.is_empty() {
+                state.set_message("No file selected");
+            } else {
+                match copy_file_contents_to_clipboard(&paths) {
+                    Ok(count) => state.set_message(format!("Copied {} file(s) content", count)),
+                    Err(e) => state.set_message(format!("Failed: {}", e)),
+                }
+            }
+        }
+        KeyAction::CopyForClaude => {
+            let paths = get_copy_target_paths(state, focused_path);
+            if paths.is_empty() {
+                state.set_message("No file selected");
+            } else {
+                match copy_file_contents_claude_format(&paths) {
+                    Ok(count) => state.set_message(format!("Copied {} file(s) (Claude format)", count)),
+                    Err(e) => state.set_message(format!("Failed: {}", e)),
                 }
             }
         }
@@ -323,6 +346,90 @@ pub fn handle_pdf_navigation(
     }
 }
 
+/// Get paths to copy (selected paths or focused path)
+fn get_copy_target_paths(state: &AppState, focused_path: &Option<PathBuf>) -> Vec<PathBuf> {
+    if state.selected_paths.is_empty() {
+        focused_path
+            .as_ref()
+            .filter(|p| p.is_file())
+            .cloned()
+            .into_iter()
+            .collect()
+    } else {
+        state
+            .selected_paths
+            .iter()
+            .filter(|p| p.is_file())
+            .cloned()
+            .collect()
+    }
+}
+
+/// Copy file contents to clipboard (plain text)
+fn copy_file_contents_to_clipboard(paths: &[PathBuf]) -> anyhow::Result<usize> {
+    let mut contents = Vec::new();
+    let mut count = 0;
+
+    for (i, path) in paths.iter().enumerate() {
+        if let Ok(content) = fs::read_to_string(path) {
+            if i > 0 {
+                contents.push(String::new());
+            }
+            contents.push(format!("--- {} ---", path.display()));
+            contents.push(content);
+            count += 1;
+        }
+    }
+
+    if count == 0 {
+        anyhow::bail!("No readable files");
+    }
+
+    let text = contents.join("\n");
+    arboard::Clipboard::new()
+        .and_then(|mut cb| cb.set_text(text))
+        .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;
+
+    Ok(count)
+}
+
+/// Copy file contents to clipboard in Claude-friendly markdown format
+fn copy_file_contents_claude_format(paths: &[PathBuf]) -> anyhow::Result<usize> {
+    let mut contents = Vec::new();
+    let mut count = 0;
+
+    for (i, path) in paths.iter().enumerate() {
+        if let Ok(content) = fs::read_to_string(path) {
+            if i > 0 {
+                contents.push(String::new());
+            }
+
+            // Detect file extension for syntax highlighting
+            let ext = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
+
+            contents.push(format!("### File: {}", path.display()));
+            contents.push(format!("```{}", ext));
+            contents.push(content.trim_end().to_string());
+            contents.push("```".to_string());
+            count += 1;
+        }
+    }
+
+    if count == 0 {
+        anyhow::bail!("No readable files");
+    }
+
+    let text = contents.join("\n");
+    arboard::Clipboard::new()
+        .and_then(|mut cb| cb.set_text(text))
+        .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;
+
+    Ok(count)
+}
+
 /// Handle pick mode selection
 pub fn handle_pick_select(
     state: &AppState,
@@ -334,6 +441,41 @@ pub fn handle_pick_select(
             focused_path.clone().into_iter().collect()
         } else {
             state.selected_paths.iter().cloned().collect()
+        };
+
+        if !paths.is_empty() {
+            // Execute callback if configured
+            if let Some(ref callback) = context.callback {
+                for path in &paths {
+                    let _ = callback.execute(path);
+                }
+            }
+
+            // Output paths
+            let result = PickResult::Selected(paths);
+            return Ok(ActionResult::Quit(result.output(context.output_format)?));
+        }
+    }
+    Ok(ActionResult::Continue)
+}
+
+/// Handle select mode confirmation
+///
+/// In select mode:
+/// - Single select: Enter outputs focused path immediately
+/// - Multi select: Enter outputs all selected paths (or focused if none selected)
+pub fn handle_select_confirm(
+    state: &AppState,
+    focused_path: &Option<PathBuf>,
+    context: &ActionContext,
+) -> anyhow::Result<ActionResult> {
+    if state.select_mode {
+        let paths: Vec<PathBuf> = if state.multi_select && !state.selected_paths.is_empty() {
+            // Multi-select: output all selected paths
+            state.selected_paths.iter().cloned().collect()
+        } else {
+            // Single select or no selections: output focused path
+            focused_path.clone().into_iter().collect()
         };
 
         if !paths.is_empty() {
