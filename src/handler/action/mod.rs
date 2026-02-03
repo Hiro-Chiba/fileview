@@ -312,6 +312,28 @@ pub fn handle_action(
             Ok(ActionResult::Continue)
         }
 
+        // Extended smart selection
+        KeyAction::SelectByExtension { index } => {
+            selection::select_by_extension(state, entries, index);
+            Ok(ActionResult::Continue)
+        }
+
+        KeyAction::SelectRecentCommit => {
+            selection::select_recent_commit(state, entries);
+            Ok(ActionResult::Continue)
+        }
+
+        KeyAction::SelectGitStaged => {
+            selection::select_git_staged(state, entries);
+            Ok(ActionResult::Continue)
+        }
+
+        // Toggle peek mode
+        KeyAction::TogglePeekMode | KeyAction::CopyCompact => {
+            display::handle(action, state, navigator, focused_path)?;
+            Ok(ActionResult::Continue)
+        }
+
         // Custom command execution
         KeyAction::RunCommand { name } => {
             let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();

@@ -11,8 +11,11 @@ use ratatui::{
     Frame,
 };
 
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
 use super::theme::theme;
-use crate::core::{AppState, InputPurpose, PendingAction, SortMode, ViewMode};
+use crate::core::{AppState, InputPurpose, PendingAction, PreviewDisplayMode, SortMode, ViewMode};
 
 /// Render the status bar with adaptive layout based on screen width
 pub fn render_status_bar(
@@ -21,10 +24,19 @@ pub fn render_status_bar(
     focused_path: Option<&PathBuf>,
     area: Rect,
 ) {
+    // Check if peek mode is enabled - render peek preview instead of normal status
+    if state.preview_display_mode == PreviewDisplayMode::Peek {
+        render_peek_status(frame, state, focused_path, area);
+        return;
+    }
+
     let width = area.width;
 
     // Adaptive layout based on screen width
-    if width < 60 {
+    if width < 40 {
+        // Ultra-narrow: minimal single-line info (for 30-40 char terminals)
+        render_ultra_compact_status(frame, state, area);
+    } else if width < 60 {
         // Very narrow: single panel with minimal info
         render_compact_status(frame, state, focused_path, area);
     } else if width < 100 {
@@ -34,6 +46,203 @@ pub fn render_status_bar(
         // Wide: full display (original implementation)
         render_full_status(frame, state, focused_path, area);
     }
+}
+
+/// Render peek mode status bar (shows file preview in status area)
+fn render_peek_status(
+    frame: &mut Frame,
+    state: &AppState,
+    focused_path: Option<&PathBuf>,
+    area: Rect,
+) {
+    let t = theme();
+
+    // Build header line with minimal info
+    let mut header_spans = Vec::new();
+    header_spans.push(Span::styled(
+        "P",
+        Style::default().fg(t.info).add_modifier(Modifier::BOLD),
+    ));
+
+    // Selection count
+    if !state.selected_paths.is_empty() {
+        header_spans.push(Span::raw(" "));
+        header_spans.push(Span::styled(
+            format!("{}*", state.selected_paths.len()),
+            Style::default().fg(t.mark),
+        ));
+    }
+
+    // Git branch
+    if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
+        header_spans.push(Span::raw(" "));
+        let branch_abbrev = if branch.len() > 8 {
+            format!("\u{e0a0}{}…", &branch[..7])
+        } else {
+            format!("\u{e0a0}{}", branch)
+        };
+        header_spans.push(Span::styled(
+            branch_abbrev,
+            Style::default().fg(t.git_staged),
+        ));
+    }
+
+    // File name
+    if let Some(path) = focused_path {
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            header_spans.push(Span::styled(" │ ", Style::default().fg(t.git_ignored)));
+            let max_name_len = (area.width as usize).saturating_sub(20);
+            let display_name = if name.len() > max_name_len {
+                format!("{}…", &name[..max_name_len.saturating_sub(1)])
+            } else {
+                name.to_string()
+            };
+            header_spans.push(Span::styled(
+                display_name,
+                Style::default().fg(t.border_active),
+            ));
+        }
+    }
+
+    // Read first few lines of the file for peek preview
+    let preview_lines = if let Some(path) = focused_path {
+        read_peek_lines(path, area.height.saturating_sub(2) as usize)
+    } else {
+        vec!["(No file selected)".to_string()]
+    };
+
+    let mut content = vec![Line::from(header_spans)];
+    for line in preview_lines {
+        // Truncate long lines
+        let max_width = area.width.saturating_sub(2) as usize;
+        let display = if line.len() > max_width {
+            format!("{}…", &line[..max_width.saturating_sub(1)])
+        } else {
+            line
+        };
+        content.push(Line::from(Span::styled(
+            display,
+            Style::default().fg(t.git_ignored),
+        )));
+    }
+
+    let widget = Paragraph::new(content).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(t.border_active))
+            .title(" Peek "),
+    );
+    frame.render_widget(widget, area);
+}
+
+/// Read first few lines of a file for peek preview
+fn read_peek_lines(path: &PathBuf, max_lines: usize) -> Vec<String> {
+    if path.is_dir() {
+        return vec!["(directory)".to_string()];
+    }
+
+    let file = match File::open(path) {
+        Ok(f) => f,
+        Err(_) => return vec!["(cannot read)".to_string()],
+    };
+
+    let reader = BufReader::new(file);
+    let mut lines = Vec::new();
+
+    for line in reader.lines().take(max_lines) {
+        match line {
+            Ok(l) => {
+                // Skip empty lines at the start
+                if lines.is_empty() && l.trim().is_empty() {
+                    continue;
+                }
+                // Replace tabs with spaces
+                lines.push(l.replace('\t', "  "));
+            }
+            Err(_) => {
+                if lines.is_empty() {
+                    return vec!["(binary file)".to_string()];
+                }
+                break;
+            }
+        }
+    }
+
+    if lines.is_empty() {
+        vec!["(empty file)".to_string()]
+    } else {
+        lines
+    }
+}
+
+/// Render ultra-compact status bar for extremely narrow screens (< 40 chars)
+/// Shows minimal info: `? 3* ⎇m` (help, selection count, git branch)
+fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) {
+    let t = theme();
+    let mut spans = Vec::new();
+
+    // Help hint (single character)
+    spans.push(Span::styled("?", Style::default().fg(t.info)));
+
+    // Selection count (only if selected)
+    let selected_count = state.selected_paths.len();
+    if selected_count > 0 {
+        spans.push(Span::raw(" "));
+        spans.push(Span::styled(
+            format!("{}*", selected_count),
+            Style::default().fg(t.mark),
+        ));
+    }
+
+    // Git branch (abbreviated, using branch icon)
+    if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
+        spans.push(Span::raw(" "));
+        // Abbreviate long branch names
+        let branch_abbrev = if branch.len() > 6 {
+            format!("\u{e0a0}{}", &branch[..6])
+        } else {
+            format!("\u{e0a0}{}", branch)
+        };
+        spans.push(Span::styled(
+            branch_abbrev,
+            Style::default().fg(t.git_staged),
+        ));
+    }
+
+    // Sort mode indicator (only if not default)
+    if state.sort_mode != SortMode::Name {
+        spans.push(Span::raw(" "));
+        spans.push(Span::styled(
+            state.sort_mode.short_name(),
+            Style::default().fg(t.git_conflict),
+        ));
+    }
+
+    // Filter indicator
+    if state.filter_pattern.is_some() {
+        spans.push(Span::raw(" "));
+        spans.push(Span::styled("\u{f0b0}", Style::default().fg(t.warning)));
+    }
+
+    // Message (truncated if too long) or space
+    if let Some(msg) = &state.message {
+        let available = area
+            .width
+            .saturating_sub(spans.iter().map(|s| s.width()).sum::<usize>() as u16 + 3);
+        if available > 3 {
+            spans.push(Span::raw(" "));
+            let truncated = if msg.len() > available as usize {
+                format!("{}…", &msg[..available as usize - 1])
+            } else {
+                msg.clone()
+            };
+            spans.push(Span::raw(truncated));
+        }
+    }
+
+    let content = Line::from(spans);
+    let widget = Paragraph::new(content).block(Block::default().borders(Borders::ALL));
+    frame.render_widget(widget, area);
 }
 
 /// Render compact status bar for very narrow screens (< 60 chars)
@@ -746,13 +955,31 @@ fn build_narrow_help() -> Vec<Line<'static>> {
         help_section("Navigation"),
         Line::from(vec![help_key(" j "), help_key(" ↓ "), help_desc(" Down")]),
         Line::from(vec![help_key(" k "), help_key(" ↑ "), help_desc(" Up")]),
-        Line::from(vec![help_key(" g "), help_desc(" Top  "), help_key(" G "), help_desc(" Bottom")]),
+        Line::from(vec![
+            help_key(" g "),
+            help_desc(" Top  "),
+            help_key(" G "),
+            help_desc(" Bottom"),
+        ]),
         Line::from(""),
         help_section("Tree"),
         Line::from(vec![help_key(" l "), help_key(" → "), help_desc(" Expand")]),
-        Line::from(vec![help_key(" h "), help_key(" ← "), help_desc(" Collapse")]),
-        Line::from(vec![help_key(" L "), help_desc(" All  "), help_key(" H "), help_desc(" All")]),
-        Line::from(vec![help_key(" Tab "), help_key(" Enter "), help_desc(" Toggle")]),
+        Line::from(vec![
+            help_key(" h "),
+            help_key(" ← "),
+            help_desc(" Collapse"),
+        ]),
+        Line::from(vec![
+            help_key(" L "),
+            help_desc(" All  "),
+            help_key(" H "),
+            help_desc(" All"),
+        ]),
+        Line::from(vec![
+            help_key(" Tab "),
+            help_key(" Enter "),
+            help_desc(" Toggle"),
+        ]),
         Line::from(""),
         help_section("Selection"),
         Line::from(vec![help_key(" Space "), help_desc(" Mark")]),
@@ -760,44 +987,113 @@ fn build_narrow_help() -> Vec<Line<'static>> {
         Line::from(vec![help_key(" ^T "), help_desc(" Test pair")]),
         Line::from(""),
         help_section("File"),
-        Line::from(vec![help_key(" a "), help_desc(" File "), help_key(" A "), help_desc(" Dir")]),
+        Line::from(vec![
+            help_key(" a "),
+            help_desc(" File "),
+            help_key(" A "),
+            help_desc(" Dir"),
+        ]),
         Line::from(vec![help_key(" r "), help_desc(" Rename")]),
-        Line::from(vec![help_key(" y "), help_desc(" Cp "), help_key(" d "), help_desc(" Cut "), help_key(" p "), help_desc(" Paste")]),
+        Line::from(vec![
+            help_key(" y "),
+            help_desc(" Cp "),
+            help_key(" d "),
+            help_desc(" Cut "),
+            help_key(" p "),
+            help_desc(" Paste"),
+        ]),
         Line::from(vec![help_key(" D "), help_desc(" Delete")]),
         Line::from(""),
         help_section("Clipboard"),
-        Line::from(vec![help_key(" c "), help_desc(" Path "), help_key(" C "), help_desc(" Name")]),
+        Line::from(vec![
+            help_key(" c "),
+            help_desc(" Path "),
+            help_key(" C "),
+            help_desc(" Name"),
+        ]),
         Line::from(vec![help_key(" Y "), help_desc(" Content")]),
         Line::from(vec![help_key(" ^Y "), help_desc(" Claude fmt")]),
         Line::from(""),
         help_section("Search"),
         Line::from(vec![help_key(" / "), help_desc(" Search")]),
-        Line::from(vec![help_key(" n "), help_desc(" Next "), help_key(" N "), help_desc(" Prev")]),
+        Line::from(vec![
+            help_key(" n "),
+            help_desc(" Next "),
+            help_key(" N "),
+            help_desc(" Prev"),
+        ]),
         Line::from(vec![help_key(" ^P "), help_desc(" Fuzzy")]),
-        Line::from(vec![help_key(" F "), help_desc(" Filter "), help_key(" S "), help_desc(" Sort")]),
+        Line::from(vec![
+            help_key(" F "),
+            help_desc(" Filter "),
+            help_key(" S "),
+            help_desc(" Sort"),
+        ]),
         Line::from(""),
         help_section("Preview"),
-        Line::from(vec![help_key(" o "), help_desc(" Open "), help_key(" P "), help_desc(" Quick")]),
+        Line::from(vec![
+            help_key(" o "),
+            help_desc(" Open "),
+            help_key(" P "),
+            help_desc(" Quick"),
+        ]),
         Line::from(vec![help_key(" b "), help_key(" f "), help_desc(" Scroll")]),
-        Line::from(vec![help_key(" [ "), help_key(" ] "), help_desc(" PDF page")]),
+        Line::from(vec![
+            help_key(" [ "),
+            help_key(" ] "),
+            help_desc(" PDF page"),
+        ]),
         Line::from(""),
         help_section("Git"),
-        Line::from(vec![help_key(" s "), help_desc(" Stage "), help_key(" u "), help_desc(" Unstage")]),
+        Line::from(vec![
+            help_key(" s "),
+            help_desc(" Stage "),
+            help_key(" u "),
+            help_desc(" Unstage"),
+        ]),
         Line::from(""),
         help_section("Bookmarks"),
         Line::from(vec![help_key(" m "), help_desc("+1-9 Set")]),
         Line::from(vec![help_key(" ' "), help_desc("+1-9 Jump")]),
         Line::from(""),
         help_section("Tabs"),
-        Line::from(vec![help_key(" ^T "), help_desc(" New "), help_key(" ^W "), help_desc(" Close")]),
-        Line::from(vec![help_key(" A-t "), help_desc(" Next "), help_key(" A-T "), help_desc(" Prev")]),
+        Line::from(vec![
+            help_key(" ^T "),
+            help_desc(" New "),
+            help_key(" ^W "),
+            help_desc(" Close"),
+        ]),
+        Line::from(vec![
+            help_key(" A-t "),
+            help_desc(" Next "),
+            help_key(" A-T "),
+            help_desc(" Prev"),
+        ]),
         Line::from(""),
         help_section("Other"),
-        Line::from(vec![help_key(" . "), help_desc(" Hidden "), help_key(" F5 "), help_desc(" Refresh")]),
-        Line::from(vec![help_key(" q "), help_desc(" Quit "), help_key(" Q "), help_desc(" Quit+cd")]),
-        Line::from(vec![help_key(" ? "), help_desc(" Help "), help_key(" Esc "), help_desc(" Cancel")]),
+        Line::from(vec![
+            help_key(" . "),
+            help_desc(" Hidden "),
+            help_key(" F5 "),
+            help_desc(" Refresh"),
+        ]),
+        Line::from(vec![
+            help_key(" q "),
+            help_desc(" Quit "),
+            help_key(" Q "),
+            help_desc(" Quit+cd"),
+        ]),
+        Line::from(vec![
+            help_key(" ? "),
+            help_desc(" Help "),
+            help_key(" Esc "),
+            help_desc(" Cancel"),
+        ]),
         Line::from(""),
-        Line::from(Span::styled("? or Esc to close", Style::default().fg(Color::DarkGray))),
+        Line::from(Span::styled(
+            "? or Esc to close",
+            Style::default().fg(Color::DarkGray),
+        )),
     ]
 }
 
@@ -806,105 +1102,177 @@ fn build_wide_help() -> Vec<Line<'static>> {
     vec![
         help_section("Navigation"),
         Line::from(vec![
-            help_key(" j "), help_desc("/"), help_key(" ↓ "), help_desc(" Down   "),
-            help_key(" k "), help_desc("/"), help_key(" ↑ "), help_desc(" Up   "),
-            help_key(" g "), help_desc(" Top   "), help_key(" G "), help_desc(" Bottom"),
+            help_key(" j "),
+            help_desc("/"),
+            help_key(" ↓ "),
+            help_desc(" Down   "),
+            help_key(" k "),
+            help_desc("/"),
+            help_key(" ↑ "),
+            help_desc(" Up   "),
+            help_key(" g "),
+            help_desc(" Top   "),
+            help_key(" G "),
+            help_desc(" Bottom"),
         ]),
         Line::from(""),
         help_section("Tree"),
         Line::from(vec![
-            help_key(" l "), help_desc("/"), help_key(" → "), help_desc(" Expand   "),
-            help_key(" h "), help_desc("/"), help_key(" ← "), help_desc(" Collapse   "),
-            help_key(" Tab "), help_desc(" Toggle"),
+            help_key(" l "),
+            help_desc("/"),
+            help_key(" → "),
+            help_desc(" Expand   "),
+            help_key(" h "),
+            help_desc("/"),
+            help_key(" ← "),
+            help_desc(" Collapse   "),
+            help_key(" Tab "),
+            help_desc(" Toggle"),
         ]),
         Line::from(vec![
-            help_key(" L "), help_desc(" Expand all   "),
-            help_key(" H "), help_desc(" Collapse all   "),
-            help_key(" Enter "), help_desc(" Toggle/Pick"),
+            help_key(" L "),
+            help_desc(" Expand all   "),
+            help_key(" H "),
+            help_desc(" Collapse all   "),
+            help_key(" Enter "),
+            help_desc(" Toggle/Pick"),
         ]),
         Line::from(""),
         help_section("Selection"),
         Line::from(vec![
-            help_key(" Space "), help_desc(" Mark   "),
-            help_key(" Ctrl+G "), help_desc(" Git changed   "),
-            help_key(" Ctrl+T "), help_desc(" Test pair"),
+            help_key(" Space "),
+            help_desc(" Mark   "),
+            help_key(" Ctrl+G "),
+            help_desc(" Git changed   "),
+            help_key(" Ctrl+T "),
+            help_desc(" Test pair"),
         ]),
         Line::from(""),
         help_section("File Operations"),
         Line::from(vec![
-            help_key(" a "), help_desc(" New file   "),
-            help_key(" A "), help_desc(" New dir   "),
-            help_key(" r "), help_desc(" Rename   "),
-            help_key(" R "), help_desc(" Bulk rename"),
+            help_key(" a "),
+            help_desc(" New file   "),
+            help_key(" A "),
+            help_desc(" New dir   "),
+            help_key(" r "),
+            help_desc(" Rename   "),
+            help_key(" R "),
+            help_desc(" Bulk rename"),
         ]),
         Line::from(vec![
-            help_key(" y "), help_desc(" Copy   "),
-            help_key(" d "), help_desc(" Cut   "),
-            help_key(" p "), help_desc(" Paste   "),
-            help_key(" D "), help_desc("/"), help_key(" Del "), help_desc(" Delete"),
+            help_key(" y "),
+            help_desc(" Copy   "),
+            help_key(" d "),
+            help_desc(" Cut   "),
+            help_key(" p "),
+            help_desc(" Paste   "),
+            help_key(" D "),
+            help_desc("/"),
+            help_key(" Del "),
+            help_desc(" Delete"),
         ]),
         Line::from(""),
         help_section("Clipboard"),
         Line::from(vec![
-            help_key(" c "), help_desc(" Path   "),
-            help_key(" C "), help_desc(" Filename   "),
-            help_key(" Y "), help_desc(" Content   "),
-            help_key(" Ctrl+Y "), help_desc(" Claude format"),
+            help_key(" c "),
+            help_desc(" Path   "),
+            help_key(" C "),
+            help_desc(" Filename   "),
+            help_key(" Y "),
+            help_desc(" Content   "),
+            help_key(" Ctrl+Y "),
+            help_desc(" Claude format"),
         ]),
         Line::from(""),
         help_section("Search & Filter"),
         Line::from(vec![
-            help_key(" / "), help_desc(" Search   "),
-            help_key(" n "), help_desc(" Next   "),
-            help_key(" N "), help_desc(" Prev   "),
-            help_key(" Ctrl+P "), help_desc(" Fuzzy finder"),
+            help_key(" / "),
+            help_desc(" Search   "),
+            help_key(" n "),
+            help_desc(" Next   "),
+            help_key(" N "),
+            help_desc(" Prev   "),
+            help_key(" Ctrl+P "),
+            help_desc(" Fuzzy finder"),
         ]),
         Line::from(vec![
-            help_key(" F "), help_desc(" Filter   "),
-            help_key(" S "), help_desc(" Sort mode"),
+            help_key(" F "),
+            help_desc(" Filter   "),
+            help_key(" S "),
+            help_desc(" Sort mode"),
         ]),
         Line::from(""),
         help_section("Preview"),
         Line::from(vec![
-            help_key(" o "), help_desc(" Full preview   "),
-            help_key(" P "), help_desc(" Quick preview"),
+            help_key(" o "),
+            help_desc(" Full preview   "),
+            help_key(" P "),
+            help_desc(" Quick preview"),
         ]),
         Line::from(vec![
-            help_key(" b "), help_desc("/"), help_key(" PgUp "), help_desc(" Up   "),
-            help_key(" f "), help_desc("/"), help_key(" PgDn "), help_desc(" Down   "),
-            help_key(" [ "), help_key(" ] "), help_desc(" PDF pages"),
+            help_key(" b "),
+            help_desc("/"),
+            help_key(" PgUp "),
+            help_desc(" Up   "),
+            help_key(" f "),
+            help_desc("/"),
+            help_key(" PgDn "),
+            help_desc(" Down   "),
+            help_key(" [ "),
+            help_key(" ] "),
+            help_desc(" PDF pages"),
         ]),
         Line::from(""),
         help_section("Git"),
         Line::from(vec![
-            help_key(" s "), help_desc(" Stage   "),
-            help_key(" u "), help_desc(" Unstage"),
+            help_key(" s "),
+            help_desc(" Stage   "),
+            help_key(" u "),
+            help_desc(" Unstage"),
         ]),
         Line::from(""),
         help_section("Bookmarks"),
         Line::from(vec![
-            help_key(" m "), help_desc("+"), help_key(" 1-9 "), help_desc(" Set   "),
-            help_key(" ' "), help_desc("+"), help_key(" 1-9 "), help_desc(" Jump"),
+            help_key(" m "),
+            help_desc("+"),
+            help_key(" 1-9 "),
+            help_desc(" Set   "),
+            help_key(" ' "),
+            help_desc("+"),
+            help_key(" 1-9 "),
+            help_desc(" Jump"),
         ]),
         Line::from(""),
         help_section("Tabs"),
         Line::from(vec![
-            help_key(" Ctrl+T "), help_desc(" New   "),
-            help_key(" Ctrl+W "), help_desc(" Close   "),
-            help_key(" Alt+t "), help_desc(" Next   "),
-            help_key(" Alt+T "), help_desc(" Prev"),
+            help_key(" Ctrl+T "),
+            help_desc(" New   "),
+            help_key(" Ctrl+W "),
+            help_desc(" Close   "),
+            help_key(" Alt+t "),
+            help_desc(" Next   "),
+            help_key(" Alt+T "),
+            help_desc(" Prev"),
         ]),
         Line::from(""),
         help_section("Other"),
         Line::from(vec![
-            help_key(" . "), help_desc(" Hidden   "),
-            help_key(" F5 "), help_desc(" Refresh   "),
-            help_key(" ? "), help_desc(" Help   "),
-            help_key(" q "), help_desc(" Quit   "),
-            help_key(" Q "), help_desc(" Quit+cd"),
+            help_key(" . "),
+            help_desc(" Hidden   "),
+            help_key(" F5 "),
+            help_desc(" Refresh   "),
+            help_key(" ? "),
+            help_desc(" Help   "),
+            help_key(" q "),
+            help_desc(" Quit   "),
+            help_key(" Q "),
+            help_desc(" Quit+cd"),
         ]),
         Line::from(""),
-        Line::from(Span::styled("  Press ? or Esc to close", Style::default().fg(Color::DarkGray))),
+        Line::from(Span::styled(
+            "  Press ? or Esc to close",
+            Style::default().fg(Color::DarkGray),
+        )),
     ]
 }
 
