@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0] - 2026-02-03
+
+### Added
+
+- **Adaptive status bar for narrow terminals**: Status bar now adjusts layout based on screen width
+  - Wide screens (≥100 chars): Full 50:50 split with all information
+  - Medium screens (60-99 chars): Abbreviated display with 45:55 split
+  - Narrow screens (<60 chars): Single panel with essential info only
+  - Abbreviated labels: "Selected: 3" → "Sel:3", "Copied: 2" → "Cp:2"
+  - Shortened time format: "2h ago" → "2h"
+  - Compact help text: "? for help" → "?" on narrow screens
+
 ## [1.22.0] - 2026-02-03
 
 ### Added
