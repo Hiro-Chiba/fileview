@@ -61,6 +61,75 @@ pub enum PreviewDisplayMode {
     Peek,
 }
 
+/// UI density mode based on terminal width
+///
+/// Automatically selected based on terminal width to provide optimal display
+/// for AI pair programming workflows where screen space is limited.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum UiDensity {
+    /// Full features (80+ chars) - all icons, full status bar, complete info
+    #[default]
+    Full,
+    /// Compact mode (40-79 chars) - current compact display
+    Compact,
+    /// Narrow mode (25-39 chars) - abbreviated icons, minimal status
+    Narrow,
+    /// Ultra mode (20-24 chars) - minimal display for extreme narrow terminals
+    Ultra,
+}
+
+impl UiDensity {
+    /// Determine UI density from terminal width
+    pub fn from_width(width: u16) -> Self {
+        match width {
+            0..=24 => Self::Ultra,
+            25..=39 => Self::Narrow,
+            40..=79 => Self::Compact,
+            _ => Self::Full,
+        }
+    }
+
+    /// Check if icons should be shown
+    pub fn show_icons(&self) -> bool {
+        matches!(self, Self::Full | Self::Compact)
+    }
+
+    /// Check if full status bar should be shown
+    pub fn show_full_status(&self) -> bool {
+        matches!(self, Self::Full)
+    }
+
+    /// Get maximum lines for peek preview
+    pub fn peek_preview_lines(&self) -> usize {
+        match self {
+            Self::Ultra => 2,
+            Self::Narrow => 3,
+            Self::Compact => 4,
+            Self::Full => 5,
+        }
+    }
+
+    /// Get tree indent width
+    pub fn tree_indent_width(&self) -> usize {
+        match self {
+            Self::Ultra => 1,
+            Self::Narrow => 1,
+            Self::Compact => 2,
+            Self::Full => 2,
+        }
+    }
+
+    /// Get display name for debugging
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::Full => "full",
+            Self::Compact => "compact",
+            Self::Narrow => "narrow",
+            Self::Ultra => "ultra",
+        }
+    }
+}
+
 /// Main application state
 pub struct AppState {
     /// Root directory path

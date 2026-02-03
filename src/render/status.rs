@@ -14,8 +14,11 @@ use ratatui::{
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
+use super::layout::LayoutEngine;
 use super::theme::theme;
-use crate::core::{AppState, InputPurpose, PendingAction, PreviewDisplayMode, SortMode, ViewMode};
+use crate::core::{
+    AppState, InputPurpose, PendingAction, PreviewDisplayMode, SortMode, UiDensity, ViewMode,
+};
 
 /// Render the status bar with adaptive layout based on screen width
 pub fn render_status_bar(
@@ -30,21 +33,14 @@ pub fn render_status_bar(
         return;
     }
 
-    let width = area.width;
+    let layout = LayoutEngine::from_rect(area);
 
-    // Adaptive layout based on screen width
-    if width < 40 {
-        // Ultra-narrow: minimal single-line info (for 30-40 char terminals)
-        render_ultra_compact_status(frame, state, area);
-    } else if width < 60 {
-        // Very narrow: single panel with minimal info
-        render_compact_status(frame, state, focused_path, area);
-    } else if width < 100 {
-        // Narrow: abbreviated display
-        render_narrow_status(frame, state, focused_path, area);
-    } else {
-        // Wide: full display (original implementation)
-        render_full_status(frame, state, focused_path, area);
+    // Adaptive layout based on UI density
+    match layout.density {
+        UiDensity::Ultra => render_ultra_compact_status(frame, state, area),
+        UiDensity::Narrow => render_compact_status(frame, state, focused_path, area),
+        UiDensity::Compact => render_narrow_status(frame, state, focused_path, area),
+        UiDensity::Full => render_full_status(frame, state, focused_path, area),
     }
 }
 
@@ -56,9 +52,13 @@ fn render_peek_status(
     area: Rect,
 ) {
     let t = theme();
+    let layout = LayoutEngine::from_rect(area);
+    let max_preview_lines = layout.peek_preview_lines();
 
-    // Build header line with minimal info
+    // Build header line with minimal info based on density
     let mut header_spans = Vec::new();
+
+    // Peek indicator
     header_spans.push(Span::styled(
         "P",
         Style::default().fg(t.info).add_modifier(Modifier::BOLD),
@@ -73,11 +73,16 @@ fn render_peek_status(
         ));
     }
 
-    // Git branch
+    // Git branch (abbreviated based on density)
     if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
+        let max_branch_len = match layout.density {
+            UiDensity::Ultra => 4,
+            UiDensity::Narrow => 6,
+            _ => 8,
+        };
         header_spans.push(Span::raw(" "));
-        let branch_abbrev = if branch.len() > 8 {
-            format!("\u{e0a0}{}…", &branch[..7])
+        let branch_abbrev = if branch.len() > max_branch_len {
+            format!("\u{e0a0}{}…", &branch[..max_branch_len - 1])
         } else {
             format!("\u{e0a0}{}", branch)
         };
@@ -87,28 +92,41 @@ fn render_peek_status(
         ));
     }
 
-    // File name
+    // File name (only if enough space)
     if let Some(path) = focused_path {
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-            header_spans.push(Span::styled(" │ ", Style::default().fg(t.git_ignored)));
-            let max_name_len = (area.width as usize).saturating_sub(20);
-            let display_name = if name.len() > max_name_len {
-                format!("{}…", &name[..max_name_len.saturating_sub(1)])
-            } else {
-                name.to_string()
+            let separator = match layout.density {
+                UiDensity::Ultra => " ",
+                _ => " │ ",
             };
-            header_spans.push(Span::styled(
-                display_name,
-                Style::default().fg(t.border_active),
-            ));
+            let max_name_len = match layout.density {
+                UiDensity::Ultra => (area.width as usize).saturating_sub(12),
+                UiDensity::Narrow => (area.width as usize).saturating_sub(15),
+                _ => (area.width as usize).saturating_sub(20),
+            };
+            if max_name_len > 3 {
+                header_spans.push(Span::styled(separator, Style::default().fg(t.git_ignored)));
+                let display_name = if name.len() > max_name_len {
+                    format!("{}…", &name[..max_name_len.saturating_sub(1)])
+                } else {
+                    name.to_string()
+                };
+                header_spans.push(Span::styled(
+                    display_name,
+                    Style::default().fg(t.border_active),
+                ));
+            }
         }
     }
 
     // Read first few lines of the file for peek preview
     let preview_lines = if let Some(path) = focused_path {
-        read_peek_lines(path, area.height.saturating_sub(2) as usize)
+        read_peek_lines(
+            path,
+            max_preview_lines.min(area.height.saturating_sub(2) as usize),
+        )
     } else {
-        vec!["(No file selected)".to_string()]
+        vec!["(No file)".to_string()]
     };
 
     let mut content = vec![Line::from(header_spans)];
@@ -126,11 +144,17 @@ fn render_peek_status(
         )));
     }
 
+    // Compact title for ultra mode
+    let title = match layout.density {
+        UiDensity::Ultra => " P ",
+        _ => " Peek ",
+    };
+
     let widget = Paragraph::new(content).block(
         Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(t.border_active))
-            .title(" Peek "),
+            .title(title),
     );
     frame.render_widget(widget, area);
 }
@@ -175,31 +199,33 @@ fn read_peek_lines(path: &PathBuf, max_lines: usize) -> Vec<String> {
     }
 }
 
-/// Render ultra-compact status bar for extremely narrow screens (< 40 chars)
+/// Render ultra-compact status bar for extremely narrow screens (< 25 chars)
 /// Shows minimal info: `? 3* ⎇m` (help, selection count, git branch)
+/// Optimized for 20-24 character width terminals
 fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) {
     let t = theme();
     let mut spans = Vec::new();
+    let inner_width = area.width.saturating_sub(2) as usize; // Account for borders
 
-    // Help hint (single character)
-    spans.push(Span::styled("?", Style::default().fg(t.info)));
-
-    // Selection count (only if selected)
+    // For ultra-narrow, prioritize: selection > branch > sort > filter > message
     let selected_count = state.selected_paths.len();
+
+    // Selection count first (most important in ultra mode)
     if selected_count > 0 {
-        spans.push(Span::raw(" "));
         spans.push(Span::styled(
             format!("{}*", selected_count),
             Style::default().fg(t.mark),
         ));
     }
 
-    // Git branch (abbreviated, using branch icon)
+    // Git branch (very abbreviated)
     if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
-        spans.push(Span::raw(" "));
-        // Abbreviate long branch names
-        let branch_abbrev = if branch.len() > 6 {
-            format!("\u{e0a0}{}", &branch[..6])
+        if !spans.is_empty() {
+            spans.push(Span::raw(" "));
+        }
+        // Max 4 chars for branch in ultra mode
+        let branch_abbrev = if branch.len() > 4 {
+            format!("\u{e0a0}{}…", &branch[..3])
         } else {
             format!("\u{e0a0}{}", branch)
         };
@@ -209,30 +235,39 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         ));
     }
 
-    // Sort mode indicator (only if not default)
+    // Sort mode indicator (single char, only if not default)
     if state.sort_mode != SortMode::Name {
-        spans.push(Span::raw(" "));
+        if !spans.is_empty() {
+            spans.push(Span::raw(" "));
+        }
         spans.push(Span::styled(
             state.sort_mode.short_name(),
             Style::default().fg(t.git_conflict),
         ));
     }
 
-    // Filter indicator
+    // Filter indicator (just an icon)
     if state.filter_pattern.is_some() {
-        spans.push(Span::raw(" "));
+        if !spans.is_empty() {
+            spans.push(Span::raw(" "));
+        }
         spans.push(Span::styled("\u{f0b0}", Style::default().fg(t.warning)));
     }
 
-    // Message (truncated if too long) or space
+    // Help hint only if there's space
+    let current_width: usize = spans.iter().map(|s| s.width()).sum();
+    if current_width < inner_width.saturating_sub(2) && spans.is_empty() {
+        spans.push(Span::styled("?", Style::default().fg(t.info)));
+    }
+
+    // Message (only if there's significant space left)
     if let Some(msg) = &state.message {
-        let available = area
-            .width
-            .saturating_sub(spans.iter().map(|s| s.width()).sum::<usize>() as u16 + 3);
+        let used_width: usize = spans.iter().map(|s| s.width()).sum();
+        let available = inner_width.saturating_sub(used_width + 1);
         if available > 3 {
             spans.push(Span::raw(" "));
-            let truncated = if msg.len() > available as usize {
-                format!("{}…", &msg[..available as usize - 1])
+            let truncated = if msg.len() > available {
+                format!("{}…", &msg[..available.saturating_sub(1)])
             } else {
                 msg.clone()
             };

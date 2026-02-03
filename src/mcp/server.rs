@@ -7,7 +7,8 @@ use std::path::Path;
 
 use serde_json::json;
 
-use super::handlers;
+use super::handlers::{analysis, context, dependency, file, git, project};
+use super::registry;
 use super::types::*;
 
 /// Run the MCP server
@@ -87,217 +88,8 @@ fn handle_initialize(id: Option<serde_json::Value>) -> JsonRpcResponse {
 
 /// Handle tools/list request
 fn handle_tools_list(id: Option<serde_json::Value>) -> JsonRpcResponse {
-    let tools = vec![
-        Tool {
-            name: "list_directory".to_string(),
-            description: "List files and directories in a path".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Relative path from root (optional, defaults to root)"
-                    }
-                }
-            }),
-        },
-        Tool {
-            name: "get_tree".to_string(),
-            description: "Get directory tree structure".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Relative path from root (optional, defaults to root)"
-                    },
-                    "depth": {
-                        "type": "integer",
-                        "description": "Maximum depth to traverse (optional, defaults to unlimited)"
-                    }
-                }
-            }),
-        },
-        Tool {
-            name: "read_file".to_string(),
-            description: "Read content of a file".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Relative path to the file"
-                    }
-                },
-                "required": ["path"]
-            }),
-        },
-        Tool {
-            name: "get_git_status".to_string(),
-            description: "Get git status showing changed and staged files".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {}
-            }),
-        },
-        Tool {
-            name: "get_git_diff".to_string(),
-            description: "Get git diff for a specific file".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Relative path to the file"
-                    },
-                    "staged": {
-                        "type": "boolean",
-                        "description": "If true, show staged changes (--cached). Default: false"
-                    }
-                },
-                "required": ["path"]
-            }),
-        },
-        Tool {
-            name: "search_code".to_string(),
-            description: "Search for code patterns in the repository using grep/ripgrep"
-                .to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "pattern": {
-                        "type": "string",
-                        "description": "The search pattern (regex supported)"
-                    },
-                    "path": {
-                        "type": "string",
-                        "description": "Optional relative path to limit search scope"
-                    }
-                },
-                "required": ["pattern"]
-            }),
-        },
-        Tool {
-            name: "git_log".to_string(),
-            description: "Get git commit history".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of commits to return. Default: 10"
-                    },
-                    "path": {
-                        "type": "string",
-                        "description": "Optional path to filter commits"
-                    }
-                }
-            }),
-        },
-        Tool {
-            name: "stage_files".to_string(),
-            description: "Stage files for git commit".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "paths": {
-                        "type": "array",
-                        "items": { "type": "string" },
-                        "description": "List of paths to stage. Empty or omit to stage all changes."
-                    }
-                }
-            }),
-        },
-        Tool {
-            name: "create_commit".to_string(),
-            description: "Create a git commit with staged changes".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "message": {
-                        "type": "string",
-                        "description": "Commit message"
-                    }
-                },
-                "required": ["message"]
-            }),
-        },
-        Tool {
-            name: "write_file".to_string(),
-            description: "Write content to a file (create or overwrite)".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Relative path to the file"
-                    },
-                    "content": {
-                        "type": "string",
-                        "description": "Content to write to the file"
-                    },
-                    "create_dirs": {
-                        "type": "boolean",
-                        "description": "Create parent directories if they don't exist. Default: false"
-                    }
-                },
-                "required": ["path", "content"]
-            }),
-        },
-        Tool {
-            name: "delete_file".to_string(),
-            description: "Delete a file or directory (moves to trash by default for safety)"
-                .to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Relative path to the file or directory"
-                    },
-                    "recursive": {
-                        "type": "boolean",
-                        "description": "Delete directories recursively. Default: false"
-                    },
-                    "use_trash": {
-                        "type": "boolean",
-                        "description": "Move to trash instead of permanent deletion. Default: true"
-                    }
-                },
-                "required": ["path"]
-            }),
-        },
-        Tool {
-            name: "read_files".to_string(),
-            description: "Read multiple files at once".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "paths": {
-                        "type": "array",
-                        "items": { "type": "string" },
-                        "description": "List of relative paths to read"
-                    }
-                },
-                "required": ["paths"]
-            }),
-        },
-        Tool {
-            name: "get_file_symbols".to_string(),
-            description: "Extract code symbols (functions, classes, etc.) from a file".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Relative path to the file"
-                    }
-                },
-                "required": ["path"]
-            }),
-        },
-    ];
-
+    // Use registry to get all tools
+    let tools = registry::to_mcp_tools();
     let result = ToolListResult { tools };
     JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
 }
@@ -319,181 +111,256 @@ fn handle_tools_call(
         }
     };
 
-    let result = match call_params.name.as_str() {
+    let result = dispatch_tool_call(root, &call_params);
+    JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
+}
+
+/// Dispatch tool call to appropriate handler
+fn dispatch_tool_call(root: &Path, params: &ToolCallParams) -> ToolCallResult {
+    let args = &params.arguments;
+
+    match params.name.as_str() {
+        // File operations
         "list_directory" => {
-            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
-            handlers::list_directory(root, path)
+            let path = args.get("path").and_then(|v| v.as_str());
+            file::list_directory(root, path)
         }
         "get_tree" => {
-            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
-            let depth = call_params
-                .arguments
+            let path = args.get("path").and_then(|v| v.as_str());
+            let depth = args
                 .get("depth")
                 .and_then(|v| v.as_u64())
                 .map(|d| d as usize);
-            handlers::get_tree(root, path, depth)
+            file::get_tree(root, path, depth)
         }
         "read_file" => {
-            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
+            let path = args.get("path").and_then(|v| v.as_str());
             match path {
-                Some(p) => handlers::read_file(root, p),
-                None => ToolCallResult {
-                    content: vec![ToolContent::text(
-                        "Missing required parameter: path".to_string(),
-                    )],
-                    is_error: Some(true),
-                },
+                Some(p) => file::read_file(root, p),
+                None => missing_param("path"),
             }
         }
-        "get_git_status" => handlers::get_git_status(root),
-        "get_git_diff" => {
-            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
-            let staged = call_params
-                .arguments
-                .get("staged")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-            match path {
-                Some(p) => handlers::get_git_diff(root, p, staged),
-                None => ToolCallResult {
-                    content: vec![ToolContent::text(
-                        "Missing required parameter: path".to_string(),
-                    )],
-                    is_error: Some(true),
-                },
-            }
-        }
-        "search_code" => {
-            let pattern = call_params
-                .arguments
-                .get("pattern")
-                .and_then(|v| v.as_str());
-            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
-            match pattern {
-                Some(p) => handlers::search_code(root, p, path),
-                None => ToolCallResult {
-                    content: vec![ToolContent::text(
-                        "Missing required parameter: pattern".to_string(),
-                    )],
-                    is_error: Some(true),
-                },
-            }
-        }
-        "git_log" => {
-            let limit = call_params
-                .arguments
-                .get("limit")
-                .and_then(|v| v.as_u64())
-                .map(|l| l as usize);
-            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
-            handlers::git_log(root, limit, path)
-        }
-        "stage_files" => {
-            let paths = call_params
-                .arguments
-                .get("paths")
-                .and_then(|v| v.as_array());
-            let path_strs: Vec<&str> = paths
-                .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect())
-                .unwrap_or_default();
-            handlers::stage_files(root, &path_strs)
-        }
-        "create_commit" => {
-            let message = call_params
-                .arguments
-                .get("message")
-                .and_then(|v| v.as_str());
-            match message {
-                Some(m) => handlers::create_commit(root, m),
-                None => ToolCallResult {
-                    content: vec![ToolContent::text(
-                        "Missing required parameter: message".to_string(),
-                    )],
-                    is_error: Some(true),
-                },
+        "read_files" => {
+            let paths = args.get("paths").and_then(|v| v.as_array());
+            match paths {
+                Some(arr) => {
+                    let path_strs: Vec<&str> = arr.iter().filter_map(|v| v.as_str()).collect();
+                    file::read_files(root, &path_strs)
+                }
+                None => missing_param("paths"),
             }
         }
         "write_file" => {
-            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
-            let content = call_params
-                .arguments
-                .get("content")
-                .and_then(|v| v.as_str());
-            let create_dirs = call_params
-                .arguments
+            let path = args.get("path").and_then(|v| v.as_str());
+            let content = args.get("content").and_then(|v| v.as_str());
+            let create_dirs = args
                 .get("create_dirs")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
             match (path, content) {
-                (Some(p), Some(c)) => handlers::write_file(root, p, c, create_dirs),
-                _ => ToolCallResult {
-                    content: vec![ToolContent::text(
-                        "Missing required parameters: path, content".to_string(),
-                    )],
-                    is_error: Some(true),
-                },
+                (Some(p), Some(c)) => file::write_file(root, p, c, create_dirs),
+                _ => missing_param("path, content"),
             }
         }
         "delete_file" => {
-            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
-            let recursive = call_params
-                .arguments
+            let path = args.get("path").and_then(|v| v.as_str());
+            let recursive = args
                 .get("recursive")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
-            let use_trash = call_params
-                .arguments
+            let use_trash = args
                 .get("use_trash")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(true);
             match path {
-                Some(p) => handlers::delete_file(root, p, recursive, use_trash),
-                None => ToolCallResult {
-                    content: vec![ToolContent::text(
-                        "Missing required parameter: path".to_string(),
-                    )],
-                    is_error: Some(true),
-                },
+                Some(p) => file::delete_file(root, p, recursive, use_trash),
+                None => missing_param("path"),
             }
         }
-        "read_files" => {
-            let paths = call_params
-                .arguments
-                .get("paths")
-                .and_then(|v| v.as_array());
+        "search_code" => {
+            let pattern = args.get("pattern").and_then(|v| v.as_str());
+            let path = args.get("path").and_then(|v| v.as_str());
+            match pattern {
+                Some(p) => file::search_code(root, p, path),
+                None => missing_param("pattern"),
+            }
+        }
+
+        // Git operations
+        "get_git_status" => git::get_git_status(root),
+        "get_git_diff" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            let staged = args
+                .get("staged")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            match path {
+                Some(p) => git::get_git_diff(root, p, staged),
+                None => missing_param("path"),
+            }
+        }
+        "git_log" => {
+            let limit = args
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .map(|l| l as usize);
+            let path = args.get("path").and_then(|v| v.as_str());
+            git::git_log(root, limit, path)
+        }
+        "stage_files" => {
+            let paths = args.get("paths").and_then(|v| v.as_array());
+            let path_strs: Vec<&str> = paths
+                .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect())
+                .unwrap_or_default();
+            git::stage_files(root, &path_strs)
+        }
+        "create_commit" => {
+            let message = args.get("message").and_then(|v| v.as_str());
+            match message {
+                Some(m) => git::create_commit(root, m),
+                None => missing_param("message"),
+            }
+        }
+
+        // Analysis operations
+        "get_file_symbols" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            match path {
+                Some(p) => analysis::get_file_symbols(root, p),
+                None => missing_param("path"),
+            }
+        }
+        "get_definitions" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            let line = args.get("line").and_then(|v| v.as_u64()).map(|l| l as u32);
+            let column = args
+                .get("column")
+                .and_then(|v| v.as_u64())
+                .map(|c| c as u32);
+            match path {
+                Some(p) => analysis::get_definitions(root, p, line, column),
+                None => missing_param("path"),
+            }
+        }
+        "get_references" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            let symbol = args.get("symbol").and_then(|v| v.as_str());
+            match (path, symbol) {
+                (Some(p), Some(s)) => analysis::get_references(root, p, s),
+                _ => missing_param("path, symbol"),
+            }
+        }
+        "get_diagnostics" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            match path {
+                Some(p) => analysis::get_diagnostics(root, p),
+                None => missing_param("path"),
+            }
+        }
+
+        // Dependency operations
+        "get_dependency_graph" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            let depth = args
+                .get("depth")
+                .and_then(|v| v.as_u64())
+                .map(|d| d as usize);
+            match path {
+                Some(p) => dependency::get_dependency_graph(root, p, depth),
+                None => missing_param("path"),
+            }
+        }
+        "get_import_tree" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            match path {
+                Some(p) => dependency::get_import_tree(root, p),
+                None => missing_param("path"),
+            }
+        }
+        "find_circular_deps" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            dependency::find_circular_deps(root, path)
+        }
+
+        // Context operations
+        "get_smart_context" => {
+            let focus_file = args.get("focus_file").and_then(|v| v.as_str());
+            let max_tokens = args
+                .get("max_tokens")
+                .and_then(|v| v.as_u64())
+                .map(|t| t as usize);
+            let include_deps = args
+                .get("include_deps")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true);
+            let include_tests = args
+                .get("include_tests")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true);
+            match focus_file {
+                Some(f) => {
+                    context::get_smart_context(root, f, max_tokens, include_deps, include_tests)
+                }
+                None => missing_param("focus_file"),
+            }
+        }
+        "estimate_tokens" => {
+            let paths = args.get("paths").and_then(|v| v.as_array());
             match paths {
                 Some(arr) => {
                     let path_strs: Vec<&str> = arr.iter().filter_map(|v| v.as_str()).collect();
-                    handlers::read_files(root, &path_strs)
+                    context::estimate_tokens_handler(root, &path_strs)
                 }
-                None => ToolCallResult {
-                    content: vec![ToolContent::text(
-                        "Missing required parameter: paths (array)".to_string(),
-                    )],
-                    is_error: Some(true),
-                },
+                None => missing_param("paths"),
             }
         }
-        "get_file_symbols" => {
-            let path = call_params.arguments.get("path").and_then(|v| v.as_str());
+        "compress_context" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            let max_tokens = args
+                .get("max_tokens")
+                .and_then(|v| v.as_u64())
+                .map(|t| t as usize);
             match path {
-                Some(p) => handlers::get_file_symbols(root, p),
-                None => ToolCallResult {
-                    content: vec![ToolContent::text(
-                        "Missing required parameter: path".to_string(),
-                    )],
-                    is_error: Some(true),
-                },
+                Some(p) => context::compress_context_handler(root, p, max_tokens),
+                None => missing_param("path"),
             }
         }
+
+        // Project operations
+        "run_build" => {
+            let command = args.get("command").and_then(|v| v.as_str());
+            project::run_build(root, command)
+        }
+        "run_test" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            let filter = args.get("filter").and_then(|v| v.as_str());
+            project::run_test(root, path, filter)
+        }
+        "run_lint" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            let fix = args.get("fix").and_then(|v| v.as_bool()).unwrap_or(false);
+            project::run_lint(root, path, fix)
+        }
+        "get_project_stats" => {
+            let path = args.get("path").and_then(|v| v.as_str());
+            project::get_project_stats(root, path)
+        }
+
+        // Unknown tool
         _ => ToolCallResult {
-            content: vec![ToolContent::text(format!(
-                "Unknown tool: {}",
-                call_params.name
-            ))],
+            content: vec![ToolContent::text(format!("Unknown tool: {}", params.name))],
             is_error: Some(true),
         },
-    };
+    }
+}
 
-    JsonRpcResponse::success(id, serde_json::to_value(result).unwrap())
+/// Create error result for missing parameter
+fn missing_param(param: &str) -> ToolCallResult {
+    ToolCallResult {
+        content: vec![ToolContent::text(format!(
+            "Missing required parameter: {}",
+            param
+        ))],
+        is_error: Some(true),
+    }
 }
