@@ -101,6 +101,19 @@ FileView を Claude Code の MCP サーバーとして使用:
 }
 ```
 
+**MCP 2.0 ツール (21ツール):**
+
+| カテゴリ | ツール |
+|----------|-------|
+| ファイル | `list_directory`, `get_tree`, `read_file`, `read_files`, `write_file`, `delete_file`, `search_code` |
+| Git | `get_git_status`, `get_git_diff`, `git_log`, `stage_files`, `create_commit` |
+| 解析 | `get_file_symbols`, `get_definitions`, `get_references`, `get_diagnostics` |
+| 依存関係 | `get_dependency_graph`, `get_import_tree`, `find_circular_deps` |
+| コンテキスト | `get_smart_context`, `estimate_tokens`, `compress_context` |
+| プロジェクト | `run_build`, `run_test`, `run_lint`, `get_project_stats` |
+
+**[MCPドキュメント詳細](docs/CLAUDE_CODE.md)**
+
 ## CLIオプション
 
 ```bash

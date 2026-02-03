@@ -141,16 +141,57 @@ Or for Claude Code CLI (`~/.claude.json`):
 }
 ```
 
-#### Available Tools
+#### Available Tools (MCP 2.0 - 21 tools)
 
+##### File Operations
 | Tool | Description |
 |------|-------------|
 | `list_directory` | List files in a directory |
 | `get_tree` | Get directory tree structure |
-| `read_file` | Read file contents |
+| `read_file` | Read single file contents |
+| `read_files` | Read multiple files at once |
+| `write_file` | Create or update file (with `create_dirs` option) |
+| `delete_file` | Delete file/directory (trash support, recursive) |
+| `search_code` | Search code with grep/ripgrep |
+
+##### Git Operations
+| Tool | Description |
+|------|-------------|
 | `get_git_status` | Get git changed/staged files |
 | `get_git_diff` | Get file diff (staged/unstaged) |
-| `search_code` | Search code with grep/ripgrep |
+| `git_log` | Get commit history with optional path filter |
+| `stage_files` | Stage files for commit |
+| `create_commit` | Create commit with message |
+
+##### Code Analysis
+| Tool | Description |
+|------|-------------|
+| `get_file_symbols` | Extract functions, classes, structs from file |
+| `get_definitions` | Find symbol definitions (line/column) |
+| `get_references` | Find all references to a symbol |
+| `get_diagnostics` | Get errors and warnings |
+
+##### Dependency Analysis
+| Tool | Description |
+|------|-------------|
+| `get_dependency_graph` | Build dependency graph with petgraph |
+| `get_import_tree` | Get import/require tree |
+| `find_circular_deps` | Detect circular dependencies |
+
+##### AI Context Optimization
+| Tool | Description |
+|------|-------------|
+| `get_smart_context` | AI-optimized context with dependency awareness |
+| `estimate_tokens` | Estimate token count (tiktoken-rs) |
+| `compress_context` | Compress content for AI context |
+
+##### Project Management
+| Tool | Description |
+|------|-------------|
+| `run_build` | Run build command (auto-detect: cargo/npm/make) |
+| `run_test` | Run tests with optional filter |
+| `run_lint` | Run linter with optional auto-fix |
+| `get_project_stats` | Get project statistics |
 
 #### Example Requests
 
@@ -161,17 +202,23 @@ Or for Claude Code CLI (`~/.claude.json`):
 // Get tree
 {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_tree","arguments":{"path":"src","depth":2}}}
 
-// Read file
-{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"src/main.rs"}}}
+// Read multiple files
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_files","arguments":{"paths":["src/main.rs","src/lib.rs"]}}}
 
 // Git status
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_git_status","arguments":{}}}
 
-// Git diff
-{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_git_diff","arguments":{"path":"src/main.rs","staged":false}}}
+// Smart context (AI-optimized)
+{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_smart_context","arguments":{"focus_file":"src/main.rs","max_tokens":4000}}}
 
-// Code search
-{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"search_code","arguments":{"pattern":"fn main"}}}
+// Dependency graph
+{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_dependency_graph","arguments":{"path":"src/"}}}
+
+// Estimate tokens
+{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"estimate_tokens","arguments":{"paths":["src/main.rs","src/lib.rs"]}}}
+
+// Run tests
+{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"run_test","arguments":{"filter":"test_"}}}
 ```
 
 ## Workflow Examples
@@ -252,21 +299,37 @@ Test pair patterns:
 1. **Context Window**: Use `--depth` to limit tree depth for large projects
 2. **Multiple Files**: Use `Ctrl+Y` to copy multiple files at once
 3. **MCP Root**: Pass project path to `--mcp-server` to set the root directory
-4. **Narrow Terminals**: FileView adapts to narrow terminals (80x24) in Claude Code
+4. **Narrow Terminals**: FileView adapts to terminals as narrow as 20 characters
+5. **Token Optimization**: Use `estimate_tokens` to check context size before sending to AI
+6. **Smart Context**: Use `get_smart_context` to get dependency-aware context
+7. **Dependency Analysis**: Use `find_circular_deps` to detect circular dependencies
+
+## Ultra-Narrow Terminal Support (v2.0)
+
+FileView v2.0 supports terminals as narrow as **20 characters**:
+
+| Width | Mode | Features |
+|-------|------|----------|
+| 80+ | Full | All features, icons, full preview |
+| 40-79 | Compact | Condensed status, partial preview |
+| 25-39 | Narrow | No icons, minimal status |
+| 20-24 | Ultra | Essential info only |
+
+This makes FileView perfect for AI pair programming where Claude Code uses 80% of the screen.
 
 ## Comparison with Other Tools
 
 | Feature | fileview | yazi | lf | ranger |
 |---------|:--------:|:----:|:--:|:------:|
-| MCP Server | Yes | No | No | No |
-| Git status via MCP | Yes | No | No | No |
-| Git diff via MCP | Yes | No | No | No |
-| Code search via MCP | Yes | No | No | No |
-| Context generation | Yes | No | No | No |
-| Smart git selection | Yes | No | No | No |
-| Test pair selection | Yes | No | No | No |
-| Tree output | Yes | No | No | No |
-| Claude format | Yes | No | No | No |
-| Narrow terminal | Yes | Yes | Yes | No |
+| MCP Server | ✅ 21 tools | ❌ | ❌ | ❌ |
+| Dependency analysis | ✅ | ❌ | ❌ | ❌ |
+| Token estimation | ✅ | ❌ | ❌ | ❌ |
+| Smart context | ✅ | ❌ | ❌ | ❌ |
+| Code analysis | ✅ | ❌ | ❌ | ❌ |
+| Git operations | ✅ | ❌ | ❌ | ❌ |
+| Project management | ✅ | ❌ | ❌ | ❌ |
+| 20-char terminal | ✅ | ❌ | △ | ❌ |
+| Tree output | ✅ | ❌ | ❌ | ❌ |
+| Claude format | ✅ | ❌ | ❌ | ❌ |
 
 FileView is the only terminal file manager with native AI tooling support.
