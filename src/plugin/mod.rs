@@ -24,5 +24,5 @@
 mod api;
 mod lua;
 
-pub use api::PluginContext;
+pub use api::{PluginAction, PluginContext};
 pub use lua::{PluginError, PluginManager};
