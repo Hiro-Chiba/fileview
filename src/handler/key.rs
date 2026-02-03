@@ -162,6 +162,10 @@ pub enum KeyAction {
     SelectAll,
     /// Invert selection
     InvertSelection,
+    /// Select all git changed files
+    SelectGitChanged,
+    /// Select test pair for current file
+    SelectTestPair,
 }
 
 /// Handle key event and return the resulting action
@@ -391,6 +395,9 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
                 KeyAction::MoveDown
             }
         }
+        KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::SelectGitChanged
+        }
         KeyCode::Char('g') => {
             if state.focus_target == FocusTarget::Preview {
                 KeyAction::PreviewToTop
@@ -562,6 +569,11 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Note: gt/gT (vim-style) requires two keystrokes, simplified to Tab for demo
         KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::NextTab,
         KeyCode::Char('T') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::PrevTab,
+
+        // Smart selection (Ctrl+T for test pair)
+        KeyCode::Char('T') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::SelectTestPair
+        }
 
         _ => KeyAction::None,
     }
