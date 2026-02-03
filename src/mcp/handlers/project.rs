@@ -90,15 +90,42 @@ impl ProjectType {
     }
 }
 
+/// Allowed build commands (whitelist for security)
+const ALLOWED_BUILD_COMMANDS: &[&str] = &[
+    "cargo", "npm", "yarn", "pnpm", "make", "cmake", "go", "mvn", "gradle", "pip", "poetry",
+];
+
 /// Run project build
 pub fn run_build(root: &Path, custom_command: Option<&str>) -> ToolCallResult {
     if let Some(custom) = custom_command {
-        // Parse custom command
+        // Parse custom command with security validation
         let parts: Vec<&str> = custom.split_whitespace().collect();
         if parts.is_empty() {
             return error_result("Empty command");
         }
-        return run_command(root, parts[0], &parts[1..], "Build");
+
+        let cmd = parts[0];
+
+        // Security: Whitelist allowed commands to prevent command injection
+        if !ALLOWED_BUILD_COMMANDS.contains(&cmd) {
+            return error_result(&format!(
+                "Command '{}' is not in the allowed list. Allowed: {}",
+                cmd,
+                ALLOWED_BUILD_COMMANDS.join(", ")
+            ));
+        }
+
+        // Security: Reject arguments containing shell metacharacters
+        const FORBIDDEN_CHARS: &[char] = &[
+            ';', '&', '|', '$', '`', '(', ')', '{', '}', '<', '>', '\'', '"', '\\', '\n',
+        ];
+        for arg in &parts[1..] {
+            if arg.contains(FORBIDDEN_CHARS) {
+                return error_result("Arguments contain forbidden shell metacharacters");
+            }
+        }
+
+        return run_command(root, cmd, &parts[1..], "Build");
     }
 
     // Auto-detect project type
@@ -244,9 +271,9 @@ pub fn get_project_stats(root: &Path, path: Option<&str>) -> ToolCallResult {
 
     let project_type = ProjectType::detect(root);
 
-    // Collect statistics
+    // Collect statistics (with depth limit for security)
     let mut stats = ProjectStats::default();
-    collect_stats(&start_path, &mut stats);
+    collect_stats(&start_path, &mut stats, 0);
 
     let mut result = String::new();
     result.push_str(&format!(
@@ -356,8 +383,24 @@ struct ProjectStats {
     lines_by_type: HashMap<String, usize>,
 }
 
-/// Collect statistics recursively
-fn collect_stats(path: &Path, stats: &mut ProjectStats) {
+/// Maximum recursion depth for stats collection (security: prevent DoS)
+const MAX_STATS_DEPTH: usize = 50;
+
+/// Maximum file size to read for line counting (10 MB)
+const MAX_FILE_SIZE_FOR_LINES: u64 = 10 * 1024 * 1024;
+
+/// Collect statistics recursively with depth limit
+fn collect_stats(path: &Path, stats: &mut ProjectStats, depth: usize) {
+    // Security: Prevent unbounded recursion
+    if depth > MAX_STATS_DEPTH {
+        return;
+    }
+
+    // Security: Skip symlinks to prevent escape attacks
+    if path.is_symlink() {
+        return;
+    }
+
     if path.is_dir() {
         // Skip common non-source directories
         let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -380,15 +423,14 @@ fn collect_stats(path: &Path, stats: &mut ProjectStats) {
 
         if let Ok(entries) = std::fs::read_dir(path) {
             for entry in entries.flatten() {
-                collect_stats(&entry.path(), stats);
+                collect_stats(&entry.path(), stats, depth + 1);
             }
         }
     } else if path.is_file() {
         stats.total_files += 1;
 
-        if let Ok(metadata) = path.metadata() {
-            stats.total_size += metadata.len();
-        }
+        let file_size = path.metadata().map(|m| m.len()).unwrap_or(0);
+        stats.total_size += file_size;
 
         let ext = path
             .extension()
@@ -398,8 +440,8 @@ fn collect_stats(path: &Path, stats: &mut ProjectStats) {
 
         *stats.files_by_type.entry(ext.clone()).or_insert(0) += 1;
 
-        // Count lines for source files
-        if is_source_extension(&ext) {
+        // Count lines for source files (with size limit for security)
+        if is_source_extension(&ext) && file_size <= MAX_FILE_SIZE_FOR_LINES {
             if let Ok(content) = std::fs::read_to_string(path) {
                 let lines = content.lines().count();
                 stats.total_lines += lines;

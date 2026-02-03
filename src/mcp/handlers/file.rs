@@ -41,6 +41,9 @@ pub fn list_directory(root: &Path, path: Option<&str>) -> ToolCallResult {
     }
 }
 
+/// Maximum tree depth (prevent DoS from unbounded recursion)
+const MAX_TREE_DEPTH: usize = 20;
+
 /// Get directory tree
 pub fn get_tree(root: &Path, path: Option<&str>, depth: Option<usize>) -> ToolCallResult {
     let target = match path {
@@ -51,8 +54,13 @@ pub fn get_tree(root: &Path, path: Option<&str>, depth: Option<usize>) -> ToolCa
         None => root.to_path_buf(),
     };
 
+    // Security: Limit depth to prevent DoS
+    let safe_depth = depth
+        .map(|d| d.min(MAX_TREE_DEPTH))
+        .or(Some(MAX_TREE_DEPTH));
+
     let mut output = Vec::new();
-    if let Err(e) = write_tree(&mut output, &target, depth) {
+    if let Err(e) = write_tree(&mut output, &target, safe_depth) {
         return error_result(&format!("Failed to generate tree: {}", e));
     }
 
@@ -206,8 +214,24 @@ pub fn delete_file(root: &Path, path: &str, recursive: bool, use_trash: bool) ->
     }
 }
 
+/// Maximum search pattern length (prevent ReDoS)
+const MAX_SEARCH_PATTERN_LEN: usize = 500;
+
 /// Search code in the repository
 pub fn search_code(root: &Path, pattern: &str, path: Option<&str>) -> ToolCallResult {
+    // Security: Validate pattern length to prevent ReDoS
+    if pattern.len() > MAX_SEARCH_PATTERN_LEN {
+        return error_result(&format!(
+            "Search pattern too long (max {} chars)",
+            MAX_SEARCH_PATTERN_LEN
+        ));
+    }
+
+    // Security: Reject patterns with null bytes
+    if pattern.contains('\0') {
+        return error_result("Search pattern contains invalid characters");
+    }
+
     // Try ripgrep first, fall back to grep
     let (cmd, args) = if Command::new("rg").arg("--version").output().is_ok() {
         ("rg", vec!["-n", "--no-heading", pattern])
