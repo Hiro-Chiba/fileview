@@ -70,6 +70,36 @@ FileView auto-detects your terminal:
 
 **[Full keybinding list](docs/KEYBINDINGS.md)**
 
+## Claude Code Integration
+
+FileView is optimized for AI pair programming with Claude Code:
+
+```bash
+# Output directory tree for context
+fv --tree --depth 2 ./src
+
+# Quick file selection
+selected=$(fv --select-mode --multi)
+
+# Copy file content in Claude-friendly format
+# Press Ctrl+Y in fileview to copy with syntax hints
+```
+
+### MCP Server
+
+Use FileView as a Claude Code MCP server:
+
+```json
+{
+  "mcpServers": {
+    "fileview": {
+      "command": "fv",
+      "args": ["--mcp-server"]
+    }
+  }
+}
+```
+
 ## CLI Options
 
 ```bash
@@ -82,6 +112,14 @@ Options:
   --on-select CMD     Run command on selection
   --choosedir         Output directory on exit
   --no-icons          Disable Nerd Fonts icons
+
+Claude Code:
+  -t, --tree          Output directory tree to stdout
+  --depth N           Limit tree depth
+  --with-content      Include file contents in output
+  --select-mode       Simple selection mode
+  --multi             Allow multiple selection
+  --mcp-server        Run as MCP server
 ```
 
 ### Exit Codes
