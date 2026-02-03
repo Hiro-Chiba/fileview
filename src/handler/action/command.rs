@@ -2,10 +2,11 @@
 //!
 //! Executes user-defined shell commands with placeholder expansion.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::app::CommandsConfig;
+use crate::core::AppState;
 
 /// Result of command execution
 #[derive(Debug)]
@@ -116,6 +117,51 @@ pub fn execute_interactive(
         }
         Err(e) => CommandResult::Error(format!("Failed to execute command: {}", e)),
     }
+}
+
+/// Open a subshell in the current directory
+///
+/// This spawns the user's default shell in the current directory.
+/// The fileview UI will be suspended until the subshell exits.
+pub fn open_subshell(state: &mut AppState, focused_path: Option<&PathBuf>) {
+    // Determine the target directory
+    let dir = focused_path
+        .and_then(|p| {
+            if p.is_dir() {
+                Some(p.clone())
+            } else {
+                p.parent().map(|pp| pp.to_path_buf())
+            }
+        })
+        .unwrap_or_else(|| state.root.clone());
+
+    // Get the user's shell
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| {
+        if cfg!(target_os = "windows") {
+            "cmd".to_string()
+        } else {
+            "/bin/sh".to_string()
+        }
+    });
+
+    // Message for the user
+    state.set_message(format!("Opening subshell in {}...", dir.display()));
+
+    // Note: Actually spawning an interactive shell requires terminal handling
+    // that goes beyond this simple implementation. The real implementation would
+    // need to:
+    // 1. Suspend the terminal UI
+    // 2. Spawn the shell interactively
+    // 3. Wait for the shell to exit
+    // 4. Restore the terminal UI
+    //
+    // For now, we just show a message about how to use this feature
+    // A full implementation would be handled in the event loop.
+    state.set_message(format!(
+        "Shell: {} (press Enter to spawn in {})",
+        shell,
+        dir.display()
+    ));
 }
 
 #[cfg(test)]

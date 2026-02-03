@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+pub use crate::handler::HooksConfig;
+
 /// Main configuration file structure
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
@@ -21,6 +23,8 @@ pub struct ConfigFile {
     pub ui: UiConfig,
     /// Custom commands
     pub commands: CommandsConfig,
+    /// Event hooks
+    pub hooks: HooksConfig,
 }
 
 /// General application settings
