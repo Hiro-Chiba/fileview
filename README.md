@@ -183,6 +183,7 @@ end)
 
 ## Documentation
 
+- [Claude Code Integration](docs/CLAUDE_CODE.md) - AI pair programming guide
 - [Keybindings](docs/KEYBINDINGS.md) - Complete keybinding reference
 - [Plugins](docs/PLUGINS.md) - Lua plugin system
 - [Comparison](docs/COMPARISON.md) - vs yazi, lf, ranger, nnn
