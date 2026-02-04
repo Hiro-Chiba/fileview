@@ -8,7 +8,8 @@ use std::time::Duration;
 
 use super::config_file::{CommandsConfig, ConfigFile, PreviewConfig};
 use crate::integrate::{
-    exit_code, Callback, ContextPackFormat, ContextPackOptions, ContextPackPreset, OutputFormat,
+    exit_code, Callback, ContextAgent, ContextPackFormat, ContextPackOptions, ContextPackPreset,
+    OutputFormat,
 };
 
 /// Session action (save, restore, clear)
@@ -187,6 +188,16 @@ impl Config {
                         })?;
                     } else {
                         anyhow::bail!("--context-format requires a value");
+                    }
+                }
+                "--agent" => {
+                    if let Some(agent) = args.next() {
+                        context_pack_options.agent =
+                            ContextAgent::from_str(&agent).map_err(|_| {
+                                anyhow::anyhow!("--agent must be one of: claude, codex, cursor")
+                            })?;
+                    } else {
+                        anyhow::bail!("--agent requires a value");
                     }
                 }
                 "--token-budget" => {
@@ -476,6 +487,7 @@ CLAUDE CODE INTEGRATION:
     --context           Output project context in AI-friendly markdown format
     --context-pack P    Output AI context pack preset: minimal, review, debug, refactor, incident, onboarding
     --context-format F  Context output format: ai-md, jsonl
+    --agent A           Target agent profile: claude, codex, cursor
     --token-budget N    Token budget for context pack (default: 4000)
     --include-git-diff  Force include git diff summary in context pack
     --include-tests     Include inferred test files in context pack

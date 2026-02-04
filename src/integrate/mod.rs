@@ -21,7 +21,8 @@ pub use callback::{Callback, CallbackResult};
 pub use context::{build_project_context, output_context};
 pub use context_pack::{
     build_context_pack, build_context_pack_with_options, output_context_pack,
-    output_context_pack_with_options, ContextPackFormat, ContextPackOptions, ContextPackPreset,
+    output_context_pack_with_options, ContextAgent, ContextPackFormat, ContextPackOptions,
+    ContextPackPreset,
 };
 pub use pick::{
     exit_code, output_paths, output_paths_claude_format, output_paths_with_content, OutputFormat,

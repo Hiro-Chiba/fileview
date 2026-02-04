@@ -264,6 +264,7 @@ fv --tree --with-content ./src/module
 | `--context` | Output project context (AI-friendly markdown) |
 | `--context-pack P` | Output context pack preset (`minimal`, `review`, `debug`, `refactor`, `incident`, `onboarding`) |
 | `--context-format F` | Context pack format: `ai-md`, `jsonl` |
+| `--agent A` | Agent profile: `claude`, `codex`, `cursor` |
 | `--token-budget N` | Token budget for context packs |
 | `--include-git-diff` | Force include git diff summary in context packs |
 | `--include-tests` | Include inferred tests in context packs |
