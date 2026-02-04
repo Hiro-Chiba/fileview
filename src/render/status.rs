@@ -1,6 +1,7 @@
 //! Status bar and input popup rendering
 
 use std::path::PathBuf;
+use std::sync::OnceLock;
 use std::time::SystemTime;
 
 use ratatui::{
@@ -960,15 +961,43 @@ const HELP_OVERLAY_BG_COLOR: Color = Color::Rgb(30, 30, 40);
 const HELP_OVERLAY_MARGIN: u16 = 1;
 const HELP_MIN_WIDTH: u16 = 24;
 
+#[derive(Debug, Clone, Copy)]
+enum HelpKeyStyle {
+    Solid,
+    Outline,
+    Plain,
+}
+
+fn help_key_style() -> HelpKeyStyle {
+    static STYLE: OnceLock<HelpKeyStyle> = OnceLock::new();
+    *STYLE.get_or_init(|| {
+        match std::env::var("FILEVIEW_HELP_KEY_STYLE")
+            .ok()
+            .map(|s| s.trim().to_ascii_lowercase())
+            .as_deref()
+        {
+            Some("outline") => HelpKeyStyle::Outline,
+            Some("plain") => HelpKeyStyle::Plain,
+            _ => HelpKeyStyle::Solid,
+        }
+    })
+}
+
 /// Create a styled key span with background highlight
 fn help_key(key: &str) -> Span<'_> {
-    Span::styled(
-        key,
-        Style::default()
-            .fg(Color::Black)
-            .bg(Color::Cyan)
+    let t = theme();
+    let style = match help_key_style() {
+        HelpKeyStyle::Solid => Style::default()
+            .fg(t.help_key_fg)
+            .bg(t.help_key_bg)
             .add_modifier(Modifier::BOLD),
-    )
+        HelpKeyStyle::Outline => Style::default()
+            .fg(t.help_key_bg)
+            .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        HelpKeyStyle::Plain => Style::default().fg(t.info),
+    };
+
+    Span::styled(key, style)
 }
 
 /// Create a description span

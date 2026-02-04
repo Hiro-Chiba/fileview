@@ -10,6 +10,8 @@ background = "default"    # Main background
 foreground = "white"      # Default text color
 selection = "blue"        # Selection highlight
 border = "gray"           # Border color
+help_key_fg = "black"     # Help popup key text color
+help_key_bg = "cyan"      # Help popup key background color
 
 [file_colors]
 directory = "blue"        # Directory color
@@ -141,3 +143,4 @@ untracked = "#bf616a"
 - Use 256-color palette (`color0`-`color255`) for precise control
 - Hex colors provide the most flexibility
 - Test your theme in different terminal emulators for consistency
+- Help key highlight style can be switched with `FILEVIEW_HELP_KEY_STYLE=solid|outline|plain`

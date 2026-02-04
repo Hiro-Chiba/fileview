@@ -54,6 +54,10 @@ pub struct BaseColors {
     pub warning: String,
     /// Info message color
     pub info: String,
+    /// Help key foreground color
+    pub help_key_fg: String,
+    /// Help key background color
+    pub help_key_bg: String,
 }
 
 impl Default for BaseColors {
@@ -69,6 +73,8 @@ impl Default for BaseColors {
             error: "red".to_string(),
             warning: "yellow".to_string(),
             info: "blue".to_string(),
+            help_key_fg: "black".to_string(),
+            help_key_bg: "cyan".to_string(),
         }
     }
 }
@@ -185,6 +191,8 @@ pub struct Theme {
     pub error: Color,
     pub warning: Color,
     pub info: Color,
+    pub help_key_fg: Color,
+    pub help_key_bg: Color,
 
     // File type colors
     pub directory: Color,
@@ -238,6 +246,8 @@ impl Theme {
             error: parse_color(&file.colors.error),
             warning: parse_color(&file.colors.warning),
             info: parse_color(&file.colors.info),
+            help_key_fg: parse_color(&file.colors.help_key_fg),
+            help_key_bg: parse_color(&file.colors.help_key_bg),
 
             // File type colors
             directory: parse_color(&file.file_colors.directory),
