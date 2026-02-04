@@ -418,10 +418,8 @@ pub fn select_related_files(
 
     // Add test pairs if they exist
     for test_file in find_test_pairs(path) {
-        if test_file.exists() {
-            if state.selected_paths.insert(test_file) {
-                count += 1;
-            }
+        if test_file.exists() && state.selected_paths.insert(test_file) {
+            count += 1;
         }
     }
 
@@ -434,10 +432,8 @@ pub fn select_related_files(
             let same_parent = parent.is_some_and(|p| entry.path.parent() == Some(p));
             let stem_match =
                 entry_stem == stem || entry_stem.starts_with(stem) || stem.starts_with(entry_stem);
-            if same_parent && stem_match {
-                if state.selected_paths.insert(entry.path.clone()) {
-                    count += 1;
-                }
+            if same_parent && stem_match && state.selected_paths.insert(entry.path.clone()) {
+                count += 1;
             }
         }
     }
@@ -457,10 +453,10 @@ pub fn select_error_context(state: &mut AppState, entries: &[EntrySnapshot]) {
             .and_then(|n| n.to_str())
             .unwrap_or("")
             .to_lowercase();
-        if keywords.iter().any(|k| name.contains(k)) {
-            if state.selected_paths.insert(entry.path.clone()) {
-                count += 1;
-            }
+        if keywords.iter().any(|k| name.contains(k))
+            && state.selected_paths.insert(entry.path.clone())
+        {
+            count += 1;
         }
     }
 
