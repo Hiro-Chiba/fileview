@@ -166,6 +166,12 @@ brew install chafa  # または apt install libchafa-dev
 cargo install fileview --features chafa
 ```
 
+## 安定性
+
+- 現在のチャネル: `stable`（`2.1.0`）
+- stable移行条件は `docs/STABILITY.md` に明記しています。
+- 2026-02-04 時点で条件を満たし、stableリリース承認済みです。
+
 ## Lua プラグインシステム
 
 Lua スクリプトで FileView を拡張できます:
@@ -203,6 +209,7 @@ end)
 - [競合比較](docs/COMPARISON.md) - yazi, lf, ranger, nnn との比較
 - [ベンチマーク](docs/BENCHMARKS.md) - パフォーマンスデータ
 - [セキュリティ](docs/SECURITY.md) - セキュリティモデル
+- [安定性](docs/STABILITY.md) - リリースチャネル方針とalpha終了条件
 
 ## ライセンス
 
