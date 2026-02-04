@@ -83,7 +83,7 @@ pub enum UiDensity {
     Full,
     /// Compact mode (40-79 chars) - current compact display
     Compact,
-    /// Narrow mode (25-39 chars) - abbreviated icons, minimal status
+    /// Narrow mode (25-39 chars) - icons with minimal status
     Narrow,
     /// Ultra mode (20-24 chars) - minimal display for extreme narrow terminals
     Ultra,
@@ -102,7 +102,7 @@ impl UiDensity {
 
     /// Check if icons should be shown
     pub fn show_icons(&self) -> bool {
-        matches!(self, Self::Full | Self::Compact)
+        matches!(self, Self::Full | Self::Compact | Self::Narrow)
     }
 
     /// Check if full status bar should be shown
