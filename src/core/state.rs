@@ -66,6 +66,10 @@ pub enum PreviewDisplayMode {
 pub struct AiHistoryEntry {
     pub title: String,
     pub content: String,
+    pub preset: Option<String>,
+    pub token_estimate: usize,
+    pub file_count: usize,
+    pub created_at_unix: u64,
 }
 
 /// UI density mode based on terminal width
@@ -343,12 +347,35 @@ impl AppState {
         }
     }
 
-    /// Push an AI history entry (keeps at most 10)
-    pub fn push_ai_history(&mut self, title: String, content: String) {
-        let entry = AiHistoryEntry { title, content };
+    /// Push an AI history entry with metadata (keeps at most 10)
+    pub fn push_ai_history_with_meta(
+        &mut self,
+        title: String,
+        content: String,
+        preset: Option<String>,
+        file_count: usize,
+    ) {
+        let token_estimate = crate::mcp::token::estimate_tokens(&content);
+        let created_at_unix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let entry = AiHistoryEntry {
+            title,
+            content,
+            preset,
+            token_estimate,
+            file_count,
+            created_at_unix,
+        };
         self.ai_history.insert(0, entry);
         if self.ai_history.len() > 10 {
             self.ai_history.truncate(10);
         }
+    }
+
+    /// Push an AI history entry (keeps at most 10)
+    pub fn push_ai_history(&mut self, title: String, content: String) {
+        self.push_ai_history_with_meta(title, content, None, 0);
     }
 }
