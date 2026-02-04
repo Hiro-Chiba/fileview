@@ -11,8 +11,11 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 
-use fileview::app::{run_app, Config, SessionAction};
-use fileview::integrate::{exit_code, load_session, output_context, output_tree, Session};
+use fileview::app::{run_app, Config, PluginAction, SessionAction};
+use fileview::integrate::{
+    collect_related_paths, exit_code, load_session, output_context, output_context_pack,
+    output_paths, output_tree, plugin_init, plugin_test, Session,
+};
 use fileview::render::create_image_picker;
 
 fn main() -> ExitCode {
@@ -34,6 +37,14 @@ fn main() -> ExitCode {
         return run_context_mode(&config);
     }
 
+    if let Some(preset) = config.context_pack {
+        return run_context_pack_mode(&config, preset);
+    }
+
+    if let Some(ref path) = config.select_related_path {
+        return run_select_related_mode(path);
+    }
+
     if config.mcp_server {
         return run_mcp_server(&config);
     }
@@ -41,6 +52,10 @@ fn main() -> ExitCode {
     // Handle session actions (non-interactive)
     if let Some(action) = config.session_action {
         return run_session_action(&config, action);
+    }
+
+    if let Some(action) = config.plugin_action {
+        return run_plugin_action(&config, action);
     }
 
     match run_with_config(config) {
@@ -66,6 +81,32 @@ fn run_tree_mode(config: &Config) -> ExitCode {
 /// Run in context output mode (non-interactive)
 fn run_context_mode(config: &Config) -> ExitCode {
     match output_context(&config.root) {
+        Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+/// Run in context-pack output mode (non-interactive)
+fn run_context_pack_mode(
+    config: &Config,
+    preset: fileview::integrate::ContextPackPreset,
+) -> ExitCode {
+    match output_context_pack(&config.root, preset) {
+        Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+/// Run in related-file output mode (non-interactive)
+fn run_select_related_mode(path: &std::path::Path) -> ExitCode {
+    let related = collect_related_paths(path);
+    match output_paths(&related, fileview::integrate::OutputFormat::Lines) {
         Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
         Err(e) => {
             eprintln!("Error: {}", e);
@@ -121,6 +162,44 @@ fn run_session_action(config: &Config, action: SessionAction) -> ExitCode {
                 ExitCode::from(exit_code::ERROR as u8)
             }
         },
+    }
+}
+
+/// Run plugin command action (non-interactive)
+fn run_plugin_action(config: &Config, action: PluginAction) -> ExitCode {
+    match action {
+        PluginAction::Init => match plugin_init(config.plugin_path.as_deref()) {
+            Ok(path) => {
+                println!("Plugin initialized: {}", path.display());
+                ExitCode::from(exit_code::SUCCESS as u8)
+            }
+            Err(e) => {
+                eprintln!("Failed to initialize plugin: {}", e);
+                ExitCode::from(exit_code::ERROR as u8)
+            }
+        },
+        PluginAction::Test => {
+            let Some(path) = config.plugin_path.as_deref() else {
+                eprintln!("plugin test requires a .lua path");
+                return ExitCode::from(exit_code::INVALID as u8);
+            };
+            match plugin_test(path) {
+                Ok(notifications) => {
+                    println!("Plugin test passed: {}", path.display());
+                    if !notifications.is_empty() {
+                        println!("Notifications:");
+                        for n in notifications {
+                            println!("  - {}", n);
+                        }
+                    }
+                    ExitCode::from(exit_code::SUCCESS as u8)
+                }
+                Err(e) => {
+                    eprintln!("Plugin test failed: {}", e);
+                    ExitCode::from(exit_code::ERROR as u8)
+                }
+            }
+        }
     }
 }
 
