@@ -7,7 +7,7 @@ use std::process::Command;
 
 use super::{error_result, success_result, ToolCallResult};
 use crate::git::{get_diff, DiffLine, GitStatus};
-use crate::mcp::security::validate_path;
+use crate::mcp::security::{validate_new_path, validate_path};
 
 /// Get git status for the repository
 pub fn get_git_status(root: &Path) -> ToolCallResult {
@@ -75,12 +75,10 @@ pub fn get_git_status(root: &Path) -> ToolCallResult {
 
 /// Get git diff for a file
 pub fn get_git_diff(root: &Path, path: &str, staged: bool) -> ToolCallResult {
-    let target = root.join(path);
-
-    // Try to validate path (might fail for new files)
-    let canonical = match validate_path(root, path) {
+    // Validate existing paths and safely allow new-file paths.
+    let canonical = match validate_path(root, path).or_else(|_| validate_new_path(root, path)) {
         Ok(p) => p,
-        Err(_) => target.clone(), // Use unvalidated path for new files
+        Err(e) => return error_result(&format!("Invalid path '{}': {}", path, e)),
     };
 
     match get_diff(root, &canonical, staged) {
