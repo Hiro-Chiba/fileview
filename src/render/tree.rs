@@ -18,7 +18,8 @@ use crate::tree::TreeEntry;
 /// Render the file tree widget
 pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], area: Rect) {
     let visible_height = area.height.saturating_sub(2) as usize;
-    let layout = LayoutEngine::from_rect(area);
+    let density = state.ui_density_for_width(area.width);
+    let layout = LayoutEngine::from_rect_with_density(area, density);
     let tree_cols = layout.tree_columns(area);
 
     let items: Vec<ListItem> = entries

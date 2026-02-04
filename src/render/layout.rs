@@ -172,9 +172,23 @@ impl LayoutEngine {
         }
     }
 
+    /// Create a new layout engine with an explicit density override
+    pub fn new_with_density(width: u16, height: u16, density: UiDensity) -> Self {
+        Self {
+            width,
+            height,
+            density,
+        }
+    }
+
     /// Create from a Rect
     pub fn from_rect(area: Rect) -> Self {
         Self::new(area.width, area.height)
+    }
+
+    /// Create from a Rect with explicit density
+    pub fn from_rect_with_density(area: Rect, density: UiDensity) -> Self {
+        Self::new_with_density(area.width, area.height, density)
     }
 
     /// Get tree column configuration

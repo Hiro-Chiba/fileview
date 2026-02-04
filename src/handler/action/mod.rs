@@ -328,8 +328,25 @@ pub fn handle_action(
             Ok(ActionResult::Continue)
         }
 
+        KeyAction::SelectRelated => {
+            selection::select_related_files(state, entries, focused_path);
+            Ok(ActionResult::Continue)
+        }
+
+        KeyAction::SelectErrorContext => {
+            selection::select_error_context(state, entries);
+            Ok(ActionResult::Continue)
+        }
+
         // Toggle peek mode
-        KeyAction::TogglePeekMode | KeyAction::CopyCompact => {
+        KeyAction::TogglePeekMode
+        | KeyAction::CopyCompact
+        | KeyAction::CopyContextPack
+        | KeyAction::ToggleAiFocus
+        | KeyAction::OpenAiHistory
+        | KeyAction::AiHistoryUp
+        | KeyAction::AiHistoryDown
+        | KeyAction::AiHistorySelect => {
             display::handle(action, state, navigator, focused_path)?;
             Ok(ActionResult::Continue)
         }

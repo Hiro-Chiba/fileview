@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use crate::core::{AppState, ViewMode};
 use crate::handler::key::KeyAction;
-use crate::integrate::{exit_code, PickResult};
+use crate::integrate::{build_context_pack, exit_code, ContextPackPreset, PickResult};
 use crate::render::{
     ArchivePreview, CustomPreview, DiffPreview, HexPreview, PdfPreview, Picker, TextPreview,
 };
@@ -115,7 +115,11 @@ pub fn handle(
                 state.set_message("No file selected");
             } else {
                 match copy_file_contents_claude_format(&paths) {
-                    Ok(count) => {
+                    Ok((text, count)) => {
+                        state.push_ai_history(
+                            format!("Claude Copy ({} file(s))", count),
+                            text.clone(),
+                        );
                         state.set_message(format!("Copied {} file(s) (Claude format)", count))
                     }
                     Err(e) => state.set_message(format!("Failed: {}", e)),
@@ -168,8 +172,71 @@ pub fn handle(
                 state.set_message("No file selected");
             } else {
                 match copy_file_contents_compact(&paths) {
-                    Ok(count) => state.set_message(format!("Copied {} file(s) (compact)", count)),
+                    Ok((text, count)) => {
+                        state.push_ai_history(
+                            format!("Compact Copy ({} file(s))", count),
+                            text.clone(),
+                        );
+                        state.set_message(format!("Copied {} file(s) (compact)", count))
+                    }
                     Err(e) => state.set_message(format!("Failed: {}", e)),
+                }
+            }
+        }
+        KeyAction::CopyContextPack => {
+            let selected: Vec<PathBuf> = if state.selected_paths.is_empty() {
+                focused_path.clone().into_iter().collect()
+            } else {
+                state.selected_paths.iter().cloned().collect()
+            };
+            match build_context_pack(&state.root, ContextPackPreset::Minimal, &selected) {
+                Ok(text) => match copy_text_to_clipboard(&text) {
+                    Ok(_) => {
+                        state.push_ai_history("Context Pack (minimal)".to_string(), text);
+                        state.set_message("Copied context pack");
+                    }
+                    Err(e) => state.set_message(format!("Failed: {}", e)),
+                },
+                Err(e) => state.set_message(format!("Failed: {}", e)),
+            }
+        }
+        KeyAction::ToggleAiFocus => {
+            state.toggle_ai_focus();
+            state.set_message(if state.ai_focus {
+                "AI focus: ON"
+            } else {
+                "AI focus: OFF"
+            });
+        }
+        KeyAction::OpenAiHistory => {
+            if state.ai_history.is_empty() {
+                state.set_message("AI history is empty");
+            } else {
+                state.mode = ViewMode::AiHistory { selected: 0 };
+                state.set_message("AI history (j/k + Enter)");
+            }
+        }
+        KeyAction::AiHistoryUp => {
+            if let ViewMode::AiHistory { selected } = &mut state.mode {
+                *selected = selected.saturating_sub(1);
+            }
+        }
+        KeyAction::AiHistoryDown => {
+            if let ViewMode::AiHistory { selected } = &mut state.mode {
+                let max_index = state.ai_history.len().saturating_sub(1);
+                *selected = (*selected + 1).min(max_index);
+            }
+        }
+        KeyAction::AiHistorySelect => {
+            if let ViewMode::AiHistory { selected } = state.mode.clone() {
+                if let Some(entry) = state.ai_history.get(selected) {
+                    match copy_text_to_clipboard(&entry.content) {
+                        Ok(_) => {
+                            state.mode = ViewMode::Browse;
+                            state.set_message(format!("Copied history: {}", entry.title));
+                        }
+                        Err(e) => state.set_message(format!("Failed: {}", e)),
+                    }
                 }
             }
         }
@@ -407,15 +474,13 @@ fn copy_file_contents_to_clipboard(paths: &[PathBuf]) -> anyhow::Result<usize> {
     }
 
     let text = contents.join("\n");
-    arboard::Clipboard::new()
-        .and_then(|mut cb| cb.set_text(text))
-        .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;
+    copy_text_to_clipboard(&text)?;
 
     Ok(count)
 }
 
 /// Copy file contents to clipboard in Claude-friendly markdown format
-fn copy_file_contents_claude_format(paths: &[PathBuf]) -> anyhow::Result<usize> {
+fn copy_file_contents_claude_format(paths: &[PathBuf]) -> anyhow::Result<(String, usize)> {
     let mut contents = Vec::new();
     let mut count = 0;
 
@@ -441,16 +506,14 @@ fn copy_file_contents_claude_format(paths: &[PathBuf]) -> anyhow::Result<usize> 
     }
 
     let text = contents.join("\n");
-    arboard::Clipboard::new()
-        .and_then(|mut cb| cb.set_text(text))
-        .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;
+    copy_text_to_clipboard(&text)?;
 
-    Ok(count)
+    Ok((text, count))
 }
 
 /// Copy file contents to clipboard in compact format (for small AI contexts)
 /// Uses minimal formatting: just filename and content, no markdown headers
-fn copy_file_contents_compact(paths: &[PathBuf]) -> anyhow::Result<usize> {
+fn copy_file_contents_compact(paths: &[PathBuf]) -> anyhow::Result<(String, usize)> {
     let mut contents = Vec::new();
     let mut count = 0;
 
@@ -474,11 +537,16 @@ fn copy_file_contents_compact(paths: &[PathBuf]) -> anyhow::Result<usize> {
     }
 
     let text = contents.join("\n").trim_end().to_string();
-    arboard::Clipboard::new()
-        .and_then(|mut cb| cb.set_text(text))
-        .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;
+    copy_text_to_clipboard(&text)?;
 
-    Ok(count)
+    Ok((text, count))
+}
+
+fn copy_text_to_clipboard(text: &str) -> anyhow::Result<()> {
+    arboard::Clipboard::new()
+        .and_then(|mut cb| cb.set_text(text.to_string()))
+        .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;
+    Ok(())
 }
 
 /// Handle pick mode selection

@@ -279,6 +279,8 @@ fv --tree --with-content ./src/module
 |-----|--------|
 | `Ctrl+G` | Select all git changed files |
 | `Ctrl+T` | Select test file pair (auto-detect) |
+| `Ctrl+R` | Select related files (same stem/test pairs) |
+| `Ctrl+E` | Select error-context files (logs/traces) |
 
 Test pair patterns:
 - `foo.rs` → `foo_test.rs`, `test_foo.rs`, `tests/foo.rs`
@@ -291,6 +293,9 @@ Test pair patterns:
 |-----|--------|
 | `Y` | Copy file content to clipboard |
 | `Ctrl+Y` | Copy in Claude-friendly format |
+| `Ctrl+Shift+Y` | Copy context pack (minimal preset) |
+| `Ctrl+A` | Toggle AI focus mode (ultra-compact + peek preview) |
+| `Ctrl+Shift+P` | Open AI history popup |
 | `Enter` | Select (in select mode) |
 | `Space` | Toggle mark (for multi-select) |
 

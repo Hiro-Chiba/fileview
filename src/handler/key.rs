@@ -69,6 +69,8 @@ pub enum KeyAction {
     CopyContent,
     /// Copy file content in Claude format to system clipboard
     CopyForClaude,
+    /// Copy AI context pack to clipboard
+    CopyContextPack,
     /// Open preview
     OpenPreview,
     /// Toggle quick preview panel
@@ -168,14 +170,28 @@ pub enum KeyAction {
     SelectTestPair,
     /// Toggle peek mode (mini preview in status bar)
     TogglePeekMode,
+    /// Toggle AI focus mode (ultra-compact UI)
+    ToggleAiFocus,
     /// Select files by extension (Ctrl+1..9)
     SelectByExtension { index: u8 },
     /// Select files from recent git commit
     SelectRecentCommit,
     /// Select git staged files only
     SelectGitStaged,
+    /// Select related files for current focus
+    SelectRelated,
+    /// Select error context files in view
+    SelectErrorContext,
     /// Copy content in compact format (for small AI contexts)
     CopyCompact,
+    /// Open AI history popup
+    OpenAiHistory,
+    /// Move up in AI history list
+    AiHistoryUp,
+    /// Move down in AI history list
+    AiHistoryDown,
+    /// Select AI history entry
+    AiHistorySelect,
 }
 
 /// Handle key event and return the resulting action
@@ -189,6 +205,7 @@ pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
         ViewMode::Preview { .. } => handle_preview_mode(key),
         ViewMode::FuzzyFinder { .. } => handle_fuzzy_finder_mode(key),
         ViewMode::Help => handle_help_mode(key),
+        ViewMode::AiHistory { .. } => handle_ai_history_mode(key),
         ViewMode::BookmarkSet => handle_bookmark_set_mode(key),
         ViewMode::BookmarkJump => handle_bookmark_jump_mode(key),
         ViewMode::Filter { query } => handle_filter_mode(key, query),
@@ -243,6 +260,7 @@ pub fn handle_key_event_with_registry(
         ViewMode::Help => registry
             .lookup_help(&key)
             .unwrap_or_else(|| handle_help_mode(key)),
+        ViewMode::AiHistory { .. } => handle_ai_history_mode(key),
         ViewMode::BookmarkSet => handle_bookmark_set_mode(key),
         ViewMode::BookmarkJump => handle_bookmark_jump_mode(key),
         ViewMode::Filter { query } => {
@@ -369,6 +387,10 @@ fn apply_browse_context(state: &AppState, action: KeyAction) -> KeyAction {
 /// Handle keys in browse mode
 fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
     match key.code {
+        // AI focus mode (Ctrl+A)
+        KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::ToggleAiFocus
+        }
         // Quit
         KeyCode::Char('q') => {
             if state.pick_mode {
@@ -489,7 +511,19 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
 
-        // Clipboard (Ctrl+Y and Alt+Y must come before plain 'y')
+        // Clipboard (Ctrl+Shift+Y, Ctrl+Y and Alt+Y must come before plain 'y')
+        KeyCode::Char('Y')
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && key.modifiers.contains(KeyModifiers::SHIFT) =>
+        {
+            KeyAction::CopyContextPack
+        }
+        KeyCode::Char('y')
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && key.modifiers.contains(KeyModifiers::SHIFT) =>
+        {
+            KeyAction::CopyContextPack
+        }
         KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::CopyForClaude
         }
@@ -503,6 +537,19 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
         KeyCode::Char('D') | KeyCode::Delete => KeyAction::ConfirmDelete,
+        // AI history (Ctrl+Shift+P)
+        KeyCode::Char('P')
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && key.modifiers.contains(KeyModifiers::SHIFT) =>
+        {
+            KeyAction::OpenAiHistory
+        }
+        KeyCode::Char('p')
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && key.modifiers.contains(KeyModifiers::SHIFT) =>
+        {
+            KeyAction::OpenAiHistory
+        }
         // Fuzzy finder (Ctrl+P) and Peek mode (Alt+P) - must be checked before plain 'p'
         KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::OpenFuzzyFinder
@@ -515,6 +562,14 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // Select recent commit files (Alt+R) - before plain 'r'
         KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::ALT) => {
             KeyAction::SelectRecentCommit
+        }
+        // Select related files (Ctrl+R)
+        KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::SelectRelated
+        }
+        // Select error context files (Ctrl+E)
+        KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyAction::SelectErrorContext
         }
 
         // File operations
@@ -847,6 +902,17 @@ fn handle_bulk_rename_mode(key: KeyEvent, from_pattern: &str, to_pattern: &str) 
         },
         KeyCode::Esc => KeyAction::Cancel,
         _ => KeyAction::None, // Text input handled separately
+    }
+}
+
+/// Handle keys in AI history popup mode
+fn handle_ai_history_mode(key: KeyEvent) -> KeyAction {
+    match key.code {
+        KeyCode::Esc => KeyAction::Cancel,
+        KeyCode::Up | KeyCode::Char('k') => KeyAction::AiHistoryUp,
+        KeyCode::Down | KeyCode::Char('j') => KeyAction::AiHistoryDown,
+        KeyCode::Enter => KeyAction::AiHistorySelect,
+        _ => KeyAction::None,
     }
 }
 

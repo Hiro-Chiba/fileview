@@ -9,11 +9,11 @@ use crate::app::PreviewState;
 use crate::core::{AppState, FocusTarget, TabManager, ViewMode};
 use crate::handler::action::get_filename_str;
 use crate::render::{
-    render_archive_preview, render_bulk_rename_dialog, render_custom_preview, render_diff_preview,
-    render_directory_info, render_fuzzy_finder, render_help_popup, render_hex_preview,
-    render_image_preview, render_input_popup, render_pdf_preview, render_status_bar,
-    render_tab_bar, render_text_preview, render_tree, render_video_preview, FontSize, FuzzyMatch,
-    Picker,
+    render_ai_history_popup, render_archive_preview, render_bulk_rename_dialog,
+    render_custom_preview, render_diff_preview, render_directory_info, render_fuzzy_finder,
+    render_help_popup, render_hex_preview, render_image_preview, render_input_popup,
+    render_pdf_preview, render_status_bar, render_tab_bar, render_text_preview, render_tree,
+    render_video_preview, FontSize, FuzzyMatch, LayoutEngine, Picker,
 };
 use crate::tree::TreeEntry;
 
@@ -110,13 +110,21 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
         render_tab_bar(frame, tm, tab_area);
     }
 
-    // Use effective_preview_visible to auto-hide preview on narrow terminals
-    let effective_preview = ctx.state.effective_preview_visible(main_area.width);
+    let density = ctx.state.ui_density_for_width(main_area.width);
+    let layout = LayoutEngine::from_rect_with_density(main_area, density);
 
-    let main_chunks = if effective_preview {
+    // Use effective_preview_visible to auto-hide preview on narrow terminals
+    let effective_preview =
+        layout.should_show_preview(ctx.state.effective_preview_visible(main_area.width));
+    let (tree_pct, preview_pct) = layout.split_ratio(effective_preview);
+
+    let main_chunks = if preview_pct > 0 {
         Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .constraints([
+                Constraint::Percentage(tree_pct),
+                Constraint::Percentage(preview_pct),
+            ])
             .split(main_area)
     } else {
         Layout::default()
@@ -158,6 +166,7 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
 
     // Render help popup if in Help mode
     render_help_popup(frame, ctx.state);
+    render_ai_history_popup(frame, ctx.state);
 
     // Render bulk rename dialog if in BulkRename mode
     if matches!(ctx.state.mode, ViewMode::BulkRename { .. }) {
