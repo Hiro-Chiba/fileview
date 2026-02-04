@@ -7,6 +7,13 @@
 - 開発速度は落とさない
 - ユーザーには常に「今使うべき版」を明確に示す
 
+## Branch Model (Develop-first)
+
+1. `main` はリリース専用ブランチ
+2. 通常開発は `develop` を基点に進める
+3. 機能開発は `feature/*` ブランチを `develop` から作成して `develop` にマージ
+4. `develop` がOKで、かつオーナー承認が出た時のみ `main` にマージしてリリース
+
 ## Version Channels
 
 ### Stable (`x.y.z`)

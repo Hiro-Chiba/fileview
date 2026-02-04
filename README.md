@@ -51,6 +51,7 @@ Useful docs:
 - [Current score snapshot](score.md)
 - [Product philosophy](philosophy.md)
 - [Autopilot loop setup](docs/AUTOPILOT_LOOP.md)
+- [Branching model](docs/BRANCHING_MODEL.md)
 - [Release Policy](docs/RELEASE_POLICY.md)
 
 ## Features

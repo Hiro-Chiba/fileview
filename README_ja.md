@@ -51,6 +51,7 @@ fv --resume-ai-session
 - [現行スコアスナップショット](score.md)
 - [プロダクト思想](philosophy.md)
 - [自動ループ設定](docs/AUTOPILOT_LOOP.md)
+- [ブランチ運用モデル](docs/BRANCHING_MODEL.md)
 - [リリース方針](docs/RELEASE_POLICY.md)
 
 ## 機能

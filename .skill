@@ -6,7 +6,7 @@ version: "1.0"
 language: "ja"
 
 defaults:
-  branch_from: "main"
+  branch_from: "develop"
   run_checks:
     - "cargo fmt --all -- --check"
     - "cargo clippy --all-targets -- -D warnings"
@@ -24,11 +24,11 @@ workflow:
   - "philosophy.md を常に参照し、20%ターミナル空間でのAI駆動開発支援を最優先する"
   - "score.md の競合スコアを更新し、改善テーマを1つ決める"
   - "常時ループ運用時は scripts/install_growth_loop_launchd.sh で launchd エージェントを有効化する"
-  - "必要なら main から作業ブランチを作成する"
+  - "feature作業は develop から作業ブランチを作成する"
   - "scripts/ai_growth_loop.sh で品質/セキュリティチェックを回す"
   - "実装後に run_checks を実行し、結果を要約する"
-  - "コミット・push・PR作成・CI確認を行う"
-  - "ユーザー指示があればマージ、タグ作成、cargo publishを実行する"
+  - "コミット・push後は PR を develop 向けに作成し、CI確認を行う"
+  - "ユーザーが明示許可した時だけ develop -> main をマージしてリリースする"
   - "最後に残タスクを3行以内で提示する"
 
 release_policy:
