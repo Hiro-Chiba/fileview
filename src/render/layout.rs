@@ -42,9 +42,9 @@ impl TreeColumns {
                 mark_width: 1,
                 git_indicator_width: 1,
                 indent_width: 1,
-                icon_width: 0, // No icons in narrow mode
-                max_filename_width: inner_width.saturating_sub(3),
-                show_icons: false,
+                icon_width: 2,
+                max_filename_width: inner_width.saturating_sub(6),
+                show_icons: true,
             },
             UiDensity::Compact => Self {
                 mark_width: 1,
@@ -301,6 +301,10 @@ mod tests {
 
         let cols = TreeColumns::new(UiDensity::Ultra, 20);
         assert!(!cols.show_icons);
+        assert_eq!(cols.indent_width, 1);
+
+        let cols = TreeColumns::new(UiDensity::Narrow, 30);
+        assert!(cols.show_icons);
         assert_eq!(cols.indent_width, 1);
     }
 
