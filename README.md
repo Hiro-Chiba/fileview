@@ -139,9 +139,17 @@ Claude Code:
   -t, --tree          Output directory tree to stdout
   --depth N           Limit tree depth
   --context           Output project context (AI-friendly)
+  --context-pack P    Output context pack preset (minimal/review/debug/refactor/incident/onboarding)
+  --context-format F  Context pack format: ai-md, jsonl
+  --token-budget N    Context pack token budget
+  --include-git-diff  Force include git diff summary in context pack
+  --include-tests     Include inferred test files in context pack
+  --context-depth N   Fallback file scan depth for context pack
   --with-content      Include file contents in output
   --select-mode       Simple selection mode
   --multi             Allow multiple selection
+  --select-related F  Output related files for a focused file
+  --explain-selection Include score/reasons in related-file output
   --mcp-server        Run as MCP server
 ```
 

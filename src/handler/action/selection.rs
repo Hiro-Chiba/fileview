@@ -10,6 +10,7 @@ use crate::action::Clipboard;
 use crate::core::AppState;
 use crate::git::FileStatus;
 use crate::handler::key::KeyAction;
+use crate::integrate::collect_related_candidates;
 
 use super::EntrySnapshot;
 
@@ -387,7 +388,7 @@ pub(crate) fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
     candidates
 }
 
-/// Select files related to the focused file (same stem, same dir, tests)
+/// Select files related to the focused file using scored candidate discovery.
 pub fn select_related_files(
     state: &mut AppState,
     entries: &[EntrySnapshot],
@@ -401,44 +402,20 @@ pub fn select_related_files(
         }
     };
 
-    let stem = match path.file_stem().and_then(|s| s.to_str()) {
-        Some(s) => s,
-        None => {
-            state.set_message("Focused item has no filename");
-            return;
-        }
-    };
-
-    let parent = path.parent();
-    let mut count = 0;
-
-    // Always include focused file
-    state.selected_paths.insert(path.clone());
-    count += 1;
-
-    // Add test pairs if they exist
-    for test_file in find_test_pairs(path) {
-        if test_file.exists() && state.selected_paths.insert(test_file) {
+    let visible: std::collections::HashSet<PathBuf> =
+        entries.iter().map(|e| e.path.clone()).collect();
+    let mut count = 0usize;
+    for candidate in collect_related_candidates(path) {
+        if visible.contains(&candidate.path) && state.selected_paths.insert(candidate.path) {
             count += 1;
         }
     }
 
-    // Add same-stem files in current view
-    for entry in entries {
-        if entry.path == *path {
-            continue;
-        }
-        if let Some(entry_stem) = entry.path.file_stem().and_then(|s| s.to_str()) {
-            let same_parent = parent.is_some_and(|p| entry.path.parent() == Some(p));
-            let stem_match =
-                entry_stem == stem || entry_stem.starts_with(stem) || stem.starts_with(entry_stem);
-            if same_parent && stem_match && state.selected_paths.insert(entry.path.clone()) {
-                count += 1;
-            }
-        }
+    if count > 0 {
+        state.set_message(format!("Selected {} related file(s)", count));
+    } else {
+        state.set_message("No related files in view");
     }
-
-    state.set_message(format!("Selected {} related file(s)", count));
 }
 
 /// Select error-context files (logs, traces) in current view
