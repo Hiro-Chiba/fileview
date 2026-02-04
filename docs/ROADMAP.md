@@ -11,7 +11,7 @@ FileView は「単体FMの機能競争」ではなく、**AI駆動開発の補�
 ## Current Position
 
 - Current channel: `stable`
-- Current version: `2.1.0`
+- Current version: `2.2.2`
 - Strength: MCP + context-pack + lightweight TUI
 - Gap to close: 認知/導入導線、AI専用ワークフローの完成度、継続利用ループ
 
@@ -36,6 +36,9 @@ FileView は「単体FMの機能競争」ではなく、**AI駆動開発の補�
 
 | Version | Date | Channel | Highlights |
 |---|---|---|---|
+| `v2.2.2` | 2026-02-04 | stable | Narrow (`25-39`) でもファイル/フォルダアイコン表示 |
+| `v2.2.1` | 2026-02-04 | stable | 公開フロー安定化（lock整合修正） |
+| `v2.2.0` | 2026-02-04 | stable | AI growth sprint1（後続で2.2.1に実運用移行） |
 | `v2.1.0` | 2026-02-04 | stable | stable昇格、alpha exit policy導入 |
 | `v2.0.4-alpha` | 2026-02-04 | alpha | 安定版直前の最終調整 |
 | `v2.0.3-alpha` | 2026-02-04 | alpha | AI context automation強化 |
