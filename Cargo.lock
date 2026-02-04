@@ -766,7 +766,7 @@ dependencies = [
 
 [[package]]
 name = "fileview"
-version = "2.2.2"
+version = "2.2.3"
 dependencies = [
  "anyhow",
  "arboard",

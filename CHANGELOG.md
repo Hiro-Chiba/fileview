@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.3] - 2026-02-04
+
+### Changed
+
+- 開発/運用ルールを整理し、`main` を最終スナップショット向けのシンプル構成にクリーンアップ
+
+### Note
+
+- このリリースを区切りとして、以後の開発は一時停止
+
+
 ## [2.2.2] - 2026-02-04
 
 ### Changed
