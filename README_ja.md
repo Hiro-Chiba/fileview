@@ -67,6 +67,7 @@ fv
 | `/` | 検索 |
 | `Ctrl+P` | ファジーファインダー |
 | `P` | プレビューパネル |
+| `Ctrl+Shift+Enter` | レビュー用コンテキストパックをコピー |
 | `q` | 終了 |
 
 **[完全なキーバインド一覧](docs/KEYBINDINGS_ja.md)**
@@ -76,6 +77,9 @@ fv
 FileView は Claude Code との AI ペアプログラミングに最適化されています:
 
 ```bash
+# AI向けプロジェクトコンテキスト
+fv --context
+
 # ディレクトリツリーをコンテキストとして出力
 fv --tree --depth 2 ./src
 
@@ -85,6 +89,13 @@ selected=$(fv --select-mode --multi)
 # Claude 向けフォーマットでファイル内容をコピー
 # fileview 内で Ctrl+Y を押すとシンタックスヒント付きでコピー
 ```
+
+### スマート選択
+
+| キー | 動作 |
+|------|------|
+| `Ctrl+G` | Git変更ファイルを一括選択 |
+| `Ctrl+T` | テストペアファイルを選択 |
 
 ### MCP サーバー
 
@@ -130,10 +141,24 @@ fv [OPTIONS] [PATH]
 Claude Code連携:
   -t, --tree          ディレクトリツリーをstdoutに出力
   --depth N           ツリー深度を制限
+  --context           AI向けプロジェクトコンテキストを出力
+  --context-pack P    コンテキストパック preset 出力 (minimal/review/debug/refactor/incident/onboarding)
+  --context-format F  コンテキスト形式: ai-md, jsonl
+  --agent A           エージェントプロファイル: claude, codex, cursor
+  --token-budget N    コンテキストのトークン予算
+  --include-git-diff  コンテキストにgit diff要約を含める
+  --include-tests     推定テストファイルを含める
+  --context-depth N   フォールバックスキャン深度
   --with-content      出力にファイル内容を含める
   --select-mode       シンプル選択モード
   --multi             複数選択を許可
+  --select-related F  対象ファイルに関連するファイルを出力
+  --explain-selection 関連ファイル選定理由を出力
+  --resume-ai-session [NAME]
+                      名前付きAIセッションを復元（省略時: ai）
   --mcp-server        MCPサーバーとして起動
+  benchmark ai        AI向けベンチマークを実行
+  init claude         Claude設定にfileview MCPエントリを自動追加
 ```
 
 ### 終了コード
@@ -204,6 +229,7 @@ end)
 ## ドキュメント
 
 - [Claude Code 連携](docs/CLAUDE_CODE.md) - AI ペアプログラミングガイド
+- [Claude Code 連携（日本語）](docs/CLAUDE_CODE_ja.md) - AI ペアプログラミングガイド
 - [キーバインド](docs/KEYBINDINGS_ja.md) - 完全なキーバインド一覧
 - [プラグイン](docs/PLUGINS_ja.md) - Lua プラグインシステム
 - [競合比較](docs/COMPARISON.md) - yazi, lf, ranger, nnn との比較
