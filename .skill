@@ -21,8 +21,9 @@ defaults:
 
 workflow:
   - "git statusを確認し、作業差分と現在ブランチを最初に報告する"
-  - "思想.md を常に参照し、20%ターミナル空間でのAI駆動開発支援を最優先する"
+  - "philosophy.md を常に参照し、20%ターミナル空間でのAI駆動開発支援を最優先する"
   - "score.md の競合スコアを更新し、改善テーマを1つ決める"
+  - "常時ループ運用時は scripts/install_growth_loop_launchd.sh で launchd エージェントを有効化する"
   - "必要なら main から作業ブランチを作成する"
   - "scripts/ai_growth_loop.sh で品質/セキュリティチェックを回す"
   - "実装後に run_checks を実行し、結果を要約する"
