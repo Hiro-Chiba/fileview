@@ -230,6 +230,7 @@ end)
 - [Keybindings](docs/KEYBINDINGS.md) - Complete keybinding reference
 - [Plugins](docs/PLUGINS.md) - Lua plugin system
 - [Comparison](docs/COMPARISON.md) - vs yazi, lf, ranger, nnn
+- [Roadmap](docs/ROADMAP.md) - Product direction and release history
 - [Benchmarks](docs/BENCHMARKS.md) - Performance data
 - [Security](docs/SECURITY.md) - Security model
 - [Stability](docs/STABILITY.md) - Release channel policy and alpha exit criteria
