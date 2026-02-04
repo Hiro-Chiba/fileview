@@ -1,0 +1,9 @@
+[advisories]
+# Temporary policy exceptions:
+# - syntect transitively pulls unmaintained crates (bincode 1.x / yaml-rust 0.4.x)
+# - these are currently used for syntax highlighting only (non-network, local parsing path)
+# - tracked for replacement/upgrade in dependency hardening backlog
+ignore = [
+  "RUSTSEC-2025-0141", # bincode (via syntect)
+  "RUSTSEC-2024-0320", # yaml-rust (via syntect)
+]
