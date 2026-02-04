@@ -332,7 +332,7 @@ FileView v2.0 supports terminals as narrow as **20 characters**:
 |-------|------|----------|
 | 80+ | Full | All features, icons, full preview |
 | 40-79 | Compact | Condensed status, partial preview |
-| 25-39 | Narrow | No icons, minimal status |
+| 25-39 | Narrow | Icons + minimal status |
 | 20-24 | Ultra | Essential info only |
 
 This makes FileView perfect for AI pair programming where Claude Code uses 80% of the screen.
