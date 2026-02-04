@@ -33,7 +33,8 @@ pub fn render_status_bar(
         return;
     }
 
-    let layout = LayoutEngine::from_rect(area);
+    let density = state.ui_density_for_width(area.width);
+    let layout = LayoutEngine::from_rect_with_density(area, density);
 
     // Adaptive layout based on UI density
     match layout.density {
@@ -52,7 +53,8 @@ fn render_peek_status(
     area: Rect,
 ) {
     let t = theme();
-    let layout = LayoutEngine::from_rect(area);
+    let density = state.ui_density_for_width(area.width);
+    let layout = LayoutEngine::from_rect_with_density(area, density);
     let max_preview_lines = layout.peek_preview_lines();
 
     // Build header line with minimal info based on density
