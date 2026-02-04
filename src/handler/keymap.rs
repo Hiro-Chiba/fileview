@@ -409,6 +409,7 @@ fn parse_browse_action(action: &str) -> Option<KeyAction> {
         "copy_content" => Some(KeyAction::CopyContent),
         "copy_for_claude" => Some(KeyAction::CopyForClaude),
         "copy_context_pack" => Some(KeyAction::CopyContextPack),
+        "copy_context_pack_review" => Some(KeyAction::CopyContextPackReview),
         "copy_compact" => Some(KeyAction::CopyCompact),
         "open_preview" => Some(KeyAction::OpenPreview),
         "toggle_quick_preview" => Some(KeyAction::ToggleQuickPreview),

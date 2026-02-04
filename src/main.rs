@@ -11,11 +11,11 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 
-use fileview::app::{run_app, Config, PluginAction, SessionAction};
+use fileview::app::{run_app, Config, InitAction, PluginAction, SessionAction};
 use fileview::integrate::{
-    collect_related_candidates, collect_related_paths, exit_code, load_session, output_context,
-    output_context_pack_with_options, output_paths, output_tree, plugin_init, plugin_test,
-    run_ai_benchmark, Session,
+    claude_init, collect_related_candidates, collect_related_paths, exit_code, load_session,
+    load_session_named, output_context, output_context_pack_with_options, output_paths,
+    output_tree, plugin_init, plugin_test, run_ai_benchmark, Session,
 };
 use fileview::render::create_image_picker;
 
@@ -54,9 +54,17 @@ fn main() -> ExitCode {
         return run_mcp_server(&config);
     }
 
+    if let Some(ref name) = config.resume_ai_session {
+        return run_resume_ai_session(&config, name);
+    }
+
     // Handle session actions (non-interactive)
     if let Some(action) = config.session_action {
         return run_session_action(&config, action);
+    }
+
+    if let Some(action) = config.init_action {
+        return run_init_action(&config, action);
     }
 
     if let Some(action) = config.plugin_action {
@@ -195,6 +203,49 @@ fn run_session_action(config: &Config, action: SessionAction) -> ExitCode {
                 ExitCode::from(exit_code::ERROR as u8)
             }
         },
+    }
+}
+
+/// Resume named AI session and print selected files.
+fn run_resume_ai_session(config: &Config, name: &str) -> ExitCode {
+    match load_session_named(&config.root, Some(name)) {
+        Ok((selected, focus)) => {
+            println!("AI session restored: {}", name);
+            println!("  Selected: {} file(s)", selected.len());
+            for path in &selected {
+                println!("    {}", path.display());
+            }
+            if let Some(f) = focus {
+                println!("  Focus: {}", f.display());
+            }
+            ExitCode::from(exit_code::SUCCESS as u8)
+        }
+        Err(e) => {
+            eprintln!("Failed to restore AI session '{}': {}", name, e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+/// Run init action.
+fn run_init_action(config: &Config, action: InitAction) -> ExitCode {
+    match action {
+        InitAction::Claude => {
+            match claude_init(&config.root, config.init_path.as_deref(), config.init_force) {
+                Ok((path, changed)) => {
+                    if changed {
+                        println!("Claude config updated: {}", path.display());
+                    } else {
+                        println!("Claude config already up-to-date: {}", path.display());
+                    }
+                    ExitCode::from(exit_code::SUCCESS as u8)
+                }
+                Err(e) => {
+                    eprintln!("Failed to init Claude config: {}", e);
+                    ExitCode::from(exit_code::ERROR as u8)
+                }
+            }
+        }
     }
 }
 

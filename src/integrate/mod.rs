@@ -10,6 +10,7 @@
 
 pub mod benchmark;
 pub mod callback;
+pub mod claude_init;
 pub mod context;
 pub mod context_pack;
 pub mod pick;
@@ -20,6 +21,7 @@ pub mod tree;
 
 pub use benchmark::run_ai_benchmark;
 pub use callback::{Callback, CallbackResult};
+pub use claude_init::claude_init;
 pub use context::{build_project_context, output_context};
 pub use context_pack::{
     build_context_pack, build_context_pack_with_options, output_context_pack,
@@ -32,5 +34,5 @@ pub use pick::{
 };
 pub use plugin_cmd::{plugin_init, plugin_test};
 pub use related::{collect_related_candidates, collect_related_paths, RelatedCandidate};
-pub use session::{load_session, save_session, Session};
+pub use session::{load_session, load_session_named, save_session, save_session_named, Session};
 pub use tree::{output_tree, print_tree_recursive_pub};
