@@ -48,6 +48,8 @@ fv --resume-ai-session
 関連ドキュメント:
 - [Claude Codeガイド](docs/CLAUDE_CODE_ja.md)
 - [競合スコアカード（週次更新）](docs/COMPETITIVE_SCORECARD.md)
+- [現行スコアスナップショット](score.md)
+- [プロダクト思想](思想.md)
 - [リリース方針](docs/RELEASE_POLICY.md)
 
 ## 機能
