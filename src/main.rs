@@ -14,7 +14,8 @@ use ratatui::prelude::*;
 use fileview::app::{run_app, Config, PluginAction, SessionAction};
 use fileview::integrate::{
     collect_related_candidates, collect_related_paths, exit_code, load_session, output_context,
-    output_context_pack_with_options, output_paths, output_tree, plugin_init, plugin_test, Session,
+    output_context_pack_with_options, output_paths, output_tree, plugin_init, plugin_test,
+    run_ai_benchmark, Session,
 };
 use fileview::render::create_image_picker;
 
@@ -35,6 +36,10 @@ fn main() -> ExitCode {
 
     if config.context_mode {
         return run_context_mode(&config);
+    }
+
+    if config.benchmark_ai {
+        return run_benchmark_ai_mode(&config);
     }
 
     if let Some(preset) = config.context_pack {
@@ -81,6 +86,21 @@ fn run_tree_mode(config: &Config) -> ExitCode {
 /// Run in context output mode (non-interactive)
 fn run_context_mode(config: &Config) -> ExitCode {
     match output_context(&config.root) {
+        Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+/// Run AI benchmark mode (non-interactive)
+fn run_benchmark_ai_mode(config: &Config) -> ExitCode {
+    match run_ai_benchmark(
+        &config.root,
+        &config.benchmark_scenario,
+        config.benchmark_iterations,
+    ) {
         Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
         Err(e) => {
             eprintln!("Error: {}", e);

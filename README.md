@@ -152,6 +152,7 @@ Claude Code:
   --select-related F  Output related files for a focused file
   --explain-selection Include score/reasons in related-file output
   --mcp-server        Run as MCP server
+  benchmark ai        Run AI benchmark scenarios (use --scenario and --iterations)
 ```
 
 ### Exit Codes

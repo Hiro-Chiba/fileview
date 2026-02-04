@@ -83,6 +83,12 @@ pub struct Config {
     pub mcp_server: bool,
     /// Context generation mode
     pub context_mode: bool,
+    /// AI benchmark mode (non-interactive)
+    pub benchmark_ai: bool,
+    /// AI benchmark scenario (context-pack, review-pack, related, all)
+    pub benchmark_scenario: String,
+    /// AI benchmark iterations
+    pub benchmark_iterations: usize,
     /// Context pack output mode with preset
     pub context_pack: Option<ContextPackPreset>,
     /// Context pack options
@@ -122,6 +128,9 @@ impl Config {
         let mut multi_select = false;
         let mut mcp_server = false;
         let mut context_mode = false;
+        let mut benchmark_ai = false;
+        let mut benchmark_scenario = "context-pack".to_string();
+        let mut benchmark_iterations = 5usize;
         let mut context_pack: Option<ContextPackPreset> = None;
         let mut context_pack_format = ContextPackFormat::AiMarkdown;
         let mut context_pack_options = ContextPackOptions::default();
@@ -169,6 +178,46 @@ impl Config {
                 "--multi" => multi_select = true,
                 "--mcp-server" => mcp_server = true,
                 "--context" => context_mode = true,
+                "benchmark" => {
+                    let mode = args
+                        .next()
+                        .ok_or_else(|| anyhow::anyhow!("benchmark requires a mode (e.g. ai)"))?;
+                    if mode != "ai" {
+                        anyhow::bail!("unsupported benchmark mode: {} (expected: ai)", mode);
+                    }
+                    benchmark_ai = true;
+
+                    while let Some(next) = args.peek().cloned() {
+                        match next.as_str() {
+                            "--scenario" => {
+                                args.next();
+                                benchmark_scenario = args.next().ok_or_else(|| {
+                                    anyhow::anyhow!("--scenario requires a value")
+                                })?;
+                            }
+                            "--iterations" => {
+                                args.next();
+                                let value = args.next().ok_or_else(|| {
+                                    anyhow::anyhow!("--iterations requires a value")
+                                })?;
+                                benchmark_iterations = value.parse().map_err(|_| {
+                                    anyhow::anyhow!("--iterations requires a positive integer")
+                                })?;
+                            }
+                            token if token.starts_with('-') => {
+                                anyhow::bail!("unknown benchmark option: {}", token);
+                            }
+                            path => {
+                                let p = PathBuf::from(path);
+                                if p.is_dir() {
+                                    root = p.canonicalize()?;
+                                    args.next();
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
                 "--context-pack" => {
                     if let Some(preset) = args.next() {
                         context_pack =
@@ -367,6 +416,9 @@ impl Config {
             multi_select,
             mcp_server,
             context_mode,
+            benchmark_ai,
+            benchmark_scenario,
+            benchmark_iterations,
             context_pack,
             context_pack_options,
             select_related_path,
@@ -462,6 +514,7 @@ fn print_help() {
 USAGE:
     fv [OPTIONS] [PATH]
     command | fv --stdin [OPTIONS]
+    fv benchmark ai [--scenario NAME] [--iterations N] [PATH]
 
 OPTIONS:
     -p, --pick          Pick mode: output selected path(s) to stdout
@@ -495,6 +548,7 @@ CLAUDE CODE INTEGRATION:
     --select-related F  Output related file paths for file F
     --explain-selection Include score/reasons for --select-related output
     --session ACTION    Session management: save, restore, or clear
+    benchmark ai        Run AI benchmark scenarios (context-pack/review-pack/related/all)
     plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
     plugin test PATH    Execute plugin file in sandbox and report status
 
