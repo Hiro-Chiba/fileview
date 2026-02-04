@@ -2,6 +2,7 @@
 
 pub mod bulk_rename;
 pub mod fuzzy;
+pub mod history;
 pub mod icons;
 pub mod layout;
 pub mod preview;
@@ -13,6 +14,7 @@ pub mod tree;
 
 pub use bulk_rename::render_bulk_rename_dialog;
 pub use fuzzy::{collect_paths, fuzzy_match, render_fuzzy_finder, FuzzyMatch};
+pub use history::render_ai_history_popup;
 pub use icons::get_icon;
 pub use layout::{LayoutEngine, StatusLayout, TreeColumns};
 pub use preview::{

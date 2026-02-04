@@ -10,13 +10,9 @@ use std::process::Command;
 
 use crate::git::GitStatus;
 
-/// Output project context to stdout
-///
-/// # Arguments
-/// * `root` - Root directory path
-pub fn output_context(root: &Path) -> io::Result<()> {
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
+/// Build project context as a string
+pub fn build_project_context(root: &Path) -> io::Result<String> {
+    let mut out = Vec::new();
 
     // Project name (directory name)
     let project_name = root
@@ -24,28 +20,28 @@ pub fn output_context(root: &Path) -> io::Result<()> {
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "project".to_string());
 
-    writeln!(handle, "## Project: {}", project_name)?;
-    writeln!(handle)?;
+    writeln!(&mut out, "## Project: {}", project_name)?;
+    writeln!(&mut out)?;
 
     // Git information
     if let Some(git_status) = GitStatus::detect(root) {
         let branch = git_status.branch().unwrap_or("unknown");
         let is_clean = is_working_tree_clean(root);
         let clean_str = if is_clean { "(clean)" } else { "(dirty)" };
-        writeln!(handle, "**Branch:** {} {}", branch, clean_str)?;
+        writeln!(&mut out, "**Branch:** {} {}", branch, clean_str)?;
 
         // Recent commit
         if let Some(recent_commit) = get_recent_commit(root) {
-            writeln!(handle, "**Recent:** {}", recent_commit)?;
+            writeln!(&mut out, "**Recent:** {}", recent_commit)?;
         }
 
-        writeln!(handle)?;
+        writeln!(&mut out)?;
     }
 
     // Project structure
-    writeln!(handle, "### Structure:")?;
-    print_structure(&mut handle, root, "", 0, 3)?;
-    writeln!(handle)?;
+    writeln!(&mut out, "### Structure:")?;
+    print_structure(&mut out, root, "", 0, 3)?;
+    writeln!(&mut out)?;
 
     // File statistics
     let stats = collect_file_stats(root);
@@ -68,14 +64,27 @@ pub fn output_context(root: &Path) -> io::Result<()> {
         };
 
         writeln!(
-            handle,
+            &mut out,
             "### Stats: {} files, ~{}k lines",
             total_files,
             total_lines / 1000
         )?;
-        writeln!(handle, "Types: {}", type_str)?;
+        writeln!(&mut out, "Types: {}", type_str)?;
     }
 
+    Ok(String::from_utf8_lossy(&out).to_string())
+}
+
+/// Output project context to stdout
+///
+/// # Arguments
+/// * `root` - Root directory path
+pub fn output_context(root: &Path) -> io::Result<()> {
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    let text = build_project_context(root)?;
+    write!(handle, "{}", text)?;
     handle.flush()
 }
 

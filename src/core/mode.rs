@@ -44,6 +44,11 @@ pub enum ViewMode {
     },
     /// Help popup display
     Help,
+    /// AI history popup
+    AiHistory {
+        /// Index of selected entry
+        selected: usize,
+    },
     /// Waiting for bookmark slot input (set bookmark)
     BookmarkSet,
     /// Waiting for bookmark slot input (jump to bookmark)

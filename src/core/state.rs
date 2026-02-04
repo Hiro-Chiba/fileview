@@ -61,6 +61,13 @@ pub enum PreviewDisplayMode {
     Peek,
 }
 
+/// AI context history entry (stored in-memory per session)
+#[derive(Debug, Clone)]
+pub struct AiHistoryEntry {
+    pub title: String,
+    pub content: String,
+}
+
 /// UI density mode based on terminal width
 ///
 /// Automatically selected based on terminal width to provide optimal display
@@ -184,6 +191,14 @@ pub struct AppState {
     pub auto_hide_preview_threshold: u16,
     /// Preview display mode (Normal or Peek)
     pub preview_display_mode: PreviewDisplayMode,
+    /// AI focus mode (forces ultra-compact UI + peek preview)
+    pub ai_focus: bool,
+    /// Previous preview visibility before AI focus mode
+    ai_focus_prev_preview_visible: bool,
+    /// Previous preview display mode before AI focus mode
+    ai_focus_prev_preview_display_mode: PreviewDisplayMode,
+    /// AI context history (most recent first)
+    pub ai_history: Vec<AiHistoryEntry>,
 }
 
 impl AppState {
@@ -224,6 +239,10 @@ impl AppState {
             search_matches: None,
             auto_hide_preview_threshold: 50,
             preview_display_mode: PreviewDisplayMode::default(),
+            ai_focus: false,
+            ai_focus_prev_preview_visible: false,
+            ai_focus_prev_preview_display_mode: PreviewDisplayMode::default(),
+            ai_history: Vec::new(),
         }
     }
 
@@ -285,6 +304,9 @@ impl AppState {
     /// Check if preview should be visible given the current terminal width
     /// Returns false if width is below auto_hide_preview_threshold
     pub fn effective_preview_visible(&self, width: u16) -> bool {
+        if self.ai_focus {
+            return false;
+        }
         self.preview_visible && width >= self.auto_hide_preview_threshold
     }
 
@@ -294,5 +316,39 @@ impl AppState {
             PreviewDisplayMode::Normal => PreviewDisplayMode::Peek,
             PreviewDisplayMode::Peek => PreviewDisplayMode::Normal,
         };
+    }
+
+    /// Toggle AI focus mode (forces ultra-compact UI + peek preview)
+    pub fn toggle_ai_focus(&mut self) {
+        if self.ai_focus {
+            self.ai_focus = false;
+            self.preview_visible = self.ai_focus_prev_preview_visible;
+            self.preview_display_mode = self.ai_focus_prev_preview_display_mode;
+        } else {
+            self.ai_focus = true;
+            self.ai_focus_prev_preview_visible = self.preview_visible;
+            self.ai_focus_prev_preview_display_mode = self.preview_display_mode;
+            self.preview_visible = false;
+            self.preview_display_mode = PreviewDisplayMode::Peek;
+            self.focus_target = FocusTarget::Tree;
+        }
+    }
+
+    /// Determine UI density for current state
+    pub fn ui_density_for_width(&self, width: u16) -> UiDensity {
+        if self.ai_focus {
+            UiDensity::Ultra
+        } else {
+            UiDensity::from_width(width)
+        }
+    }
+
+    /// Push an AI history entry (keeps at most 10)
+    pub fn push_ai_history(&mut self, title: String, content: String) {
+        let entry = AiHistoryEntry { title, content };
+        self.ai_history.insert(0, entry);
+        if self.ai_history.len() > 10 {
+            self.ai_history.truncate(10);
+        }
     }
 }
