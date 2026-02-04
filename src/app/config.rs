@@ -7,7 +7,9 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use super::config_file::{CommandsConfig, ConfigFile, PreviewConfig};
-use crate::integrate::{exit_code, Callback, ContextPackPreset, OutputFormat};
+use crate::integrate::{
+    exit_code, Callback, ContextPackFormat, ContextPackOptions, ContextPackPreset, OutputFormat,
+};
 
 /// Session action (save, restore, clear)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,8 +84,12 @@ pub struct Config {
     pub context_mode: bool,
     /// Context pack output mode with preset
     pub context_pack: Option<ContextPackPreset>,
+    /// Context pack options
+    pub context_pack_options: ContextPackOptions,
     /// Related file selection output mode (non-interactive)
     pub select_related_path: Option<PathBuf>,
+    /// Explain related-file selection scoring
+    pub explain_selection: bool,
     /// Session action (save/restore/clear) - non-interactive
     pub session_action: Option<SessionAction>,
     /// Plugin command action
@@ -116,7 +122,10 @@ impl Config {
         let mut mcp_server = false;
         let mut context_mode = false;
         let mut context_pack: Option<ContextPackPreset> = None;
+        let mut context_pack_format = ContextPackFormat::AiMarkdown;
+        let mut context_pack_options = ContextPackOptions::default();
         let mut select_related_path: Option<PathBuf> = None;
+        let mut explain_selection = false;
         let mut session_action: Option<SessionAction> = None;
         let mut plugin_action: Option<PluginAction> = None;
         let mut plugin_path: Option<PathBuf> = None;
@@ -164,11 +173,40 @@ impl Config {
                         context_pack =
                             Some(ContextPackPreset::from_str(&preset).map_err(|_| {
                                 anyhow::anyhow!(
-                                    "--context-pack must be one of: minimal, review, debug"
+                                    "--context-pack must be one of: minimal, review, debug, refactor, incident, onboarding"
                                 )
                             })?);
                     } else {
                         anyhow::bail!("--context-pack requires a preset");
+                    }
+                }
+                "--context-format" => {
+                    if let Some(fmt) = args.next() {
+                        context_pack_format = ContextPackFormat::from_str(&fmt).map_err(|_| {
+                            anyhow::anyhow!("--context-format must be one of: ai-md, jsonl")
+                        })?;
+                    } else {
+                        anyhow::bail!("--context-format requires a value");
+                    }
+                }
+                "--token-budget" => {
+                    if let Some(value) = args.next() {
+                        context_pack_options.token_budget = value.parse().map_err(|_| {
+                            anyhow::anyhow!("--token-budget requires a positive integer")
+                        })?;
+                    } else {
+                        anyhow::bail!("--token-budget requires a value");
+                    }
+                }
+                "--include-git-diff" => context_pack_options.include_git_diff = true,
+                "--include-tests" => context_pack_options.include_tests = true,
+                "--context-depth" => {
+                    if let Some(value) = args.next() {
+                        context_pack_options.depth = value.parse().map_err(|_| {
+                            anyhow::anyhow!("--context-depth requires a positive integer")
+                        })?;
+                    } else {
+                        anyhow::bail!("--context-depth requires a value");
                     }
                 }
                 "--select-related" => {
@@ -178,6 +216,7 @@ impl Config {
                         anyhow::bail!("--select-related requires a file path");
                     }
                 }
+                "--explain-selection" => explain_selection = true,
                 "--session" => {
                     if let Some(action) = args.next() {
                         session_action = Some(match action.as_str() {
@@ -284,6 +323,8 @@ impl Config {
             root
         };
 
+        context_pack_options.format = context_pack_format;
+
         // Merge config file settings with CLI overrides
         // CLI arguments take precedence over config file
         Ok(Self {
@@ -316,7 +357,9 @@ impl Config {
             mcp_server,
             context_mode,
             context_pack,
+            context_pack_options,
             select_related_path,
+            explain_selection,
             session_action,
             plugin_action,
             plugin_path,
@@ -431,8 +474,14 @@ CLAUDE CODE INTEGRATION:
     --multi             Allow multiple selection in select mode
     --mcp-server        Run as MCP server (JSON-RPC over stdin/stdout)
     --context           Output project context in AI-friendly markdown format
-    --context-pack P    Output AI context pack preset: minimal, review, debug
+    --context-pack P    Output AI context pack preset: minimal, review, debug, refactor, incident, onboarding
+    --context-format F  Context output format: ai-md, jsonl
+    --token-budget N    Token budget for context pack (default: 4000)
+    --include-git-diff  Force include git diff summary in context pack
+    --include-tests     Include inferred test files in context pack
+    --context-depth N   Max recursive scan depth for fallback file discovery
     --select-related F  Output related file paths for file F
+    --explain-selection Include score/reasons for --select-related output
     --session ACTION    Session management: save, restore, or clear
     plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
     plugin test PATH    Execute plugin file in sandbox and report status
