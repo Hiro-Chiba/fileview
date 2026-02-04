@@ -7,7 +7,10 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use super::config_file::{CommandsConfig, ConfigFile, PreviewConfig};
-use crate::integrate::{exit_code, Callback, ContextPackPreset, OutputFormat};
+use crate::integrate::{
+    exit_code, Callback, ContextAgent, ContextPackFormat, ContextPackOptions, ContextPackPreset,
+    OutputFormat,
+};
 
 /// Session action (save, restore, clear)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,10 +83,20 @@ pub struct Config {
     pub mcp_server: bool,
     /// Context generation mode
     pub context_mode: bool,
+    /// AI benchmark mode (non-interactive)
+    pub benchmark_ai: bool,
+    /// AI benchmark scenario (context-pack, review-pack, related, all)
+    pub benchmark_scenario: String,
+    /// AI benchmark iterations
+    pub benchmark_iterations: usize,
     /// Context pack output mode with preset
     pub context_pack: Option<ContextPackPreset>,
+    /// Context pack options
+    pub context_pack_options: ContextPackOptions,
     /// Related file selection output mode (non-interactive)
     pub select_related_path: Option<PathBuf>,
+    /// Explain related-file selection scoring
+    pub explain_selection: bool,
     /// Session action (save/restore/clear) - non-interactive
     pub session_action: Option<SessionAction>,
     /// Plugin command action
@@ -115,8 +128,14 @@ impl Config {
         let mut multi_select = false;
         let mut mcp_server = false;
         let mut context_mode = false;
+        let mut benchmark_ai = false;
+        let mut benchmark_scenario = "context-pack".to_string();
+        let mut benchmark_iterations = 5usize;
         let mut context_pack: Option<ContextPackPreset> = None;
+        let mut context_pack_format = ContextPackFormat::AiMarkdown;
+        let mut context_pack_options = ContextPackOptions::default();
         let mut select_related_path: Option<PathBuf> = None;
+        let mut explain_selection = false;
         let mut session_action: Option<SessionAction> = None;
         let mut plugin_action: Option<PluginAction> = None;
         let mut plugin_path: Option<PathBuf> = None;
@@ -159,16 +178,95 @@ impl Config {
                 "--multi" => multi_select = true,
                 "--mcp-server" => mcp_server = true,
                 "--context" => context_mode = true,
+                "benchmark" => {
+                    let mode = args
+                        .next()
+                        .ok_or_else(|| anyhow::anyhow!("benchmark requires a mode (e.g. ai)"))?;
+                    if mode != "ai" {
+                        anyhow::bail!("unsupported benchmark mode: {} (expected: ai)", mode);
+                    }
+                    benchmark_ai = true;
+
+                    while let Some(next) = args.peek().cloned() {
+                        match next.as_str() {
+                            "--scenario" => {
+                                args.next();
+                                benchmark_scenario = args.next().ok_or_else(|| {
+                                    anyhow::anyhow!("--scenario requires a value")
+                                })?;
+                            }
+                            "--iterations" => {
+                                args.next();
+                                let value = args.next().ok_or_else(|| {
+                                    anyhow::anyhow!("--iterations requires a value")
+                                })?;
+                                benchmark_iterations = value.parse().map_err(|_| {
+                                    anyhow::anyhow!("--iterations requires a positive integer")
+                                })?;
+                            }
+                            token if token.starts_with('-') => {
+                                anyhow::bail!("unknown benchmark option: {}", token);
+                            }
+                            path => {
+                                let p = PathBuf::from(path);
+                                if p.is_dir() {
+                                    root = p.canonicalize()?;
+                                    args.next();
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
                 "--context-pack" => {
                     if let Some(preset) = args.next() {
                         context_pack =
                             Some(ContextPackPreset::from_str(&preset).map_err(|_| {
                                 anyhow::anyhow!(
-                                    "--context-pack must be one of: minimal, review, debug"
+                                    "--context-pack must be one of: minimal, review, debug, refactor, incident, onboarding"
                                 )
                             })?);
                     } else {
                         anyhow::bail!("--context-pack requires a preset");
+                    }
+                }
+                "--context-format" => {
+                    if let Some(fmt) = args.next() {
+                        context_pack_format = ContextPackFormat::from_str(&fmt).map_err(|_| {
+                            anyhow::anyhow!("--context-format must be one of: ai-md, jsonl")
+                        })?;
+                    } else {
+                        anyhow::bail!("--context-format requires a value");
+                    }
+                }
+                "--agent" => {
+                    if let Some(agent) = args.next() {
+                        context_pack_options.agent =
+                            ContextAgent::from_str(&agent).map_err(|_| {
+                                anyhow::anyhow!("--agent must be one of: claude, codex, cursor")
+                            })?;
+                    } else {
+                        anyhow::bail!("--agent requires a value");
+                    }
+                }
+                "--token-budget" => {
+                    if let Some(value) = args.next() {
+                        context_pack_options.token_budget = value.parse().map_err(|_| {
+                            anyhow::anyhow!("--token-budget requires a positive integer")
+                        })?;
+                    } else {
+                        anyhow::bail!("--token-budget requires a value");
+                    }
+                }
+                "--include-git-diff" => context_pack_options.include_git_diff = true,
+                "--include-tests" => context_pack_options.include_tests = true,
+                "--context-depth" => {
+                    if let Some(value) = args.next() {
+                        context_pack_options.depth = value.parse().map_err(|_| {
+                            anyhow::anyhow!("--context-depth requires a positive integer")
+                        })?;
+                    } else {
+                        anyhow::bail!("--context-depth requires a value");
                     }
                 }
                 "--select-related" => {
@@ -178,6 +276,7 @@ impl Config {
                         anyhow::bail!("--select-related requires a file path");
                     }
                 }
+                "--explain-selection" => explain_selection = true,
                 "--session" => {
                     if let Some(action) = args.next() {
                         session_action = Some(match action.as_str() {
@@ -284,6 +383,8 @@ impl Config {
             root
         };
 
+        context_pack_options.format = context_pack_format;
+
         // Merge config file settings with CLI overrides
         // CLI arguments take precedence over config file
         Ok(Self {
@@ -315,8 +416,13 @@ impl Config {
             multi_select,
             mcp_server,
             context_mode,
+            benchmark_ai,
+            benchmark_scenario,
+            benchmark_iterations,
             context_pack,
+            context_pack_options,
             select_related_path,
+            explain_selection,
             session_action,
             plugin_action,
             plugin_path,
@@ -408,6 +514,7 @@ fn print_help() {
 USAGE:
     fv [OPTIONS] [PATH]
     command | fv --stdin [OPTIONS]
+    fv benchmark ai [--scenario NAME] [--iterations N] [PATH]
 
 OPTIONS:
     -p, --pick          Pick mode: output selected path(s) to stdout
@@ -431,9 +538,17 @@ CLAUDE CODE INTEGRATION:
     --multi             Allow multiple selection in select mode
     --mcp-server        Run as MCP server (JSON-RPC over stdin/stdout)
     --context           Output project context in AI-friendly markdown format
-    --context-pack P    Output AI context pack preset: minimal, review, debug
+    --context-pack P    Output AI context pack preset: minimal, review, debug, refactor, incident, onboarding
+    --context-format F  Context output format: ai-md, jsonl
+    --agent A           Target agent profile: claude, codex, cursor
+    --token-budget N    Token budget for context pack (default: 4000)
+    --include-git-diff  Force include git diff summary in context pack
+    --include-tests     Include inferred test files in context pack
+    --context-depth N   Max recursive scan depth for fallback file discovery
     --select-related F  Output related file paths for file F
+    --explain-selection Include score/reasons for --select-related output
     --session ACTION    Session management: save, restore, or clear
+    benchmark ai        Run AI benchmark scenarios (context-pack/review-pack/related/all)
     plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
     plugin test PATH    Execute plugin file in sandbox and report status
 

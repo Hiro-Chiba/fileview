@@ -13,8 +13,9 @@ use ratatui::prelude::*;
 
 use fileview::app::{run_app, Config, PluginAction, SessionAction};
 use fileview::integrate::{
-    collect_related_paths, exit_code, load_session, output_context, output_context_pack,
-    output_paths, output_tree, plugin_init, plugin_test, Session,
+    collect_related_candidates, collect_related_paths, exit_code, load_session, output_context,
+    output_context_pack_with_options, output_paths, output_tree, plugin_init, plugin_test,
+    run_ai_benchmark, Session,
 };
 use fileview::render::create_image_picker;
 
@@ -37,12 +38,16 @@ fn main() -> ExitCode {
         return run_context_mode(&config);
     }
 
+    if config.benchmark_ai {
+        return run_benchmark_ai_mode(&config);
+    }
+
     if let Some(preset) = config.context_pack {
         return run_context_pack_mode(&config, preset);
     }
 
     if let Some(ref path) = config.select_related_path {
-        return run_select_related_mode(path);
+        return run_select_related_mode(path, config.explain_selection);
     }
 
     if config.mcp_server {
@@ -89,12 +94,27 @@ fn run_context_mode(config: &Config) -> ExitCode {
     }
 }
 
+/// Run AI benchmark mode (non-interactive)
+fn run_benchmark_ai_mode(config: &Config) -> ExitCode {
+    match run_ai_benchmark(
+        &config.root,
+        &config.benchmark_scenario,
+        config.benchmark_iterations,
+    ) {
+        Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
 /// Run in context-pack output mode (non-interactive)
 fn run_context_pack_mode(
     config: &Config,
     preset: fileview::integrate::ContextPackPreset,
 ) -> ExitCode {
-    match output_context_pack(&config.root, preset) {
+    match output_context_pack_with_options(&config.root, preset, &config.context_pack_options) {
         Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
         Err(e) => {
             eprintln!("Error: {}", e);
@@ -104,7 +124,20 @@ fn run_context_pack_mode(
 }
 
 /// Run in related-file output mode (non-interactive)
-fn run_select_related_mode(path: &std::path::Path) -> ExitCode {
+fn run_select_related_mode(path: &std::path::Path, explain: bool) -> ExitCode {
+    if explain {
+        let related = collect_related_candidates(path);
+        for c in related {
+            let json = serde_json::json!({
+                "path": c.path.display().to_string(),
+                "score": c.score,
+                "reasons": c.reasons,
+            });
+            println!("{}", json);
+        }
+        return ExitCode::from(exit_code::SUCCESS as u8);
+    }
+
     let related = collect_related_paths(path);
     match output_paths(&related, fileview::integrate::OutputFormat::Lines) {
         Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),

@@ -116,9 +116,11 @@ pub fn handle(
             } else {
                 match copy_file_contents_claude_format(&paths) {
                     Ok((text, count)) => {
-                        state.push_ai_history(
+                        state.push_ai_history_with_meta(
                             format!("Claude Copy ({} file(s))", count),
                             text.clone(),
+                            Some("claude-copy".to_string()),
+                            count,
                         );
                         state.set_message(format!("Copied {} file(s) (Claude format)", count))
                     }
@@ -173,9 +175,11 @@ pub fn handle(
             } else {
                 match copy_file_contents_compact(&paths) {
                     Ok((text, count)) => {
-                        state.push_ai_history(
+                        state.push_ai_history_with_meta(
                             format!("Compact Copy ({} file(s))", count),
                             text.clone(),
+                            Some("compact-copy".to_string()),
+                            count,
                         );
                         state.set_message(format!("Copied {} file(s) (compact)", count))
                     }
@@ -192,7 +196,12 @@ pub fn handle(
             match build_context_pack(&state.root, ContextPackPreset::Minimal, &selected) {
                 Ok(text) => match copy_text_to_clipboard(&text) {
                     Ok(_) => {
-                        state.push_ai_history("Context Pack (minimal)".to_string(), text);
+                        state.push_ai_history_with_meta(
+                            "Context Pack (minimal)".to_string(),
+                            text,
+                            Some("minimal".to_string()),
+                            selected.len(),
+                        );
                         state.set_message("Copied context pack");
                     }
                     Err(e) => state.set_message(format!("Failed: {}", e)),
