@@ -70,6 +70,7 @@ compress = "zip -r archive.zip $S"
 |----------|-------------|
 | `FILEVIEW_ICONS=0` | Disable icons |
 | `FILEVIEW_IMAGE_PROTOCOL` | Force image protocol |
+| `FILEVIEW_HELP_KEY_STYLE` | Help key style: `solid`, `outline`, `plain` |
 
 ## CLI Arguments
 
