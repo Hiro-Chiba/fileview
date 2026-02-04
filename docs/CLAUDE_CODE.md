@@ -262,11 +262,19 @@ fv --tree --with-content ./src/module
 | Option | Description |
 |--------|-------------|
 | `--context` | Output project context (AI-friendly markdown) |
+| `--context-pack P` | Output context pack preset (`minimal`, `review`, `debug`, `refactor`, `incident`, `onboarding`) |
+| `--context-format F` | Context pack format: `ai-md`, `jsonl` |
+| `--token-budget N` | Token budget for context packs |
+| `--include-git-diff` | Force include git diff summary in context packs |
+| `--include-tests` | Include inferred tests in context packs |
+| `--context-depth N` | Fallback scan depth for context packs |
 | `--tree` | Output directory tree to stdout |
 | `--depth N` | Limit tree depth (default: unlimited) |
 | `--with-content` | Include file contents in tree output |
 | `--select-mode` | Simple selection mode (Enter to confirm) |
 | `--multi` | Allow multiple selection |
+| `--select-related F` | Output related file paths for `F` |
+| `--explain-selection` | Include score/reasons for `--select-related` output |
 | `--mcp-server` | Run as MCP server |
 | `--pick` | Pick mode (same as `--select-mode`) |
 | `--format FMT` | Output format: lines, null, json |
