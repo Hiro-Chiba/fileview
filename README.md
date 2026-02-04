@@ -141,6 +141,7 @@ Claude Code:
   --context           Output project context (AI-friendly)
   --context-pack P    Output context pack preset (minimal/review/debug/refactor/incident/onboarding)
   --context-format F  Context pack format: ai-md, jsonl
+  --agent A           Agent profile: claude, codex, cursor
   --token-budget N    Context pack token budget
   --include-git-diff  Force include git diff summary in context pack
   --include-tests     Include inferred test files in context pack

@@ -51,6 +51,38 @@ impl FromStr for ContextPackPreset {
     }
 }
 
+/// Target agent profile for context shaping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ContextAgent {
+    #[default]
+    Claude,
+    Codex,
+    Cursor,
+}
+
+impl ContextAgent {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Claude => "claude",
+            Self::Codex => "codex",
+            Self::Cursor => "cursor",
+        }
+    }
+}
+
+impl FromStr for ContextAgent {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "claude" => Ok(Self::Claude),
+            "codex" => Ok(Self::Codex),
+            "cursor" => Ok(Self::Cursor),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Output format for context-pack.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ContextPackFormat {
@@ -88,6 +120,7 @@ pub struct ContextPackOptions {
     pub include_tests: bool,
     pub depth: usize,
     pub format: ContextPackFormat,
+    pub agent: ContextAgent,
 }
 
 impl Default for ContextPackOptions {
@@ -98,6 +131,7 @@ impl Default for ContextPackOptions {
             include_tests: false,
             depth: 2,
             format: ContextPackFormat::AiMarkdown,
+            agent: ContextAgent::default(),
         }
     }
 }
@@ -129,6 +163,21 @@ impl ContextPackOptions {
         }
         self
     }
+
+    /// Apply profile-specific defaults while preserving explicit options.
+    pub fn with_agent_defaults(mut self) -> Self {
+        match self.agent {
+            ContextAgent::Claude => {}
+            ContextAgent::Codex => {
+                self.token_budget = self.token_budget.max(5000);
+            }
+            ContextAgent::Cursor => {
+                self.token_budget = self.token_budget.max(4500);
+                self.include_tests = true;
+            }
+        }
+        self
+    }
 }
 
 /// Build a context pack as text with default options.
@@ -147,7 +196,10 @@ pub fn build_context_pack_with_options(
     selected_paths: &[PathBuf],
     options: &ContextPackOptions,
 ) -> io::Result<String> {
-    let options = options.clone().with_preset_defaults(preset);
+    let options = options
+        .clone()
+        .with_preset_defaults(preset)
+        .with_agent_defaults();
     let candidates =
         collect_candidate_files(root, selected_paths, options.depth, options.include_tests);
     let snippets = collect_snippets(&candidates, options.token_budget);
@@ -156,6 +208,7 @@ pub fn build_context_pack_with_options(
         ContextPackFormat::AiMarkdown => {
             let mut out = Vec::new();
             writeln!(&mut out, "## Context Pack: {}", preset.as_str())?;
+            writeln!(&mut out, "- agent: {}", options.agent.as_str())?;
             writeln!(&mut out, "- token_budget: {}", options.token_budget)?;
             writeln!(&mut out, "- format: {}", options.format.as_str())?;
             writeln!(&mut out)?;
@@ -175,7 +228,17 @@ pub fn build_context_pack_with_options(
                 writeln!(&mut out, "### Files")?;
                 for (path, content, tokens) in snippets {
                     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                    writeln!(&mut out, "#### {}", path.display())?;
+                    match options.agent {
+                        ContextAgent::Claude => {
+                            writeln!(&mut out, "### File: {}", path.display())?;
+                        }
+                        ContextAgent::Codex => {
+                            writeln!(&mut out, "#### {}", path.display())?;
+                        }
+                        ContextAgent::Cursor => {
+                            writeln!(&mut out, "#### Context: {}", path.display())?;
+                        }
+                    }
                     writeln!(&mut out, "- est_tokens: {}", tokens)?;
                     writeln!(&mut out, "```{}", ext)?;
                     writeln!(&mut out, "{}", content)?;
@@ -190,6 +253,7 @@ pub fn build_context_pack_with_options(
             let mut lines = Vec::new();
             lines.push(serde_json::json!({
                 "type": "meta",
+                "agent": options.agent.as_str(),
                 "preset": preset.as_str(),
                 "token_budget": options.token_budget,
                 "format": options.format.as_str()
@@ -435,6 +499,22 @@ mod tests {
         assert_eq!(
             ContextPackPreset::from_str("onboarding").ok(),
             Some(ContextPackPreset::Onboarding)
+        );
+    }
+
+    #[test]
+    fn test_parse_context_agent() {
+        assert_eq!(
+            ContextAgent::from_str("claude").ok(),
+            Some(ContextAgent::Claude)
+        );
+        assert_eq!(
+            ContextAgent::from_str("codex").ok(),
+            Some(ContextAgent::Codex)
+        );
+        assert_eq!(
+            ContextAgent::from_str("cursor").ok(),
+            Some(ContextAgent::Cursor)
         );
     }
 }
