@@ -14,13 +14,17 @@ Updated: 2026-02-04
 
 | Product | Total | Product | AI Fit | Reliability | Ecosystem | Momentum |
 |---|---:|---:|---:|---:|---:|---:|
-| yazi | 77 | 33 | 6 | 12 | 15 | 11 |
-| ranger | 67 | 29 | 4 | 13 | 14 | 7 |
-| nnn | 62 | 24 | 3 | 14 | 13 | 8 |
-| lf | 60 | 24 | 3 | 13 | 12 | 8 |
-| fileview | 55 | 22 | 18 | 10 | 2 | 3 |
+| yazi | 67 | 33 | 6 | 12 | 15 | 1 |
+| ranger | 61 | 29 | 4 | 13 | 14 | 1 |
+| nnn | 56 | 24 | 3 | 14 | 14 | 1 |
+| lf | 54 | 24 | 3 | 13 | 13 | 1 |
+| fileview | 53 | 22 | 18 | 11 | 1 | 1 |
 
-## Market Snapshot (latest successful fetch in this workspace)
+## Score Delta (this cycle)
+
+- fileview total delta: +0
+
+## Market Snapshot
 
 | Repo | Stars | Forks | Open Issues |
 |---|---:|---:|---:|
@@ -30,18 +34,10 @@ Updated: 2026-02-04
 | jarun/nnn | 21,191 | 798 | 2 |
 | ranger/ranger | 16,834 | 923 | 921 |
 
-## Gap Summary
-
-- fileview's strongest edge is AI workflow in narrow terminal space.
-- Largest gap is ecosystem trust signals (stars, third-party usage, contributor base).
-- 90-day objective: 55 -> 65 by compounding trust + adoption + AI-first UX quality.
-
 ## Loop Rule
 
-Repeat this cycle:
-
 1. Market research update
-2. Implement one measurable improvement
+2. Implement one measurable improvement from tasks/queue.json
 3. Re-score in this file
 4. Record before/after delta
 5. Repeat

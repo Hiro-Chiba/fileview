@@ -1,0 +1,35 @@
+{
+  "updated_at": "2026-02-04T09:54:15Z",
+  "repos": {
+    "fileview": {
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "open_issues_count": 0,
+      "pushed_at": null
+    },
+    "yazi": {
+      "stargazers_count": 32179,
+      "forks_count": 701,
+      "open_issues_count": 73,
+      "pushed_at": null
+    },
+    "lf": {
+      "stargazers_count": 9026,
+      "forks_count": 359,
+      "open_issues_count": 66,
+      "pushed_at": null
+    },
+    "nnn": {
+      "stargazers_count": 21191,
+      "forks_count": 798,
+      "open_issues_count": 2,
+      "pushed_at": null
+    },
+    "ranger": {
+      "stargazers_count": 16834,
+      "forks_count": 923,
+      "open_issues_count": 921,
+      "pushed_at": null
+    }
+  }
+}

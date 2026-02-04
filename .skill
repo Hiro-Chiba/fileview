@@ -22,10 +22,10 @@ defaults:
 workflow:
   - "git statusを確認し、作業差分と現在ブランチを最初に報告する"
   - "philosophy.md を常に参照し、20%ターミナル空間でのAI駆動開発支援を最優先する"
-  - "score.md の競合スコアを更新し、改善テーマを1つ決める"
+  - "tasks/queue.json の先頭todoタスクを実装し、score.md の競合スコアを更新する"
   - "常時ループ運用時は scripts/install_growth_loop_launchd.sh で launchd エージェントを有効化する"
   - "feature作業は develop から作業ブランチを作成する"
-  - "scripts/ai_growth_loop.sh で品質/セキュリティチェックを回す"
+  - "scripts/ai_growth_loop.sh で市場調査→実装→点数比較の1サイクルを回す"
   - "実装後に run_checks を実行し、結果を要約する"
   - "コミット・push後は PR を develop 向けに作成し、CI確認を行う"
   - "ユーザーが明示許可した時だけ develop -> main をマージしてリリースする"
@@ -39,6 +39,7 @@ release_policy:
 safety:
   - "Autopilotはdevelop専用。mainで実行しない"
   - "mainへのマージ/タグ/公開はオーナー明示許可がある場合のみ"
+  - "major判定タスクは tasks/escalations.md に記録して停止し、オーナー判断を待つ"
   - "破壊的コマンド（reset --hard / checkout -- / rm -rf）を使わない"
   - "ユーザー未指示のrevertをしない"
   - "CIが課金制限で動かない場合はローカル検証結果を明示する"

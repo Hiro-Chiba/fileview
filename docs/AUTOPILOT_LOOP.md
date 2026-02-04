@@ -1,6 +1,6 @@
 # Autopilot Loop Setup
 
-This document sets up continuous local execution of the growth loop:
+This document sets up continuous local execution of the real growth loop:
 
 `market research -> implement -> compare score -> repeat`
 
@@ -40,10 +40,16 @@ Optional local guard (block pushes from `main`):
 
 ## Useful Commands
 
-Run one cycle manually:
+Run one cycle manually (research + task execution + score update):
 
 ```bash
 ./scripts/ai_growth_loop.sh
+```
+
+Local trial without git push:
+
+```bash
+./scripts/ai_growth_loop.sh --no-commit --no-push
 ```
 
 Check status and recent logs:
@@ -58,13 +64,20 @@ Stop and uninstall:
 ./scripts/uninstall_growth_loop_launchd.sh
 ```
 
-## Loop Outputs to Keep Updated
+## Loop Inputs and Outputs
+
+- Input queue: `tasks/queue.json`
+- Escalation file: `tasks/escalations.md` (major decisions only)
 
 - `score.md`: latest score snapshot and delta
 - `docs/COMPETITIVE_SCORECARD.md`: weekly market metrics
-- `CHANGELOG.md` / release notes when shipped
+- `data/market_snapshot.json`: fetched market data
+- `data/autopilot_state.json`: score/task state
 
 ## Notes
 
 - `cargo audit` may fail in restricted environments due advisory DB lock permissions.
 - CI may be unavailable due account billing limits; in that case rely on local checks and report explicitly.
+- Loop exits and requests owner action when:
+  - next task is `kind=major`
+  - score delta stays zero for 2 cycles

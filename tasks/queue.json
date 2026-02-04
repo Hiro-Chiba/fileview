@@ -1,0 +1,22 @@
+{
+  "tasks": [
+    {
+      "id": "sync-competitive-scorecard",
+      "title": "Sync competitive scorecard from latest market snapshot",
+      "kind": "normal",
+      "status": "done",
+      "command": "python3 scripts/tasks/sync_competitive_scorecard.py",
+      "boost": {
+        "reliability": 1
+      },
+      "completed_at": "2026-02-04T09:52:19Z"
+    },
+    {
+      "id": "major-roadmap-reset",
+      "title": "Major product direction rewrite (owner decision required)",
+      "kind": "major",
+      "status": "parked",
+      "command": ""
+    }
+  ]
+}
