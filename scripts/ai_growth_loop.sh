@@ -44,7 +44,7 @@ run_cycle() {
   echo "Pick one improvement tied to narrow AI workflow in 20% terminal space."
 
   echo "[4/4] Decision gate"
-  echo "Escalate only for major decisions listed in 思想.md."
+  echo "Escalate only for major decisions listed in philosophy.md."
 
   echo "[ai-growth-loop] cycle done"
 }
