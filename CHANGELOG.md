@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-02-04
+
+### Added
+
+- `init claude`: Claude設定への `fileview` MCPエントリ自動初期化
+- `--resume-ai-session [NAME]`: 名前付きAIセッション復元（既定: `ai`）
+- `Ctrl+Shift+Enter`: review context pack のクイックコピー
+- `docs/CLAUDE_CODE_ja.md`: Claude連携ガイド（日本語）を追加
+
+### Changed
+
+- `docs/DEVELOPMENT_HISTORY.md` を最新リリース履歴（`v2.1.0` まで）に同期
+- `docs/ROADMAP.md` を管理対象として整備
+- `README.md` / `README_ja.md` のAI導線とリンクを更新
+
+### Fixed
+
+- `notify-types` ロック整合を修正し、公開フローを安定化
+
+## [2.2.0] - 2026-02-04
+
+### Note
+
+- このタグは公開時のロック不整合対応のため、実運用上は `2.2.1` を最新安定版として利用してください。
+
+## [2.1.0] - 2026-02-04
+
+### Added
+
+- stable昇格基準の文書化（`docs/STABILITY.md`）
+
+### Changed
+
+- バージョン表記を `2.1.0`（stable）へ移行
+
+## [2.0.4-alpha] - 2026-02-04
+
+### Changed
+
+- stable昇格直前の最終調整
+
+## [2.0.3-alpha] - 2026-02-04
+
+### Added
+
+- context-pack の agent/profile/options 拡張
+- related-file選定・AI履歴メタデータ・AIベンチ機能を強化
+
+## [2.0.2-alpha] - 2026-02-04
+
+### Changed
+
+- 2.x系の継続改善
+
 ## [2.0.1-alpha] - 2026-02-03
 
 ### Security
