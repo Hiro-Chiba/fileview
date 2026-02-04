@@ -32,6 +32,13 @@ pub enum PluginAction {
     Test,
 }
 
+/// Init command action
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InitAction {
+    /// Initialize Claude config with fileview MCP entry
+    Claude,
+}
+
 /// Application configuration from CLI args and config file
 pub struct Config {
     pub root: PathBuf,
@@ -103,6 +110,14 @@ pub struct Config {
     pub plugin_action: Option<PluginAction>,
     /// Plugin path for plugin commands
     pub plugin_path: Option<PathBuf>,
+    /// Init command action
+    pub init_action: Option<InitAction>,
+    /// Optional path used by init command
+    pub init_path: Option<PathBuf>,
+    /// Force overwrite for init command
+    pub init_force: bool,
+    /// Resume AI session by name (default: ai)
+    pub resume_ai_session: Option<String>,
 }
 
 impl Config {
@@ -139,6 +154,10 @@ impl Config {
         let mut session_action: Option<SessionAction> = None;
         let mut plugin_action: Option<PluginAction> = None;
         let mut plugin_path: Option<PathBuf> = None;
+        let mut init_action: Option<InitAction> = None;
+        let mut init_path: Option<PathBuf> = None;
+        let mut init_force = false;
+        let mut resume_ai_session: Option<String> = None;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -294,6 +313,43 @@ impl Config {
                         anyhow::bail!("--session requires 'save', 'restore', or 'clear'");
                     }
                 }
+                "--resume-ai-session" => {
+                    let name = match args.peek() {
+                        Some(next) if !next.starts_with('-') => args.next().unwrap(),
+                        _ => "ai".to_string(),
+                    };
+                    resume_ai_session = Some(name);
+                }
+                "init" => {
+                    let sub = args
+                        .next()
+                        .ok_or_else(|| anyhow::anyhow!("init requires a target (e.g. claude)"))?;
+                    match sub.as_str() {
+                        "claude" => {
+                            init_action = Some(InitAction::Claude);
+                            while let Some(next) = args.peek().cloned() {
+                                match next.as_str() {
+                                    "--path" => {
+                                        args.next();
+                                        let value = args.next().ok_or_else(|| {
+                                            anyhow::anyhow!("--path requires a value")
+                                        })?;
+                                        init_path = Some(PathBuf::from(value));
+                                    }
+                                    "--force" => {
+                                        args.next();
+                                        init_force = true;
+                                    }
+                                    token if token.starts_with('-') => {
+                                        anyhow::bail!("unknown init option: {}", token);
+                                    }
+                                    _ => break,
+                                }
+                            }
+                        }
+                        _ => anyhow::bail!("Unknown init target: {}", sub),
+                    }
+                }
                 "plugin" => {
                     let sub = args
                         .next()
@@ -426,6 +482,10 @@ impl Config {
             session_action,
             plugin_action,
             plugin_path,
+            init_action,
+            init_path,
+            init_force,
+            resume_ai_session,
         })
     }
 }
@@ -548,7 +608,11 @@ CLAUDE CODE INTEGRATION:
     --select-related F  Output related file paths for file F
     --explain-selection Include score/reasons for --select-related output
     --session ACTION    Session management: save, restore, or clear
+    --resume-ai-session [NAME]
+                        Resume named AI session non-interactively (default name: ai)
     benchmark ai        Run AI benchmark scenarios (context-pack/review-pack/related/all)
+    init claude [--path FILE] [--force]
+                        Initialize Claude config with fileview MCP entry
     plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
     plugin test PATH    Execute plugin file in sandbox and report status
 
@@ -602,6 +666,7 @@ SMART SELECTION:
 AI WORKFLOW:
     Ctrl+A      Toggle AI focus mode (ultra compact + peek preview)
     Ctrl+Shift+Y Copy context pack to clipboard
+    Ctrl+Shift+Enter Copy review context pack to clipboard
     Ctrl+Shift+P Open AI history
 
 TABS:

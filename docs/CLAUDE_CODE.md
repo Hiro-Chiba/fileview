@@ -276,7 +276,9 @@ fv --tree --with-content ./src/module
 | `--multi` | Allow multiple selection |
 | `--select-related F` | Output related file paths for `F` |
 | `--explain-selection` | Include score/reasons for `--select-related` output |
+| `--resume-ai-session [NAME]` | Restore named AI session metadata (default: `ai`) |
 | `--mcp-server` | Run as MCP server |
+| `init claude [--path FILE] [--force]` | Initialize Claude config with fileview MCP entry |
 | `--pick` | Pick mode (same as `--select-mode`) |
 | `--format FMT` | Output format: lines, null, json |
 | `benchmark ai --scenario NAME --iterations N` | Run AI benchmark scenario (`context-pack`, `review-pack`, `related`, `all`) |
@@ -304,6 +306,7 @@ Test pair patterns:
 | `Y` | Copy file content to clipboard |
 | `Ctrl+Y` | Copy in Claude-friendly format |
 | `Ctrl+Shift+Y` | Copy context pack (minimal preset) |
+| `Ctrl+Shift+Enter` | Copy review context pack |
 | `Ctrl+A` | Toggle AI focus mode (ultra-compact + peek preview) |
 | `Ctrl+Shift+P` | Open AI history popup |
 | `Enter` | Select (in select mode) |
