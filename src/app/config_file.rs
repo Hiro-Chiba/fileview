@@ -156,6 +156,47 @@ impl CommandsConfig {
             .replace("$s", &stem)
             .replace("$e", &ext)
     }
+
+    /// Expand placeholders and shell-escape substituted values.
+    ///
+    /// This is intended for command execution paths where placeholder content
+    /// can include spaces or shell metacharacters.
+    pub fn expand_shell_escaped(template: &str, file_path: &std::path::Path) -> String {
+        let path_str = file_path.display().to_string();
+        let dir = file_path
+            .parent()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default();
+        let name = file_path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let stem = file_path
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let ext = file_path
+            .extension()
+            .map(|e| e.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        template
+            .replace("$f", &shell_escape(&path_str))
+            .replace("$d", &shell_escape(&dir))
+            .replace("$n", &shell_escape(&name))
+            .replace("$s", &shell_escape(&stem))
+            .replace("$e", &shell_escape(&ext))
+    }
+}
+
+fn shell_escape(value: &str) -> String {
+    if cfg!(target_os = "windows") {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else if value.contains('\'') {
+        format!("'{}'", value.replace('\'', "'\\''"))
+    } else {
+        format!("'{}'", value)
+    }
 }
 
 impl ConfigFile {
@@ -287,5 +328,13 @@ show_hidden = true
 
         let result = ConfigFile::load_from(&file.path().to_path_buf());
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_expand_shell_escaped_unix_style() {
+        let path = PathBuf::from("/tmp/it's tricky.txt");
+        let expanded = CommandsConfig::expand_shell_escaped("echo $f", &path);
+        assert!(expanded.contains("'"));
+        assert!(expanded.contains("\\''"));
     }
 }
