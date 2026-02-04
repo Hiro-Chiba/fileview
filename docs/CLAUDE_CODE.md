@@ -279,6 +279,7 @@ fv --tree --with-content ./src/module
 | `--mcp-server` | Run as MCP server |
 | `--pick` | Pick mode (same as `--select-mode`) |
 | `--format FMT` | Output format: lines, null, json |
+| `benchmark ai --scenario NAME --iterations N` | Run AI benchmark scenario (`context-pack`, `review-pack`, `related`, `all`) |
 
 ## Keybindings
 

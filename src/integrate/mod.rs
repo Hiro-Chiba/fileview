@@ -8,6 +8,7 @@
 //! - Context mode: Output project context for AI tools (--context)
 //! - Session: Save/restore selection state
 
+pub mod benchmark;
 pub mod callback;
 pub mod context;
 pub mod context_pack;
@@ -17,6 +18,7 @@ pub mod related;
 pub mod session;
 pub mod tree;
 
+pub use benchmark::run_ai_benchmark;
 pub use callback::{Callback, CallbackResult};
 pub use context::{build_project_context, output_context};
 pub use context_pack::{
