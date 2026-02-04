@@ -48,6 +48,8 @@ fv --resume-ai-session
 Useful docs:
 - [Claude Code Guide](docs/CLAUDE_CODE.md)
 - [Competitive Scorecard (weekly)](docs/COMPETITIVE_SCORECARD.md)
+- [Current score snapshot](score.md)
+- [Product philosophy](思想.md)
 - [Release Policy](docs/RELEASE_POLICY.md)
 
 ## Features
