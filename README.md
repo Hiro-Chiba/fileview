@@ -234,6 +234,7 @@ end)
 - [Benchmarks](docs/BENCHMARKS.md) - Performance data
 - [Security](docs/SECURITY.md) - Security model
 - [Stability](docs/STABILITY.md) - Release channel policy and alpha exit criteria
+- [Release Policy](docs/RELEASE_POLICY.md) - Versioning, cadence, and promotion rules
 
 ## License
 
