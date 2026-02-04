@@ -237,6 +237,7 @@ end)
 - [ベンチマーク](docs/BENCHMARKS.md) - パフォーマンスデータ
 - [セキュリティ](docs/SECURITY.md) - セキュリティモデル
 - [安定性](docs/STABILITY.md) - リリースチャネル方針とalpha終了条件
+- [リリースポリシー](docs/RELEASE_POLICY.md) - バージョニングと運用ルール
 
 ## ライセンス
 
