@@ -289,7 +289,7 @@ pub fn select_git_staged(state: &mut AppState, entries: &[EntrySnapshot]) {
 }
 
 /// Find potential test file paths for a given source file
-fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
+pub(crate) fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
     let file_name = match path.file_name().and_then(|n| n.to_str()) {
@@ -385,4 +385,88 @@ fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
     }
 
     candidates
+}
+
+/// Select files related to the focused file (same stem, same dir, tests)
+pub fn select_related_files(
+    state: &mut AppState,
+    entries: &[EntrySnapshot],
+    focused_path: &Option<PathBuf>,
+) {
+    let path = match focused_path {
+        Some(p) => p,
+        None => {
+            state.set_message("No file focused");
+            return;
+        }
+    };
+
+    let stem = match path.file_stem().and_then(|s| s.to_str()) {
+        Some(s) => s,
+        None => {
+            state.set_message("Focused item has no filename");
+            return;
+        }
+    };
+
+    let parent = path.parent();
+    let mut count = 0;
+
+    // Always include focused file
+    state.selected_paths.insert(path.clone());
+    count += 1;
+
+    // Add test pairs if they exist
+    for test_file in find_test_pairs(path) {
+        if test_file.exists() {
+            if state.selected_paths.insert(test_file) {
+                count += 1;
+            }
+        }
+    }
+
+    // Add same-stem files in current view
+    for entry in entries {
+        if entry.path == *path {
+            continue;
+        }
+        if let Some(entry_stem) = entry.path.file_stem().and_then(|s| s.to_str()) {
+            let same_parent = parent.is_some_and(|p| entry.path.parent() == Some(p));
+            let stem_match =
+                entry_stem == stem || entry_stem.starts_with(stem) || stem.starts_with(entry_stem);
+            if same_parent && stem_match {
+                if state.selected_paths.insert(entry.path.clone()) {
+                    count += 1;
+                }
+            }
+        }
+    }
+
+    state.set_message(format!("Selected {} related file(s)", count));
+}
+
+/// Select error-context files (logs, traces) in current view
+pub fn select_error_context(state: &mut AppState, entries: &[EntrySnapshot]) {
+    let mut count = 0;
+    let keywords = ["error", "stderr", "stack", "trace", "panic", "crash"];
+
+    for entry in entries {
+        let name = entry
+            .path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        if keywords.iter().any(|k| name.contains(k)) {
+            if state.selected_paths.insert(entry.path.clone()) {
+                count += 1;
+            }
+        }
+    }
+
+    if count > 0 {
+        state.set_message(format!("Selected {} error context file(s)", count));
+    } else {
+        state.set_message("No error context files in view");
+    }
 }

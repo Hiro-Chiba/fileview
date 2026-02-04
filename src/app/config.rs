@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use super::config_file::{CommandsConfig, ConfigFile, PreviewConfig};
-use crate::integrate::{exit_code, Callback, OutputFormat};
+use crate::integrate::{exit_code, Callback, ContextPackPreset, OutputFormat};
 
 /// Session action (save, restore, clear)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +18,15 @@ pub enum SessionAction {
     Restore,
     /// Clear session file
     Clear,
+}
+
+/// Plugin command action
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PluginAction {
+    /// Create plugin template
+    Init,
+    /// Validate/execute plugin file
+    Test,
 }
 
 /// Application configuration from CLI args and config file
@@ -71,8 +80,16 @@ pub struct Config {
     pub mcp_server: bool,
     /// Context generation mode
     pub context_mode: bool,
+    /// Context pack output mode with preset
+    pub context_pack: Option<ContextPackPreset>,
+    /// Related file selection output mode (non-interactive)
+    pub select_related_path: Option<PathBuf>,
     /// Session action (save/restore/clear) - non-interactive
     pub session_action: Option<SessionAction>,
+    /// Plugin command action
+    pub plugin_action: Option<PluginAction>,
+    /// Plugin path for plugin commands
+    pub plugin_path: Option<PathBuf>,
 }
 
 impl Config {
@@ -98,7 +115,11 @@ impl Config {
         let mut multi_select = false;
         let mut mcp_server = false;
         let mut context_mode = false;
+        let mut context_pack: Option<ContextPackPreset> = None;
+        let mut select_related_path: Option<PathBuf> = None;
         let mut session_action: Option<SessionAction> = None;
+        let mut plugin_action: Option<PluginAction> = None;
+        let mut plugin_path: Option<PathBuf> = None;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -138,6 +159,25 @@ impl Config {
                 "--multi" => multi_select = true,
                 "--mcp-server" => mcp_server = true,
                 "--context" => context_mode = true,
+                "--context-pack" => {
+                    if let Some(preset) = args.next() {
+                        context_pack =
+                            Some(ContextPackPreset::from_str(&preset).map_err(|_| {
+                                anyhow::anyhow!(
+                                    "--context-pack must be one of: minimal, review, debug"
+                                )
+                            })?);
+                    } else {
+                        anyhow::bail!("--context-pack requires a preset");
+                    }
+                }
+                "--select-related" => {
+                    if let Some(path) = args.next() {
+                        select_related_path = Some(PathBuf::from(path));
+                    } else {
+                        anyhow::bail!("--select-related requires a file path");
+                    }
+                }
                 "--session" => {
                     if let Some(action) = args.next() {
                         session_action = Some(match action.as_str() {
@@ -153,6 +193,29 @@ impl Config {
                         });
                     } else {
                         anyhow::bail!("--session requires 'save', 'restore', or 'clear'");
+                    }
+                }
+                "plugin" => {
+                    let sub = args
+                        .next()
+                        .ok_or_else(|| anyhow::anyhow!("plugin requires 'init' or 'test'"))?;
+                    match sub.as_str() {
+                        "init" => {
+                            plugin_action = Some(PluginAction::Init);
+                            if let Some(next) = args.peek() {
+                                if !next.starts_with('-') {
+                                    plugin_path = Some(PathBuf::from(args.next().unwrap()));
+                                }
+                            }
+                        }
+                        "test" => {
+                            plugin_action = Some(PluginAction::Test);
+                            let path = args.next().ok_or_else(|| {
+                                anyhow::anyhow!("plugin test requires a path to .lua file")
+                            })?;
+                            plugin_path = Some(PathBuf::from(path));
+                        }
+                        _ => anyhow::bail!("Unknown plugin command: {}", sub),
                     }
                 }
                 "--icons" | "-i" => icons_enabled = Some(true),
@@ -252,7 +315,11 @@ impl Config {
             multi_select,
             mcp_server,
             context_mode,
+            context_pack,
+            select_related_path,
             session_action,
+            plugin_action,
+            plugin_path,
         })
     }
 }
@@ -364,7 +431,11 @@ CLAUDE CODE INTEGRATION:
     --multi             Allow multiple selection in select mode
     --mcp-server        Run as MCP server (JSON-RPC over stdin/stdout)
     --context           Output project context in AI-friendly markdown format
+    --context-pack P    Output AI context pack preset: minimal, review, debug
+    --select-related F  Output related file paths for file F
     --session ACTION    Session management: save, restore, or clear
+    plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
+    plugin test PATH    Execute plugin file in sandbox and report status
 
 CONFIG FILE:
     ~/.config/fileview/config.toml    Main configuration file
@@ -410,6 +481,13 @@ KEYBINDINGS:
 SMART SELECTION:
     Ctrl+G      Select all git changed files
     Ctrl+T      Select test pair for focused file
+    Ctrl+R      Select related files
+    Ctrl+E      Select error-context files
+
+AI WORKFLOW:
+    Ctrl+A      Toggle AI focus mode (ultra compact + peek preview)
+    Ctrl+Shift+Y Copy context pack to clipboard
+    Ctrl+Shift+P Open AI history
 
 TABS:
     Ctrl+T      New tab
