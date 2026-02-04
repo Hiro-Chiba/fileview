@@ -32,6 +32,24 @@ cargo install fileview
 fv
 ```
 
+## 3分で始めるAIワークフロー（推奨）
+
+```bash
+# 1) Claude MCP連携を一度だけ設定
+fv init claude
+
+# 2) AI向けコンテキストを生成
+fv --context-pack review --agent claude
+
+# 3) 前回セッションを復元
+fv --resume-ai-session
+```
+
+関連ドキュメント:
+- [Claude Codeガイド](docs/CLAUDE_CODE_ja.md)
+- [競合スコアカード（週次更新）](docs/COMPETITIVE_SCORECARD.md)
+- [リリース方針](docs/RELEASE_POLICY.md)
+
 ## 機能
 
 | 機能 | 説明 |
