@@ -1,6 +1,6 @@
 [package]
 name = "fileview"
-version = "2.0.4-alpha"
+version = "2.1.0"
 edition = "2021"
 description = "A minimal file tree UI for terminal emulators"
 authors = ["Hiro-Chiba"]
