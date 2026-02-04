@@ -209,6 +209,28 @@ pub fn handle(
                 Err(e) => state.set_message(format!("Failed: {}", e)),
             }
         }
+        KeyAction::CopyContextPackReview => {
+            let selected: Vec<PathBuf> = if state.selected_paths.is_empty() {
+                focused_path.clone().into_iter().collect()
+            } else {
+                state.selected_paths.iter().cloned().collect()
+            };
+            match build_context_pack(&state.root, ContextPackPreset::Review, &selected) {
+                Ok(text) => match copy_text_to_clipboard(&text) {
+                    Ok(_) => {
+                        state.push_ai_history_with_meta(
+                            "Context Pack (review)".to_string(),
+                            text,
+                            Some("review".to_string()),
+                            selected.len(),
+                        );
+                        state.set_message("Copied review context pack");
+                    }
+                    Err(e) => state.set_message(format!("Failed: {}", e)),
+                },
+                Err(e) => state.set_message(format!("Failed: {}", e)),
+            }
+        }
         KeyAction::ToggleAiFocus => {
             state.toggle_ai_focus();
             state.set_message(if state.ai_focus {

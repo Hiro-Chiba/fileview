@@ -71,6 +71,8 @@ pub enum KeyAction {
     CopyForClaude,
     /// Copy AI context pack to clipboard
     CopyContextPack,
+    /// Copy review-oriented AI context pack to clipboard
+    CopyContextPackReview,
     /// Open preview
     OpenPreview,
     /// Toggle quick preview panel
@@ -501,6 +503,12 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
 
         // Selection
         KeyCode::Char(' ') => KeyAction::ToggleMark,
+        KeyCode::Enter
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && key.modifiers.contains(KeyModifiers::SHIFT) =>
+        {
+            KeyAction::CopyContextPackReview
+        }
         KeyCode::Enter => {
             if state.select_mode {
                 KeyAction::SelectConfirm

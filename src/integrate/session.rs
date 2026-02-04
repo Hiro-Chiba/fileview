@@ -64,13 +64,28 @@ impl Session {
     }
 
     /// Get session file path for a root directory
-    fn session_path(root: &Path) -> PathBuf {
-        root.join(SESSION_FILENAME)
+    fn session_path(root: &Path, name: Option<&str>) -> PathBuf {
+        match name {
+            None => root.join(SESSION_FILENAME),
+            Some(raw) => {
+                let normalized = normalize_session_name(raw);
+                if normalized.is_empty() || normalized == "default" {
+                    root.join(SESSION_FILENAME)
+                } else {
+                    root.join(format!(".fileview-session-{}.json", normalized))
+                }
+            }
+        }
     }
 
     /// Save session to file
     pub fn save(&self, root: &Path) -> io::Result<()> {
-        let path = Self::session_path(root);
+        self.save_named(root, None)
+    }
+
+    /// Save named session to file.
+    pub fn save_named(&self, root: &Path, name: Option<&str>) -> io::Result<()> {
+        let path = Self::session_path(root, name);
         let json = serde_json::to_string_pretty(self)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         fs::write(path, json)
@@ -78,7 +93,12 @@ impl Session {
 
     /// Load session from file
     pub fn load(root: &Path) -> io::Result<Self> {
-        let path = Self::session_path(root);
+        Self::load_named(root, None)
+    }
+
+    /// Load named session from file.
+    pub fn load_named(root: &Path, name: Option<&str>) -> io::Result<Self> {
+        let path = Self::session_path(root, name);
         let json = fs::read_to_string(path)?;
         serde_json::from_str(&json).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
@@ -115,7 +135,12 @@ impl Session {
 
     /// Delete session file
     pub fn delete(root: &Path) -> io::Result<()> {
-        let path = Self::session_path(root);
+        Self::delete_named(root, None)
+    }
+
+    /// Delete named session file.
+    pub fn delete_named(root: &Path, name: Option<&str>) -> io::Result<()> {
+        let path = Self::session_path(root, name);
         if path.exists() {
             fs::remove_file(path)
         } else {
@@ -136,9 +161,30 @@ pub fn save_session(
     Ok(count)
 }
 
+/// Save current state to a named session.
+pub fn save_session_named(
+    root: &Path,
+    selected_paths: &HashSet<PathBuf>,
+    focus_path: Option<&PathBuf>,
+    name: Option<&str>,
+) -> io::Result<usize> {
+    let session = Session::new(root, selected_paths, focus_path);
+    let count = session.selected_paths.len();
+    session.save_named(root, name)?;
+    Ok(count)
+}
+
 /// Load session and return paths to restore
 pub fn load_session(root: &Path) -> io::Result<(HashSet<PathBuf>, Option<PathBuf>)> {
-    let session = Session::load(root)?;
+    load_session_named(root, None)
+}
+
+/// Load named session and return paths to restore.
+pub fn load_session_named(
+    root: &Path,
+    name: Option<&str>,
+) -> io::Result<(HashSet<PathBuf>, Option<PathBuf>)> {
+    let session = Session::load_named(root, name)?;
 
     // Verify this session belongs to the same root
     let session_root = PathBuf::from(&session.root);
@@ -150,6 +196,13 @@ pub fn load_session(root: &Path) -> io::Result<(HashSet<PathBuf>, Option<PathBuf
     }
 
     Ok(session.to_absolute_paths(root))
+}
+
+fn normalize_session_name(name: &str) -> String {
+    name.trim()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect()
 }
 
 #[cfg(test)]
@@ -203,5 +256,22 @@ mod tests {
         // Load should filter out missing files
         let (loaded_selected, _) = load_session(root).unwrap();
         assert_eq!(loaded_selected.len(), 0);
+    }
+
+    #[test]
+    fn test_named_session_save_load() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+
+        let file1 = root.join("a.txt");
+        fs::write(&file1, "a").unwrap();
+
+        let mut selected = HashSet::new();
+        selected.insert(file1.clone());
+        save_session_named(root, &selected, Some(&file1), Some("ai")).unwrap();
+
+        let (loaded_selected, loaded_focus) = load_session_named(root, Some("ai")).unwrap();
+        assert!(loaded_selected.contains(&file1));
+        assert_eq!(loaded_focus, Some(file1));
     }
 }

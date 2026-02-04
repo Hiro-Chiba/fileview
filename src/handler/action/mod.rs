@@ -342,6 +342,7 @@ pub fn handle_action(
         KeyAction::TogglePeekMode
         | KeyAction::CopyCompact
         | KeyAction::CopyContextPack
+        | KeyAction::CopyContextPackReview
         | KeyAction::ToggleAiFocus
         | KeyAction::OpenAiHistory
         | KeyAction::AiHistoryUp
