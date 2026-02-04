@@ -66,6 +66,7 @@ FileView auto-detects your terminal:
 | `/` | Search |
 | `Ctrl+P` | Fuzzy finder |
 | `P` | Preview panel |
+| `Ctrl+Shift+Enter` | Copy review context pack |
 | `q` | Quit |
 
 **[Full keybinding list](docs/KEYBINDINGS.md)**
@@ -151,8 +152,11 @@ Claude Code:
   --multi             Allow multiple selection
   --select-related F  Output related files for a focused file
   --explain-selection Include score/reasons in related-file output
+  --resume-ai-session [NAME]
+                      Restore named AI session metadata (default: ai)
   --mcp-server        Run as MCP server
   benchmark ai        Run AI benchmark scenarios (use --scenario and --iterations)
+  init claude         Initialize Claude config with fileview MCP entry
 ```
 
 ### Exit Codes
@@ -226,6 +230,7 @@ end)
 - [Keybindings](docs/KEYBINDINGS.md) - Complete keybinding reference
 - [Plugins](docs/PLUGINS.md) - Lua plugin system
 - [Comparison](docs/COMPARISON.md) - vs yazi, lf, ranger, nnn
+- [Roadmap](docs/ROADMAP.md) - Product direction and release history
 - [Benchmarks](docs/BENCHMARKS.md) - Performance data
 - [Security](docs/SECURITY.md) - Security model
 - [Stability](docs/STABILITY.md) - Release channel policy and alpha exit criteria
