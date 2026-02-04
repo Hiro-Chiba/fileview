@@ -185,6 +185,12 @@ brew install chafa  # or apt install libchafa-dev
 cargo install fileview --features chafa
 ```
 
+## Stability
+
+- Current channel: `stable` (`2.1.0`)
+- Stable promotion criteria are documented in `docs/STABILITY.md`.
+- As of 2026-02-04, criteria were satisfied and stable release was approved.
+
 ## Lua Plugin System
 
 Extend FileView with Lua scripts:
@@ -222,6 +228,7 @@ end)
 - [Comparison](docs/COMPARISON.md) - vs yazi, lf, ranger, nnn
 - [Benchmarks](docs/BENCHMARKS.md) - Performance data
 - [Security](docs/SECURITY.md) - Security model
+- [Stability](docs/STABILITY.md) - Release channel policy and alpha exit criteria
 
 ## License
 
