@@ -32,6 +32,24 @@ cargo install fileview
 fv
 ```
 
+## 3-Min AI Workflow (Recommended)
+
+```bash
+# 1) Set up Claude MCP integration once
+fv init claude
+
+# 2) Generate compact context for AI
+fv --context-pack review --agent claude
+
+# 3) Resume previous AI session context
+fv --resume-ai-session
+```
+
+Useful docs:
+- [Claude Code Guide](docs/CLAUDE_CODE.md)
+- [Competitive Scorecard (weekly)](docs/COMPETITIVE_SCORECARD.md)
+- [Release Policy](docs/RELEASE_POLICY.md)
+
 ## Features
 
 | Feature | Description |
