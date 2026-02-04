@@ -39,13 +39,13 @@ pub fn execute_command(
 
     // Expand placeholders
     let cmd = if let Some(path) = file_path {
-        let mut expanded = CommandsConfig::expand(template, path);
+        let mut expanded = CommandsConfig::expand_shell_escaped(template, path);
 
         // Handle $S (selected files) - join paths with spaces, quoted
         if expanded.contains("$S") {
             let selected: Vec<String> = selected_paths
                 .iter()
-                .map(|p| format!("'{}'", p.display()))
+                .map(|p| shell_escape(&p.display().to_string()))
                 .collect();
             expanded = expanded.replace("$S", &selected.join(" "));
         }
@@ -95,7 +95,7 @@ pub fn execute_interactive(
     };
 
     let cmd = if let Some(path) = file_path {
-        CommandsConfig::expand(template, path)
+        CommandsConfig::expand_shell_escaped(template, path)
     } else {
         template.clone()
     };
@@ -164,6 +164,16 @@ pub fn open_subshell(state: &mut AppState, focused_path: Option<&PathBuf>) {
     ));
 }
 
+fn shell_escape(value: &str) -> String {
+    if cfg!(target_os = "windows") {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else if value.contains('\'') {
+        format!("'{}'", value.replace('\'', "'\\''"))
+    } else {
+        format!("'{}'", value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,6 +215,24 @@ mod tests {
         match result {
             CommandResult::Success(output) => {
                 assert!(output.contains("/tmp/test.txt"));
+            }
+            _ => panic!("Expected success"),
+        }
+    }
+
+    #[test]
+    fn test_selected_paths_with_quote_are_escaped() {
+        let config = create_config(vec![("show_selected", "echo $S")]);
+        let selected = vec![PathBuf::from("/tmp/it's.txt")];
+        let result = execute_command(
+            "show_selected",
+            &config,
+            Some(Path::new("/tmp/a")),
+            &selected,
+        );
+        match result {
+            CommandResult::Success(output) => {
+                assert!(output.contains("it's.txt"));
             }
             _ => panic!("Expected success"),
         }
