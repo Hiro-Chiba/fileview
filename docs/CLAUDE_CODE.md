@@ -308,6 +308,8 @@ Test pair patterns:
 | `Enter` | Select (in select mode) |
 | `Space` | Toggle mark (for multi-select) |
 
+AI history entries now include metadata (`preset`, token estimate, file count) so you can quickly re-use the right context snapshot.
+
 ## Tips
 
 1. **Context Window**: Use `--depth` to limit tree depth for large projects

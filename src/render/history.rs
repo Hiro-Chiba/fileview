@@ -40,7 +40,12 @@ pub fn render_ai_history_popup(frame: &mut Frame, state: &AppState) {
             } else {
                 Style::default().fg(Color::White)
             };
-            ListItem::new(Line::from(vec![Span::styled(item.title.clone(), style)]))
+            let meta = match &item.preset {
+                Some(p) => format!("{} · {}t · {}f", p, item.token_estimate, item.file_count),
+                None => format!("{}t · {}f", item.token_estimate, item.file_count),
+            };
+            let text = format!("{} [{}]", item.title, meta);
+            ListItem::new(Line::from(vec![Span::styled(text, style)]))
         })
         .collect();
 
