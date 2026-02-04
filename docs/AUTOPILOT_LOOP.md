@@ -9,6 +9,7 @@ This document sets up continuous local execution of the growth loop:
 - Keep `philosophy.md` as the source of truth.
 - Optimize for AI-driven development in the remaining ~20% terminal area.
 - Escalate only major decisions.
+- Autopilot must run on `develop` only. Never run on `main`.
 
 ## One-Time Setup (macOS)
 
@@ -29,6 +30,13 @@ Install and start launchd agent:
 
 - `1800` means one cycle every 30 minutes.
 - Logs are written to `.automation/logs/`.
+- Installer command pins runtime to `develop` (`git switch develop` + `git pull --ff-only origin develop`).
+
+Optional local guard (block pushes from `main`):
+
+```bash
+./scripts/install_main_guard_hook.sh
+```
 
 ## Useful Commands
 

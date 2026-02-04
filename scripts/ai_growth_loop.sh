@@ -28,8 +28,19 @@ done
 
 run_cycle() {
   local ts
+  local branch
   ts="$(date '+%Y-%m-%d %H:%M:%S')"
   echo "[ai-growth-loop] cycle start: ${ts}"
+
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  if [[ "${branch}" == "main" ]]; then
+    echo "[guard] Refusing to run on main branch. Switch to develop." >&2
+    exit 2
+  fi
+  if [[ "${branch}" != "develop" ]]; then
+    echo "[guard] Refusing to run on '${branch}'. Autopilot is develop-only." >&2
+    exit 3
+  fi
 
   echo "[1/4] Quality checks"
   cargo fmt --all -- --check

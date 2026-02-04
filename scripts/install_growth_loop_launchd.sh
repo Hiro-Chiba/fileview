@@ -27,7 +27,7 @@ cat > "$PLIST_PATH" <<EOF
   <array>
     <string>/bin/zsh</string>
     <string>-lc</string>
-    <string>cd "$ROOT_DIR" &amp;&amp; ./scripts/ai_growth_loop.sh --loop --sleep ${SLEEP_SEC}</string>
+    <string>cd "$ROOT_DIR" &amp;&amp; git switch develop &amp;&amp; git pull --ff-only origin develop &amp;&amp; ./scripts/ai_growth_loop.sh --loop --sleep ${SLEEP_SEC}</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

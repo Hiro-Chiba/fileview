@@ -37,6 +37,8 @@ release_policy:
   - "GitHub Releasesとgit tagの不整合を残さない"
 
 safety:
+  - "Autopilotはdevelop専用。mainで実行しない"
+  - "mainへのマージ/タグ/公開はオーナー明示許可がある場合のみ"
   - "破壊的コマンド（reset --hard / checkout -- / rm -rf）を使わない"
   - "ユーザー未指示のrevertをしない"
   - "CIが課金制限で動かない場合はローカル検証結果を明示する"

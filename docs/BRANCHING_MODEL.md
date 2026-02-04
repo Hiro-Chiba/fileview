@@ -7,6 +7,7 @@ Updated: 2026-02-04
 - `main`: release-only
 - `develop`: integration branch for day-to-day development
 - `feature/*`: short-lived branches from `develop`
+- Only the owner may approve `develop -> main` and release operations.
 
 ## Standard Flow
 
