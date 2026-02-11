@@ -41,7 +41,7 @@ flate2 = "1.1"
 trash = "5"
 tempfile = "3"
 syntect = "5"
-mlua = { version = "0.10", features = ["lua54", "vendored"] }
+mlua = { version = "0.11", features = ["lua54", "vendored"] }
 regex = "1"
 # v2.0 additions
 thiserror = "2"          # Unified error types
