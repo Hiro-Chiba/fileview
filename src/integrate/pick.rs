@@ -128,11 +128,9 @@ pub fn output_paths_with_content(paths: &[PathBuf]) -> io::Result<()> {
 /// Output paths with content in Claude-friendly markdown format
 ///
 /// Format:
-/// ```markdown
+/// ```text
 /// ### File: path/to/file.rs
-/// ```rs
-/// <file content>
-/// ```
+/// (content with syntax highlighting)
 /// ```
 pub fn output_paths_claude_format(paths: &[PathBuf]) -> io::Result<()> {
     let stdout = io::stdout();
