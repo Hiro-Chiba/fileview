@@ -1,0 +1,50 @@
+# Clippy configuration for fileview
+# See: https://doc.rust-lang.org/clippy/lint_configuration.html
+
+# MSRV - Minimum Supported Rust Version
+msrv = "1.87.0"
+
+# Cognitive complexity threshold for functions
+cognitive-complexity-threshold = 30
+
+# Maximum lines in a function body
+too-many-lines-threshold = 200
+
+# Maximum number of arguments a function can have
+too-many-arguments-threshold = 8
+
+# Maximum number of struct fields
+max-struct-bools = 5
+
+# Type complexity threshold
+type-complexity-threshold = 300
+
+# Allowed names for identifiers (prevent false positives)
+allowed-idents-below-min-chars = ["i", "j", "k", "n", "x", "y", "w", "h", "id", "tx", "rx"]
+
+# Documentation requirements (allow missing docs in crate items)
+missing-docs-in-crate-items = false
+
+# Allow certain patterns in tests
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+
+# Threshold for large enum variant
+enum-variant-size-threshold = 200
+
+# Accept doc comments that need backticks but don't have them
+doc-valid-idents = [
+    "macOS",
+    "iOS",
+    "FreeBSD",
+    "NetBSD",
+    "OpenBSD",
+    "TrueColor",
+    "FileView",
+    "GitHub",
+    "GitLab",
+    "NeoVim",
+    "iTerm2",
+    "VS Code",
+    "VSCode",
+]
