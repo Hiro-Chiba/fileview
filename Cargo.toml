@@ -46,7 +46,7 @@ regex = "1"
 # v2.0 additions
 thiserror = "2"          # Unified error types
 petgraph = "0.6"         # Dependency graph analysis
-tiktoken-rs = "0.5"      # Token estimation for AI context
+tiktoken-rs = "0.9"      # Token estimation for AI context
 
 [dev-dependencies]
 tempfile = "3"
