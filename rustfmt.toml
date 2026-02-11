@@ -1,0 +1,35 @@
+# Rustfmt configuration for fileview
+# See: https://rust-lang.github.io/rustfmt/
+# Note: Only stable options are used to ensure compatibility with stable Rust
+
+# Use Rust 2021 edition style
+edition = "2021"
+
+# Maximum line width
+max_width = 100
+
+# Use spaces for indentation
+hard_tabs = false
+tab_spaces = 4
+
+# Function formatting
+fn_params_layout = "Tall"
+
+# Control flow formatting
+use_small_heuristics = "Default"
+
+# Match arms - use default to match existing code style
+match_block_trailing_comma = false
+
+# Use field init shorthand
+use_field_init_shorthand = true
+
+# Try to use shorthand for return statements
+use_try_shorthand = true
+
+# Newline style
+newline_style = "Auto"
+
+# Reorder imports and modules
+reorder_imports = true
+reorder_modules = true
