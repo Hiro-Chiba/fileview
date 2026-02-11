@@ -35,7 +35,7 @@ ratatui-image = { version = "10.0.5", default-features = false, features = ["cro
 nucleo-matcher = "0.3"
 notify = "8.2"
 notify-debouncer-mini = "0.6"
-zip = "2.4"
+zip = "7.2"
 tar = "0.4"
 flate2 = "1.1"
 trash = "5"
