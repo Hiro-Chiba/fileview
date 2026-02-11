@@ -2,7 +2,7 @@
 # See: https://doc.rust-lang.org/clippy/lint_configuration.html
 
 # MSRV - Minimum Supported Rust Version
-msrv = "1.87.0"
+msrv = "1.90.0"
 
 # Cognitive complexity threshold for functions
 cognitive-complexity-threshold = 30
