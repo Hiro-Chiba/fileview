@@ -380,6 +380,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn path_buffer_take_paths_with_valid_path() {
         let mut buf = PathBuffer::new();
         let cwd = std::env::current_dir().unwrap();
@@ -465,6 +466,7 @@ mod tests {
     // ========================================
 
     #[test]
+    #[cfg(unix)]
     fn parse_existing_path() {
         let cwd = std::env::current_dir().unwrap();
         let paths = parse_paths(&cwd.display().to_string());
@@ -473,6 +475,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn parse_multiple_paths() {
         let cwd = std::env::current_dir().unwrap();
         let input = format!("{}\n{}", cwd.display(), cwd.display());
@@ -487,6 +490,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn parse_file_url() {
         let cwd = std::env::current_dir().unwrap();
         let input = format!("file://{}", cwd.display());

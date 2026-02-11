@@ -331,6 +331,7 @@ show_hidden = true
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_expand_shell_escaped_unix_style() {
         let path = PathBuf::from("/tmp/it's tricky.txt");
         let expanded = CommandsConfig::expand_shell_escaped("echo $f", &path);
