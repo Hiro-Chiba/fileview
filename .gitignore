@@ -1,9 +1,12 @@
 /target
-.claude/*
-!.claude/skills/
 
-# Internal docs
+# Claude Code (hide all traces)
+.claude/
+
+# Internal docs (not for public)
 docs/MARKET_ANALYSIS.md
+docs/COMPETITIVE_SCORECARD.md
+docs/DEVELOPMENT_HISTORY.md
 
 # IDE
 .vscode/
