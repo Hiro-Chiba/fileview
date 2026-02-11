@@ -2194,6 +2194,7 @@ mod drag_and_drop_tests {
 // Image Preview Comprehensive Tests (Phase 15.8.4)
 // =============================================================================
 
+#[cfg(unix)]
 mod image_preview_tests {
     use super::*;
     use fileview::render::{create_image_picker, render_image_preview, ImagePreview, Picker};
@@ -3196,6 +3197,7 @@ mod image_preview_tests {
 // Terminal Detection Tests
 // =============================================================================
 
+#[cfg(unix)]
 mod terminal_detection_tests {
     use super::*;
 
