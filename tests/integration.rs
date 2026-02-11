@@ -1735,6 +1735,7 @@ mod file_edge_case_tests {
 // Git Status Tests
 // =============================================================================
 
+#[cfg(unix)]
 mod git_status_tests {
     use fileview::git::{FileStatus, GitStatus};
     use std::fs;
@@ -2009,6 +2010,7 @@ mod callback_tests {
 // Drag and Drop Tests
 // =============================================================================
 
+#[cfg(unix)]
 mod drag_and_drop_tests {
     use fileview::handler::mouse::PathBuffer;
     use std::fs;
@@ -6521,6 +6523,7 @@ mod custom_commands_tests {
 // Custom Preview Integration Tests (Phase 5)
 // =============================================================================
 
+#[cfg(unix)]
 mod custom_preview_tests {
     use fileview::render::CustomPreview;
     use std::fs;
