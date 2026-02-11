@@ -97,7 +97,7 @@ jobs:
       - name: Generate coverage report
         run: cargo tarpaulin --out xml --skip-clean
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: cobertura.xml
