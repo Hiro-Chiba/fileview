@@ -12,7 +12,9 @@
 
 ## スクリーンショット
 
-![FileView ツリービュー](assets/screenshot-tree.png)
+<p align="center">
+  <img src="assets/screenshot-tree.png" alt="FileView ツリービュー" width="70%">
+</p>
 
 ## なぜ fv？
 
@@ -158,6 +160,7 @@ fv [OPTIONS] [PATH]
   --stdin             stdinからパスを読み込み
   --on-select CMD     選択時にコマンド実行
   --choosedir         終了時にディレクトリを出力
+  -a, --hidden        隠しファイルを表示
   --no-icons          Nerd Fontsアイコンを無効化
 
 Claude Code連携:
@@ -179,8 +182,17 @@ Claude Code連携:
   --resume-ai-session [NAME]
                       名前付きAIセッションを復元（省略時: ai）
   --mcp-server        MCPサーバーとして起動
+  --session ACTION    セッション管理: save, restore, clear
+  --selection-path F  終了時に選択パスをファイルに書き出し
   benchmark ai        AI向けベンチマークを実行
   init claude         Claude設定にfileview MCPエントリを自動追加
+  plugin init         プラグインテンプレートを作成
+  plugin test PATH    プラグインをサンドボックスでテスト
+
+環境変数:
+  FILEVIEW_ICONS=0            アイコンを無効化
+  FILEVIEW_IMAGE_PROTOCOL     画像プロトコル強制: auto, halfblocks, chafa, sixel, kitty, iterm2
+  FILEVIEW_HELP_KEY_STYLE     ヘルプキースタイル: solid, outline, plain
 ```
 
 ### 終了コード
@@ -215,7 +227,7 @@ cargo install fileview --features chafa
 
 ## 安定性
 
-- 現在のチャネル: `stable`（`2.1.0`）
+- 現在のチャネル: `stable`（`2.3.2`）
 - stable移行条件は `docs/STABILITY.md` に明記しています。
 - 2026-02-04 時点で条件を満たし、stableリリース承認済みです。
 
