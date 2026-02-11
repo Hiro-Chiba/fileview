@@ -2,7 +2,7 @@
 name = "fileview"
 version = "2.2.3"
 edition = "2021"
-rust-version = "1.87.0"  # MSRV - Minimum Supported Rust Version
+rust-version = "1.90.0"  # MSRV - Minimum Supported Rust Version
 description = "A minimal file tree UI for terminal emulators"
 authors = ["Hiro-Chiba"]
 license = "MIT"
