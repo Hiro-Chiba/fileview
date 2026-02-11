@@ -5,6 +5,15 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に基づいており、
 [セマンティックバージョニング](https://semver.org/lang/ja/) に準拠しています。
 
+## [2.3.2] - 2026-02-12
+
+### 変更
+
+- READMEに不足していたCLIオプションを追加（`--hidden`, `--session`, `--selection-path`, `plugin`コマンド）
+- READMEに環境変数セクションを追加
+- 安定性バージョンを2.3.2に更新
+- 日本語READMEのスクリーンショットをリサイズして中央揃え
+
 ## [2.3.1] - 2026-02-12
 
 ### 変更

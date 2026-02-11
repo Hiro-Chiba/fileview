@@ -158,6 +158,7 @@ Options:
   --stdin             Read paths from stdin
   --on-select CMD     Run command on selection
   --choosedir         Output directory on exit
+  -a, --hidden        Show hidden files
   --no-icons          Disable Nerd Fonts icons
 
 Claude Code:
@@ -179,8 +180,17 @@ Claude Code:
   --resume-ai-session [NAME]
                       Restore named AI session metadata (default: ai)
   --mcp-server        Run as MCP server
+  --session ACTION    Session management: save, restore, or clear
+  --selection-path F  Write selected paths to file on exit
   benchmark ai        Run AI benchmark scenarios (use --scenario and --iterations)
   init claude         Initialize Claude config with fileview MCP entry
+  plugin init         Create plugin template file
+  plugin test PATH    Test a plugin file in sandbox
+
+Environment:
+  FILEVIEW_ICONS=0            Disable icons
+  FILEVIEW_IMAGE_PROTOCOL     Force image protocol: auto, halfblocks, chafa, sixel, kitty, iterm2
+  FILEVIEW_HELP_KEY_STYLE     Help key style: solid, outline, plain
 ```
 
 ### Exit Codes
@@ -215,7 +225,7 @@ cargo install fileview --features chafa
 
 ## Stability
 
-- Current channel: `stable` (`2.1.0`)
+- Current channel: `stable` (`2.3.2`)
 - Stable promotion criteria are documented in `docs/STABILITY.md`.
 - As of 2026-02-04, criteria were satisfied and stable release was approved.
 
