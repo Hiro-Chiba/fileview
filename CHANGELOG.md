@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-02-12
+
+### Changed
+
+- Updated dependencies via Dependabot (mlua, tiktoken-rs, zip, dirs, toml, notify-debouncer-mini, etc.)
+- Updated CI actions (checkout v6, upload-artifact v6, download-artifact v7, codecov-action v5)
+- Resized and centered screenshot in README
+
+### Fixed
+
+- Windows test compatibility improvements
+
 ## [2.3.0] - 2026-02-11
 
 ### Added
