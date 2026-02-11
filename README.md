@@ -10,6 +10,10 @@
 
 English | [日本語](README_ja.md)
 
+## Screenshot
+
+![FileView Tree View](assets/screenshot-tree.png)
+
 ## Why fv?
 
 ```
