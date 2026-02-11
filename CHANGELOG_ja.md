@@ -5,6 +5,18 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に基づいており、
 [セマンティックバージョニング](https://semver.org/lang/ja/) に準拠しています。
 
+## [2.3.1] - 2026-02-12
+
+### 変更
+
+- Dependabotによる依存関係の更新（mlua, tiktoken-rs, zip, dirs, toml, notify-debouncer-miniなど）
+- CIアクションの更新（checkout v6, upload-artifact v6, download-artifact v7, codecov-action v5）
+- READMEのスクリーンショットをリサイズして中央揃え
+
+### 修正
+
+- Windowsテストの互換性改善
+
 ## [2.2.3] - 2026-02-04
 
 ### 変更
