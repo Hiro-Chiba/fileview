@@ -30,6 +30,107 @@ pub struct FuzzyMatch {
     pub indices: Vec<usize>,
 }
 
+/// State for incremental fuzzy matching
+#[derive(Default)]
+pub struct FuzzyState {
+    prev_query: String,
+    matched_indices: Vec<usize>,
+}
+
+impl FuzzyState {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn reset(&mut self) {
+        self.prev_query.clear();
+        self.matched_indices.clear();
+    }
+}
+
+/// Perform incremental fuzzy matching, reusing previous results when the query is extended
+pub fn fuzzy_match_incremental(
+    query: &str,
+    paths: &[PathBuf],
+    root: &PathBuf,
+    state: &mut FuzzyState,
+) -> Vec<FuzzyMatch> {
+    if query.is_empty() {
+        state.reset();
+        return paths
+            .iter()
+            .take(MAX_RESULTS)
+            .map(|p| {
+                let display = p
+                    .strip_prefix(root)
+                    .unwrap_or(p)
+                    .to_string_lossy()
+                    .to_string();
+                FuzzyMatch {
+                    path: p.clone(),
+                    display,
+                    score: 0,
+                    indices: vec![],
+                }
+            })
+            .collect();
+    }
+
+    let incremental =
+        !state.prev_query.is_empty() && query.starts_with(&state.prev_query);
+
+    let mut matcher = Matcher::new(nucleo_matcher::Config::DEFAULT);
+    let pattern = Pattern::parse(query, CaseMatching::Smart, Normalization::Smart);
+
+    let mut new_matched_indices = Vec::new();
+
+    let iter: Box<dyn Iterator<Item = (usize, &PathBuf)>> = if incremental {
+        Box::new(
+            state
+                .matched_indices
+                .iter()
+                .filter_map(|&idx| paths.get(idx).map(|p| (idx, p))),
+        )
+    } else {
+        Box::new(paths.iter().enumerate())
+    };
+
+    let mut results: Vec<FuzzyMatch> = iter
+        .filter_map(|(idx, path)| {
+            let display = path
+                .strip_prefix(root)
+                .unwrap_or(path)
+                .to_string_lossy()
+                .to_string();
+
+            let mut buf = Vec::new();
+            let haystack = Utf32Str::new(&display, &mut buf);
+
+            let mut indices = Vec::new();
+            let score = pattern.indices(haystack, &mut matcher, &mut indices)?;
+
+            let indices: Vec<usize> = indices.iter().map(|&i| i as usize).collect();
+
+            new_matched_indices.push(idx);
+
+            Some(FuzzyMatch {
+                path: path.clone(),
+                display,
+                score,
+                indices,
+            })
+        })
+        .collect();
+
+    results.sort_by(|a, b| b.score.cmp(&a.score));
+    results.truncate(MAX_RESULTS);
+
+    state.matched_indices = new_matched_indices;
+    state.prev_query = query.to_string();
+
+    results
+}
+
 /// Perform fuzzy matching on a list of paths
 pub fn fuzzy_match(query: &str, paths: &[PathBuf], root: &PathBuf) -> Vec<FuzzyMatch> {
     if query.is_empty() {
@@ -510,5 +611,77 @@ mod tests {
         // Verify constant is reasonable (compile-time check)
         const { assert!(MAX_RESULTS > 0) };
         const { assert!(MAX_RESULTS <= 100) }; // Should not be too large
+    }
+
+    #[test]
+    fn test_fuzzy_state_reset() {
+        let mut state = FuzzyState::new();
+        state.prev_query = "foo".to_string();
+        state.matched_indices = vec![0, 1, 2];
+        state.reset();
+        assert!(state.prev_query.is_empty());
+        assert!(state.matched_indices.is_empty());
+    }
+
+    #[test]
+    fn test_incremental_narrowing() {
+        let root = PathBuf::from("/test");
+        let paths = vec![
+            PathBuf::from("/test/foo.rs"),
+            PathBuf::from("/test/foobar.rs"),
+            PathBuf::from("/test/bar.rs"),
+            PathBuf::from("/test/baz.rs"),
+        ];
+        let mut state = FuzzyState::new();
+
+        // First query: "fo" matches foo.rs and foobar.rs
+        let results = fuzzy_match_incremental("fo", &paths, &root, &mut state);
+        assert!(results.iter().all(|r| r.display.contains("foo")));
+        assert_eq!(state.prev_query, "fo");
+        let prev_matched_count = state.matched_indices.len();
+        assert!(prev_matched_count <= 2); // only foo.rs and foobar.rs
+
+        // Extend query: "foo" should use incremental narrowing (subset of previous)
+        let results2 = fuzzy_match_incremental("foo", &paths, &root, &mut state);
+        assert!(results2.iter().all(|r| r.display.contains("foo")));
+        assert_eq!(state.prev_query, "foo");
+    }
+
+    #[test]
+    fn test_backspace_triggers_full_scan() {
+        let root = PathBuf::from("/test");
+        let paths = vec![
+            PathBuf::from("/test/foo.rs"),
+            PathBuf::from("/test/bar.rs"),
+        ];
+        let mut state = FuzzyState::new();
+
+        // Type "foo" first
+        fuzzy_match_incremental("foo", &paths, &root, &mut state);
+        assert_eq!(state.prev_query, "foo");
+
+        // Backspace to "f" - not a prefix extension, should do full scan
+        let results = fuzzy_match_incremental("f", &paths, &root, &mut state);
+        assert_eq!(state.prev_query, "f");
+        // "f" should match "foo.rs" at minimum
+        assert!(results.iter().any(|r| r.display.contains("foo")));
+    }
+
+    #[test]
+    fn test_incremental_empty_query_resets() {
+        let root = PathBuf::from("/test");
+        let paths = vec![
+            PathBuf::from("/test/a.rs"),
+            PathBuf::from("/test/b.rs"),
+        ];
+        let mut state = FuzzyState::new();
+
+        fuzzy_match_incremental("a", &paths, &root, &mut state);
+        assert!(!state.prev_query.is_empty());
+
+        let results = fuzzy_match_incremental("", &paths, &root, &mut state);
+        assert!(state.prev_query.is_empty());
+        assert!(state.matched_indices.is_empty());
+        assert_eq!(results.len(), 2);
     }
 }
