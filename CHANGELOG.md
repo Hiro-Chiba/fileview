@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-02-28
+
+### Added
+
+- Speed-oriented `release-fast` Cargo profile for maximum runtime performance
+
+### Changed
+
+- **Dirty-frame rendering**: skip redrawing on idle frames, reducing CPU usage when nothing changes
+- **Cached visible entries**: flatten and cache the visible tree with a dirty flag, avoiding repeated traversal
+- **Event-driven watcher sync**: sync file watcher with expanded directories only when the set changes
+- **Cached status-bar metadata**: cache file size / mod-time to eliminate repeated `stat()` calls
+- **Precomputed sort keys**: compute sort keys once on tree load instead of on every comparison
+- **Async preview worker**: move heavy preview generation (syntax highlight, hex dump, etc.) off the UI thread
+- **Incremental fuzzy narrowing**: when the query extends the previous prefix, re-scan only prior matches instead of all candidates
+- Updated dependencies (petgraph 0.8.3, toml 1.0.1, rust-minor-patch group, Cargo.lock refresh)
+
 ## [2.3.2] - 2026-02-12
 
 ### Changed
