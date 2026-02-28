@@ -19,7 +19,9 @@ use crate::handler::{
     mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer},
 };
 use crate::plugin::{PluginAction, PluginEvent, PluginManager};
-use crate::render::{collect_paths, fuzzy_match_incremental, visible_height, FuzzyMatch, FuzzyState, Picker};
+use crate::render::{
+    collect_paths, fuzzy_match_incremental, visible_height, FuzzyMatch, FuzzyState, Picker,
+};
 use crate::tree::TreeNavigator;
 use crate::watcher::FileWatcher;
 
@@ -357,7 +359,12 @@ pub fn run_app(
                     if let ViewMode::FuzzyFinder { query, .. } = &state.mode {
                         if let Some((new_buf, _)) = update_input_buffer(key, query, query.len()) {
                             // Refresh results when query changes (incremental narrowing)
-                            fuzzy_results = fuzzy_match_incremental(&new_buf, &fuzzy_paths, &state.root, &mut fuzzy_state);
+                            fuzzy_results = fuzzy_match_incremental(
+                                &new_buf,
+                                &fuzzy_paths,
+                                &state.root,
+                                &mut fuzzy_state,
+                            );
                             state.mode = ViewMode::FuzzyFinder {
                                 query: new_buf,
                                 selected: 0, // Reset selection on query change
@@ -525,7 +532,12 @@ pub fn run_app(
                             collect_paths(&state.root, state.show_hidden)
                         };
                         fuzzy_state.reset();
-                        fuzzy_results = fuzzy_match_incremental("", &fuzzy_paths, &state.root, &mut fuzzy_state);
+                        fuzzy_results = fuzzy_match_incremental(
+                            "",
+                            &fuzzy_paths,
+                            &state.root,
+                            &mut fuzzy_state,
+                        );
                     }
 
                     // Fill in actual path for FuzzyConfirm
