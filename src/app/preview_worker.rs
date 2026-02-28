@@ -80,9 +80,11 @@ impl PreviewWorker {
         while let Ok(req) = request_rx.recv() {
             let payload = match req.kind {
                 PreviewKind::Text => Self::generate_text(&req.path),
-                PreviewKind::Diff => {
-                    Self::generate_diff(&req.path, req.git_repo_root.as_deref(), req.git_file_status)
-                }
+                PreviewKind::Diff => Self::generate_diff(
+                    &req.path,
+                    req.git_repo_root.as_deref(),
+                    req.git_file_status,
+                ),
                 PreviewKind::Directory => Self::generate_directory(&req.path),
                 PreviewKind::Archive => Self::generate_archive(&req.path),
                 PreviewKind::VideoMeta => Self::generate_video_meta(&req.path),
@@ -101,8 +103,8 @@ impl PreviewWorker {
     }
 
     fn generate_text(path: &Path) -> Result<PreviewPayload, String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed: preview - {}", e))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| format!("Failed: preview - {}", e))?;
         let preview = TextPreview::with_highlighting(&content, path);
         Ok(PreviewPayload::Text(preview))
     }
@@ -114,8 +116,8 @@ impl PreviewWorker {
     ) -> Result<PreviewPayload, String> {
         let repo_root = repo_root.ok_or_else(|| "No git repo root".to_string())?;
         // Try staged diff first, then unstaged
-        let diff = git::get_diff(repo_root, path, true)
-            .or_else(|| git::get_diff(repo_root, path, false));
+        let diff =
+            git::get_diff(repo_root, path, true).or_else(|| git::get_diff(repo_root, path, false));
 
         match diff {
             Some(file_diff) if !file_diff.is_empty() => {
@@ -154,7 +156,13 @@ impl PreviewWorker {
     }
 
     /// Send a preview request, returns the serial number assigned.
-    pub fn request(&mut self, req_path: PathBuf, kind: PreviewKind, git_repo_root: Option<PathBuf>, git_file_status: Option<FileStatus>) -> u64 {
+    pub fn request(
+        &mut self,
+        req_path: PathBuf,
+        kind: PreviewKind,
+        git_repo_root: Option<PathBuf>,
+        git_file_status: Option<FileStatus>,
+    ) -> u64 {
         self.current_serial += 1;
         let serial = self.current_serial;
         let _ = self.request_tx.send(PreviewRequest {
