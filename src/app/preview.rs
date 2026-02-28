@@ -5,10 +5,13 @@ use std::path::PathBuf;
 
 use image::GenericImageView;
 
-use crate::app::video::{extract_thumbnail, find_ffprobe, get_metadata, is_video_file};
+use crate::app::preview_worker::{
+    CachedPreview, PreviewCache, PreviewKind, PreviewPayload, PreviewWorker,
+};
+use crate::app::video::{extract_thumbnail, is_video_file};
 use crate::app::ImageLoader;
 use crate::core::AppState;
-use crate::git::{self, FileStatus};
+use crate::git::FileStatus;
 use crate::render::{
     find_pdftoppm, is_archive_file, is_binary_file, is_image_file, is_pdf_file, is_tar_gz_file,
     is_text_file, ArchivePreview, CustomPreview, DiffPreview, DirectoryInfo, HexPreview,
@@ -34,6 +37,14 @@ pub struct PreviewState {
     pub loading_image_path: Option<PathBuf>,
     /// Video path currently loading thumbnail
     pub loading_video_thumbnail: Option<PathBuf>,
+    /// Background preview worker
+    preview_worker: PreviewWorker,
+    /// LRU preview cache
+    preview_cache: PreviewCache,
+    /// Whether a preview is currently being generated in the background
+    pub is_loading: bool,
+    /// Serial number of the latest preview request
+    pending_serial: u64,
 }
 
 impl PreviewState {
@@ -81,6 +92,7 @@ impl PreviewState {
         }
 
         self.last_path = path.cloned();
+        self.is_loading = false;
 
         let Some(path) = path else {
             self.clear_all();
@@ -113,9 +125,9 @@ impl PreviewState {
         }
 
         if path.is_dir() {
-            // Load directory info
-            if let Ok(info) = DirectoryInfo::from_path(path) {
-                self.dir_info = Some(info);
+            // Check cache first
+            if let Some(CachedPreview::Directory(ref info)) = self.preview_cache.get(path) {
+                self.dir_info = Some(info.clone());
                 self.text = None;
                 self.image = None;
                 self.hex = None;
@@ -123,7 +135,17 @@ impl PreviewState {
                 self.pdf = None;
                 self.diff = None;
                 self.custom = None;
+                return;
             }
+            // Dispatch to worker
+            self.clear_all();
+            self.is_loading = true;
+            self.pending_serial = self.preview_worker.request(
+                path.to_path_buf(),
+                PreviewKind::Directory,
+                None,
+                None,
+            );
         } else if is_text_file(path) {
             // Check if file has git changes - if so, show diff instead
             let git_status = state
@@ -138,50 +160,57 @@ impl PreviewState {
             );
 
             if has_changes {
-                // Try to get diff for changed files
-                if let Some(ref git) = state.git_status {
-                    let repo_root = git.repo_root();
-                    // Try staged diff first, then unstaged
-                    let diff = git::get_diff(repo_root, path, true)
-                        .or_else(|| git::get_diff(repo_root, path, false));
-
-                    if let Some(file_diff) = diff {
-                        if !file_diff.is_empty() {
-                            self.diff = Some(DiffPreview::new(file_diff));
-                            self.text = None;
-                            self.image = None;
-                            self.dir_info = None;
-                            self.hex = None;
-                            self.archive = None;
-                            self.pdf = None;
-                            self.custom = None;
-                            return;
-                        }
-                    }
-                }
-            }
-
-            // Fall back to regular text preview
-            match std::fs::read_to_string(path) {
-                Ok(content) => {
-                    self.text = Some(TextPreview::with_highlighting(&content, path));
+                // Check cache for diff
+                if let Some(CachedPreview::Diff(ref dp)) = self.preview_cache.get(path) {
+                    self.diff = Some(dp.clone());
+                    self.text = None;
                     self.image = None;
                     self.dir_info = None;
                     self.hex = None;
                     self.archive = None;
                     self.pdf = None;
-                    self.diff = None;
                     self.custom = None;
+                    return;
                 }
-                Err(e) => {
-                    state.set_message(format!("Failed: preview - {}", e));
+                // Dispatch diff to worker
+                if let Some(ref git) = state.git_status {
+                    let repo_root = git.repo_root().to_path_buf();
                     self.clear_all();
+                    self.is_loading = true;
+                    self.pending_serial = self.preview_worker.request(
+                        path.to_path_buf(),
+                        PreviewKind::Diff,
+                        Some(repo_root),
+                        Some(git_status),
+                    );
+                    return;
                 }
             }
+
+            // Check cache for text
+            if let Some(CachedPreview::Text(ref tp)) = self.preview_cache.get(path) {
+                self.text = Some(tp.clone());
+                self.image = None;
+                self.dir_info = None;
+                self.hex = None;
+                self.archive = None;
+                self.pdf = None;
+                self.diff = None;
+                self.custom = None;
+                return;
+            }
+            // Dispatch text to worker
+            self.clear_all();
+            self.is_loading = true;
+            self.pending_serial = self.preview_worker.request(
+                path.to_path_buf(),
+                PreviewKind::Text,
+                None,
+                None,
+            );
         } else if is_image_file(path) {
-            // Start async image loading (non-blocking)
+            // Start async image loading (non-blocking) — existing ImageLoader
             if self.image_loader.request(path.to_path_buf()) {
-                // Clear current preview while loading
                 self.image = None;
                 self.text = None;
                 self.dir_info = None;
@@ -194,84 +223,39 @@ impl PreviewState {
                 self.loading_image_path = Some(path.to_path_buf());
             }
         } else if is_video_file(path) {
-            // Video preview - requires ffprobe for metadata
-            if find_ffprobe().is_some() {
-                match get_metadata(path) {
-                    Ok(metadata) => {
-                        let mut video_preview = VideoPreview::new(path, metadata);
-
-                        // Try to extract thumbnail
-                        match extract_thumbnail(path) {
-                            Ok(thumb_path) => {
-                                // Request thumbnail loading
-                                if self.image_loader.request(thumb_path.clone()) {
-                                    self.loading_video_thumbnail = Some(path.to_path_buf());
-                                }
-                            }
-                            Err(e) => {
-                                video_preview.thumbnail_error =
-                                    Some(format!("Failed to extract: {}", e));
-                            }
-                        }
-
-                        self.video = Some(video_preview);
-                        self.text = None;
-                        self.image = None;
-                        self.dir_info = None;
-                        self.hex = None;
-                        self.archive = None;
-                        self.pdf = None;
-                        self.diff = None;
-                        self.custom = None;
-                    }
-                    Err(e) => {
-                        state.set_message(format!("Failed: video preview - {}", e));
-                        // Fall back to hex preview
-                        self.load_hex_fallback(path, state);
-                    }
-                }
-            } else {
-                // ffprobe not installed - show message and fall back to hex preview
-                state.set_message("Video preview requires ffprobe (ffmpeg)");
-                self.load_hex_fallback(path, state);
+            // Dispatch video metadata to worker
+            self.clear_all();
+            self.is_loading = true;
+            self.pending_serial = self.preview_worker.request(
+                path.to_path_buf(),
+                PreviewKind::VideoMeta,
+                None,
+                None,
+            );
+        } else if is_tar_gz_file(path) || is_archive_file(path) {
+            // Check cache for archive
+            if let Some(CachedPreview::Archive(ref ap)) = self.preview_cache.get(path) {
+                self.archive = Some(ap.clone());
+                self.text = None;
+                self.image = None;
+                self.dir_info = None;
+                self.hex = None;
+                self.pdf = None;
+                self.diff = None;
+                self.custom = None;
+                return;
             }
-        } else if is_tar_gz_file(path) {
-            // Handle tar.gz files separately (before is_archive_file check)
-            match ArchivePreview::load_tar_gz(path) {
-                Ok(archive) => {
-                    self.archive = Some(archive);
-                    self.text = None;
-                    self.image = None;
-                    self.dir_info = None;
-                    self.hex = None;
-                    self.pdf = None;
-                    self.diff = None;
-                    self.custom = None;
-                }
-                Err(e) => {
-                    state.set_message(format!("Failed: preview - {}", e));
-                    self.clear_all();
-                }
-            }
-        } else if is_archive_file(path) {
-            match ArchivePreview::load_zip(path) {
-                Ok(archive) => {
-                    self.archive = Some(archive);
-                    self.text = None;
-                    self.image = None;
-                    self.dir_info = None;
-                    self.hex = None;
-                    self.pdf = None;
-                    self.diff = None;
-                    self.custom = None;
-                }
-                Err(e) => {
-                    state.set_message(format!("Failed: preview - {}", e));
-                    self.clear_all();
-                }
-            }
+            // Dispatch archive to worker
+            self.clear_all();
+            self.is_loading = true;
+            self.pending_serial = self.preview_worker.request(
+                path.to_path_buf(),
+                PreviewKind::Archive,
+                None,
+                None,
+            );
         } else if is_pdf_file(path) {
-            // PDF preview - requires pdftoppm (poppler-utils)
+            // PDF preview — stays synchronous (Picker is not Send)
             if find_pdftoppm().is_some() {
                 if let Some(ref mut picker) = image_picker {
                     match PdfPreview::load(path, 1, picker) {
@@ -287,21 +271,18 @@ impl PreviewState {
                         }
                         Err(e) => {
                             state.set_message(format!("Failed: preview - {}", e));
-                            // Fall back to hex preview
                             self.load_hex_fallback(path, state);
                         }
                     }
                 } else {
-                    // No image picker available - fall back to hex preview
                     self.load_hex_fallback(path, state);
                 }
             } else {
-                // pdftoppm not installed - show message and fall back to hex preview
                 state.set_message("PDF preview requires pdftoppm (poppler-utils)");
                 self.load_hex_fallback(path, state);
             }
         } else if is_binary_file(path) || path.is_file() {
-            // Binary file or unknown type - show hex preview
+            // Hex preview — stays synchronous (only 4KB, fast enough)
             match HexPreview::load(path) {
                 Ok(hex) => {
                     self.hex = Some(hex);
@@ -356,19 +337,111 @@ impl PreviewState {
             || self.video.is_some()
     }
 
-    /// Poll for completed image load results
+    /// Poll for completed preview results (both preview worker and image loader).
     ///
-    /// This should be called in the main event loop to receive
-    /// asynchronously loaded images.
-    ///
-    /// Returns true if an image was successfully loaded.
-    pub fn poll_image_result(
+    /// This should be called every iteration of the main event loop.
+    /// Returns true if any preview was updated (caller should set needs_redraw).
+    pub fn poll_preview_result(
         &mut self,
         image_picker: &mut Option<Picker>,
         state: &mut AppState,
     ) -> bool {
+        let mut changed = false;
+
+        // --- Poll preview worker ---
+        if let Some(response) = self.preview_worker.try_recv() {
+            // Last-request-wins: ignore stale results
+            if response.serial == self.pending_serial
+                && self.last_path.as_ref() == Some(&response.path)
+            {
+                self.is_loading = false;
+                match response.payload {
+                    Ok(payload) => {
+                        match payload {
+                            PreviewPayload::Text(tp) => {
+                                self.preview_cache.insert(
+                                    response.path,
+                                    CachedPreview::Text(tp.clone()),
+                                );
+                                self.text = Some(tp);
+                            }
+                            PreviewPayload::Diff(dp) => {
+                                self.preview_cache.insert(
+                                    response.path,
+                                    CachedPreview::Diff(dp.clone()),
+                                );
+                                self.diff = Some(dp);
+                            }
+                            PreviewPayload::Directory(di) => {
+                                self.preview_cache.insert(
+                                    response.path,
+                                    CachedPreview::Directory(di.clone()),
+                                );
+                                self.dir_info = Some(di);
+                            }
+                            PreviewPayload::Archive(ap) => {
+                                self.preview_cache.insert(
+                                    response.path,
+                                    CachedPreview::Archive(ap.clone()),
+                                );
+                                self.archive = Some(ap);
+                            }
+                            PreviewPayload::VideoMeta(metadata) => {
+                                let path = self.last_path.clone().unwrap();
+                                let mut video_preview = VideoPreview::new(&path, metadata);
+
+                                // Try to extract thumbnail and load via ImageLoader
+                                match extract_thumbnail(&path) {
+                                    Ok(thumb_path) => {
+                                        if self.image_loader.request(thumb_path) {
+                                            self.loading_video_thumbnail = Some(path);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        video_preview.thumbnail_error =
+                                            Some(format!("Failed to extract: {}", e));
+                                    }
+                                }
+
+                                self.video = Some(video_preview);
+                            }
+                        }
+                        changed = true;
+                    }
+                    Err(msg) => {
+                        // Diff failure falls back to text
+                        if msg == "No diff available" {
+                            // Re-request as text preview
+                            self.is_loading = true;
+                            self.pending_serial = self.preview_worker.request(
+                                self.last_path.as_ref().unwrap().clone(),
+                                PreviewKind::Text,
+                                None,
+                                None,
+                            );
+                        } else if msg.starts_with("Video preview requires") {
+                            state.set_message(msg);
+                            if let Some(ref path) = self.last_path.clone() {
+                                self.load_hex_fallback(path, state);
+                            }
+                            changed = true;
+                        } else {
+                            state.set_message(msg);
+                            // For video meta errors, fall back to hex
+                            if let Some(ref path) = self.last_path.clone() {
+                                if is_video_file(path) {
+                                    self.load_hex_fallback(path, state);
+                                }
+                            }
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Poll image loader (same as old poll_image_result) ---
         if let Some(result) = self.image_loader.try_recv() {
-            // Check if this is for regular image preview
             if self.loading_image_path.as_ref() == Some(&result.path) {
                 self.loading_image_path = None;
 
@@ -382,18 +455,14 @@ impl PreviewState {
                                 height,
                                 protocol,
                             });
-                            return true;
+                            changed = true;
                         }
                     }
                     Err(e) => {
                         state.set_message(format!("Failed: preview - {}", e));
                     }
                 }
-            }
-            // Check if this is for video thumbnail
-            else if self.loading_video_thumbnail.is_some() {
-                // The result path is the thumbnail path, not the video path
-                // But we need to attach it to the current video preview
+            } else if self.loading_video_thumbnail.is_some() {
                 if let Some(ref mut video) = self.video {
                     match result.result {
                         Ok(dyn_img) => {
@@ -406,7 +475,7 @@ impl PreviewState {
                                     protocol,
                                 });
                                 self.loading_video_thumbnail = None;
-                                return true;
+                                changed = true;
                             }
                         }
                         Err(e) => {
@@ -417,7 +486,8 @@ impl PreviewState {
                 }
             }
         }
-        false
+
+        changed
     }
 
     /// Check if an image is currently being loaded

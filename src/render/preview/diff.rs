@@ -11,6 +11,7 @@ use ratatui::{
 use super::common::get_border_style;
 
 /// Git diff preview content
+#[derive(Clone)]
 pub struct DiffPreview {
     /// The diff data
     pub diff: crate::git::FileDiff,

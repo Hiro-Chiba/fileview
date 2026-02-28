@@ -81,6 +81,12 @@ fn render_fullscreen_preview(
         render_hex_preview(frame, hp, size, &title, false);
     } else if let Some(ref ap) = ctx.preview.archive {
         render_archive_preview(frame, ap, size, &title, false);
+    } else if ctx.preview.is_loading {
+        let block = Block::default().borders(Borders::ALL).title(title);
+        let para = Paragraph::new("  Loading...")
+            .style(Style::default().fg(Color::DarkGray))
+            .block(block);
+        frame.render_widget(para, size);
     } else {
         let block = Block::default().borders(Borders::ALL).title(title);
         let para = Paragraph::new("No preview available").block(block);
@@ -202,6 +208,20 @@ fn render_side_preview(
         render_hex_preview(frame, hp, area, &title, preview_focused);
     } else if let Some(ref ap) = ctx.preview.archive {
         render_archive_preview(frame, ap, area, &title, preview_focused);
+    } else if ctx.preview.is_loading {
+        let border_style = if preview_focused {
+            Style::default().fg(Color::Cyan)
+        } else {
+            Style::default()
+        };
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Preview ")
+            .border_style(border_style);
+        let para = Paragraph::new("  Loading...")
+            .style(Style::default().fg(Color::DarkGray))
+            .block(block);
+        frame.render_widget(para, area);
     } else {
         let border_style = if preview_focused {
             Style::default().fg(Color::Cyan)
