@@ -6,6 +6,28 @@ use super::node::sort_entries;
 use super::TreeEntry;
 use crate::core::SortMode;
 
+/// A cached visible entry with all fields needed for display and lookup
+#[derive(Debug, Clone)]
+pub struct VisibleEntry {
+    /// Full path to the entry
+    pub path: PathBuf,
+    /// Display name
+    pub name: String,
+    /// Whether this is a directory
+    pub is_dir: bool,
+    /// Depth in the tree (0 = root)
+    pub depth: usize,
+    /// Whether directory is expanded
+    expanded: bool,
+}
+
+impl VisibleEntry {
+    /// Check if this entry is expanded
+    pub fn is_expanded(&self) -> bool {
+        self.expanded
+    }
+}
+
 /// Manages file tree navigation
 #[derive(Clone)]
 pub struct TreeNavigator {
@@ -17,6 +39,10 @@ pub struct TreeNavigator {
     stdin_mode: bool,
     /// Current sort mode
     sort_mode: SortMode,
+    /// Cached flattened visible entries (rebuilt only when dirty)
+    cached_visible: Vec<VisibleEntry>,
+    /// Whether the cache needs rebuilding
+    cache_dirty: bool,
 }
 
 impl TreeNavigator {
@@ -31,6 +57,8 @@ impl TreeNavigator {
             show_hidden,
             stdin_mode: false,
             sort_mode: SortMode::default(),
+            cached_visible: Vec::new(),
+            cache_dirty: true,
         })
     }
 
@@ -59,6 +87,8 @@ impl TreeNavigator {
             show_hidden,
             stdin_mode: true,
             sort_mode: SortMode::default(),
+            cached_visible: Vec::new(),
+            cache_dirty: true,
         })
     }
 
@@ -79,26 +109,40 @@ impl TreeNavigator {
         &self.root
     }
 
-    /// Flatten the tree into a list of visible entries
-    pub fn visible_entries(&self) -> Vec<&TreeEntry> {
-        let mut entries = Vec::new();
-        self.collect_visible(&self.root, &mut entries);
-        entries
+    /// Rebuild the visible entry cache if dirty. Call once per frame before
+    /// accessing `visible_entries()`.
+    pub fn ensure_cache(&mut self) {
+        if self.cache_dirty {
+            self.cached_visible.clear();
+            Self::collect_visible_cached(&self.root, &mut self.cached_visible);
+            self.cache_dirty = false;
+        }
     }
 
-    /// Recursively collect visible entries
-    fn collect_visible<'a>(&'a self, entry: &'a TreeEntry, out: &mut Vec<&'a TreeEntry>) {
-        out.push(entry);
+    /// Recursively collect visible entries into the cache
+    fn collect_visible_cached(entry: &TreeEntry, out: &mut Vec<VisibleEntry>) {
+        out.push(VisibleEntry {
+            path: entry.path.clone(),
+            name: entry.name.clone(),
+            is_dir: entry.is_dir,
+            depth: entry.depth,
+            expanded: entry.expanded,
+        });
         if entry.is_expanded() {
             for child in entry.children() {
-                self.collect_visible(child, out);
+                Self::collect_visible_cached(child, out);
             }
         }
     }
 
-    /// Get total count of visible entries
+    /// Return cached visible entries (O(1) after ensure_cache)
+    pub fn visible_entries(&self) -> &[VisibleEntry] {
+        &self.cached_visible
+    }
+
+    /// Get total count of visible entries (O(1) after ensure_cache)
     pub fn visible_count(&self) -> usize {
-        self.visible_entries().len()
+        self.cached_visible.len()
     }
 
     /// Toggle expand/collapse for entry at path
@@ -110,6 +154,7 @@ impl TreeNavigator {
                 entry.load_children_with_sort(show_hidden, sort_mode)?;
             }
             entry.toggle_expanded();
+            self.cache_dirty = true;
         }
         Ok(())
     }
@@ -123,6 +168,7 @@ impl TreeNavigator {
                 entry.load_children_with_sort(show_hidden, sort_mode)?;
             }
             entry.set_expanded(true);
+            self.cache_dirty = true;
         }
         Ok(())
     }
@@ -131,6 +177,7 @@ impl TreeNavigator {
     pub fn collapse(&mut self, path: &Path) {
         if let Some(entry) = self.find_entry_mut(path) {
             entry.set_expanded(false);
+            self.cache_dirty = true;
         }
     }
 
@@ -140,6 +187,7 @@ impl TreeNavigator {
         self.root
             .load_children_with_sort(self.show_hidden, self.sort_mode)?;
         self.restore_expanded(&expanded_paths)?;
+        self.cache_dirty = true;
         Ok(())
     }
 
@@ -154,6 +202,7 @@ impl TreeNavigator {
         self.sort_mode = mode;
         // Re-sort all loaded children recursively
         resort_entry_children(&mut self.root, mode);
+        self.cache_dirty = true;
         Ok(())
     }
 
@@ -338,8 +387,9 @@ mod tests {
     #[test]
     fn test_visible_entries() {
         let temp = setup_test_dir();
-        let nav = TreeNavigator::new(temp.path(), false).unwrap();
+        let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
 
+        nav.ensure_cache();
         let visible = nav.visible_entries();
         // Root + 3 children = 4 entries (children not expanded yet)
         assert_eq!(visible.len(), 4);
@@ -353,10 +403,12 @@ mod tests {
         let dir_a_path = temp.path().join("dir_a");
 
         // Initially collapsed
+        nav.ensure_cache();
         let count_before = nav.visible_count();
 
         // Expand dir_a
         nav.expand(&dir_a_path).unwrap();
+        nav.ensure_cache();
         let count_after = nav.visible_count();
 
         // Should have more visible entries now
@@ -364,6 +416,7 @@ mod tests {
 
         // Collapse dir_a
         nav.collapse(&dir_a_path);
+        nav.ensure_cache();
         assert_eq!(nav.visible_count(), count_before);
     }
 
@@ -373,13 +426,16 @@ mod tests {
         let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
 
         let dir_a_path = temp.path().join("dir_a");
+        nav.ensure_cache();
         let count_collapsed = nav.visible_count();
 
         nav.toggle_expand(&dir_a_path).unwrap();
+        nav.ensure_cache();
         let count_expanded = nav.visible_count();
         assert!(count_expanded > count_collapsed);
 
         nav.toggle_expand(&dir_a_path).unwrap();
+        nav.ensure_cache();
         assert_eq!(nav.visible_count(), count_collapsed);
     }
 
@@ -390,9 +446,11 @@ mod tests {
         fs::write(temp.path().join(".hidden"), "hidden").unwrap();
 
         let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
+        nav.ensure_cache();
         let count_without_hidden = nav.visible_count();
 
         nav.set_show_hidden(true).unwrap();
+        nav.ensure_cache();
         let count_with_hidden = nav.visible_count();
 
         assert!(count_with_hidden > count_without_hidden);
@@ -403,6 +461,7 @@ mod tests {
         let temp = setup_test_dir();
         let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
 
+        nav.ensure_cache();
         let count_before = nav.visible_count();
 
         // Add a new file
@@ -410,6 +469,7 @@ mod tests {
 
         // Reload should pick up the new file
         nav.reload().unwrap();
+        nav.ensure_cache();
         let count_after = nav.visible_count();
 
         assert_eq!(count_after, count_before + 1);
@@ -424,6 +484,7 @@ mod tests {
         let target = temp.path().join("dir_a/nested.txt");
 
         // Initially, nested.txt should not be visible
+        nav.ensure_cache();
         let before = nav.visible_entries();
         assert!(
             !before.iter().any(|e| e.path == target),
@@ -434,6 +495,7 @@ mod tests {
         nav.reveal_path(&target).unwrap();
 
         // Now it should be visible
+        nav.ensure_cache();
         let after = nav.visible_entries();
         assert!(
             after.iter().any(|e| e.path == target),
@@ -452,6 +514,7 @@ mod tests {
 
         nav.reveal_path(&target).unwrap();
 
+        nav.ensure_cache();
         let entries = nav.visible_entries();
         assert!(
             entries.iter().any(|e| e.path == target),
@@ -466,10 +529,12 @@ mod tests {
 
         // file.txt is at root level, already visible
         let target = temp.path().join("file.txt");
+        nav.ensure_cache();
         let before_count = nav.visible_count();
 
         nav.reveal_path(&target).unwrap();
 
+        nav.ensure_cache();
         let after_count = nav.visible_count();
         // Count should be the same since it's already visible
         assert_eq!(before_count, after_count);
@@ -485,6 +550,7 @@ mod tests {
 
         nav.reveal_path(&target).unwrap();
 
+        nav.ensure_cache();
         let entries = nav.visible_entries();
         assert!(
             entries.iter().any(|e| e.path == target),
@@ -526,9 +592,11 @@ mod tests {
 
         // Reveal twice
         nav.reveal_path(&target).unwrap();
+        nav.ensure_cache();
         let count1 = nav.visible_count();
 
         nav.reveal_path(&target).unwrap();
+        nav.ensure_cache();
         let count2 = nav.visible_count();
 
         // Should be the same
