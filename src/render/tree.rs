@@ -13,10 +13,10 @@ use super::theme::theme;
 use crate::core::{AppState, FocusTarget, UiDensity};
 use crate::git::FileStatus;
 use crate::render::icons;
-use crate::tree::TreeEntry;
+use crate::tree::VisibleEntry;
 
 /// Render the file tree widget
-pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], area: Rect) {
+pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&VisibleEntry], area: Rect) {
     let visible_height = area.height.saturating_sub(2) as usize;
     let density = state.ui_density_for_width(area.width);
     let layout = LayoutEngine::from_rect_with_density(area, density);
@@ -59,7 +59,7 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&TreeEntry], 
 /// Render a single tree entry as a ListItem
 fn render_entry(
     state: &AppState,
-    entry: &TreeEntry,
+    entry: &VisibleEntry,
     index: usize,
     layout: &LayoutEngine,
     tree_cols: &super::layout::TreeColumns,

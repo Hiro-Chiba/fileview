@@ -197,17 +197,18 @@ pub fn run_app(
 
         // Get visible entries and apply filter if set
         if frame_needs_redraw {
+            navigator.ensure_cache();
             let all_entries = navigator.visible_entries();
             let entries: Vec<_> = if let Some(ref pattern) = state.filter_pattern {
                 all_entries
-                    .into_iter()
+                    .iter()
                     .filter(|e| {
                         // Always show directories for navigation
                         e.is_dir || crate::handler::action::matches_filter(&e.name, pattern)
                     })
                     .collect()
             } else {
-                all_entries
+                all_entries.iter().collect()
             };
             let total_entries = entries.len();
             snapshots = entries
@@ -585,6 +586,7 @@ pub fn run_app(
                             state.set_message(format!("Failed: reveal path - {}", e));
                         } else {
                             // Find the target in visible entries and set focus
+                            navigator.ensure_cache();
                             let entries = navigator.visible_entries();
                             if let Some(idx) = entries.iter().position(|e| e.path == target) {
                                 state.focus_index = idx;
@@ -793,6 +795,7 @@ pub fn run_app(
                                 state.set_message(format!("Focus failed: {}", e));
                             } else {
                                 // Find the target in visible entries and set focus
+                                navigator.ensure_cache();
                                 let entries = navigator.visible_entries();
                                 if let Some(idx) = entries.iter().position(|e| e.path == path) {
                                     state.focus_index = idx;
