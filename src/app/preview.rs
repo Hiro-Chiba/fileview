@@ -140,12 +140,9 @@ impl PreviewState {
             // Dispatch to worker
             self.clear_all();
             self.is_loading = true;
-            self.pending_serial = self.preview_worker.request(
-                path.to_path_buf(),
-                PreviewKind::Directory,
-                None,
-                None,
-            );
+            self.pending_serial =
+                self.preview_worker
+                    .request(path.to_path_buf(), PreviewKind::Directory, None, None);
         } else if is_text_file(path) {
             // Check if file has git changes - if so, show diff instead
             let git_status = state
@@ -202,12 +199,9 @@ impl PreviewState {
             // Dispatch text to worker
             self.clear_all();
             self.is_loading = true;
-            self.pending_serial = self.preview_worker.request(
-                path.to_path_buf(),
-                PreviewKind::Text,
-                None,
-                None,
-            );
+            self.pending_serial =
+                self.preview_worker
+                    .request(path.to_path_buf(), PreviewKind::Text, None, None);
         } else if is_image_file(path) {
             // Start async image loading (non-blocking) — existing ImageLoader
             if self.image_loader.request(path.to_path_buf()) {
@@ -226,12 +220,9 @@ impl PreviewState {
             // Dispatch video metadata to worker
             self.clear_all();
             self.is_loading = true;
-            self.pending_serial = self.preview_worker.request(
-                path.to_path_buf(),
-                PreviewKind::VideoMeta,
-                None,
-                None,
-            );
+            self.pending_serial =
+                self.preview_worker
+                    .request(path.to_path_buf(), PreviewKind::VideoMeta, None, None);
         } else if is_tar_gz_file(path) || is_archive_file(path) {
             // Check cache for archive
             if let Some(CachedPreview::Archive(ref ap)) = self.preview_cache.get(path) {
@@ -248,12 +239,9 @@ impl PreviewState {
             // Dispatch archive to worker
             self.clear_all();
             self.is_loading = true;
-            self.pending_serial = self.preview_worker.request(
-                path.to_path_buf(),
-                PreviewKind::Archive,
-                None,
-                None,
-            );
+            self.pending_serial =
+                self.preview_worker
+                    .request(path.to_path_buf(), PreviewKind::Archive, None, None);
         } else if is_pdf_file(path) {
             // PDF preview — stays synchronous (Picker is not Send)
             if find_pdftoppm().is_some() {
@@ -359,31 +347,23 @@ impl PreviewState {
                     Ok(payload) => {
                         match payload {
                             PreviewPayload::Text(tp) => {
-                                self.preview_cache.insert(
-                                    response.path,
-                                    CachedPreview::Text(tp.clone()),
-                                );
+                                self.preview_cache
+                                    .insert(response.path, CachedPreview::Text(tp.clone()));
                                 self.text = Some(tp);
                             }
                             PreviewPayload::Diff(dp) => {
-                                self.preview_cache.insert(
-                                    response.path,
-                                    CachedPreview::Diff(dp.clone()),
-                                );
+                                self.preview_cache
+                                    .insert(response.path, CachedPreview::Diff(dp.clone()));
                                 self.diff = Some(dp);
                             }
                             PreviewPayload::Directory(di) => {
-                                self.preview_cache.insert(
-                                    response.path,
-                                    CachedPreview::Directory(di.clone()),
-                                );
+                                self.preview_cache
+                                    .insert(response.path, CachedPreview::Directory(di.clone()));
                                 self.dir_info = Some(di);
                             }
                             PreviewPayload::Archive(ap) => {
-                                self.preview_cache.insert(
-                                    response.path,
-                                    CachedPreview::Archive(ap.clone()),
-                                );
+                                self.preview_cache
+                                    .insert(response.path, CachedPreview::Archive(ap.clone()));
                                 self.archive = Some(ap);
                             }
                             PreviewPayload::VideoMeta(metadata) => {
