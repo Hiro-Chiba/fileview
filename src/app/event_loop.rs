@@ -176,6 +176,11 @@ pub fn run_app(
     let mut prev_root = config.root.clone();
     let mut prev_selection_count = state.selected_paths.len();
 
+    // Dirty-frame rendering: only redraw when state changes
+    let mut needs_redraw = true; // first frame always renders
+    let mut snapshots: Vec<EntrySnapshot> = Vec::new();
+    let mut focused_path: Option<PathBuf> = None;
+
     loop {
         // Initialize git status after the first frame is rendered.
         // On the first iteration, we skip to render the UI immediately.
@@ -184,8 +189,14 @@ pub fn run_app(
             skip_git_init_once = false;
         } else if state.git_status.is_none() {
             state.init_git_status();
+            needs_redraw = true;
         }
+
+        let frame_needs_redraw = needs_redraw;
+        needs_redraw = false;
+
         // Get visible entries and apply filter if set
+        if frame_needs_redraw {
         let all_entries = navigator.visible_entries();
         let entries: Vec<_> = if let Some(ref pattern) = state.filter_pattern {
             all_entries
@@ -199,7 +210,7 @@ pub fn run_app(
             all_entries
         };
         let total_entries = entries.len();
-        let snapshots: Vec<EntrySnapshot> = entries
+        snapshots = entries
             .iter()
             .map(|e| EntrySnapshot {
                 path: e.path.clone(),
@@ -215,7 +226,7 @@ pub fn run_app(
         }
 
         // Get focused entry path
-        let focused_path = snapshots.get(state.focus_index).map(|e| e.path.clone());
+        focused_path = snapshots.get(state.focus_index).map(|e| e.path.clone());
 
         // Update preview if needed (side panel or fullscreen mode)
         let needs_preview = state.preview_visible || matches!(state.mode, ViewMode::Preview { .. });
@@ -256,6 +267,7 @@ pub fn run_app(
             tab_manager: Some(&tab_manager),
         };
         terminal.draw(|frame| render_frame(frame, render_context))?;
+        } // end if frame_needs_redraw
 
         // Sync watcher with expanded directories (only when changed)
         if let Some(ref mut watcher) = file_watcher {
@@ -271,6 +283,7 @@ pub fn run_app(
             if watcher.poll() {
                 reload_tree(&mut navigator, &mut state)?;
                 last_git_poll = Instant::now(); // Reset git poll timer
+                needs_redraw = true;
             }
         }
 
@@ -278,13 +291,17 @@ pub fn run_app(
         if last_git_poll.elapsed() >= git_poll_interval {
             state.refresh_git_status();
             last_git_poll = Instant::now();
+            needs_redraw = true;
         }
 
         // Poll for completed async image loads
-        preview.poll_image_result(image_picker, &mut state);
+        if preview.poll_image_result(image_picker, &mut state) {
+            needs_redraw = true;
+        }
 
         // Check drop buffer timeout (for file drop detection via rapid key input)
         if path_buffer.is_ready() {
+            needs_redraw = true;
             let paths = path_buffer.take_paths();
             if !paths.is_empty() {
                 let root = state.root.clone();
@@ -308,6 +325,7 @@ pub fn run_app(
 
         // Handle events (60ms timeout balances responsiveness and CPU usage)
         if event::poll(Duration::from_millis(60))? {
+            needs_redraw = true;
             match event::read()? {
                 Event::Key(key) => {
                     // Handle input buffer updates first
@@ -688,11 +706,17 @@ pub fn run_app(
                     }
                     path_buffer.clear();
                 }
+                Event::Resize(..) => {
+                    // Terminal resized - redraw is already flagged
+                }
                 _ => {}
             }
         }
 
         // === Plugin event handling ===
+        // Only process plugin events when we have fresh snapshots to avoid
+        // spurious FileSelected events from stale focused_path values.
+        if frame_needs_redraw {
         if let Some(ref mut pm) = plugin_manager {
             // Update plugin context with current state
             let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();
@@ -776,6 +800,7 @@ pub fn run_app(
                 }
             }
         }
+        } // end if frame_needs_redraw (plugin events)
 
         // Check quit flag
         if state.should_quit {
