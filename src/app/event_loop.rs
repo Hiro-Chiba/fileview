@@ -197,76 +197,77 @@ pub fn run_app(
 
         // Get visible entries and apply filter if set
         if frame_needs_redraw {
-        let all_entries = navigator.visible_entries();
-        let entries: Vec<_> = if let Some(ref pattern) = state.filter_pattern {
-            all_entries
-                .into_iter()
-                .filter(|e| {
-                    // Always show directories for navigation
-                    e.is_dir || crate::handler::action::matches_filter(&e.name, pattern)
+            let all_entries = navigator.visible_entries();
+            let entries: Vec<_> = if let Some(ref pattern) = state.filter_pattern {
+                all_entries
+                    .into_iter()
+                    .filter(|e| {
+                        // Always show directories for navigation
+                        e.is_dir || crate::handler::action::matches_filter(&e.name, pattern)
+                    })
+                    .collect()
+            } else {
+                all_entries
+            };
+            let total_entries = entries.len();
+            snapshots = entries
+                .iter()
+                .map(|e| EntrySnapshot {
+                    path: e.path.clone(),
+                    name: e.name.clone(),
+                    is_dir: e.is_dir,
+                    depth: e.depth,
                 })
-                .collect()
-        } else {
-            all_entries
-        };
-        let total_entries = entries.len();
-        snapshots = entries
-            .iter()
-            .map(|e| EntrySnapshot {
-                path: e.path.clone(),
-                name: e.name.clone(),
-                is_dir: e.is_dir,
-                depth: e.depth,
-            })
-            .collect();
+                .collect();
 
-        // Ensure focus is within bounds
-        if state.focus_index >= total_entries && total_entries > 0 {
-            state.focus_index = total_entries - 1;
-        }
+            // Ensure focus is within bounds
+            if state.focus_index >= total_entries && total_entries > 0 {
+                state.focus_index = total_entries - 1;
+            }
 
-        // Get focused entry path
-        focused_path = snapshots.get(state.focus_index).map(|e| e.path.clone());
+            // Get focused entry path
+            focused_path = snapshots.get(state.focus_index).map(|e| e.path.clone());
 
-        // Update preview if needed (side panel or fullscreen mode)
-        let needs_preview = state.preview_visible || matches!(state.mode, ViewMode::Preview { .. });
-        if needs_preview {
-            preview.update_with_custom(
-                focused_path.as_ref(),
+            // Update preview if needed (side panel or fullscreen mode)
+            let needs_preview =
+                state.preview_visible || matches!(state.mode, ViewMode::Preview { .. });
+            if needs_preview {
+                preview.update_with_custom(
+                    focused_path.as_ref(),
+                    image_picker,
+                    &mut state,
+                    &config.preview_custom.custom,
+                );
+            }
+
+            // Adjust viewport before rendering
+            // Get terminal size to calculate visible height
+            let term_size = terminal.size()?;
+            let tree_height = if state.preview_visible {
+                term_size.width / 2
+            } else {
+                term_size.width
+            };
+            // Account for status bar (3 lines)
+            let vis_height = visible_height(ratatui::layout::Rect {
+                x: 0,
+                y: 0,
+                width: tree_height,
+                height: term_size.height.saturating_sub(3),
+            });
+            state.adjust_viewport(vis_height);
+
+            // Render
+            let render_context = RenderContext {
+                state: &state,
+                entries,
+                focused_path: focused_path.as_ref(),
+                preview: &mut preview,
+                fuzzy_results: &fuzzy_results,
                 image_picker,
-                &mut state,
-                &config.preview_custom.custom,
-            );
-        }
-
-        // Adjust viewport before rendering
-        // Get terminal size to calculate visible height
-        let term_size = terminal.size()?;
-        let tree_height = if state.preview_visible {
-            term_size.width / 2
-        } else {
-            term_size.width
-        };
-        // Account for status bar (3 lines)
-        let vis_height = visible_height(ratatui::layout::Rect {
-            x: 0,
-            y: 0,
-            width: tree_height,
-            height: term_size.height.saturating_sub(3),
-        });
-        state.adjust_viewport(vis_height);
-
-        // Render
-        let render_context = RenderContext {
-            state: &state,
-            entries,
-            focused_path: focused_path.as_ref(),
-            preview: &mut preview,
-            fuzzy_results: &fuzzy_results,
-            image_picker,
-            tab_manager: Some(&tab_manager),
-        };
-        terminal.draw(|frame| render_frame(frame, render_context))?;
+                tab_manager: Some(&tab_manager),
+            };
+            terminal.draw(|frame| render_frame(frame, render_context))?;
         } // end if frame_needs_redraw
 
         // Sync watcher with expanded directories (only when changed)
@@ -717,89 +718,90 @@ pub fn run_app(
         // Only process plugin events when we have fresh snapshots to avoid
         // spurious FileSelected events from stale focused_path values.
         if frame_needs_redraw {
-        if let Some(ref mut pm) = plugin_manager {
-            // Update plugin context with current state
-            let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();
-            pm.update_context(focused_path.clone(), state.root.clone(), selected);
+            if let Some(ref mut pm) = plugin_manager {
+                // Update plugin context with current state
+                let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();
+                pm.update_context(focused_path.clone(), state.root.clone(), selected);
 
-            // Fire FileSelected event when focus changes
-            if focused_path != prev_focused_path {
-                if let Some(ref path) = focused_path {
-                    let _ = pm.fire_event(PluginEvent::FileSelected, Some(&path.to_string_lossy()));
+                // Fire FileSelected event when focus changes
+                if focused_path != prev_focused_path {
+                    if let Some(ref path) = focused_path {
+                        let _ =
+                            pm.fire_event(PluginEvent::FileSelected, Some(&path.to_string_lossy()));
+                    }
+                    prev_focused_path = focused_path.clone();
                 }
-                prev_focused_path = focused_path.clone();
-            }
 
-            // Fire DirectoryChanged event when root changes
-            if state.root != prev_root {
-                let _ = pm.fire_event(
-                    PluginEvent::DirectoryChanged,
-                    Some(&state.root.to_string_lossy()),
-                );
-                prev_root = state.root.clone();
-            }
+                // Fire DirectoryChanged event when root changes
+                if state.root != prev_root {
+                    let _ = pm.fire_event(
+                        PluginEvent::DirectoryChanged,
+                        Some(&state.root.to_string_lossy()),
+                    );
+                    prev_root = state.root.clone();
+                }
 
-            // Fire SelectionChanged event when selection count changes
-            if state.selected_paths.len() != prev_selection_count {
-                let _ = pm.fire_event(PluginEvent::SelectionChanged, None);
-                prev_selection_count = state.selected_paths.len();
-            }
+                // Fire SelectionChanged event when selection count changes
+                if state.selected_paths.len() != prev_selection_count {
+                    let _ = pm.fire_event(PluginEvent::SelectionChanged, None);
+                    prev_selection_count = state.selected_paths.len();
+                }
 
-            // Process plugin notifications
-            for msg in pm.take_notifications() {
-                state.set_message(msg);
-            }
+                // Process plugin notifications
+                for msg in pm.take_notifications() {
+                    state.set_message(msg);
+                }
 
-            // Process plugin actions
-            for action in pm.take_actions() {
-                match action {
-                    PluginAction::Navigate(path) => {
-                        if path.is_dir() {
-                            match TreeNavigator::new(&path, state.show_hidden) {
-                                Ok(new_nav) => {
-                                    navigator = new_nav;
-                                    state.root = path;
-                                    state.focus_index = 0;
-                                    state.viewport_top = 0;
+                // Process plugin actions
+                for action in pm.take_actions() {
+                    match action {
+                        PluginAction::Navigate(path) => {
+                            if path.is_dir() {
+                                match TreeNavigator::new(&path, state.show_hidden) {
+                                    Ok(new_nav) => {
+                                        navigator = new_nav;
+                                        state.root = path;
+                                        state.focus_index = 0;
+                                        state.viewport_top = 0;
+                                    }
+                                    Err(e) => {
+                                        state.set_message(format!("Navigate failed: {}", e));
+                                    }
                                 }
-                                Err(e) => {
-                                    state.set_message(format!("Navigate failed: {}", e));
+                            }
+                        }
+                        PluginAction::Select(path) => {
+                            state.selected_paths.insert(path);
+                        }
+                        PluginAction::Deselect(path) => {
+                            state.selected_paths.remove(&path);
+                        }
+                        PluginAction::ClearSelection => {
+                            state.selected_paths.clear();
+                        }
+                        PluginAction::Refresh => {
+                            let _ = reload_tree(&mut navigator, &mut state);
+                        }
+                        PluginAction::SetClipboard(text) => {
+                            if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                                let _ = clipboard.set_text(&text);
+                            }
+                        }
+                        PluginAction::Focus(path) => {
+                            // Expand parent directories to make the target visible
+                            if let Err(e) = navigator.reveal_path(&path) {
+                                state.set_message(format!("Focus failed: {}", e));
+                            } else {
+                                // Find the target in visible entries and set focus
+                                let entries = navigator.visible_entries();
+                                if let Some(idx) = entries.iter().position(|e| e.path == path) {
+                                    state.focus_index = idx;
                                 }
                             }
                         }
                     }
-                    PluginAction::Select(path) => {
-                        state.selected_paths.insert(path);
-                    }
-                    PluginAction::Deselect(path) => {
-                        state.selected_paths.remove(&path);
-                    }
-                    PluginAction::ClearSelection => {
-                        state.selected_paths.clear();
-                    }
-                    PluginAction::Refresh => {
-                        let _ = reload_tree(&mut navigator, &mut state);
-                    }
-                    PluginAction::SetClipboard(text) => {
-                        if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                            let _ = clipboard.set_text(&text);
-                        }
-                    }
-                    PluginAction::Focus(path) => {
-                        // Expand parent directories to make the target visible
-                        if let Err(e) = navigator.reveal_path(&path) {
-                            state.set_message(format!("Focus failed: {}", e));
-                        } else {
-                            // Find the target in visible entries and set focus
-                            let entries = navigator.visible_entries();
-                            if let Some(idx) = entries.iter().position(|e| e.path == path) {
-                                state.focus_index = idx;
-                            }
-                        }
-                    }
                 }
             }
-        }
         } // end if frame_needs_redraw (plugin events)
 
         // Check quit flag
