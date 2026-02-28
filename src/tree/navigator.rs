@@ -43,6 +43,8 @@ pub struct TreeNavigator {
     cached_visible: Vec<VisibleEntry>,
     /// Whether the cache needs rebuilding
     cache_dirty: bool,
+    /// Whether the watcher needs re-syncing with expanded paths
+    watcher_dirty: bool,
 }
 
 impl TreeNavigator {
@@ -59,6 +61,7 @@ impl TreeNavigator {
             sort_mode: SortMode::default(),
             cached_visible: Vec::new(),
             cache_dirty: true,
+            watcher_dirty: true,
         })
     }
 
@@ -89,6 +92,7 @@ impl TreeNavigator {
             sort_mode: SortMode::default(),
             cached_visible: Vec::new(),
             cache_dirty: true,
+            watcher_dirty: true,
         })
     }
 
@@ -145,6 +149,16 @@ impl TreeNavigator {
         self.cached_visible.len()
     }
 
+    /// Check if the watcher needs re-syncing with expanded paths
+    pub fn is_watcher_dirty(&self) -> bool {
+        self.watcher_dirty
+    }
+
+    /// Clear the watcher dirty flag after syncing
+    pub fn clear_watcher_dirty(&mut self) {
+        self.watcher_dirty = false;
+    }
+
     /// Toggle expand/collapse for entry at path
     pub fn toggle_expand(&mut self, path: &Path) -> anyhow::Result<()> {
         let show_hidden = self.show_hidden;
@@ -155,6 +169,7 @@ impl TreeNavigator {
             }
             entry.toggle_expanded();
             self.cache_dirty = true;
+            self.watcher_dirty = true;
         }
         Ok(())
     }
@@ -169,6 +184,7 @@ impl TreeNavigator {
             }
             entry.set_expanded(true);
             self.cache_dirty = true;
+            self.watcher_dirty = true;
         }
         Ok(())
     }
@@ -178,6 +194,7 @@ impl TreeNavigator {
         if let Some(entry) = self.find_entry_mut(path) {
             entry.set_expanded(false);
             self.cache_dirty = true;
+            self.watcher_dirty = true;
         }
     }
 
@@ -188,6 +205,7 @@ impl TreeNavigator {
             .load_children_with_sort(self.show_hidden, self.sort_mode)?;
         self.restore_expanded(&expanded_paths)?;
         self.cache_dirty = true;
+        self.watcher_dirty = true;
         Ok(())
     }
 
@@ -203,6 +221,7 @@ impl TreeNavigator {
         // Re-sort all loaded children recursively
         resort_entry_children(&mut self.root, mode);
         self.cache_dirty = true;
+        self.watcher_dirty = true;
         Ok(())
     }
 

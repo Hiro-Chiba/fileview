@@ -147,9 +147,6 @@ pub fn run_app(
     let mut last_git_poll = Instant::now();
     let git_poll_interval = config.git_poll_interval;
 
-    // Track previous expanded paths for watcher sync
-    let mut prev_expanded: Vec<PathBuf> = Vec::new();
-
     // Initialize plugin manager
     let mut plugin_manager = PluginManager::new().ok();
     if let Some(ref mut pm) = plugin_manager {
@@ -271,12 +268,12 @@ pub fn run_app(
             terminal.draw(|frame| render_frame(frame, render_context))?;
         } // end if frame_needs_redraw
 
-        // Sync watcher with expanded directories (only when changed)
+        // Sync watcher with expanded directories (only when dirty)
         if let Some(ref mut watcher) = file_watcher {
-            let current_expanded = navigator.expanded_paths();
-            if current_expanded != prev_expanded {
-                watcher.sync_with_expanded(&current_expanded);
-                prev_expanded = current_expanded;
+            if navigator.is_watcher_dirty() {
+                let expanded = navigator.expanded_paths();
+                watcher.sync_with_expanded(&expanded);
+                navigator.clear_watcher_dirty();
             }
         }
 
