@@ -42,6 +42,7 @@ pub fn handle(
                         state.set_message(format!("Failed: jump to bookmark - {}", e));
                     } else {
                         // Find and focus the target
+                        navigator.ensure_cache();
                         let entries = navigator.visible_entries();
                         if let Some(idx) = entries.iter().position(|e| e.path == target) {
                             state.focus_index = idx;
@@ -215,6 +216,7 @@ mod tests {
         assert_eq!(state.mode, ViewMode::Browse);
         // Focus should have moved (reveal_path expands the tree)
         // Check that subdir is now expanded in the navigator
+        navigator.ensure_cache();
         let entries = navigator.visible_entries();
         let target_visible = entries.iter().any(|e| e.path == file_path);
         assert!(target_visible, "Target file should be visible after jump");
