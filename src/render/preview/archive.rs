@@ -39,6 +39,7 @@ impl ArchiveEntry {
 }
 
 /// Archive preview content
+#[derive(Clone)]
 pub struct ArchivePreview {
     /// Archive entries
     pub entries: Vec<ArchiveEntry>,

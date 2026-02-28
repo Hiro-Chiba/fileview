@@ -8,6 +8,7 @@ mod config_file;
 mod event_loop;
 mod image_loader;
 mod preview;
+mod preview_worker;
 mod render;
 mod video;
 
