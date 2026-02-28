@@ -1,6 +1,7 @@
 //! Tree entry (node) definition
 
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 use crate::core::SortMode;
 
@@ -135,33 +136,77 @@ impl TreeEntry {
 }
 
 /// Sort entries with directories first, then by sort mode
+///
+/// For Size and Date modes, sort keys are precomputed once (O(N) stat calls)
+/// instead of being fetched on every comparison (O(N log N) stat calls).
 pub fn sort_entries(entries: &mut [TreeEntry], sort_mode: SortMode) {
-    entries.sort_by(|a, b| {
-        // Directories always come first
-        match (a.is_dir, b.is_dir) {
-            (true, false) => return std::cmp::Ordering::Less,
-            (false, true) => return std::cmp::Ordering::Greater,
-            _ => {}
-        }
-
-        match sort_mode {
-            SortMode::Name => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            SortMode::Size => {
-                // For directories, sort by name (size doesn't make sense)
-                if a.is_dir {
-                    return a.name.to_lowercase().cmp(&b.name.to_lowercase());
+    match sort_mode {
+        SortMode::Name => {
+            entries.sort_by(|a, b| {
+                match (a.is_dir, b.is_dir) {
+                    (true, false) => return std::cmp::Ordering::Less,
+                    (false, true) => return std::cmp::Ordering::Greater,
+                    _ => {}
                 }
-                let a_size = a.path.metadata().map(|m| m.len()).unwrap_or(0);
-                let b_size = b.path.metadata().map(|m| m.len()).unwrap_or(0);
-                b_size.cmp(&a_size) // Descending (largest first)
-            }
-            SortMode::Date => {
-                let a_time = a.path.metadata().and_then(|m| m.modified()).ok();
-                let b_time = b.path.metadata().and_then(|m| m.modified()).ok();
-                b_time.cmp(&a_time) // Descending (newest first)
-            }
+                a.name.to_lowercase().cmp(&b.name.to_lowercase())
+            });
         }
-    });
+        SortMode::Size => {
+            let keys: Vec<u64> = entries
+                .iter()
+                .map(|e| {
+                    if e.is_dir {
+                        0
+                    } else {
+                        e.path.metadata().map(|m| m.len()).unwrap_or(0)
+                    }
+                })
+                .collect();
+            let mut idx: Vec<usize> = (0..entries.len()).collect();
+            idx.sort_by(|&i, &j| {
+                match (entries[i].is_dir, entries[j].is_dir) {
+                    (true, false) => return std::cmp::Ordering::Less,
+                    (false, true) => return std::cmp::Ordering::Greater,
+                    (true, true) => {
+                        return entries[i]
+                            .name
+                            .to_lowercase()
+                            .cmp(&entries[j].name.to_lowercase());
+                    }
+                    _ => {}
+                }
+                keys[j].cmp(&keys[i]) // Descending (largest first)
+            });
+            apply_index_permutation(entries, idx);
+        }
+        SortMode::Date => {
+            let keys: Vec<Option<SystemTime>> = entries
+                .iter()
+                .map(|e| e.path.metadata().and_then(|m| m.modified()).ok())
+                .collect();
+            let mut idx: Vec<usize> = (0..entries.len()).collect();
+            idx.sort_by(|&i, &j| {
+                match (entries[i].is_dir, entries[j].is_dir) {
+                    (true, false) => return std::cmp::Ordering::Less,
+                    (false, true) => return std::cmp::Ordering::Greater,
+                    _ => {}
+                }
+                keys[j].cmp(&keys[i]) // Descending (newest first)
+            });
+            apply_index_permutation(entries, idx);
+        }
+    }
+}
+
+/// Reorder elements in-place according to the given index permutation.
+fn apply_index_permutation<T>(entries: &mut [T], mut indices: Vec<usize>) {
+    for i in 0..entries.len() {
+        while indices[i] != i {
+            let j = indices[i];
+            entries.swap(i, j);
+            indices.swap(i, j);
+        }
+    }
 }
 
 #[cfg(test)]
