@@ -1,6 +1,7 @@
 //! Status bar and input popup rendering
 
-use std::path::PathBuf;
+use std::cell::RefCell;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::SystemTime;
 
@@ -522,56 +523,76 @@ fn render_full_status(
 }
 
 /// Get file size and modification time as a formatted string (full display)
-fn get_file_info(path: &std::path::Path) -> Option<String> {
-    let metadata = path.metadata().ok()?;
+/// Cached file metadata to avoid repeated stat() calls on the same path.
+struct FileInfoCache {
+    path: PathBuf,
+    size: u64,
+    is_dir: bool,
+    modified: Option<SystemTime>,
+}
 
-    // Format size
-    let size_str = if metadata.is_dir() {
-        "--".to_string()
-    } else {
-        format_size(metadata.len())
-    };
+thread_local! {
+    static FILE_INFO_CACHE: RefCell<Option<FileInfoCache>> = const { RefCell::new(None) };
+}
 
-    // Format modification time
-    let mtime_str = metadata
-        .modified()
-        .ok()
-        .map(format_relative_time)
-        .unwrap_or_else(|| "--".to_string());
+/// Run `f` with cached metadata for `path`. Only calls stat() when the path changes.
+fn with_cached_metadata<T>(path: &Path, f: impl FnOnce(&FileInfoCache) -> T) -> Option<T> {
+    FILE_INFO_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let needs_update = cache.as_ref().is_none_or(|c| c.path != *path);
+        if needs_update {
+            let metadata = path.metadata().ok()?;
+            *cache = Some(FileInfoCache {
+                path: path.to_path_buf(),
+                size: metadata.len(),
+                is_dir: metadata.is_dir(),
+                modified: metadata.modified().ok(),
+            });
+        }
+        cache.as_ref().map(f)
+    })
+}
 
-    Some(format!("{} · {}", size_str, mtime_str))
+fn get_file_info(path: &Path) -> Option<String> {
+    with_cached_metadata(path, |c| {
+        let size_str = if c.is_dir {
+            "--".to_string()
+        } else {
+            format_size(c.size)
+        };
+        let mtime_str = c
+            .modified
+            .map(format_relative_time)
+            .unwrap_or_else(|| "--".to_string());
+        format!("{} · {}", size_str, mtime_str)
+    })
 }
 
 /// Get file size and abbreviated modification time (narrow display)
-fn get_file_info_narrow(path: &std::path::Path) -> Option<String> {
-    let metadata = path.metadata().ok()?;
-
-    // Format size
-    let size_str = if metadata.is_dir() {
-        "--".to_string()
-    } else {
-        format_size(metadata.len())
-    };
-
-    // Format modification time (abbreviated)
-    let mtime_str = metadata
-        .modified()
-        .ok()
-        .map(format_relative_time_short)
-        .unwrap_or_else(|| "--".to_string());
-
-    Some(format!("{} · {}", size_str, mtime_str))
+fn get_file_info_narrow(path: &Path) -> Option<String> {
+    with_cached_metadata(path, |c| {
+        let size_str = if c.is_dir {
+            "--".to_string()
+        } else {
+            format_size(c.size)
+        };
+        let mtime_str = c
+            .modified
+            .map(format_relative_time_short)
+            .unwrap_or_else(|| "--".to_string());
+        format!("{} · {}", size_str, mtime_str)
+    })
 }
 
 /// Get file size only (compact display)
-fn get_file_size_only(path: &std::path::Path) -> Option<String> {
-    let metadata = path.metadata().ok()?;
-
-    if metadata.is_dir() {
-        Some("--".to_string())
-    } else {
-        Some(format_size(metadata.len()))
-    }
+fn get_file_size_only(path: &Path) -> Option<String> {
+    with_cached_metadata(path, |c| {
+        if c.is_dir {
+            "--".to_string()
+        } else {
+            format_size(c.size)
+        }
+    })
 }
 
 /// Format file size in human-readable format
