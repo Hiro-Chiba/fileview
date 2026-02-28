@@ -221,6 +221,9 @@ cargo install fileview
 # With Chafa support (better image quality on basic terminals)
 brew install chafa  # or apt install libchafa-dev
 cargo install fileview --features chafa
+
+# Speed-optimized build (larger binary, better runtime performance)
+cargo install fileview --profile release-fast
 ```
 
 ## Stability
