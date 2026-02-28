@@ -13,7 +13,10 @@ pub mod theme;
 pub mod tree;
 
 pub use bulk_rename::render_bulk_rename_dialog;
-pub use fuzzy::{collect_paths, fuzzy_match, fuzzy_match_incremental, render_fuzzy_finder, FuzzyMatch, FuzzyState};
+pub use fuzzy::{
+    collect_paths, fuzzy_match, fuzzy_match_incremental, render_fuzzy_finder, FuzzyMatch,
+    FuzzyState,
+};
 pub use history::render_ai_history_popup;
 pub use icons::get_icon;
 pub use layout::{LayoutEngine, StatusLayout, TreeColumns};

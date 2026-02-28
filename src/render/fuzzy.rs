@@ -76,8 +76,7 @@ pub fn fuzzy_match_incremental(
             .collect();
     }
 
-    let incremental =
-        !state.prev_query.is_empty() && query.starts_with(&state.prev_query);
+    let incremental = !state.prev_query.is_empty() && query.starts_with(&state.prev_query);
 
     let mut matcher = Matcher::new(nucleo_matcher::Config::DEFAULT);
     let pattern = Pattern::parse(query, CaseMatching::Smart, Normalization::Smart);
@@ -650,10 +649,7 @@ mod tests {
     #[test]
     fn test_backspace_triggers_full_scan() {
         let root = PathBuf::from("/test");
-        let paths = vec![
-            PathBuf::from("/test/foo.rs"),
-            PathBuf::from("/test/bar.rs"),
-        ];
+        let paths = vec![PathBuf::from("/test/foo.rs"), PathBuf::from("/test/bar.rs")];
         let mut state = FuzzyState::new();
 
         // Type "foo" first
@@ -670,10 +666,7 @@ mod tests {
     #[test]
     fn test_incremental_empty_query_resets() {
         let root = PathBuf::from("/test");
-        let paths = vec![
-            PathBuf::from("/test/a.rs"),
-            PathBuf::from("/test/b.rs"),
-        ];
+        let paths = vec![PathBuf::from("/test/a.rs"), PathBuf::from("/test/b.rs")];
         let mut state = FuzzyState::new();
 
         fuzzy_match_incremental("a", &paths, &root, &mut state);
