@@ -52,7 +52,8 @@ fn create_test_navigator(root: &Path) -> TreeNavigator {
     TreeNavigator::new(root, false).unwrap()
 }
 
-fn create_test_entries(navigator: &TreeNavigator) -> Vec<EntrySnapshot> {
+fn create_test_entries(navigator: &mut TreeNavigator) -> Vec<EntrySnapshot> {
+    navigator.ensure_cache();
     navigator
         .visible_entries()
         .iter()
@@ -116,7 +117,7 @@ fn test_move_up_action() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -148,7 +149,7 @@ fn test_move_down_action() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -177,7 +178,7 @@ fn test_quit_action() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -208,7 +209,7 @@ fn test_toggle_mark_action() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -251,7 +252,7 @@ fn test_toggle_hidden_action() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -280,7 +281,7 @@ fn test_open_preview_action() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -322,7 +323,7 @@ fn test_toggle_quick_preview_action() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -361,7 +362,7 @@ fn test_toggle_expand_file_with_side_preview_closes_panel() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -401,7 +402,7 @@ fn test_toggle_expand_file_without_preview_opens_fullscreen() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -441,13 +442,14 @@ fn test_toggle_expand_directory_toggles_expand() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
     let focused = Some(dir_path.clone());
+    navigator.ensure_cache();
     let initial_count = navigator.visible_count();
 
     // Expand
@@ -464,6 +466,7 @@ fn test_toggle_expand_directory_toggles_expand() {
     )
     .unwrap();
 
+    navigator.ensure_cache();
     assert!(
         navigator.visible_count() > initial_count,
         "Directory should be expanded"
@@ -483,6 +486,7 @@ fn test_toggle_expand_directory_toggles_expand() {
     )
     .unwrap();
 
+    navigator.ensure_cache();
     assert_eq!(
         navigator.visible_count(),
         initial_count,
@@ -496,7 +500,7 @@ fn test_cancel_in_preview_mode_returns_to_browse() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -530,7 +534,7 @@ fn test_cancel_in_browse_pick_mode_returns_cancelled() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -564,7 +568,7 @@ fn test_cancel_in_browse_normal_mode_sets_quit() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -594,7 +598,7 @@ fn test_cancel_in_input_mode_returns_to_browse() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -633,7 +637,7 @@ fn test_preview_scroll_updates_text_preview() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
 
     // Create a text preview with some lines
@@ -689,7 +693,7 @@ fn test_preview_scroll_saturates_at_zero() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
 
     let mut text_preview = Some(TextPreview::new("line1\nline2"));
@@ -724,7 +728,7 @@ fn test_preview_page_scroll() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
 
     let mut text_preview = Some(TextPreview::new("a\n".repeat(100).as_str()));
@@ -779,7 +783,7 @@ fn test_preview_scroll_updates_viewmode_scroll() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -818,7 +822,7 @@ fn test_move_to_top() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -851,7 +855,7 @@ fn test_move_to_bottom() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -887,7 +891,7 @@ fn test_clear_marks() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -919,7 +923,7 @@ fn test_start_search() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -947,7 +951,7 @@ fn test_start_new_file() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -981,7 +985,7 @@ fn test_start_new_dir() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1026,7 +1030,7 @@ fn test_sequence_navigation_with_preview() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1124,7 +1128,7 @@ fn test_sequence_side_preview_toggle_enter() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1184,7 +1188,7 @@ fn test_sequence_search_workflow() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1270,7 +1274,7 @@ fn test_sequence_copy_paste_workflow() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let mut entries = create_test_entries(&navigator);
+    let mut entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1342,7 +1346,7 @@ fn test_sequence_copy_paste_workflow() {
     assert!(state.message.as_ref().unwrap().contains("Pasted"));
 
     // Refresh entries after paste
-    entries = create_test_entries(&navigator);
+    entries = create_test_entries(&mut navigator);
     assert!(!entries.is_empty());
 }
 
@@ -1355,7 +1359,7 @@ fn test_sequence_rename_cancel_rename_confirm() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1449,12 +1453,13 @@ fn test_sequence_expand_navigate_collapse_all() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
+    navigator.ensure_cache();
     let initial_count = navigator.visible_count();
 
     // Find subdir
@@ -1474,6 +1479,7 @@ fn test_sequence_expand_navigate_collapse_all() {
         &mut archive_preview
     )
     .unwrap();
+    navigator.ensure_cache();
     let expanded_count = navigator.visible_count();
     assert!(
         expanded_count > initial_count,
@@ -1481,7 +1487,7 @@ fn test_sequence_expand_navigate_collapse_all() {
     );
 
     // Update entries after expand
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
 
     // Step 2: Move focus into expanded directory
     state.focus_index = subdir_idx + 1; // Move to first child
@@ -1500,6 +1506,7 @@ fn test_sequence_expand_navigate_collapse_all() {
     )
     .unwrap();
 
+    navigator.ensure_cache();
     let collapsed_count = navigator.visible_count();
     assert_eq!(
         collapsed_count, initial_count,
@@ -1515,7 +1522,7 @@ fn test_sequence_create_delete_workflow() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1557,7 +1564,7 @@ fn test_sequence_create_delete_workflow() {
     assert!(new_file.exists(), "New file should be created");
 
     // Refresh entries
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let new_file_focused = Some(new_file.clone());
 
     // Step 3: Delete (D) - starts confirmation
@@ -1606,7 +1613,7 @@ fn test_sequence_cut_paste_multiple() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1676,7 +1683,7 @@ fn test_edge_empty_directory_navigation() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1751,13 +1758,14 @@ fn test_edge_empty_directory_expand() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
     let focused = Some(empty_dir.clone());
+    navigator.ensure_cache();
     let initial_count = navigator.visible_count();
 
     // Expand empty directory should not crash
@@ -1775,6 +1783,7 @@ fn test_edge_empty_directory_expand() {
     .unwrap();
 
     // Count should be same (no children to show)
+    navigator.ensure_cache();
     assert_eq!(navigator.visible_count(), initial_count);
 
     // Collapse should work
@@ -1806,7 +1815,7 @@ fn test_edge_symlink_file() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1849,7 +1858,7 @@ fn test_edge_symlink_directory() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1872,7 +1881,7 @@ fn test_edge_symlink_directory() {
     .unwrap();
 
     // Should be able to see contents through symlink
-    let new_entries = create_test_entries(&navigator);
+    let new_entries = create_test_entries(&mut navigator);
     let has_nested = new_entries.iter().any(|e| e.name == "file.txt");
     assert!(has_nested, "Should see files through symlink directory");
 }
@@ -1901,7 +1910,7 @@ fn test_edge_deep_directory_structure() {
     let mut path = temp.path().to_path_buf();
     for dir_name in ["a", "b", "c", "d", "e", "f"] {
         path = path.join(dir_name);
-        let entries = create_test_entries(&navigator);
+        let entries = create_test_entries(&mut navigator);
         call_handle_action!(
             KeyAction::Expand,
             &mut state,
@@ -1917,7 +1926,7 @@ fn test_edge_deep_directory_structure() {
     }
 
     // Verify deep file is visible
-    let final_entries = create_test_entries(&navigator);
+    let final_entries = create_test_entries(&mut navigator);
     let has_deep_file = final_entries.iter().any(|e| e.name == "deep.txt");
     assert!(has_deep_file, "Deep file should be visible after expanding");
 
@@ -1936,7 +1945,7 @@ fn test_edge_deep_directory_structure() {
     .unwrap();
 
     // Only root should be visible now (plus first level dir)
-    let collapsed_entries = create_test_entries(&navigator);
+    let collapsed_entries = create_test_entries(&mut navigator);
     let no_deep_file = !collapsed_entries.iter().any(|e| e.name == "deep.txt");
     assert!(
         no_deep_file,
@@ -1952,7 +1961,7 @@ fn test_edge_move_up_at_top() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -1985,7 +1994,7 @@ fn test_edge_move_down_at_bottom() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2020,7 +2029,7 @@ fn test_edge_special_characters_filename() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2065,7 +2074,7 @@ fn test_edge_unicode_filename() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2102,7 +2111,7 @@ fn test_edge_copy_path_no_focus() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2136,7 +2145,7 @@ fn test_edge_search_next_with_query() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2173,7 +2182,7 @@ fn test_edge_paste_empty_clipboard() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2204,7 +2213,7 @@ fn test_edge_confirm_delete_no_targets() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2262,7 +2271,7 @@ fn test_edge_expand_all_depth_limit() {
     }
 
     // Now dir5 should be visible at depth 5
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let has_dir5 = entries.iter().any(|e| e.name == "dir5");
     assert!(has_dir5, "dir5 should be visible after manual expansion");
 
@@ -2280,7 +2289,7 @@ fn test_edge_expand_all_depth_limit() {
     )
     .unwrap();
 
-    let after_expand = create_test_entries(&navigator);
+    let after_expand = create_test_entries(&mut navigator);
 
     // dir6 should NOT be visible (dir5 at depth 5 was not expanded due to depth limit)
     let has_dir6 = after_expand.iter().any(|e| e.name == "dir6");
@@ -2303,7 +2312,7 @@ fn test_focus_toggle_switches_target() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2353,7 +2362,7 @@ fn test_focus_toggle_no_effect_without_preview() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2389,7 +2398,7 @@ fn test_focus_reset_when_preview_closed() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2425,7 +2434,7 @@ fn test_focus_preview_navigation_scrolls() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview = Some(TextPreview::new("line1\nline2\nline3\nline4\nline5"));
     let mut hex_preview: Option<HexPreview> = None;
@@ -2462,7 +2471,7 @@ fn test_focus_tree_navigation_moves_files() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
     let mut hex_preview: Option<HexPreview> = None;
@@ -2499,7 +2508,7 @@ fn test_focus_sequence_toggle_scroll_navigate() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview = Some(TextPreview::new("line1\nline2\nline3\nline4\nline5"));
     let mut hex_preview: Option<HexPreview> = None;
@@ -2581,7 +2590,7 @@ fn test_focus_preview_page_scroll() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview = Some(TextPreview::new(&"line\n".repeat(100)));
     let mut hex_preview: Option<HexPreview> = None;
@@ -2631,7 +2640,7 @@ fn test_focus_preview_jump_to_top_bottom() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview = Some(TextPreview::new(&"line\n".repeat(100)));
     let mut hex_preview: Option<HexPreview> = None;
@@ -2685,7 +2694,7 @@ fn test_preview_scroll_down_capped_at_max() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
 
     // Create a text preview with only 5 lines
@@ -2724,7 +2733,7 @@ fn test_preview_page_down_capped_at_max() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
 
     // Create a text preview with only 10 lines
@@ -2761,7 +2770,7 @@ fn test_preview_to_bottom_syncs_viewmode() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
 
     // Create a text preview with 50 lines
@@ -2812,7 +2821,7 @@ fn test_hex_preview_scroll_capped() {
 
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
 
     let mut text_preview: Option<TextPreview> = None;
@@ -2850,7 +2859,7 @@ fn test_archive_preview_scroll_capped() {
     let temp = TempDir::new().unwrap();
     let mut state = create_test_state(temp.path());
     let mut navigator = create_test_navigator(temp.path());
-    let entries = create_test_entries(&navigator);
+    let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
 
     let mut text_preview: Option<TextPreview> = None;
