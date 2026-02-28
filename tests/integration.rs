@@ -1231,7 +1231,8 @@ mod tree_navigator_tests {
         fs::write(temp.path().join("file2.txt"), "").unwrap();
         fs::create_dir(temp.path().join("dir1")).unwrap();
 
-        let navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        navigator.ensure_cache();
         let entries = navigator.visible_entries();
 
         // Should have root + 3 entries (2 files + 1 dir)
@@ -1247,11 +1248,13 @@ mod tree_navigator_tests {
         fs::write(temp.path().join(".hidden"), "").unwrap();
 
         // Without hidden files - should only show visible.txt (+ root)
-        let navigator_no_hidden = TreeNavigator::new(temp.path(), false).unwrap();
+        let mut navigator_no_hidden = TreeNavigator::new(temp.path(), false).unwrap();
+        navigator_no_hidden.ensure_cache();
         let count_no_hidden = navigator_no_hidden.visible_entries().len();
 
         // With hidden files - should show both visible.txt and .hidden (+ root)
-        let navigator_with_hidden = TreeNavigator::new(temp.path(), true).unwrap();
+        let mut navigator_with_hidden = TreeNavigator::new(temp.path(), true).unwrap();
+        navigator_with_hidden.ensure_cache();
         let count_with_hidden = navigator_with_hidden.visible_entries().len();
 
         // With hidden files should have more entries
@@ -1272,10 +1275,12 @@ mod tree_navigator_tests {
 
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
 
+        navigator.ensure_cache();
         let initial_count = navigator.visible_entries().len();
 
         // Expand dir1
         navigator.expand(&temp.path().join("dir1")).unwrap();
+        navigator.ensure_cache();
         let expanded_count = navigator.visible_entries().len();
         assert!(
             expanded_count > initial_count,
@@ -1284,6 +1289,7 @@ mod tree_navigator_tests {
 
         // Collapse dir1
         navigator.collapse(&temp.path().join("dir1"));
+        navigator.ensure_cache();
         let collapsed_count = navigator.visible_entries().len();
         assert_eq!(
             collapsed_count, initial_count,
@@ -1301,15 +1307,18 @@ mod tree_navigator_tests {
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
 
         let dir_path = temp.path().join("dir1");
+        navigator.ensure_cache();
         let initial_count = navigator.visible_entries().len();
 
         // Toggle to expand
         navigator.toggle_expand(&dir_path).unwrap();
+        navigator.ensure_cache();
         let expanded_count = navigator.visible_entries().len();
         assert!(expanded_count > initial_count);
 
         // Toggle to collapse
         navigator.toggle_expand(&dir_path).unwrap();
+        navigator.ensure_cache();
         let collapsed_count = navigator.visible_entries().len();
         assert_eq!(collapsed_count, initial_count);
     }
@@ -1321,6 +1330,7 @@ mod tree_navigator_tests {
         fs::write(temp.path().join("initial.txt"), "").unwrap();
 
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        navigator.ensure_cache();
         let initial_count = navigator.visible_entries().len();
 
         // Add a file externally
@@ -1328,6 +1338,7 @@ mod tree_navigator_tests {
 
         // Reload
         navigator.reload().unwrap();
+        navigator.ensure_cache();
         let reloaded_count = navigator.visible_entries().len();
         assert!(
             reloaded_count > initial_count,
@@ -1342,7 +1353,8 @@ mod tree_navigator_tests {
         fs::write(temp.path().join("file1.txt"), "").unwrap();
         fs::write(temp.path().join("file2.txt"), "").unwrap();
 
-        let navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
+        navigator.ensure_cache();
 
         assert_eq!(navigator.visible_count(), navigator.visible_entries().len());
     }
@@ -4408,6 +4420,7 @@ mod fuzzy_finder_tests {
         navigator.reveal_path(&target).unwrap();
 
         // After reveal, the file should be visible
+        navigator.ensure_cache();
         let entries = navigator.visible_entries();
         let visible_paths: Vec<_> = entries.iter().map(|e| &e.path).collect();
 
@@ -4426,6 +4439,7 @@ mod fuzzy_finder_tests {
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
 
         // Initially, nested file is not visible
+        navigator.ensure_cache();
         let before = navigator.visible_entries();
         assert!(
             !before.iter().any(|e| e.path.ends_with("file.txt")),
@@ -4436,6 +4450,7 @@ mod fuzzy_finder_tests {
         navigator.reveal_path(&target).unwrap();
 
         // After reveal, the file should be visible
+        navigator.ensure_cache();
         let after = navigator.visible_entries();
         assert!(
             after.iter().any(|e| e.path.ends_with("file.txt")),
@@ -4452,10 +4467,12 @@ mod fuzzy_finder_tests {
         let target = temp.path().join("visible.txt");
 
         // Already visible
+        navigator.ensure_cache();
         let before_count = navigator.visible_count();
 
         navigator.reveal_path(&target).unwrap();
 
+        navigator.ensure_cache();
         let after_count = navigator.visible_count();
         assert_eq!(
             before_count, after_count,
@@ -5065,12 +5082,15 @@ mod fuzzy_finder_tests {
 
         // Reveal multiple times
         navigator.reveal_path(&target).unwrap();
+        navigator.ensure_cache();
         let count1 = navigator.visible_count();
 
         navigator.reveal_path(&target).unwrap();
+        navigator.ensure_cache();
         let count2 = navigator.visible_count();
 
         navigator.reveal_path(&target).unwrap();
+        navigator.ensure_cache();
         let count3 = navigator.visible_count();
 
         // Should be stable
@@ -5094,6 +5114,7 @@ mod fuzzy_finder_tests {
         navigator.reveal_path(&target1).unwrap();
         navigator.reveal_path(&target2).unwrap();
 
+        navigator.ensure_cache();
         let entries = navigator.visible_entries();
         let paths: Vec<_> = entries.iter().map(|e| &e.path).collect();
 
@@ -5313,6 +5334,7 @@ mod fuzzy_finder_tests {
         navigator.reveal_path(&target).unwrap();
 
         // 4. Find and focus the file
+        navigator.ensure_cache();
         let entries = navigator.visible_entries();
         let idx = entries.iter().position(|e| e.path == target);
 

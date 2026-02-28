@@ -15,12 +15,12 @@ use crate::render::{
     render_pdf_preview, render_status_bar, render_tab_bar, render_text_preview, render_tree,
     render_video_preview, FontSize, FuzzyMatch, LayoutEngine, Picker,
 };
-use crate::tree::TreeEntry;
+use crate::tree::VisibleEntry;
 
 /// Context for rendering a frame
 pub struct RenderContext<'a> {
     pub state: &'a AppState,
-    pub entries: Vec<&'a TreeEntry>,
+    pub entries: Vec<&'a VisibleEntry>,
     pub focused_path: Option<&'a PathBuf>,
     pub preview: &'a mut PreviewState,
     pub fuzzy_results: &'a [FuzzyMatch],
