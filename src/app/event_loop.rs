@@ -293,8 +293,8 @@ pub fn run_app(
             needs_redraw = true;
         }
 
-        // Poll for completed async image loads
-        if preview.poll_image_result(image_picker, &mut state) {
+        // Poll for completed async preview loads (worker + image loader)
+        if preview.poll_preview_result(image_picker, &mut state) {
             needs_redraw = true;
         }
 

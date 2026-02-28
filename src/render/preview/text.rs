@@ -50,6 +50,7 @@ pub struct StyledLine {
 }
 
 /// Text preview content
+#[derive(Clone)]
 pub struct TextPreview {
     pub lines: Vec<String>,
     /// Syntax-highlighted lines (None for plain text)
