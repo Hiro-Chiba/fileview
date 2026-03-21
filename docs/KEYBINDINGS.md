@@ -89,13 +89,13 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 | `P` | Toggle side preview panel |
 | `o` | Open fullscreen preview |
 | `Tab` | Close side preview / toggle expand directory / open file preview |
-| `←` / `→` | Switch focus to tree (left) / preview (right) |
+| `←` / `→` | Collapse / expand (same as h/l) |
 | `[` | Previous PDF page |
 | `]` | Next PDF page |
 
 ### Side Preview Focus Mode
 
-When the side preview panel is open, use `Tab` or arrow keys to switch focus:
+When the side preview panel is open:
 
 | Focus | j/k/↑/↓ | g/G | b/f |
 |-------|---------|-----|-----|
@@ -104,7 +104,7 @@ When the side preview panel is open, use `Tab` or arrow keys to switch focus:
 
 - Click on a panel to switch focus
 - Scroll wheel works on the focused panel
-- `Esc` returns focus to tree
+- `Esc` returns focus to tree (when preview is focused)
 - Focused panel has cyan border highlight
 
 ### PDF Preview
