@@ -174,6 +174,29 @@ impl AppState {
 }
 ```
 
+### 3.3 ドラッグ&ドロップ検出
+
+一部のターミナル（Ghostty等）はドロップされたファイルパスを高速なキー入力として送信する。`PathBuffer` がこれを検出する。
+
+```rust
+// src/handler/mouse.rs
+pub struct PathBuffer {
+    data: String,
+    last_input: Option<Instant>,
+}
+
+impl PathBuffer {
+    /// 文字をバッファに追加。入力が遅い場合はリセット
+    pub fn push(&mut self, c: char);
+
+    /// 入力が一時停止し、処理可能か判定
+    pub fn is_ready(&self) -> bool;
+
+    /// バッファから有効なファイルパスを抽出
+    pub fn take_paths(&mut self) -> Vec<PathBuf>;
+}
+```
+
 ---
 
 ## 4. Integration Features（連携機能）
