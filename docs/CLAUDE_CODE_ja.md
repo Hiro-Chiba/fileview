@@ -42,7 +42,7 @@ fv --mcp-server
 |---|---|
 | `Ctrl+Y` | Claude向けフォーマットでコピー |
 | `Ctrl+G` | Git変更ファイル選択 |
-| `Ctrl+Shift+T` | テストペア選択 |
+| `Ctrl+T` | テストペア選択 |
 
 ## Claude設定の自動初期化
 
