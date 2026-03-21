@@ -139,6 +139,7 @@ PDF files are rendered as images using `pdftoppm` from poppler-utils:
 | `s` | Stage file |
 | `u` | Unstage file |
 | `Ctrl+G` | Select all git-changed files |
+| `Alt+G` | Select git-staged files only |
 | `Ctrl+Shift+T` | Select test file pair |
 | `Alt+R` | Select files from recent commit |
 
@@ -155,6 +156,7 @@ PDF files are rendered as images using `pdftoppm` from poppler-utils:
 | `Alt+P` | Toggle peek mode (mini preview in status bar) |
 | `Ctrl+R` | Select related files |
 | `Ctrl+E` | Select error context files |
+| `Ctrl+1`-`Ctrl+9` | Select by extension (1:rs, 2:ts/tsx, 3:js/jsx, 4:py, 5:go, 6:java/kt, 7:md, 8:json/yaml/toml, 9:css/scss) |
 
 ## Tabs
 

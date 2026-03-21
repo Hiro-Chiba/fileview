@@ -90,7 +90,7 @@ dim = "245"
 
 ## Example Themes
 
-### Dark Theme (Default)
+### Dark Theme
 
 ```toml
 [colors]

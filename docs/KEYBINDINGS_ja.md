@@ -139,6 +139,7 @@ PDFファイルはpoppler-utilsの`pdftoppm`を使用して画像としてレン
 | `s` | ファイルをステージ |
 | `u` | ファイルをアンステージ |
 | `Ctrl+G` | Git変更ファイルをすべて選択 |
+| `Alt+G` | ステージ済みファイルのみ選択 |
 | `Ctrl+Shift+T` | テストファイルペアを選択 |
 | `Alt+R` | 最新コミットのファイルを選択 |
 
@@ -155,6 +156,7 @@ PDFファイルはpoppler-utilsの`pdftoppm`を使用して画像としてレン
 | `Alt+P` | ピークモード切り替え（ステータスバーにミニプレビュー） |
 | `Ctrl+R` | 関連ファイルを選択 |
 | `Ctrl+E` | エラーコンテキストファイルを選択 |
+| `Ctrl+1`-`Ctrl+9` | 拡張子で選択（1:rs, 2:ts/tsx, 3:js/jsx, 4:py, 5:go, 6:java/kt, 7:md, 8:json/yaml/toml, 9:css/scss） |
 
 ## タブ
 
