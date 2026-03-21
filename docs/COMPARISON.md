@@ -24,7 +24,7 @@ Lightweight ◄─────────────────────�
 
    nnn    fileview    lf    joshuto    ranger    yazi
     │        │        │        │          │        │
-  0.1MB    3.4MB    3.5MB    5.4MB      28MB     4.5MB
+  0.1MB    5.9MB    3.5MB    5.4MB      28MB     4.5MB
 ```
 
 ## Feature Comparison
@@ -57,8 +57,8 @@ Lightweight ◄─────────────────────�
 **Strengths:**
 - Zero configuration required (works out of the box)
 - Auto-detects terminal image protocol (Kitty/iTerm2/Sixel/etc.)
-- Compact 3.4MB binary (including Lua support)
-- Fast startup (2.3ms)
+- Compact 5.9MB binary (including Lua support)
+- Fast startup (2.2ms)
 - Adaptive status bar for narrow terminals
 - **AI-first design**: MCP server, Claude Code integration, tree output for context
 
@@ -135,9 +135,9 @@ Lightweight ◄─────────────────────�
 
 | Metric | fileview | yazi | lf | ranger | nnn |
 |--------|----------|------|-----|--------|-----|
-| Startup | 2.3ms | 15ms | 3ms | 400ms | 1.5ms |
+| Startup | 2.2ms | 15ms | 3ms | 400ms | 1.5ms |
 | Memory | 8MB | 38MB | 12MB | 28MB | 3.4MB |
-| Binary | 3.4MB | 4.5MB | 3.5MB | - | 0.1MB |
+| Binary | 5.9MB | 4.5MB | 3.5MB | - | 0.1MB |
 
 ## Image Preview Comparison
 

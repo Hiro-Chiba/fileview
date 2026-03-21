@@ -6,7 +6,7 @@ Performance comparison with other terminal file managers.
 
 | Tool | Startup | Memory (idle) | Binary Size | Language |
 |------|---------|---------------|-------------|----------|
-| **fileview** | **2.3ms** | **~8MB** | **2.9MB** | Rust |
+| **fileview** | **2.2ms** | **~8MB** | **5.9MB** | Rust |
 | nnn | 1.5ms | 3.4MB | 0.1MB | C |
 | lf | 3ms | 12MB | 3.5MB | Go |
 | ranger | 400ms | 28MB | - | Python |
@@ -14,7 +14,7 @@ Performance comparison with other terminal file managers.
 
 *Sources: [joshuto discussion](https://github.com/kamiyaa/joshuto/discussions/454), own measurements*
 
-## FileView Benchmarks (v1.14.3)
+## FileView Benchmarks (v2.4.0)
 
 ### Startup Time
 
@@ -22,28 +22,28 @@ Performance comparison with other terminal file managers.
 $ hyperfine --warmup 3 './target/release/fv --help'
 
 Benchmark: fv --help
-  Time (mean ± σ):       2.3 ms ±   0.5 ms
-  Range (min … max):     1.6 ms …   8.9 ms
+  Time (mean ± σ):       2.2 ms ±   0.2 ms    [625 runs]
+  Range (min … max):     1.8 ms …   3.1 ms
 ```
 
 ### Binary Size
 
 ```
 $ ls -lh target/release/fv
-2.9M target/release/fv
+5.9M target/release/fv
 ```
 
 Build configuration:
 - Profile: release
-- LTO: thin
+- LTO: true (full)
 - Codegen units: 1
 
 ### Memory Usage
 
-Idle memory consumption in typical usage:
-- Empty directory: ~6MB
-- 1000 files: ~8MB
-- With image preview: ~15MB
+Idle memory consumption (measured with `/usr/bin/time -l`):
+- Idle: ~7.5MB (7,815,168 bytes)
+- 1000 files: ~9MB
+- With image preview: ~16MB
 
 ## Why FileView is Fast
 
@@ -54,10 +54,10 @@ Idle memory consumption in typical usage:
 
 ## Test Environment
 
-- OS: macOS (Darwin 24.6.0)
+- OS: macOS (Darwin 25.3.0)
 - Architecture: ARM64 (Apple Silicon)
-- Rust: 1.75+
-- Date: 2026-01-31
+- Rust: 1.93.0
+- Date: 2026-03-21
 
 ## Trade-offs
 
@@ -65,7 +65,7 @@ FileView prioritizes **startup speed** and **low memory** over features:
 
 | Feature | fileview | yazi |
 |---------|----------|------|
-| Plugin system | No | Yes (Lua) |
+| Plugin system | Lua | Yes (Lua) |
 | Async I/O | Partial | Full |
 | Built-in syntax highlighting | Yes | Yes |
 | Configuration file | No | Yes |

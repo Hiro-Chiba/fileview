@@ -22,12 +22,12 @@
 軽量 ◄───────────────────────────────► 高機能
 
   nnn    lf    fv    ranger    yazi
- 3.4MB  12MB  8MB    28MB     38MB
+ 3.4MB  12MB  8MB    28MB     38MB    ← Memory (idle)
 ```
 
 - **設定不要** - インストールして即使える
 - **画像自動プレビュー** - Kitty/iTerm2/Sixel/Halfblocks を自動検出
-- **高速** - 起動 2.3ms、メモリ 8MB（ranger: 400ms/28MB）
+- **高速** - 起動 2.2ms、メモリ 8MB（ranger: 400ms/28MB）
 - **バッテリー同梱** - Git連携、シンタックスハイライト、PDFプレビュー
 - **Vimキーバインド** - j/k/h/l で操作
 
@@ -136,7 +136,7 @@ FileView を Claude Code の MCP サーバーとして使用:
 }
 ```
 
-**MCP 2.0 ツール (21ツール):**
+**MCP 2.0 ツール (26ツール):**
 
 | カテゴリ | ツール |
 |----------|-------|
@@ -227,7 +227,7 @@ cargo install fileview --features chafa
 
 ## 安定性
 
-- 現在のチャネル: `stable`（`2.3.2`）
+- 現在のチャネル: `stable`（`2.4.0`）
 - stable移行条件は `docs/STABILITY.md` に明記しています。
 - 2026-02-04 時点で条件を満たし、stableリリース承認済みです。
 

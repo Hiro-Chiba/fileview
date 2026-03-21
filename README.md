@@ -22,12 +22,12 @@ English | [日本語](README_ja.md)
 Lightweight ◄───────────────────────► Feature-rich
 
    nnn    lf    fv    ranger    yazi
-  3.4MB  12MB  8MB    28MB     38MB
+  3.4MB  12MB  8MB    28MB     38MB    ← Memory (idle)
 ```
 
 - **Zero config** - Install and run. No setup required.
 - **Auto image preview** - Detects Kitty/iTerm2/Sixel/Halfblocks automatically
-- **Fast** - 2.3ms startup, 8MB memory (vs ranger 400ms/28MB)
+- **Fast** - 2.2ms startup, 8MB memory (vs ranger 400ms/28MB)
 - **Batteries included** - Git status, syntax highlighting, PDF preview
 - **Vim keybindings** - Navigate with j/k/h/l
 
@@ -97,7 +97,7 @@ FileView auto-detects your terminal:
 
 ## Claude Code Integration
 
-FileView is the **only terminal file manager with native AI tooling support**.
+FileView is the **first terminal file manager with native AI tooling support**.
 
 ```bash
 # Project context for AI
@@ -134,7 +134,7 @@ Use FileView as a Claude Code MCP server with Git integration:
 }
 ```
 
-**MCP 2.0 Tools (21 tools):**
+**MCP 2.0 Tools (26 tools):**
 
 | Category | Tools |
 |----------|-------|
@@ -228,7 +228,7 @@ cargo install fileview --profile release-fast
 
 ## Stability
 
-- Current channel: `stable` (`2.3.2`)
+- Current channel: `stable` (`2.4.0`)
 - Stable promotion criteria are documented in `docs/STABILITY.md`.
 - As of 2026-02-04, criteria were satisfied and stable release was approved.
 
