@@ -30,38 +30,44 @@ ls より便利、yazi より軽い
 src/
 ├── main.rs             # エントリポイント
 ├── lib.rs
-├── app/                # アプリケーションモジュール (v1.5.0+)
-│   ├── mod.rs
+├── error.rs
+├── app/
 │   ├── config.rs       # Config - CLI引数とアプリケーション設定
-│   ├── preview.rs      # PreviewState - プレビュー状態管理
+│   ├── config_file.rs  # 設定ファイル読み込み
 │   ├── event_loop.rs   # run_app - メインイベントループ
-│   └── render.rs       # RenderContext - 描画ヘルパー
+│   ├── image_loader.rs # 画像読み込み
+│   ├── preview.rs      # PreviewState - プレビュー状態管理
+│   ├── preview_worker.rs # プレビューバックグラウンド処理
+│   ├── render.rs       # RenderContext - 描画ヘルパー
+│   └── video.rs        # 動画プレビュー対応
 ├── core/
-│   ├── mod.rs
 │   ├── state.rs        # AppState - アプリケーション状態
-│   └── mode.rs         # ViewMode - ビューモード定義
+│   ├── mode.rs         # ViewMode - ビューモード定義
+│   └── tab.rs          # タブ管理
 ├── tree/
-│   ├── mod.rs
 │   ├── node.rs         # TreeEntry - ツリーノード
 │   └── navigator.rs    # TreeNavigator - ツリー操作
 ├── action/
-│   ├── mod.rs
 │   ├── file.rs         # ファイル操作
 │   └── clipboard.rs    # クリップボード
 ├── render/
-│   ├── mod.rs
 │   ├── tree.rs         # ツリー描画
-│   ├── preview.rs      # プレビュー描画
+│   ├── preview/        # プレビュー描画（テキスト、画像、PDF、動画、Hex等）
 │   ├── status.rs       # ステータスバー・ヘルプ
 │   ├── icons.rs        # Nerd Fontsアイコン
 │   ├── fuzzy.rs        # ファジーファインダーUI
-│   └── terminal.rs     # ターミナル検出・画像プロトコル
+│   ├── terminal.rs     # ターミナル検出・画像プロトコル
+│   ├── layout.rs       # レイアウト計算
+│   ├── tabs.rs         # タブ描画
+│   ├── theme.rs        # テーマ管理
+│   ├── history.rs      # 履歴描画
+│   └── bulk_rename.rs  # 一括リネームUI
 ├── handler/
-│   ├── mod.rs
 │   ├── key.rs          # キーイベント・KeyAction定義
-│   ├── mouse.rs        # マウスイベント
-│   └── action/         # アクション実行 (v1.5.0+)
-│       ├── mod.rs      # dispatch関数とActionResult
+│   ├── keymap.rs       # キーマップ設定
+│   ├── mouse.rs        # マウスイベント・PathBuffer
+│   ├── hooks.rs        # フック処理
+│   └── action/         # アクション実行
 │       ├── navigation.rs   # 移動アクション
 │       ├── tree_ops.rs     # ツリー操作
 │       ├── selection.rs    # 選択・クリップボード
@@ -69,18 +75,39 @@ src/
 │       ├── search.rs       # 検索・ファジーファインダー
 │       ├── input.rs        # 入力確認
 │       ├── display.rs      # 表示・プレビュー
-│       ├── bookmark.rs     # ブックマーク (v1.6.0+)
+│       ├── bookmark.rs     # ブックマーク
+│       ├── command.rs      # カスタムコマンド実行
+│       ├── bulk_rename.rs  # 一括リネーム
+│       ├── filter.rs       # ファイルフィルター
+│       ├── git_ops.rs      # Git操作
 │       └── tests.rs        # アクションテスト
 ├── integrate/
-│   ├── mod.rs
 │   ├── pick.rs         # --pick モード
-│   └── callback.rs     # --on-select
-├── watcher/            # ファイル監視 (v1.3.0+)
-│   ├── mod.rs
-│   └── smart.rs        # スマートファイルウォッチャー
+│   ├── callback.rs     # --on-select
+│   ├── tree.rs         # --tree 出力
+│   ├── context.rs      # --context 出力
+│   ├── context_pack.rs # --context-pack
+│   ├── related.rs      # --select-related
+│   ├── session.rs      # --resume-ai-session
+│   ├── claude_init.rs  # init claude
+│   ├── benchmark.rs    # benchmark ai
+│   └── plugin_cmd.rs   # plugin サブコマンド
+├── mcp/                # MCPサーバー
+│   ├── server.rs       # JSON-RPCサーバー
+│   ├── registry.rs     # ツール登録
+│   ├── handlers/       # ツールハンドラ（file, git, analysis等）
+│   ├── security.rs     # セキュリティ検証
+│   ├── token.rs        # トークン推定
+│   └── types.rs        # 型定義
+├── plugin/
+│   ├── lua.rs          # Luaプラグインマネージャー
+│   └── api.rs          # プラグインAPI・イベント定義
+├── watcher/            # ファイル変更監視
+│   └── mod.rs
 └── git/
-    ├── mod.rs
-    └── status.rs       # Git状態管理
+    ├── status.rs       # Git状態管理
+    ├── diff.rs         # Git差分
+    └── operations.rs   # Gitステージ・コミット操作
 ```
 
 ### 2.2 モジュール責務
@@ -94,24 +121,29 @@ src/
 | `render` | UI描画（ツリー、プレビュー、ファジーファインダー、画像） |
 | `handler` | イベント処理（キーボード、マウス）とアクション実行 |
 | `handler/action` | アクション実行の分割モジュール群 |
-| `integrate` | 外部ツール連携（--pick, --on-select, --choosedir） |
+| `integrate` | 外部ツール連携（--pick, --context, --tree, MCP init等） |
+| `mcp` | MCPサーバー（JSON-RPC、ツール登録、ハンドラ） |
+| `plugin` | Luaプラグインシステム |
 | `watcher` | ファイル変更監視（展開ディレクトリの自動更新） |
-| `git` | Gitリポジトリ状態の検出と表示 |
+| `git` | Gitリポジトリ状態の検出・差分・ステージ操作 |
 
 ### 2.3 モード定義
 
 ```rust
 pub enum ViewMode {
     Browse,                            // 通常ブラウズ
+    VisualSelect { anchor: usize },    // 範囲選択
     Search { query: String },          // インクリメンタル検索
     Input { purpose: InputPurpose, buffer: String, cursor: usize },
     Confirm { action: PendingAction }, // 確認ダイアログ
     Preview { scroll: usize },         // フルスクリーンプレビュー
     FuzzyFinder { query: String, selected: usize }, // ファジーファインダー
     Help,                              // ヘルプポップアップ
-    BookmarkSet,                       // ブックマーク設定待ち (v1.6.0+)
-    BookmarkJump,                      // ブックマークジャンプ待ち (v1.6.0+)
-    Filter { query: String },          // ファイルフィルター入力 (v1.6.0+)
+    AiHistory { selected: usize },     // AI履歴ポップアップ
+    BookmarkSet,                       // ブックマーク設定待ち
+    BookmarkJump,                      // ブックマークジャンプ待ち
+    Filter { query: String },          // ファイルフィルター入力
+    BulkRename { from_pattern: String, to_pattern: String, selected_field: usize, cursor: usize },
 }
 
 pub enum InputPurpose {
@@ -306,7 +338,7 @@ impl GitStatus {
 | `C` | ファイル名をクリップボードへ |
 | `P` | サイドプレビュー切替 |
 | `o` | フルスクリーンプレビュー |
-| `Tab` | フォーカス切替（ツリー/プレビュー） |
+| `Tab` | プレビュー閉じる / 展開切替 / プレビュー表示 |
 | `.` | 隠しファイル切替 |
 | `m1-9` | ブックマーク設定 (v1.6.0+) |
 | `'1-9` | ブックマークジャンプ (v1.6.0+) |

@@ -88,7 +88,7 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 |-----|--------|
 | `P` | Toggle side preview panel |
 | `o` | Open fullscreen preview |
-| `Tab` | Toggle focus between tree and preview (when preview visible) |
+| `Tab` | Close side preview / toggle expand directory / open file preview |
 | `←` / `→` | Switch focus to tree (left) / preview (right) |
 | `[` | Previous PDF page |
 | `]` | Next PDF page |
