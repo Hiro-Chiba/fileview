@@ -42,7 +42,7 @@ fv --mcp-server
 |-----|--------|
 | `Ctrl+Y` | Copy in Claude-friendly format |
 | `Ctrl+G` | Select git changed files |
-| `Ctrl+T` | Select test file pair |
+| `Ctrl+Shift+T` | Select test file pair |
 
 ## Auto-init Claude Config
 
