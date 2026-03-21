@@ -16,10 +16,12 @@
   <img src="assets/demo.gif" alt="FileView デモ" width="80%">
 </p>
 
+yaziのような軽量ファイルマネージャーで、普段使いしながらClaude Codeとも連携できるものが欲しかった。設定ファイルに時間をかけたくなかった。
+
 ## 特徴
 
 - 画像プレビュー自動検出（Kitty, iTerm2, Sixel, Halfblocks）
-- 起動 2.2ms、メモリ約 8MB
+- 起動 2.2ms、メモリ約 8MB（[ベンチマーク](docs/BENCHMARKS.md)）
 - Git連携、シンタックスハイライト、PDFプレビュー、ファジーファインダー
 - Vimキーバインド、マウス対応、Luaプラグイン
 

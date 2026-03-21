@@ -16,10 +16,12 @@ English | [日本語](README_ja.md)
   <img src="assets/demo.gif" alt="FileView Demo" width="80%">
 </p>
 
+I wanted a lightweight file manager like yazi that I could use day-to-day in the terminal and also connect to Claude Code — without spending time on config files.
+
 ## Features
 
 - Auto image preview (Kitty, iTerm2, Sixel, Halfblocks)
-- 2.2ms startup, ~8MB memory
+- 2.2ms startup, ~8MB memory ([benchmarks](docs/BENCHMARKS.md))
 - Git status, syntax highlighting, PDF preview, fuzzy finder
 - Vim keybindings, mouse support, Lua plugins
 
