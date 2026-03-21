@@ -86,9 +86,10 @@ CLI arguments override config file settings:
 ## Configuration Priority
 
 1. CLI arguments (highest priority)
-2. Environment variables
-3. Configuration file (`~/.config/fileview/config.toml`)
-4. Default values (lowest priority)
+2. Configuration file (`~/.config/fileview/config.toml`)
+3. Default values (lowest priority)
+
+Environment variables (`FILEVIEW_ICONS`, `FILEVIEW_IMAGE_PROTOCOL`, `FILEVIEW_HELP_KEY_STYLE`) are evaluated independently at runtime.
 
 ## Example Configuration
 

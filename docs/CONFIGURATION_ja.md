@@ -85,10 +85,11 @@ CLI引数は設定ファイルの設定を上書きします:
 
 ## 設定の優先順位
 
-1. CLI引数 (最高優先度)
-2. 環境変数
-3. 設定ファイル (`~/.config/fileview/config.toml`)
-4. デフォルト値 (最低優先度)
+1. CLI引数（最高優先度）
+2. 設定ファイル（`~/.config/fileview/config.toml`）
+3. デフォルト値（最低優先度）
+
+環境変数（`FILEVIEW_ICONS`, `FILEVIEW_IMAGE_PROTOCOL`, `FILEVIEW_HELP_KEY_STYLE`）は実行時に独立して評価されます。
 
 ## 設定例
 

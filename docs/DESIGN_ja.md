@@ -161,19 +161,27 @@ pub enum ViewMode {
 ツリー構造を画面表示用のフラットリストに変換する。
 
 ```rust
+// src/tree/navigator.rs
 impl TreeNavigator {
-    /// ツリーを可視エントリのリストに変換
-    pub fn flatten(&self) -> Vec<&TreeEntry> {
-        let mut entries = Vec::new();
-        self.collect_visible(&self.root, &mut entries);
-        entries
+    /// キャッシュが古い場合に再構築。描画前に1回呼ぶ。
+    pub fn ensure_cache(&mut self) {
+        if self.cache_dirty {
+            self.cached_visible.clear();
+            Self::collect_visible_cached(&self.root, &mut self.cached_visible);
+            self.cache_dirty = false;
+        }
     }
 
-    fn collect_visible<'a>(&'a self, entry: &'a TreeEntry, out: &mut Vec<&'a TreeEntry>) {
-        out.push(entry);
+    /// キャッシュ済みの可視エントリを返す（O(1)）
+    pub fn visible_entries(&self) -> &[VisibleEntry] {
+        &self.cached_visible
+    }
+
+    fn collect_visible_cached(entry: &TreeEntry, out: &mut Vec<VisibleEntry>) {
+        out.push(VisibleEntry { /* fields from entry */ });
         if entry.is_expanded() {
             for child in entry.children() {
-                self.collect_visible(child, out);
+                Self::collect_visible_cached(child, out);
             }
         }
     }
@@ -190,9 +198,32 @@ impl AppState {
         if self.focus_index < self.viewport_top {
             self.viewport_top = self.focus_index;
         } else if self.focus_index >= self.viewport_top + visible_height {
-            self.viewport_top = self.focus_index - visible_height + 1;
+            self.viewport_top = self.focus_index.saturating_sub(visible_height) + 1;
         }
     }
+}
+```
+
+### 3.3 ドラッグ&ドロップ検出
+
+一部のターミナル（Ghostty等）はドロップされたファイルパスを高速なキー入力として送信する。`PathBuffer` がこれを検出する。
+
+```rust
+// src/handler/mouse.rs
+pub struct PathBuffer {
+    data: String,
+    last_input: Option<Instant>,
+}
+
+impl PathBuffer {
+    /// 文字をバッファに追加。入力が遅い場合はリセット
+    pub fn push(&mut self, c: char);
+
+    /// 入力が一時停止し、処理可能か判定
+    pub fn is_ready(&self) -> bool;
+
+    /// バッファから有効なファイルパスを抽出
+    pub fn take_paths(&mut self) -> Vec<PathBuf>;
 }
 ```
 
@@ -231,6 +262,7 @@ fv --on-select "file {path}"
 | 0 | パス選択あり |
 | 1 | キャンセル |
 | 2 | エラー |
+| 3 | 不正な引数 |
 
 ---
 

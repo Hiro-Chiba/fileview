@@ -17,7 +17,7 @@ Complete keybinding reference for FileView (fv).
 
 | Key | Action |
 |-----|--------|
-| `l` / `Tab` | Expand directory |
+| `l` | Expand directory |
 | `h` / `Backspace` | Collapse directory |
 | `→` | Expand directory (or switch focus to preview when visible) |
 | `←` | Collapse directory (or switch focus to tree when visible) |
@@ -89,7 +89,7 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 | `P` | Toggle side preview panel |
 | `o` | Open fullscreen preview |
 | `Tab` | Close side preview / toggle expand directory / open file preview |
-| `←` / `→` | Collapse / expand (same as h/l) |
+| `←` / `→` | Collapse / expand (switch focus when preview visible) |
 | `[` | Previous PDF page |
 | `]` | Next PDF page |
 
