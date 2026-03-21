@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MSRV](https://img.shields.io/badge/MSRV-1.90-blue.svg)](https://www.rust-lang.org)
 
-> 設定不要のターミナルファイルブラウザ（画像プレビュー自動検出）
+> 設定不要のターミナルファイルブラウザ。画像プレビュー自動検出、Rust製。
 
 [English](README.md) | 日本語
 
@@ -16,20 +16,12 @@
   <img src="assets/demo.gif" alt="FileView デモ" width="80%">
 </p>
 
-## なぜ fv？
+## 特徴
 
-```
-軽量 ◄───────────────────────────────► 高機能
-
-  nnn    lf    fv    ranger    yazi
- 3.4MB  12MB  8MB    28MB     38MB    ← Memory (idle)
-```
-
-- **設定不要** - インストールして即使える
-- **画像自動プレビュー** - Kitty/iTerm2/Sixel/Halfblocks を自動検出
-- **高速** - 起動 2.2ms、メモリ 8MB（ranger: 400ms/28MB）
-- **バッテリー同梱** - Git連携、シンタックスハイライト、PDFプレビュー
-- **Vimキーバインド** - j/k/h/l で操作
+- 画像プレビュー自動検出（Kitty, iTerm2, Sixel, Halfblocks）
+- 起動 2.2ms、メモリ約 8MB
+- Git連携、シンタックスハイライト、PDFプレビュー、ファジーファインダー
+- Vimキーバインド、マウス対応、Luaプラグイン
 
 ## クイックスタート
 
@@ -38,40 +30,14 @@ cargo install fileview
 fv
 ```
 
-## 3分で始めるAIワークフロー（推奨）
+## インストールオプション
 
-```bash
-# 1) Claude MCP連携を一度だけ設定
-fv init claude
-
-# 2) AI向けコンテキストを生成
-fv --context-pack review --agent claude
-
-# 3) 前回セッションを復元
-fv --resume-ai-session
-```
-
-関連ドキュメント:
-- [Claude Codeガイド](docs/CLAUDE_CODE_ja.md)
-- [競合スコアカード（週次更新）](docs/COMPETITIVE_SCORECARD.md)
-- [リリース方針](docs/RELEASE_POLICY.md)
-
-## 機能
-
-| 機能 | 説明 |
-|------|------|
-| ツリーナビゲーション | Vimキーで展開/折りたたみ |
-| 複数選択 | バッチ操作対応 |
-| プレビューパネル | テキスト、画像、アーカイブ、PDF、Hex |
-| シンタックスハイライト | 100+言語対応 |
-| ファイル操作 | 作成、リネーム、削除、コピー/ペースト |
-| ファジーファインダー | `Ctrl+P` で素早く検索 |
-| マウス対応 | クリック、スクロール、ドラッグ |
-| Nerd Fonts | アイコンはデフォルト有効 |
+Chafa画像サポート: `cargo install fileview --features chafa`<br>
+速度最適化ビルド: `cargo install fileview --profile release-fast`
 
 ## 画像プレビュー
 
-ターミナルを自動検出:
+ターミナルを自動検出します:
 
 | ターミナル | プロトコル |
 |-----------|-----------|
@@ -80,7 +46,7 @@ fv --resume-ai-session
 | Foot / Windows Terminal | Sixel |
 | VS Code / Alacritty | Halfblocks |
 
-## キーバインド（クイックリファレンス）
+## キーバインド
 
 | キー | 動作 |
 |------|------|
@@ -91,39 +57,13 @@ fv --resume-ai-session
 | `/` | 検索 |
 | `Ctrl+P` | ファジーファインダー |
 | `P` | プレビューパネル |
-| `Ctrl+Shift+Enter` | レビュー用コンテキストパックをコピー |
 | `q` | 終了 |
 
-**[完全なキーバインド一覧](docs/KEYBINDINGS_ja.md)**
+全キーバインドは [docs/KEYBINDINGS_ja.md](docs/KEYBINDINGS_ja.md) を参照。
 
 ## Claude Code 連携
 
-FileView は Claude Code との AI ペアプログラミングに最適化されています:
-
-```bash
-# AI向けプロジェクトコンテキスト
-fv --context
-
-# ディレクトリツリーをコンテキストとして出力
-fv --tree --depth 2 ./src
-
-# ファイルをすばやく選択
-selected=$(fv --select-mode --multi)
-
-# Claude 向けフォーマットでファイル内容をコピー
-# fileview 内で Ctrl+Y を押すとシンタックスヒント付きでコピー
-```
-
-### スマート選択
-
-| キー | 動作 |
-|------|------|
-| `Ctrl+G` | Git変更ファイルを一括選択 |
-| `Ctrl+T` | テストペアファイルを選択 |
-
-### MCP サーバー
-
-FileView を Claude Code の MCP サーバーとして使用:
+FileView は Claude Code の MCP サーバーとして使えます（`fv --mcp-server`）。
 
 ```json
 {
@@ -136,142 +76,14 @@ FileView を Claude Code の MCP サーバーとして使用:
 }
 ```
 
-**MCP 2.0 ツール (26ツール):**
-
-| カテゴリ | ツール |
-|----------|-------|
-| ファイル | `list_directory`, `get_tree`, `read_file`, `read_files`, `write_file`, `delete_file`, `search_code` |
-| Git | `get_git_status`, `get_git_diff`, `git_log`, `stage_files`, `create_commit` |
-| 解析 | `get_file_symbols`, `get_definitions`, `get_references`, `get_diagnostics` |
-| 依存関係 | `get_dependency_graph`, `get_import_tree`, `find_circular_deps` |
-| コンテキスト | `get_smart_context`, `estimate_tokens`, `compress_context` |
-| プロジェクト | `run_build`, `run_test`, `run_lint`, `get_project_stats` |
-
-**[MCPドキュメント詳細](docs/CLAUDE_CODE.md)**
-
-## CLIオプション
-
-```bash
-fv [OPTIONS] [PATH]
-
-オプション:
-  -p, --pick          Pickモード: 選択パスを出力
-  -f, --format FMT    出力形式: lines, null, json
-  --stdin             stdinからパスを読み込み
-  --on-select CMD     選択時にコマンド実行
-  --choosedir         終了時にディレクトリを出力
-  -a, --hidden        隠しファイルを表示
-  --no-icons          Nerd Fontsアイコンを無効化
-
-Claude Code連携:
-  -t, --tree          ディレクトリツリーをstdoutに出力
-  --depth N           ツリー深度を制限
-  --context           AI向けプロジェクトコンテキストを出力
-  --context-pack P    コンテキストパック preset 出力 (minimal/review/debug/refactor/incident/onboarding)
-  --context-format F  コンテキスト形式: ai-md, jsonl
-  --agent A           エージェントプロファイル: claude, codex, cursor
-  --token-budget N    コンテキストのトークン予算
-  --include-git-diff  コンテキストにgit diff要約を含める
-  --include-tests     推定テストファイルを含める
-  --context-depth N   フォールバックスキャン深度
-  --with-content      出力にファイル内容を含める
-  --select-mode       シンプル選択モード
-  --multi             複数選択を許可
-  --select-related F  対象ファイルに関連するファイルを出力
-  --explain-selection 関連ファイル選定理由を出力
-  --resume-ai-session [NAME]
-                      名前付きAIセッションを復元（省略時: ai）
-  --mcp-server        MCPサーバーとして起動
-  --session ACTION    セッション管理: save, restore, clear
-  --selection-path F  終了時に選択パスをファイルに書き出し
-  benchmark ai        AI向けベンチマークを実行
-  init claude         Claude設定にfileview MCPエントリを自動追加
-  plugin init         プラグインテンプレートを作成
-  plugin test PATH    プラグインをサンドボックスでテスト
-
-環境変数:
-  FILEVIEW_ICONS=0            アイコンを無効化
-  FILEVIEW_IMAGE_PROTOCOL     画像プロトコル強制: auto, halfblocks, chafa, sixel, kitty, iterm2
-  FILEVIEW_HELP_KEY_STYLE     ヘルプキースタイル: solid, outline, plain
-```
-
-### 終了コード
-
-| コード | 意味 |
-|--------|------|
-| 0 | 成功 |
-| 1 | キャンセル（Pickモード） |
-| 2 | 実行時エラー |
-| 3 | 不正な引数 |
-
-## シェル連携
-
-```bash
-# .bashrc または .zshrc に追加
-fvcd() {
-  local dir=$(fv --choosedir "$@")
-  [ -n "$dir" ] && [ -d "$dir" ] && cd "$dir"
-}
-```
-
-## インストールオプション
-
-```bash
-# 標準インストール
-cargo install fileview
-
-# Chafaサポート付き（基本ターミナルでの高品質画像）
-brew install chafa  # または apt install libchafa-dev
-cargo install fileview --features chafa
-```
-
-## 安定性
-
-- 現在のチャネル: `stable`（`2.4.0`）
-- stable移行条件は `docs/STABILITY.md` に明記しています。
-- 2026-02-04 時点で条件を満たし、stableリリース承認済みです。
-
-## Lua プラグインシステム
-
-Lua スクリプトで FileView を拡張できます:
-
-```lua
--- ~/.config/fileview/plugins/init.lua
-
--- 起動時通知
-fv.notify("プラグイン読み込み完了!")
-
--- イベントに反応
-fv.on("file_selected", function(path)
-    if path and path:match("%.secret$") then
-        fv.notify("警告: 秘密ファイル!")
-    end
-end)
-
--- カスタムコマンド
-fv.register_command("copy-path", function()
-    local file = fv.current_file()
-    if file then
-        fv.set_clipboard(file)
-        fv.notify("コピー: " .. file)
-    end
-end)
-```
-
-**[プラグイン API リファレンス](docs/PLUGINS_ja.md)**
+詳細: [docs/CLAUDE_CODE_ja.md](docs/CLAUDE_CODE_ja.md)
 
 ## ドキュメント
 
-- [Claude Code 連携](docs/CLAUDE_CODE.md) - AI ペアプログラミングガイド
-- [Claude Code 連携（日本語）](docs/CLAUDE_CODE_ja.md) - AI ペアプログラミングガイド
-- [キーバインド](docs/KEYBINDINGS_ja.md) - 完全なキーバインド一覧
-- [プラグイン](docs/PLUGINS_ja.md) - Lua プラグインシステム
-- [競合比較](docs/COMPARISON.md) - yazi, lf, ranger, nnn との比較
-- [ロードマップ](docs/ROADMAP.md) - 今後の方針とリリース履歴
-- [ベンチマーク](docs/BENCHMARKS.md) - パフォーマンスデータ
-- [セキュリティ](docs/SECURITY.md) - セキュリティモデル
-- [安定性](docs/STABILITY.md) - リリースチャネル方針とalpha終了条件
-- [リリースポリシー](docs/RELEASE_POLICY.md) - バージョニングと運用ルール
+- [キーバインド](docs/KEYBINDINGS_ja.md)
+- [Claude Code / MCP](docs/CLAUDE_CODE_ja.md)
+- [Luaプラグイン](docs/PLUGINS_ja.md)
+- [他のファイルマネージャとの比較](docs/COMPARISON.md)
 
 ## ライセンス
 
