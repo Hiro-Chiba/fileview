@@ -30,6 +30,9 @@ Complete keybinding reference for FileView (fv).
 | Key | Action |
 |-----|--------|
 | `Space` | Toggle mark |
+| `V` | Start visual selection mode |
+| `*` | Select all items |
+| `Alt+I` | Invert selection |
 | `Esc` | Clear all marks |
 
 ## File Operations
@@ -39,6 +42,7 @@ Complete keybinding reference for FileView (fv).
 | `a` | Create new file |
 | `A` | Create new directory |
 | `r` | Rename |
+| `R` | Bulk rename (when files are selected) |
 | `D` / `Delete` | Delete (with confirmation) |
 | `y` | Copy to clipboard |
 | `d` | Cut to clipboard |
@@ -120,12 +124,46 @@ PDF files are rendered as images using `pdftoppm` from poppler-utils:
 - Current page and total pages shown in title bar: `document.pdf (3/10)`
 - Falls back to hex preview if poppler-utils is not installed
 
-## System Clipboard
+## Clipboard
 
 | Key | Action |
 |-----|--------|
 | `c` | Copy path to system clipboard |
 | `C` | Copy filename to system clipboard |
+| `Y` | Copy file content to clipboard |
+
+## Git Operations
+
+| Key | Action |
+|-----|--------|
+| `s` | Stage file |
+| `u` | Unstage file |
+| `Ctrl+G` | Select all git-changed files |
+| `Ctrl+Shift+T` | Select test file pair |
+| `Alt+R` | Select files from recent commit |
+
+## AI / Claude Code
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+Y` | Copy in Claude-friendly format |
+| `Ctrl+Shift+Y` | Copy AI context pack |
+| `Ctrl+Enter` | Copy review context pack |
+| `Alt+Y` | Copy in compact format |
+| `Ctrl+A` | Toggle AI focus mode |
+| `Ctrl+Shift+P` | Open AI history |
+| `Alt+P` | Toggle peek mode (mini preview in status bar) |
+| `Ctrl+R` | Select related files |
+| `Ctrl+E` | Select error context files |
+
+## Tabs
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+T` | New tab |
+| `Ctrl+W` | Close tab |
+| `Alt+T` | Next tab |
+| `Alt+Shift+T` | Previous tab |
 
 ## Bookmarks
 
@@ -162,7 +200,8 @@ Press `F` to set or clear a file filter:
 | Key | Action |
 |-----|--------|
 | `.` | Toggle hidden files |
-| `R` / `F5` | Refresh |
+| `F5` | Refresh |
+| `Alt+S` | Open subshell in current directory |
 | `?` | Show help |
 | `q` | Quit |
 | `Q` | Quit and cd to current directory (with `--choosedir`) |

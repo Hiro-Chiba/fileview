@@ -8,8 +8,14 @@ FileView は `~/.config/fileview/theme.toml` でカスタムカラーテーマ�
 [colors]
 background = "default"    # メイン背景
 foreground = "white"      # デフォルトテキスト色
-selection = "blue"        # 選択ハイライト
-border = "gray"           # ボーダー色
+selection = "darkgray"    # 選択ハイライト
+border = "default"        # ボーダー色
+border_active = "cyan"    # アクティブボーダー（フォーカスパネル）
+status_bg = "default"     # ステータスバー背景
+status_fg = "white"       # ステータスバーフォアグラウンド
+error = "red"             # エラーメッセージ色
+warning = "yellow"        # 警告メッセージ色
+info = "blue"             # 情報メッセージ色
 help_key_fg = "black"     # ヘルプポップアップのキーテキスト色
 help_key_bg = "cyan"      # ヘルプポップアップのキー背景色
 
@@ -19,13 +25,20 @@ executable = "green"      # 実行可能ファイル色
 symlink = "cyan"          # シンボリックリンク色
 archive = "red"           # アーカイブファイル色 (.zip, .tar等)
 image = "magenta"         # 画像ファイル色
-media = "magenta"         # メディアファイル色
+video = "magenta"         # 動画ファイル色
+audio = "magenta"         # 音声ファイル色
+document = "yellow"       # ドキュメントファイル色 (.pdf, .doc等)
+source = "green"          # ソースコードファイル色
+markup = "yellow"         # マークアップファイル色 (.md, .html等)
 
 [git_colors]
 modified = "yellow"       # 変更されたファイル
 staged = "green"          # ステージされたファイル
-untracked = "red"         # 未追跡ファイル
-conflict = "red"          # コンフリクトファイル
+untracked = "green"       # 未追跡ファイル
+deleted = "red"           # 削除されたファイル
+renamed = "cyan"          # リネームされたファイル
+conflict = "magenta"      # コンフリクトファイル
+ignored = "darkgray"      # 無視されたファイル
 ```
 
 ## カラーフォーマット

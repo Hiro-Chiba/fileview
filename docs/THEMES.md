@@ -8,8 +8,14 @@ FileView supports custom color themes via `~/.config/fileview/theme.toml`.
 [colors]
 background = "default"    # Main background
 foreground = "white"      # Default text color
-selection = "blue"        # Selection highlight
-border = "gray"           # Border color
+selection = "darkgray"    # Selection highlight
+border = "default"        # Border color
+border_active = "cyan"    # Active border (focused panel)
+status_bg = "default"     # Status bar background
+status_fg = "white"       # Status bar foreground
+error = "red"             # Error message color
+warning = "yellow"        # Warning message color
+info = "blue"             # Info message color
 help_key_fg = "black"     # Help popup key text color
 help_key_bg = "cyan"      # Help popup key background color
 
@@ -19,13 +25,20 @@ executable = "green"      # Executable file color
 symlink = "cyan"          # Symbolic link color
 archive = "red"           # Archive file color (.zip, .tar, etc.)
 image = "magenta"         # Image file color
-media = "magenta"         # Media file color
+video = "magenta"         # Video file color
+audio = "magenta"         # Audio file color
+document = "yellow"       # Document file color (.pdf, .doc, etc.)
+source = "green"          # Source code file color
+markup = "yellow"         # Markup file color (.md, .html, etc.)
 
 [git_colors]
 modified = "yellow"       # Modified file
 staged = "green"          # Staged file
-untracked = "red"         # Untracked file
-conflict = "red"          # Conflict file
+untracked = "green"       # Untracked file
+deleted = "red"           # Deleted file
+renamed = "cyan"          # Renamed file
+conflict = "magenta"      # Conflict file
+ignored = "darkgray"      # Ignored file
 ```
 
 ## Color Formats
