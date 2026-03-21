@@ -10,10 +10,10 @@
 
 [English](README.md) | 日本語
 
-## スクリーンショット
+## デモ
 
 <p align="center">
-  <img src="assets/screenshot-tree.png" alt="FileView ツリービュー" width="70%">
+  <img src="assets/demo.gif" alt="FileView デモ" width="80%">
 </p>
 
 ## なぜ fv？
