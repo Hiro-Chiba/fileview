@@ -40,13 +40,9 @@ fv --mcp-server
 
 | キー | 動作 |
 |---|---|
-| `Ctrl+Shift+Y` | minimal context pack をコピー |
-| `Ctrl+Shift+Enter` | review context pack をコピー |
-| `Ctrl+Shift+P` | AI履歴ポップアップ |
-| `Ctrl+A` | AIフォーカスモード切替 |
-| `Ctrl+R` | 関連ファイル選択 |
+| `Ctrl+Y` | Claude向けフォーマットでコピー |
 | `Ctrl+G` | Git変更ファイル選択 |
-| `Ctrl+T` | テストペア選択 |
+| `Ctrl+Shift+T` | テストペア選択 |
 
 ## Claude設定の自動初期化
 
