@@ -85,7 +85,7 @@ Details: [docs/CLAUDE_CODE.md](docs/CLAUDE_CODE.md)
 - [Keybindings](docs/KEYBINDINGS.md)
 - [Claude Code / MCP](docs/CLAUDE_CODE.md)
 - [Lua Plugins](docs/PLUGINS.md)
-- [Comparison with other file managers](docs/COMPARISON.md)
+
 
 ## License
 

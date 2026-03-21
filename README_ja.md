@@ -85,7 +85,7 @@ FileView は Claude Code の MCP サーバーとして使えます（`fv --mcp-s
 - [キーバインド](docs/KEYBINDINGS_ja.md)
 - [Claude Code / MCP](docs/CLAUDE_CODE_ja.md)
 - [Luaプラグイン](docs/PLUGINS_ja.md)
-- [他のファイルマネージャとの比較](docs/COMPARISON.md)
+
 
 ## ライセンス
 
