@@ -121,7 +121,7 @@ pub fn fuzzy_match_incremental(
         })
         .collect();
 
-    results.sort_by(|a, b| b.score.cmp(&a.score));
+    results.sort_by_key(|b| std::cmp::Reverse(b.score));
     results.truncate(MAX_RESULTS);
 
     state.matched_indices = new_matched_indices;
@@ -184,7 +184,7 @@ pub fn fuzzy_match(query: &str, paths: &[PathBuf], root: &PathBuf) -> Vec<FuzzyM
         .collect();
 
     // Sort by score descending
-    results.sort_by(|a, b| b.score.cmp(&a.score));
+    results.sort_by_key(|b| std::cmp::Reverse(b.score));
 
     // Limit results
     results.truncate(MAX_RESULTS);
