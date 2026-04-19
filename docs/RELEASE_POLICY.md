@@ -39,6 +39,19 @@ Stable 昇格前に以下を満たすこと:
 2. pre-release は suffix を含める（例: `v2.4.0-alpha.1`）
 3. superseded な版（例: 公開直後に置き換え）を `CHANGELOG.md` に明記
 
+## Publishing to crates.io
+
+crates.io への公開は**手動**で行う（CI では行わない）。
+
+```bash
+cargo publish --no-verify
+```
+
+GitHub Actions の `release.yml` はタグ push でバイナリビルドと GitHub
+Release 作成のみ自動化する。crates.io publish を CI から外してあるのは、
+公開タイミングをメンテナ側で制御できるようにするため、および
+`CARGO_REGISTRY_TOKEN` を Actions secret として常時持ち込まないため。
+
 ## Communication Rules
 
 毎リリースで以下を更新:
