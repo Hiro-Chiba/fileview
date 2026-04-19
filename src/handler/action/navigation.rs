@@ -21,10 +21,8 @@ pub fn handle(action: KeyAction, state: &mut AppState, entries: &[EntrySnapshot]
         KeyAction::MoveUp => {
             state.focus_index = state.focus_index.saturating_sub(1);
         }
-        KeyAction::MoveDown => {
-            if state.focus_index < entries.len().saturating_sub(1) {
-                state.focus_index += 1;
-            }
+        KeyAction::MoveDown if state.focus_index < entries.len().saturating_sub(1) => {
+            state.focus_index += 1;
         }
         KeyAction::MoveToTop => {
             state.focus_index = 0;
