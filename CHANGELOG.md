@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-04-19
+
+### Changed
+
+- **CI pipeline streamlined**: reduced required jobs per PR from 11 to 6.
+  `fmt` / `clippy` / `rustdoc` now share a single `lint` job, `audit` and
+  `coverage` moved to scheduled + main push, MSRV check is `cargo check
+  --locked` only. (#176)
+- **Crate description** reworded from "A minimal file tree UI for terminal
+  emulators" to "A fast, keyboard-driven TUI file browser with previews
+  and git" to reflect the actual feature surface. (#177)
+- Updated `zip` dependency to 8.3.1 (major version bump, internal to
+  archive preview; no user-visible behavior change). (#172)
+- Refreshed rust-minor-patch group and CI action versions
+  (codecov-action v6, action-gh-release v3). (#171, #173, #174)
+
+### Fixed
+
+- Resolved new Clippy lints surfaced by Rust 1.95. (#175)
+- Security audit CI job failed with `Resource not accessible by
+  integration`; granted `checks: write` and `issues: write` permissions
+  to `rustsec/audit-check`. (#177)
+
+### Docs
+
+- Fact-check pass across README, DESIGN, BENCHMARKS, CLAUDE_CODE,
+  keybindings and theme docs; several inaccuracies corrected.
+- `docs/BENCHMARKS.md` comparison table: configuration file support is
+  optional, not absent. (#177)
+- `docs/DESIGN.md`: tech stack now lists `anyhow + thiserror`; Non-Goals
+  clarifies archive creation/extraction is out of scope while read-only
+  preview is supported. (#177)
+- Refreshed `docs/STABILITY.md` assessment date. (#177)
+
 ## [2.4.0] - 2026-02-28
 
 ### Added
