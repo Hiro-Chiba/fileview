@@ -447,18 +447,14 @@ pub fn handle_pdf_navigation(
     };
 
     match action {
-        KeyAction::PdfPrevPage => {
-            if pdf.current_page > 1 {
-                if let Err(e) = pdf.prev_page(picker) {
-                    state.set_message(format!("Failed: prev page - {}", e));
-                }
+        KeyAction::PdfPrevPage if pdf.current_page > 1 => {
+            if let Err(e) = pdf.prev_page(picker) {
+                state.set_message(format!("Failed: prev page - {}", e));
             }
         }
-        KeyAction::PdfNextPage => {
-            if pdf.current_page < pdf.total_pages {
-                if let Err(e) = pdf.next_page(picker) {
-                    state.set_message(format!("Failed: next page - {}", e));
-                }
+        KeyAction::PdfNextPage if pdf.current_page < pdf.total_pages => {
+            if let Err(e) = pdf.next_page(picker) {
+                state.set_message(format!("Failed: next page - {}", e));
             }
         }
         _ => {}
