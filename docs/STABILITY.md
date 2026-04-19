@@ -17,7 +17,7 @@ FileView can move from alpha to stable when all conditions are met:
 3. `cargo audit` is green under committed policy (`.cargo/audit.toml`), and any temporary ignores are documented.
 4. CLI behavior is compatibility-focused (no unannounced breaking changes in existing flags/actions).
 
-## Current Assessment (2026-02-04)
+## Current Assessment (2026-04-19)
 
 - CI: green
 - Local quality gates: `cargo check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` all pass

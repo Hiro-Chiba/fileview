@@ -68,6 +68,6 @@ FileView prioritizes **startup speed** and **low memory** over features:
 | Plugin system | Lua | Yes (Lua) |
 | Async I/O | Partial | Full |
 | Built-in syntax highlighting | Yes | Yes |
-| Configuration file | No | Yes |
+| Configuration file | Optional | Yes |
 
 This is intentional - see [DESIGN.md](DESIGN.md) for rationale.
