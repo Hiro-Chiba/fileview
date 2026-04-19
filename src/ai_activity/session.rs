@@ -12,6 +12,8 @@
 //! garbage-collected opportunistically on scan.
 
 use std::fs::{self, OpenOptions};
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -88,10 +90,13 @@ impl SessionRegistry {
 
         let activity_log = dir.join("activity.jsonl");
         // Touch the file so `notify` has something to watch from the start.
-        OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&activity_log)
+        // Permissions are tightened to owner-only on unix so other local users
+        // cannot read which files an AI session has touched.
+        let mut opts = OpenOptions::new();
+        opts.create(true).append(true);
+        #[cfg(unix)]
+        opts.mode(0o600);
+        opts.open(&activity_log)
             .with_context(|| format!("creating {}", activity_log.display()))?;
 
         Ok(SessionInfo {

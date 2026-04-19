@@ -148,14 +148,23 @@ pub fn run_app(
     };
 
     // Register this process with the AI activity session registry so the MCP
-    // server can deliver tool-call events here. Failures are non-fatal.
+    // server can deliver tool-call events here. Failures are non-fatal but are
+    // surfaced to the status bar so the user isn't left wondering why
+    // `--follow-ai` does nothing.
     let ai_session: Option<SessionInfo> = SessionRegistry::new()
         .and_then(|r| r.register_current(&config.root))
         .ok();
-    state.ai_activity.follow_mode = config.follow_ai && ai_session.is_some();
     let ai_watcher = ai_session
         .as_ref()
         .and_then(|s| ActivityWatcher::start(s.activity_log.clone()).ok());
+    state.ai_activity.follow_mode = config.follow_ai && ai_watcher.is_some();
+    if config.follow_ai {
+        if ai_watcher.is_some() {
+            state.set_message("AI follow mode on (Alt+A to toggle)");
+        } else {
+            state.set_message("AI follow requested but activity registry unavailable");
+        }
+    }
 
     // Git status polling timer (configurable, default 5 seconds)
     let mut last_git_poll = Instant::now();

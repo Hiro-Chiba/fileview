@@ -58,12 +58,24 @@ pub struct AiActivityState {
 
 impl AiActivityState {
     /// Record a freshly observed event, bounding the ring buffer.
+    ///
+    /// When events arrive while a cursor is already set (e.g. the activity
+    /// log popup is open), `log_selected` is compensated so that it continues
+    /// to point at the same event after the new one is pushed to the front.
+    /// This prevents the silently-shifting-selection bug where the cursor
+    /// changes meaning without the user moving it.
     pub fn record(&mut self, event: ActivityEvent) {
         self.last_event = Some(event.clone());
         self.recent_events.push_front(event);
-        if self.recent_events.len() > MAX_RECENT_EVENTS {
+        let truncated = self.recent_events.len() > MAX_RECENT_EVENTS;
+        if truncated {
             self.recent_events.truncate(MAX_RECENT_EVENTS);
         }
+        // Shift the cursor by one to keep it on the same event. If the ring
+        // buffer was capped and truncated, the shifted cursor is bounded to
+        // the new length so it never points past the end.
+        let max_idx = self.recent_events.len().saturating_sub(1);
+        self.log_selected = (self.log_selected + 1).min(max_idx);
     }
 
     /// Toggle follow-mode, returning the new state.

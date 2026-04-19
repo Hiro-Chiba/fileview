@@ -24,6 +24,9 @@ I wanted a lightweight file manager like yazi that I could use day-to-day in the
 - 2.2ms startup, ~8MB memory ([benchmarks](docs/BENCHMARKS.md))
 - Git status, syntax highlighting, PDF preview, fuzzy finder
 - Vim keybindings, mouse support, Lua plugins
+- Live AI activity reflection: when an AI agent drives `fv --mcp-server`,
+  the interactive TUI surfaces its file activity in the status bar and
+  optionally follows along (see [docs/CLAUDE_CODE.md](docs/CLAUDE_CODE.md))
 
 ## Quick Start
 

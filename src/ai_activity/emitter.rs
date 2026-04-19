@@ -7,6 +7,8 @@
 
 use std::fs::OpenOptions;
 use std::io::Write;
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -91,10 +93,11 @@ fn absolutize(path: &Path) -> PathBuf {
 }
 
 fn append_event(activity_log: &Path, event: &ActivityEvent) -> std::io::Result<()> {
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(activity_log)?;
+    let mut opts = OpenOptions::new();
+    opts.create(true).append(true);
+    #[cfg(unix)]
+    opts.mode(0o600);
+    let mut file = opts.open(activity_log)?;
     let line = serde_json::to_string(event)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     writeln!(file, "{}", line)?;

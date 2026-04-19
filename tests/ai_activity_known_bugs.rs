@@ -19,6 +19,8 @@ use fileview::ai_activity::{
     ActivityEmitter, ActivityEvent, ActivityWatcher, AiActivityState, SessionRegistry,
 };
 use fileview::core::{AppState, ViewMode};
+use fileview::mcp::server::extract_primary_paths;
+use fileview::mcp::types::ToolCallParams;
 use fileview::render::render_ai_activity_popup;
 use ratatui::{backend::TestBackend, style::Color, Terminal};
 use tempfile::TempDir;
@@ -37,7 +39,6 @@ use tempfile::TempDir;
 /// adjusting a scroll offset, so cells with `bg == Cyan` never appear when the
 /// cursor is past `max_items`.
 #[test]
-#[ignore = "known bug: popup does not scroll to keep cursor visible (PR #179)"]
 fn bug_popup_scrolls_to_keep_selection_visible() {
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).unwrap();
@@ -90,7 +91,6 @@ fn bug_popup_scrolls_to_keep_selection_visible() {
 /// relies on umask; on most systems this ends up 0o644 or 0o664.
 #[cfg(unix)]
 #[test]
-#[ignore = "known bug: activity.jsonl is world-readable (PR #179)"]
 fn bug_activity_log_file_permissions_are_owner_only() {
     use std::os::unix::fs::PermissionsExt;
 
@@ -127,7 +127,6 @@ fn bug_activity_log_file_permissions_are_owner_only() {
 /// Current behaviour: the cursor is a plain index into the ring buffer, and
 /// new events push_front, so indexed identity is not stable.
 #[test]
-#[ignore = "known bug: popup cursor does not track event identity across inserts (PR #179)"]
 fn bug_popup_cursor_follows_intended_event_across_inserts() {
     let mut state = AiActivityState::default();
     state.record(ActivityEvent::now("test", "a", None));
@@ -177,15 +176,16 @@ fn wait_for_events(
 
 /// Repro:
 /// 1. Register a session and start a watcher.
-/// 2. Simulate the MCP dispatch of `read_files` with 3 paths by emitting
-///    the tool as the server would (one call to `extract_primary_path` +
-///    one `emit`). In production, `extract_primary_path` for `read_files`
-///    returns only the first element of `paths`, so only one event lands.
-/// 3. Expect the watcher to observe 3 events (one per path).
+/// 2. Ask `extract_primary_paths` (the real MCP dispatcher helper) for the
+///    paths a `read_files` call would act on.
+/// 3. Emit once per returned path, mirroring what the dispatcher does.
+/// 4. Expect the watcher to observe 3 events — one per path.
 ///
-/// Current behaviour: exactly 1 event arrives.
+/// Before the fix `extract_primary_paths` returned a single path (only the
+/// first element of `paths`), so a multi-file read surfaced as a single UI
+/// event. After the fix the helper returns every path and the dispatcher
+/// loops `emit` over them.
 #[test]
-#[ignore = "known quirk: read_files emits only the first path (PR #179)"]
 fn bug_read_files_emits_one_event_per_path() {
     let tmp = TempDir::new().unwrap();
     let registry_dir = tmp.path().join("sessions");
@@ -197,18 +197,28 @@ fn bug_read_files_emits_one_event_per_path() {
     let reg_mcp = SessionRegistry::at(registry_dir).unwrap();
     let emitter = ActivityEmitter::with_registry(reg_mcp, "test");
 
-    // Simulate how a fixed extract_primary_path SHOULD behave for read_files:
-    // one emit per path. If/when the bug is fixed, this is what the MCP
-    // dispatcher will do. Today the dispatcher only emits for the first path,
-    // so in production the watcher sees exactly one event; this test asserts
-    // the fixed behaviour.
     let paths = [root.join("a.rs"), root.join("b.rs"), root.join("c.rs")];
     for p in &paths {
         fs::write(p, "").unwrap();
     }
 
-    // Current production code path (extract_primary_path returns paths[0]):
-    emitter.emit("read_files", Some(&paths[0]));
+    // Mirror the dispatcher's behaviour: ask the real helper what paths
+    // the tool acts on, then emit once per path.
+    let params = ToolCallParams {
+        name: "read_files".to_string(),
+        arguments: serde_json::json!({
+            "paths": [
+                paths[0].to_string_lossy(),
+                paths[1].to_string_lossy(),
+                paths[2].to_string_lossy(),
+            ]
+        }),
+    };
+    let extracted = extract_primary_paths(&params, &root);
+    assert_eq!(extracted.len(), 3, "extract should return all paths");
+    for p in &extracted {
+        emitter.emit(&params.name, Some(p));
+    }
 
     let received = wait_for_events(&watcher, 3, Duration::from_secs(2));
     reg_tui.unregister(&session);
@@ -216,8 +226,8 @@ fn bug_read_files_emits_one_event_per_path() {
     assert_eq!(
         received.len(),
         3,
-        "expected one event per path (3 total), got {} — the MCP dispatcher \
-         only emits the first element of `paths` today",
-        received.len()
+        "expected one event per path (3 total), got {}: {:?}",
+        received.len(),
+        received
     );
 }

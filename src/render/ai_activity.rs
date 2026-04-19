@@ -52,13 +52,21 @@ pub fn render_ai_activity_popup(frame: &mut Frame, state: &AppState) {
     frame.render_widget(Clear, popup);
 
     let selected = state.ai_activity.log_selected;
-    let max_items = height.saturating_sub(2) as usize;
+    let max_items = (height.saturating_sub(2) as usize).max(1);
+    // Scroll offset: keep the selected row in view when log_selected exceeds
+    // the number of rows we can draw. Offset is the index of the topmost row.
+    let offset = if selected < max_items {
+        0
+    } else {
+        selected + 1 - max_items
+    };
     let items: Vec<ListItem> = state
         .ai_activity
         .recent_events
         .iter()
-        .take(max_items.max(1))
         .enumerate()
+        .skip(offset)
+        .take(max_items)
         .map(|(idx, event)| {
             let style = if idx == selected {
                 Style::default()
