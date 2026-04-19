@@ -44,11 +44,13 @@ pub enum ViewMode {
     },
     /// Help popup display
     Help,
-    /// AI history popup
+    /// AI history popup (context packs already generated this session)
     AiHistory {
         /// Index of selected entry
         selected: usize,
     },
+    /// Live AI activity log popup (events streamed from the MCP server)
+    AiActivityLog,
     /// Waiting for bookmark slot input (set bookmark)
     BookmarkSet,
     /// Waiting for bookmark slot input (jump to bookmark)

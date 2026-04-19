@@ -1,5 +1,6 @@
 //! Render module - UI rendering
 
+pub mod ai_activity;
 pub mod bulk_rename;
 pub mod fuzzy;
 pub mod history;
@@ -12,6 +13,7 @@ pub mod terminal;
 pub mod theme;
 pub mod tree;
 
+pub use ai_activity::{render_ai_activity_popup, status_indicator as ai_activity_status_indicator};
 pub use bulk_rename::render_bulk_rename_dialog;
 pub use fuzzy::{
     collect_paths, fuzzy_match, fuzzy_match_incremental, render_fuzzy_finder, FuzzyMatch,

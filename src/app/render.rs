@@ -173,6 +173,7 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
     // Render help popup if in Help mode
     render_help_popup(frame, ctx.state);
     render_ai_history_popup(frame, ctx.state);
+    crate::render::render_ai_activity_popup(frame, ctx.state);
 
     // Render bulk rename dialog if in BulkRename mode
     if matches!(ctx.state.mode, ViewMode::BulkRename { .. }) {

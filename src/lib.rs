@@ -4,6 +4,7 @@
 //! designed for use in modern terminal emulators like Ghostty.
 
 pub mod action;
+pub mod ai_activity;
 pub mod app;
 pub mod core;
 pub mod error;

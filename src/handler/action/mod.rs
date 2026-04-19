@@ -6,7 +6,7 @@
 mod bookmark;
 mod bulk_rename;
 pub mod command;
-mod display;
+pub mod display;
 mod file_ops;
 mod filter;
 mod git_ops;
@@ -347,7 +347,12 @@ pub fn handle_action(
         | KeyAction::OpenAiHistory
         | KeyAction::AiHistoryUp
         | KeyAction::AiHistoryDown
-        | KeyAction::AiHistorySelect => {
+        | KeyAction::AiHistorySelect
+        | KeyAction::ToggleAiFollow
+        | KeyAction::OpenAiActivityLog
+        | KeyAction::AiActivityLogUp
+        | KeyAction::AiActivityLogDown
+        | KeyAction::AiActivityLogSelect => {
             display::handle(action, state, navigator, focused_path)?;
             Ok(ActionResult::Continue)
         }

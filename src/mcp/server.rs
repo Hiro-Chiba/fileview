@@ -3,13 +3,14 @@
 //! JSON-RPC server communicating over stdin/stdout.
 
 use std::io::{self, BufRead, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::json;
 
 use super::handlers::{analysis, context, dependency, file, git, project};
 use super::registry;
 use super::types::*;
+use crate::ai_activity::ActivityEmitter;
 
 /// Run the MCP server
 pub fn run_server(root: &Path) -> anyhow::Result<()> {
@@ -18,6 +19,11 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
 
     let reader = stdin.lock();
     let mut writer = stdout.lock();
+
+    // Emitter for AI activity reflection. Best-effort: failures are swallowed
+    // inside `emit` so the MCP server never fails a tool call because the UI
+    // side was unreachable.
+    let emitter = ActivityEmitter::new();
 
     for line in reader.lines() {
         let line = match line {
@@ -32,7 +38,7 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
             continue;
         }
 
-        let response = handle_request(root, &line);
+        let response = handle_request(root, &line, &emitter);
         let response_json = serde_json::to_string(&response)?;
         writeln!(writer, "{}", response_json)?;
         writer.flush()?;
@@ -42,7 +48,7 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
 }
 
 /// Handle a single JSON-RPC request
-fn handle_request(root: &Path, request_str: &str) -> JsonRpcResponse {
+fn handle_request(root: &Path, request_str: &str, emitter: &ActivityEmitter) -> JsonRpcResponse {
     let request: JsonRpcRequest = match serde_json::from_str(request_str) {
         Ok(r) => r,
         Err(e) => {
@@ -58,7 +64,7 @@ fn handle_request(root: &Path, request_str: &str) -> JsonRpcResponse {
         "initialize" => handle_initialize(request.id),
         "initialized" => JsonRpcResponse::success(request.id, json!({})),
         "tools/list" => handle_tools_list(request.id),
-        "tools/call" => handle_tools_call(root, request.id, request.params),
+        "tools/call" => handle_tools_call(root, request.id, request.params, emitter),
         "ping" => JsonRpcResponse::success(request.id, json!({})),
         _ => JsonRpcResponse::error(
             request.id,
@@ -105,6 +111,7 @@ fn handle_tools_call(
     root: &Path,
     id: Option<serde_json::Value>,
     params: serde_json::Value,
+    emitter: &ActivityEmitter,
 ) -> JsonRpcResponse {
     let call_params: ToolCallParams = match serde_json::from_value(params) {
         Ok(p) => p,
@@ -117,11 +124,60 @@ fn handle_tools_call(
         }
     };
 
+    // Emit activity BEFORE dispatch so even slow/failing tools register on the UI.
+    // Resolve the primary path argument relative to `root` so the emitter can
+    // correctly match it against interactive session roots.
+    let primary_path = extract_primary_path(&call_params, root);
+    emitter.emit(&call_params.name, primary_path.as_deref());
+
     let result = dispatch_tool_call(root, &call_params);
     match serde_json::to_value(result) {
         Ok(v) => JsonRpcResponse::success(id, v),
         Err(e) => JsonRpcResponse::error(id, error_codes::INTERNAL_ERROR, e.to_string()),
     }
+}
+
+/// Extract the primary file-oriented argument from a tool call, resolved to an
+/// absolute path. Used purely for activity emission — returning `None` is
+/// harmless (event is broadcast to every session, which is acceptable for
+/// tools that operate on the whole project).
+fn extract_primary_path(params: &ToolCallParams, root: &Path) -> Option<PathBuf> {
+    let args = &params.arguments;
+    let candidate = match params.name.as_str() {
+        "read_file"
+        | "write_file"
+        | "delete_file"
+        | "list_directory"
+        | "get_tree"
+        | "get_file_symbols"
+        | "get_definitions"
+        | "get_references"
+        | "get_diagnostics"
+        | "get_dependency_graph"
+        | "get_import_tree"
+        | "find_circular_deps"
+        | "compress_context"
+        | "search_code"
+        | "get_git_diff"
+        | "run_test"
+        | "run_lint"
+        | "get_project_stats"
+        | "git_log" => args.get("path").and_then(|v| v.as_str()),
+        "get_smart_context" => args.get("focus_file").and_then(|v| v.as_str()),
+        "read_files" | "estimate_tokens" => args
+            .get("paths")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|v| v.as_str()),
+        _ => None,
+    }?;
+    let path = Path::new(candidate);
+    let abs = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
+    Some(abs)
 }
 
 /// Dispatch tool call to appropriate handler
