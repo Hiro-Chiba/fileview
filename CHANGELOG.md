@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.5.0] - 2026-04-19
 
 ### Added
 
@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fv --mcp-server` in a separate process, the interactive `fv` TUI now shows
   the AI's tool calls in real time. The most recent event appears in the
   status bar as `[AI] claude: read_file src/auth.rs`, and an optional
-  follow-mode auto-focuses the tree on the file the AI just touched.
+  follow-mode auto-focuses the tree on the file the AI just touched. (#179)
   - `Alt+A`: toggle follow-mode (opt-in; off by default so the UI never
     interrupts text input unexpectedly).
   - `Alt+L`: open the live activity log popup (up to 100 events, `j/k`
@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - File-based protocol: the MCP server writes events to
     `~/.cache/fileview/sessions/<pid>/activity.jsonl`; the interactive TUI
     watches that file via `notify`. The log is owner-only (`0600`) on unix.
+  - Batch tools (`read_files`, `estimate_tokens`) emit one event per path so
+    every file the AI touches is visible in the UI.
 
 ## [2.4.1] - 2026-04-19
 
