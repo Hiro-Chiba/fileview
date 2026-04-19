@@ -5,78 +5,73 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Weekly Monday 06:00 UTC for audit + coverage
+    - cron: '0 6 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
 
 jobs:
-  # Format check (single job, doesn't need matrix)
-  fmt:
-    name: Format
+  # Fast feedback: fmt + clippy + doc in a single runner
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
-      - run: cargo fmt --all -- --check
-
-  # Clippy lint (single job, doesn't need matrix)
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      # Note: --all-features is not used because 'chafa' feature requires system library
-      - run: cargo clippy --all-targets -- -D warnings
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+      - name: clippy
+        # Note: --all-features is not used because 'chafa' requires a system library
+        run: cargo clippy --all-targets -- -D warnings
+      - name: rustdoc
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --no-deps
 
-  # Matrix build and test across multiple OS and Rust versions
-  build:
-    name: Build (${{ matrix.os }}, ${{ matrix.rust }})
+  # Tests across supported OSes on stable
+  test:
+    name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: [stable, "1.90.0"]  # stable + MSRV
-        exclude:
-          # Skip MSRV on Windows to save CI time
-          - os: windows-latest
-            rust: "1.90.0"
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.os }}-${{ matrix.rust }}
-      - name: Build
-        run: cargo build --release
-      - name: Run tests
-        run: cargo test
-
-  # Doc tests
-  doc:
-    name: Documentation
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Check documentation
-        env:
-          RUSTDOCFLAGS: -D warnings
-        run: cargo doc --no-deps
+        with:
+          key: ${{ matrix.os }}
+      - run: cargo test
 
-  # Security audit
+  # MSRV: compile only (tests are covered by stable)
+  msrv:
+    name: MSRV (1.90.0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.90.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: msrv
+      - run: cargo check --all-targets --locked
+
+  # Security audit: scheduled + main push (not on every PR)
   audit:
     name: Security Audit
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -84,16 +79,17 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  # Test coverage
+  # Code coverage: scheduled + main push (not on every PR)
   coverage:
     name: Code Coverage
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin --locked
       - name: Generate coverage report
         run: cargo tarpaulin --out xml --skip-clean
       - name: Upload coverage to Codecov
@@ -104,21 +100,19 @@ jobs:
           fail_ci_if_error: false
           verbose: true
 
-  # Final check that all jobs passed
+  # Required status check — gates merges on required jobs only
   ci-success:
     name: CI Success
-    needs: [fmt, clippy, build, doc, audit, coverage]
+    needs: [lint, test, msrv]
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Check all jobs passed
+      - name: Check required jobs
         run: |
-          if [[ "${{ needs.fmt.result }}" != "success" ]] || \
-             [[ "${{ needs.clippy.result }}" != "success" ]] || \
-             [[ "${{ needs.build.result }}" != "success" ]] || \
-             [[ "${{ needs.doc.result }}" != "success" ]] || \
-             [[ "${{ needs.audit.result }}" != "success" ]]; then
+          if [[ "${{ needs.lint.result }}" != "success" ]] || \
+             [[ "${{ needs.test.result }}" != "success" ]] || \
+             [[ "${{ needs.msrv.result }}" != "success" ]]; then
             echo "One or more required jobs failed"
             exit 1
           fi
-          echo "All CI checks passed!"
+          echo "All required CI checks passed!"
