@@ -73,6 +73,11 @@ jobs:
     name: Security Audit
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    # rustsec/audit-check needs to create check-runs and open issues on advisories
+    permissions:
+      contents: read
+      checks: write
+      issues: write
     steps:
       - uses: actions/checkout@v6
       - uses: rustsec/audit-check@v2

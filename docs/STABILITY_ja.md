@@ -17,7 +17,7 @@ FileView は以下の条件をすべて満たした場合に alpha から stable
 3. `cargo audit` がコミットされたポリシー (`.cargo/audit.toml`) でグリーン、一時的な無視は文書化
 4. CLI動作は互換性重視 (既存のフラグ/アクションに予告なしの破壊的変更なし)
 
-## 現在の評価 (2026-02-04)
+## 現在の評価 (2026-04-19)
 
 - CI: グリーン
 - ローカル品質ゲート: `cargo check`、`cargo clippy --all-targets -- -D warnings`、`cargo test` すべてパス

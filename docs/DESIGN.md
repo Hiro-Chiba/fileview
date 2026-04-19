@@ -368,7 +368,7 @@ impl GitStatus {
 | Clipboard | arboard |
 | Image | image, ratatui-image |
 | Fuzzy Match | nucleo-matcher |
-| Error | anyhow |
+| Error | anyhow + thiserror |
 
 ---
 
@@ -391,4 +391,4 @@ impl GitStatus {
 | タブ/分割ウィンドウ | tmux/ターミナルの仕事 |
 | 組み込みエディタ | vim/nvimの仕事 |
 | リモートファイル | スコープ外 |
-| アーカイブ操作 | スコープ外 |
+| アーカイブの作成・展開 | スコープ外（読み取り専用プレビューはサポート） |
