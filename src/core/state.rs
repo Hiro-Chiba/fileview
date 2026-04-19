@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use super::{FocusTarget, ViewMode};
 use crate::action::Clipboard;
+use crate::ai_activity::AiActivityState;
 use crate::git::GitStatus;
 
 /// Number of bookmark slots (1-9)
@@ -203,6 +204,8 @@ pub struct AppState {
     ai_focus_prev_preview_display_mode: PreviewDisplayMode,
     /// AI context history (most recent first)
     pub ai_history: Vec<AiHistoryEntry>,
+    /// Live AI activity reflection (MCP tool calls streamed from the server)
+    pub ai_activity: AiActivityState,
 }
 
 impl AppState {
@@ -247,6 +250,7 @@ impl AppState {
             ai_focus_prev_preview_visible: false,
             ai_focus_prev_preview_display_mode: PreviewDisplayMode::default(),
             ai_history: Vec::new(),
+            ai_activity: AiActivityState::default(),
         }
     }
 

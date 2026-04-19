@@ -194,6 +194,16 @@ pub enum KeyAction {
     AiHistoryDown,
     /// Select AI history entry
     AiHistorySelect,
+    /// Toggle AI follow mode (auto-focus on AI's most recent path)
+    ToggleAiFollow,
+    /// Open the live AI activity log view
+    OpenAiActivityLog,
+    /// Move up in the AI activity log
+    AiActivityLogUp,
+    /// Move down in the AI activity log
+    AiActivityLogDown,
+    /// Jump to the path under the AI activity log cursor
+    AiActivityLogSelect,
 }
 
 /// Handle key event and return the resulting action
@@ -208,6 +218,7 @@ pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
         ViewMode::FuzzyFinder { .. } => handle_fuzzy_finder_mode(key),
         ViewMode::Help => handle_help_mode(key),
         ViewMode::AiHistory { .. } => handle_ai_history_mode(key),
+        ViewMode::AiActivityLog => handle_ai_activity_log_mode(key),
         ViewMode::BookmarkSet => handle_bookmark_set_mode(key),
         ViewMode::BookmarkJump => handle_bookmark_jump_mode(key),
         ViewMode::Filter { query } => handle_filter_mode(key, query),
@@ -263,6 +274,7 @@ pub fn handle_key_event_with_registry(
             .lookup_help(&key)
             .unwrap_or_else(|| handle_help_mode(key)),
         ViewMode::AiHistory { .. } => handle_ai_history_mode(key),
+        ViewMode::AiActivityLog => handle_ai_activity_log_mode(key),
         ViewMode::BookmarkSet => handle_bookmark_set_mode(key),
         ViewMode::BookmarkJump => handle_bookmark_jump_mode(key),
         ViewMode::Filter { query } => {
@@ -392,6 +404,14 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         // AI focus mode (Ctrl+A)
         KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::ToggleAiFocus
+        }
+        // AI activity: toggle follow-mode (Alt+A) and open activity log (Alt+L).
+        // These guarded arms must come before the plain 'l'/'L' and 'a'/'A' handlers.
+        KeyCode::Char('a') | KeyCode::Char('A') if key.modifiers == KeyModifiers::ALT => {
+            KeyAction::ToggleAiFollow
+        }
+        KeyCode::Char('l') | KeyCode::Char('L') if key.modifiers == KeyModifiers::ALT => {
+            KeyAction::OpenAiActivityLog
         }
         // Quit
         KeyCode::Char('q') => {
@@ -920,6 +940,17 @@ fn handle_ai_history_mode(key: KeyEvent) -> KeyAction {
         KeyCode::Up | KeyCode::Char('k') => KeyAction::AiHistoryUp,
         KeyCode::Down | KeyCode::Char('j') => KeyAction::AiHistoryDown,
         KeyCode::Enter => KeyAction::AiHistorySelect,
+        _ => KeyAction::None,
+    }
+}
+
+/// Handle keys in AI activity log popup mode
+fn handle_ai_activity_log_mode(key: KeyEvent) -> KeyAction {
+    match key.code {
+        KeyCode::Esc | KeyCode::Char('q') => KeyAction::Cancel,
+        KeyCode::Up | KeyCode::Char('k') => KeyAction::AiActivityLogUp,
+        KeyCode::Down | KeyCode::Char('j') => KeyAction::AiActivityLogDown,
+        KeyCode::Enter => KeyAction::AiActivityLogSelect,
         _ => KeyAction::None,
     }
 }

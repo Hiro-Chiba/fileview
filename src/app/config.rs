@@ -118,6 +118,8 @@ pub struct Config {
     pub init_force: bool,
     /// Resume AI session by name (default: ai)
     pub resume_ai_session: Option<String>,
+    /// Start with AI activity follow-mode enabled (auto-focus on AI's last file)
+    pub follow_ai: bool,
 }
 
 impl Config {
@@ -158,10 +160,12 @@ impl Config {
         let mut init_path: Option<PathBuf> = None;
         let mut init_force = false;
         let mut resume_ai_session: Option<String> = None;
+        let mut follow_ai = false;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--pick" | "-p" => pick_mode = true,
+                "--follow-ai" => follow_ai = true,
                 "--choosedir" => {
                     choosedir_mode = true;
                     // Check if next arg is a file path (not starting with -)
@@ -486,6 +490,7 @@ impl Config {
             init_path,
             init_force,
             resume_ai_session,
+            follow_ai,
         })
     }
 }

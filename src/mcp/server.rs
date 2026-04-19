@@ -3,13 +3,14 @@
 //! JSON-RPC server communicating over stdin/stdout.
 
 use std::io::{self, BufRead, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::json;
 
 use super::handlers::{analysis, context, dependency, file, git, project};
 use super::registry;
 use super::types::*;
+use crate::ai_activity::ActivityEmitter;
 
 /// Run the MCP server
 pub fn run_server(root: &Path) -> anyhow::Result<()> {
@@ -18,6 +19,11 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
 
     let reader = stdin.lock();
     let mut writer = stdout.lock();
+
+    // Emitter for AI activity reflection. Best-effort: failures are swallowed
+    // inside `emit` so the MCP server never fails a tool call because the UI
+    // side was unreachable.
+    let emitter = ActivityEmitter::new();
 
     for line in reader.lines() {
         let line = match line {
@@ -32,7 +38,7 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
             continue;
         }
 
-        let response = handle_request(root, &line);
+        let response = handle_request(root, &line, &emitter);
         let response_json = serde_json::to_string(&response)?;
         writeln!(writer, "{}", response_json)?;
         writer.flush()?;
@@ -42,7 +48,7 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
 }
 
 /// Handle a single JSON-RPC request
-fn handle_request(root: &Path, request_str: &str) -> JsonRpcResponse {
+fn handle_request(root: &Path, request_str: &str, emitter: &ActivityEmitter) -> JsonRpcResponse {
     let request: JsonRpcRequest = match serde_json::from_str(request_str) {
         Ok(r) => r,
         Err(e) => {
@@ -58,7 +64,7 @@ fn handle_request(root: &Path, request_str: &str) -> JsonRpcResponse {
         "initialize" => handle_initialize(request.id),
         "initialized" => JsonRpcResponse::success(request.id, json!({})),
         "tools/list" => handle_tools_list(request.id),
-        "tools/call" => handle_tools_call(root, request.id, request.params),
+        "tools/call" => handle_tools_call(root, request.id, request.params, emitter),
         "ping" => JsonRpcResponse::success(request.id, json!({})),
         _ => JsonRpcResponse::error(
             request.id,
@@ -105,6 +111,7 @@ fn handle_tools_call(
     root: &Path,
     id: Option<serde_json::Value>,
     params: serde_json::Value,
+    emitter: &ActivityEmitter,
 ) -> JsonRpcResponse {
     let call_params: ToolCallParams = match serde_json::from_value(params) {
         Ok(p) => p,
@@ -117,11 +124,77 @@ fn handle_tools_call(
         }
     };
 
+    // Emit activity BEFORE dispatch so even slow/failing tools register on the UI.
+    // Resolve the primary path argument(s) relative to `root` so the emitter can
+    // correctly match them against interactive session roots. Batch tools
+    // (`read_files`, `estimate_tokens`) get one event per path.
+    let primary_paths = extract_primary_paths(&call_params, root);
+    if primary_paths.is_empty() {
+        emitter.emit(&call_params.name, None);
+    } else {
+        for p in &primary_paths {
+            emitter.emit(&call_params.name, Some(p));
+        }
+    }
+
     let result = dispatch_tool_call(root, &call_params);
     match serde_json::to_value(result) {
         Ok(v) => JsonRpcResponse::success(id, v),
         Err(e) => JsonRpcResponse::error(id, error_codes::INTERNAL_ERROR, e.to_string()),
     }
+}
+
+/// Extract file-oriented argument(s) from a tool call, each resolved to an
+/// absolute path. Returns an empty Vec for tools that do not touch a specific
+/// path (e.g. `get_git_status`, `run_build` without args).
+pub fn extract_primary_paths(params: &ToolCallParams, root: &Path) -> Vec<PathBuf> {
+    let args = &params.arguments;
+    let raw: Vec<&str> = match params.name.as_str() {
+        "read_file"
+        | "write_file"
+        | "delete_file"
+        | "list_directory"
+        | "get_tree"
+        | "get_file_symbols"
+        | "get_definitions"
+        | "get_references"
+        | "get_diagnostics"
+        | "get_dependency_graph"
+        | "get_import_tree"
+        | "find_circular_deps"
+        | "compress_context"
+        | "search_code"
+        | "get_git_diff"
+        | "run_test"
+        | "run_lint"
+        | "get_project_stats"
+        | "git_log" => args
+            .get("path")
+            .and_then(|v| v.as_str())
+            .into_iter()
+            .collect(),
+        "get_smart_context" => args
+            .get("focus_file")
+            .and_then(|v| v.as_str())
+            .into_iter()
+            .collect(),
+        "read_files" | "estimate_tokens" => args
+            .get("paths")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect())
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    };
+    raw.into_iter()
+        .map(|s| {
+            let path = Path::new(s);
+            if path.is_absolute() {
+                path.to_path_buf()
+            } else {
+                root.join(path)
+            }
+        })
+        .collect()
 }
 
 /// Dispatch tool call to appropriate handler
@@ -371,5 +444,60 @@ fn missing_param(param: &str) -> ToolCallResult {
             param
         ))],
         is_error: Some(true),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn params(name: &str, args: serde_json::Value) -> ToolCallParams {
+        ToolCallParams {
+            name: name.to_string(),
+            arguments: args,
+        }
+    }
+
+    #[test]
+    fn extract_paths_single_from_path_field() {
+        let p = params("read_file", json!({"path": "src/a.rs"}));
+        let paths = extract_primary_paths(&p, Path::new("/root"));
+        assert_eq!(paths, vec![PathBuf::from("/root/src/a.rs")]);
+    }
+
+    #[test]
+    fn extract_paths_from_focus_file_field() {
+        let p = params("get_smart_context", json!({"focus_file": "lib.rs"}));
+        let paths = extract_primary_paths(&p, Path::new("/root"));
+        assert_eq!(paths, vec![PathBuf::from("/root/lib.rs")]);
+    }
+
+    #[test]
+    fn extract_paths_batch_returns_all_elements() {
+        let p = params("read_files", json!({"paths": ["a.rs", "b.rs", "c.rs"]}));
+        let paths = extract_primary_paths(&p, Path::new("/root"));
+        assert_eq!(
+            paths,
+            vec![
+                PathBuf::from("/root/a.rs"),
+                PathBuf::from("/root/b.rs"),
+                PathBuf::from("/root/c.rs"),
+            ]
+        );
+    }
+
+    #[test]
+    fn extract_paths_unknown_tool_returns_empty() {
+        let p = params("brand_new_tool", json!({"whatever": "x"}));
+        let paths = extract_primary_paths(&p, Path::new("/root"));
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn extract_paths_absolute_paths_preserved() {
+        let p = params("read_file", json!({"path": "/abs/x"}));
+        let paths = extract_primary_paths(&p, Path::new("/root"));
+        assert_eq!(paths, vec![PathBuf::from("/abs/x")]);
     }
 }

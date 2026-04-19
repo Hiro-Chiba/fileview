@@ -8,12 +8,13 @@ use crossterm::event::{self, Event};
 use ratatui::prelude::*;
 
 use crate::action::file as file_ops;
+use crate::ai_activity::{ActivityWatcher, SessionInfo, SessionRegistry};
 use crate::app::{Config, PreviewState};
 use crate::core::{AppState, FocusTarget, TabManager, ViewMode};
 use crate::handler::{
     action::{
-        get_target_directory, handle_action, reload_tree, update_bulk_rename_buffer, ActionContext,
-        ActionResult, EntrySnapshot,
+        display::reveal_path_in_tree, get_target_directory, handle_action, reload_tree,
+        update_bulk_rename_buffer, ActionContext, ActionResult, EntrySnapshot,
     },
     key::{handle_key_event, update_input_buffer, KeyAction},
     mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer},
@@ -145,6 +146,25 @@ pub fn run_app(
     } else {
         None
     };
+
+    // Register this process with the AI activity session registry so the MCP
+    // server can deliver tool-call events here. Failures are non-fatal but are
+    // surfaced to the status bar so the user isn't left wondering why
+    // `--follow-ai` does nothing.
+    let ai_session: Option<SessionInfo> = SessionRegistry::new()
+        .and_then(|r| r.register_current(&config.root))
+        .ok();
+    let ai_watcher = ai_session
+        .as_ref()
+        .and_then(|s| ActivityWatcher::start(s.activity_log.clone()).ok());
+    state.ai_activity.follow_mode = config.follow_ai && ai_watcher.is_some();
+    if config.follow_ai {
+        if ai_watcher.is_some() {
+            state.set_message("AI follow mode on (Alt+A to toggle)");
+        } else {
+            state.set_message("AI follow requested but activity registry unavailable");
+        }
+    }
 
     // Git status polling timer (configurable, default 5 seconds)
     let mut last_git_poll = Instant::now();
@@ -285,6 +305,33 @@ pub fn run_app(
             if watcher.poll() {
                 reload_tree(&mut navigator, &mut state)?;
                 last_git_poll = Instant::now(); // Reset git poll timer
+                needs_redraw = true;
+            }
+        }
+
+        // Drain AI activity events and apply them to state.
+        if let Some(watcher) = ai_watcher.as_ref() {
+            let events = watcher.drain();
+            if !events.is_empty() {
+                for event in events {
+                    state.ai_activity.record(event);
+                }
+                // Apply follow-mode auto-navigation only when it is safe
+                // (browse or preview; never during text input / fuzzy / etc.)
+                let safe_to_follow = state.ai_activity.follow_mode
+                    && matches!(state.mode, ViewMode::Browse | ViewMode::Preview { .. });
+                if safe_to_follow {
+                    if let Some(target) = state
+                        .ai_activity
+                        .last_event
+                        .as_ref()
+                        .and_then(|e| e.path.clone())
+                    {
+                        if target.starts_with(&state.root) && target.exists() {
+                            let _ = reveal_path_in_tree(&mut navigator, &mut state, &target);
+                        }
+                    }
+                }
                 needs_redraw = true;
             }
         }
@@ -824,6 +871,11 @@ pub fn run_app(
             if let Some(ref mut pm) = plugin_manager {
                 let _ = pm.fire_event(PluginEvent::BeforeQuit, None);
             }
+            // Unregister this AI activity session so stale dirs don't linger.
+            if let (Ok(registry), Some(session)) = (SessionRegistry::new(), ai_session.as_ref()) {
+                registry.unregister(session);
+            }
+            drop(ai_watcher);
             return Ok(AppResult {
                 exit_code: crate::integrate::exit_code::SUCCESS,
                 choosedir_path: state.choosedir_path.clone(),

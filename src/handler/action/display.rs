@@ -271,7 +271,77 @@ pub fn handle(
                 }
             }
         }
+        KeyAction::ToggleAiFollow => {
+            let enabled = state.ai_activity.toggle_follow();
+            state.set_message(if enabled {
+                "AI follow: on (fv moves to AI's last file)"
+            } else {
+                "AI follow: off"
+            });
+        }
+        KeyAction::OpenAiActivityLog => {
+            if state.ai_activity.recent_events.is_empty() {
+                state.set_message("No AI activity yet");
+            } else {
+                state.ai_activity.reset_log_cursor();
+                state.mode = ViewMode::AiActivityLog;
+                state.set_message("AI activity (j/k + Enter, Esc to close)");
+            }
+        }
+        KeyAction::AiActivityLogUp => {
+            if matches!(state.mode, ViewMode::AiActivityLog) {
+                state.ai_activity.log_selected = state.ai_activity.log_selected.saturating_sub(1);
+            }
+        }
+        KeyAction::AiActivityLogDown => {
+            if matches!(state.mode, ViewMode::AiActivityLog) {
+                let max_index = state.ai_activity.recent_events.len().saturating_sub(1);
+                state.ai_activity.log_selected =
+                    (state.ai_activity.log_selected + 1).min(max_index);
+            }
+        }
+        KeyAction::AiActivityLogSelect => {
+            if matches!(state.mode, ViewMode::AiActivityLog) {
+                if let Some(target) = state
+                    .ai_activity
+                    .selected_event()
+                    .and_then(|e| e.path.clone())
+                {
+                    if target.starts_with(&state.root) {
+                        match reveal_path_in_tree(navigator, state, &target) {
+                            Ok(_) => {
+                                state.mode = ViewMode::Browse;
+                                state.set_message(format!("Jumped to {}", target.display()));
+                            }
+                            Err(e) => {
+                                state.set_message(format!("Jump failed: {}", e));
+                            }
+                        }
+                    } else {
+                        state.set_message("Path outside current root");
+                    }
+                } else {
+                    state.set_message("Selected entry has no path");
+                }
+            }
+        }
         _ => {}
+    }
+    Ok(())
+}
+
+/// Expand ancestors of `target` and move focus onto it. Shared helper for AI
+/// follow-mode auto-navigation and manual jump actions.
+pub fn reveal_path_in_tree(
+    navigator: &mut TreeNavigator,
+    state: &mut AppState,
+    target: &std::path::Path,
+) -> anyhow::Result<()> {
+    navigator.reveal_path(target)?;
+    navigator.ensure_cache();
+    let visible = navigator.visible_entries();
+    if let Some(idx) = visible.iter().position(|e| e.path == *target) {
+        state.focus_index = idx;
     }
     Ok(())
 }

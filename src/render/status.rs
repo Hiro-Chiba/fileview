@@ -23,6 +23,19 @@ use crate::core::{
 };
 
 /// Render the status bar with adaptive layout based on screen width
+/// Compose the status-bar message, giving AI activity precedence when a
+/// recent event is available. Returns an owned `String` because we may need
+/// to concatenate with the regular `state.message`.
+pub fn effective_status_message(state: &AppState, fallback: &str) -> String {
+    let indicator = super::ai_activity::status_indicator(state);
+    match (indicator, state.message.as_deref()) {
+        (Some(ind), Some(msg)) => format!("{} · {}", ind, msg),
+        (Some(ind), None) => ind,
+        (None, Some(msg)) => msg.to_string(),
+        (None, None) => fallback.to_string(),
+    }
+}
+
 pub fn render_status_bar(
     frame: &mut Frame,
     state: &AppState,
@@ -264,16 +277,18 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         spans.push(Span::styled("?", Style::default().fg(t.info)));
     }
 
-    // Message (only if there's significant space left)
-    if let Some(msg) = &state.message {
+    // Message (only if there's significant space left). AI activity indicator
+    // takes precedence when a recent event is available.
+    let message = effective_status_message(state, "");
+    if !message.is_empty() {
         let used_width: usize = spans.iter().map(|s| s.width()).sum();
         let available = inner_width.saturating_sub(used_width + 1);
         if available > 3 {
             spans.push(Span::raw(" "));
-            let truncated = if msg.len() > available {
-                format!("{}…", &msg[..available.saturating_sub(1)])
+            let truncated = if message.len() > available {
+                format!("{}…", &message[..available.saturating_sub(1)])
             } else {
-                msg.clone()
+                message.clone()
             };
             spans.push(Span::raw(truncated));
         }
@@ -298,7 +313,8 @@ fn render_compact_status(
     let mut spans = Vec::new();
 
     // Help or message (highest priority)
-    let message = state.message.as_deref().unwrap_or("?");
+    let message_owned = effective_status_message(state, "?");
+    let message = message_owned.as_str();
     spans.push(Span::raw(format!(" {}", message)));
 
     // File size only (no modification time)
@@ -377,7 +393,8 @@ fn render_narrow_status(
     }
 
     // Help or message
-    let message = state.message.as_deref().unwrap_or("? help");
+    let message_owned = effective_status_message(state, "? help");
+    let message = message_owned.as_str();
     left_spans.push(Span::raw(format!(" {}", message)));
 
     let left_content = Line::from(left_spans);
@@ -476,7 +493,8 @@ fn render_full_status(
         .unwrap_or_default();
 
     let t = theme();
-    let message = state.message.as_deref().unwrap_or("? for help");
+    let message_owned = effective_status_message(state, "? for help");
+    let message = message_owned.as_str();
     let left_content = Line::from(vec![
         Span::styled(mode_indicator, Style::default().fg(t.selection)),
         Span::styled(watch_indicator, Style::default().fg(t.info)),
