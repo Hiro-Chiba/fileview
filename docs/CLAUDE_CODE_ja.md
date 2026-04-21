@@ -68,3 +68,84 @@ fv init claude --path ~/.claude.json
 ```
 
 詳細仕様は英語版も参照してください: `docs/CLAUDE_CODE.md`
+
+## ライブAIアクティビティ反映（v2.5.0+）
+
+`fv --mcp-server` を別プロセスで動かしている AI エージェントからの
+tool call を、対話型 `fv` がリアルタイムで UI に反映します。ステータスバーに
+直近の操作を表示し、follow-mode を有効にすれば AI が読んだファイルに
+自動でフォーカスが移動します。
+
+### セットアップ
+
+1. `fileview >= 2.5.0` であることを確認（`fv --version`）
+2. Claude Code に `fv --mcp-server` を登録。`fv init claude` が簡単で、
+   `~/.claude.json` に以下のようなエントリを追加します:
+
+   ```json
+   {
+     "mcpServers": {
+       "fileview": {
+         "command": "fv",
+         "args": ["--mcp-server", "/absolute/path/to/your/project"]
+       }
+     }
+   }
+   ```
+
+3. 別ターミナル（同じマシン、同じユーザー）で、Claude Code に登録した
+   プロジェクトルートと同じ場所で対話型 fv を起動:
+
+   ```bash
+   cd /absolute/path/to/your/project
+   fv --follow-ai .
+   ```
+
+   `--follow-ai` を付けない場合、ステータスバーには表示されますが
+   自動フォーカスは行われません。
+
+4. Claude Code が MCP 経由で `read_file src/auth.rs` などを呼ぶと、
+   対話型 fileview に以下のように表示されます:
+
+   ```
+   [AI*] claude: read_file src/auth.rs
+   ```
+
+   follow-mode 有効時は tree がそのパスに自動でジャンプします。
+
+### キーバインド
+
+| キー | 動作 |
+|---|---|
+| `Alt+A` | follow-mode 切り替え（AI の直近ファイルに自動フォーカス） |
+| `Alt+L` | ライブ活動ログ popup を開く（`j`/`k` 移動、`Enter` でジャンプ、`Esc`/`q` で閉じる） |
+
+検索・フィルタ・リネーム・bulk rename・fuzzy finder・確認ダイアログ等の
+入力モード中は follow-mode が自動的に抑止されるので、
+意図したキー入力が勝手に消えたりフォーカスが奪われたりはしません。
+
+### 2プロセスの連携方法
+
+MCP サーバーと対話型 TUI は別 OS プロセスとして動作し、ユーザーのキャッシュ
+ディレクトリ経由で連携します:
+
+- 対話型プロセスは `~/.cache/fileview/sessions/<pid>/` を作り、
+  `session.json`（pid + ルート + 起動時刻）と追記専用の
+  `activity.jsonl`（unix では権限 `0600`）を置きます
+- `fv --mcp-server` は tool call のたびに、対象パスを祖先に持つ生存中の
+  全セッションの `activity.jsonl` に JSONL 1行を追記します
+- 対話型プロセスは `notify` crate でそのファイルを監視し、フレームごとに
+  新しいイベントを取り込みます
+
+### トラブルシューティング
+
+- **ステータスバーに何も出ない**: 対話型 `fv` のルートが、`fv --mcp-server`
+  に渡したディレクトリと同じか、その祖先になっているか確認してください。
+  無関係なプロジェクト間で混線しないようパスでスコープを絞っています
+- **`--follow-ai` 起動時に "activity registry unavailable" が出た**:
+  キャッシュディレクトリを作成できない状況（読み取り専用ホームなど）で発生します。
+  イベント配信自体は試みますが、follow-mode は無効化されます
+- **古いセッションディレクトリが残っている**: MCP サーバーは次の emit 時に
+  PID が生存していないセッションを掃除します。気になる場合は
+  `~/.cache/fileview/sessions/*` を手動で削除しても問題ありません。
+  対話型 fileview は起動時に自分の分を作り直します

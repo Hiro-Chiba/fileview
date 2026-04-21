@@ -80,3 +80,87 @@ fv init claude --path ~/.claude.json
 **Context**: `get_smart_context`, `estimate_tokens`, `compress_context`
 
 **Project**: `run_build`, `run_test`, `run_lint`, `get_project_stats`
+
+## Live AI Activity Reflection (v2.5.0+)
+
+When an AI agent calls `fv --mcp-server` in one process and you are running
+the interactive `fv` in another, the interactive TUI surfaces the AI's tool
+calls in real time — a status-bar indicator and an optional follow-mode that
+auto-focuses the tree on the file the AI just touched.
+
+### Setup
+
+1. Make sure you are on `fileview >= 2.5.0` (`fv --version`).
+2. Register `fv --mcp-server` with Claude Code. The easiest way is
+   `fv init claude`, which edits `~/.claude.json` in place. The resulting
+   entry looks like:
+
+   ```json
+   {
+     "mcpServers": {
+       "fileview": {
+         "command": "fv",
+         "args": ["--mcp-server", "/absolute/path/to/your/project"]
+       }
+     }
+   }
+   ```
+
+3. In a separate terminal (attached to the same machine, same user), open the
+   interactive fileview on the project root Claude Code was registered with:
+
+   ```bash
+   cd /absolute/path/to/your/project
+   fv --follow-ai .
+   ```
+
+   Without `--follow-ai`, the TUI still shows the AI's activity in the status
+   bar but does not auto-move focus.
+
+4. When Claude Code runs a tool call via the MCP server (for example while
+   reading `src/auth.rs`), the interactive fileview shows:
+
+   ```
+   [AI*] claude: read_file src/auth.rs
+   ```
+
+   and, with follow-mode on, reveals and focuses that path in the tree.
+
+### Keybindings
+
+| Key | Action |
+|-----|--------|
+| `Alt+A` | Toggle follow-mode (auto-focus on the AI's most recent file) |
+| `Alt+L` | Open the live activity log popup (`j`/`k` to navigate, `Enter` to jump, `Esc`/`q` to close) |
+
+Follow-mode is suppressed automatically while you are typing in any input
+mode (search, filter, rename, bulk rename, fuzzy finder, confirmation), so it
+never eats a keystroke you intended to land somewhere else.
+
+### How the two processes talk
+
+The MCP server and the interactive TUI are independent OS processes. They
+rendezvous through a file-based protocol in your user cache directory:
+
+- The interactive process registers a directory at
+  `~/.cache/fileview/sessions/<pid>/` containing a `session.json`
+  (pid + root + started_at) and an append-only `activity.jsonl`
+  (permissions `0600` on unix).
+- On every tool call, `fv --mcp-server` appends a JSONL line to each alive
+  session whose root is an ancestor of the path being acted on.
+- The interactive process watches the log via the `notify` crate and
+  drains events per frame.
+
+### Troubleshooting
+
+- **Nothing shows up in the status bar.** Confirm the interactive `fv` is
+  rooted at the same directory you passed to `fv --mcp-server`, or one of
+  its ancestors. Events are scoped by path to keep unrelated projects
+  from cross-talking.
+- **`--follow-ai` printed "activity registry unavailable".** The cache
+  directory could not be created (e.g. read-only home). Live reflection
+  will still attempt events; only follow-mode is disabled.
+- **Stale session directories.** The MCP server prunes sessions whose PID
+  is no longer alive on the next emit. You can also remove
+  `~/.cache/fileview/sessions/*` by hand — the interactive fileview will
+  recreate its own entry on startup.
