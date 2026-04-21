@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MSRV](https://img.shields.io/badge/MSRV-1.90-blue.svg)](https://www.rust-lang.org)
 
-> 設定不要のターミナルファイルブラウザ。画像プレビュー自動検出、Rust製。
+> ターミナルで動くファイルブラウザ。画像プレビュー、Rust製。
 
 [English](README.md) | 日本語
 
@@ -16,7 +16,7 @@
   <img src="assets/demo.gif" alt="FileView デモ" width="80%">
 </p>
 
-yaziのような軽量ファイルマネージャーで、普段使いしながらClaude Codeとも連携できるものが欲しかった。設定ファイルに時間をかけたくなかった。
+yaziのような軽量ファイラを普段使いしたくて、ついでに Claude Code とも繋げられるようにしたかったので書きました。
 
 ## 特徴
 
@@ -24,10 +24,7 @@ yaziのような軽量ファイルマネージャーで、普段使いしなが�
 - 起動 2.2ms、メモリ約 8MB（[ベンチマーク](docs/BENCHMARKS.md)）
 - Git連携、シンタックスハイライト、PDFプレビュー、ファジーファインダー
 - Vimキーバインド、マウス対応、Luaプラグイン
-- ライブAIアクティビティ反映: AIエージェントが `fv --mcp-server` を呼ぶと、
-  対話型TUIが実時間でそのファイル操作をステータスバーに表示し、
-  追従モードでは該当ファイルに自動フォーカスする
-  （[docs/CLAUDE_CODE_ja.md](docs/CLAUDE_CODE_ja.md) 参照）
+- `fv --mcp-server` の活動を対話型TUIにリアルタイム反映（[詳細](docs/CLAUDE_CODE_ja.md)）
 
 ## クイックスタート
 
