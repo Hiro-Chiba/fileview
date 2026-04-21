@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MSRV](https://img.shields.io/badge/MSRV-1.90-blue.svg)](https://www.rust-lang.org)
 
-> Zero-config terminal file browser with image preview, built in Rust.
+> Terminal file browser with image preview, written in Rust.
 
 English | [日本語](README_ja.md)
 
@@ -16,7 +16,7 @@ English | [日本語](README_ja.md)
   <img src="assets/demo.gif" alt="FileView Demo" width="80%">
 </p>
 
-I wanted a lightweight file manager like yazi that I could use day-to-day in the terminal and also connect to Claude Code — without spending time on config files.
+Wanted a yazi-like file manager for day-to-day terminal use that also talks to Claude Code. So I wrote this.
 
 ## Features
 
@@ -24,9 +24,7 @@ I wanted a lightweight file manager like yazi that I could use day-to-day in the
 - 2.2ms startup, ~8MB memory ([benchmarks](docs/BENCHMARKS.md))
 - Git status, syntax highlighting, PDF preview, fuzzy finder
 - Vim keybindings, mouse support, Lua plugins
-- Live AI activity reflection: when an AI agent drives `fv --mcp-server`,
-  the interactive TUI surfaces its file activity in the status bar and
-  optionally follows along (see [docs/CLAUDE_CODE.md](docs/CLAUDE_CODE.md))
+- Live reflection of `fv --mcp-server` activity in the TUI ([details](docs/CLAUDE_CODE.md))
 
 ## Quick Start
 
