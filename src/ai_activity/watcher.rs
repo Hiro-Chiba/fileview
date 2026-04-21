@@ -8,7 +8,7 @@
 //! `mpsc` channel and drained by the main event loop each frame.
 
 use std::fs::File;
-use std::io::{BufRead, BufReader, Seek, SeekFrom};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
@@ -101,10 +101,25 @@ fn reader_loop(
             Err(mpsc::RecvTimeoutError::Disconnected) => return,
         }
 
-        let file = match File::open(&activity_log) {
+        let mut file = match File::open(&activity_log) {
             Ok(f) => f,
             Err(_) => continue,
         };
+        // Detect external truncation / recreation. We always advance cursor
+        // past a '\n', so byte at cursor-1 must still be '\n' if the file is
+        // the same one we last read. Anything else (file shorter than
+        // cursor, or sentinel byte changed) means the content was rewritten
+        // and we have to start over from byte 0; otherwise we silently sit
+        // past the end of a fresh file and never see new events.
+        if cursor > 0 {
+            let still_same_file = file.seek(SeekFrom::Start(cursor - 1)).ok().and_then(|_| {
+                let mut sentinel = [0u8; 1];
+                file.read_exact(&mut sentinel).ok().map(|()| sentinel[0])
+            }) == Some(b'\n');
+            if !still_same_file {
+                cursor = 0;
+            }
+        }
         let mut reader = BufReader::new(file);
         if reader.seek(SeekFrom::Start(cursor)).is_err() {
             continue;
@@ -206,6 +221,51 @@ mod tests {
             "historical events should not be replayed, got {:?}",
             received
         );
+    }
+
+    #[test]
+    fn recovers_after_external_truncation() {
+        // Simulate a user wiping the activity log mid-session
+        // (e.g., `> ~/.cache/fileview/sessions/$pid/activity.jsonl` to clean up).
+        // After truncation the reader's cursor is past EOF, so without a
+        // recovery mechanism every subsequent append is silently lost.
+        let tmp = TempDir::new().unwrap();
+        let log = tmp.path().join("activity.jsonl");
+        std::fs::write(&log, "").unwrap();
+
+        let watcher = ActivityWatcher::start(log.clone()).unwrap();
+
+        // First event lands as expected.
+        let first = ActivityEvent::now("src", "first", None);
+        append(
+            &log,
+            &format!("{}\n", serde_json::to_string(&first).unwrap()),
+        );
+        let initial = wait_for_events(&watcher, 1, 2_000);
+        assert_eq!(initial.len(), 1, "first event should arrive normally");
+
+        // Externally truncate the file. The reader's cursor is now past EOF.
+        OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(&log)
+            .unwrap();
+
+        // A new event is appended starting from byte 0 of the freshly truncated file.
+        let second = ActivityEvent::now("src", "after_truncation", None);
+        append(
+            &log,
+            &format!("{}\n", serde_json::to_string(&second).unwrap()),
+        );
+
+        let received = wait_for_events(&watcher, 1, 3_000);
+        assert_eq!(
+            received.len(),
+            1,
+            "expected the post-truncation event to be delivered, got {:?}",
+            received
+        );
+        assert_eq!(received[0].tool, "after_truncation");
     }
 
     #[test]
