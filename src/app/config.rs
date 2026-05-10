@@ -133,6 +133,9 @@ pub struct Config {
     /// means a specific revspec like `origin/main..HEAD`. `None` means the
     /// flag was not passed.
     pub diff_scope: Option<Option<String>>,
+    /// `--replay` mode. `Some(None)` opens the session picker; `Some(Some(id))`
+    /// jumps directly to a specific session.
+    pub replay: Option<Option<String>>,
 }
 
 impl Config {
@@ -177,6 +180,7 @@ impl Config {
         let mut resume_ai_session: Option<String> = None;
         let mut follow_ai = false;
         let mut diff_scope: Option<Option<String>> = None;
+        let mut replay: Option<Option<String>> = None;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -193,6 +197,19 @@ impl Config {
                         }
                     } else {
                         diff_scope = Some(None);
+                    }
+                }
+                "--replay" => {
+                    let next = args.peek().cloned();
+                    if let Some(value) = next {
+                        if !value.starts_with('-') {
+                            args.next();
+                            replay = Some(Some(value));
+                        } else {
+                            replay = Some(None);
+                        }
+                    } else {
+                        replay = Some(None);
                     }
                 }
                 "--choosedir" => {
@@ -566,6 +583,7 @@ impl Config {
                 config_file.budget.default_model.parse::<BudgetModel>().ok()
             },
             diff_scope,
+            replay,
         })
     }
 }
@@ -699,6 +717,11 @@ CLAUDE CODE INTEGRATION:
     --diff [REV]        Diff-aware tree mode. With no argument, scope is
                         the working tree changes. With a revspec (e.g.
                         origin/main..HEAD) the scope is that range.
+    --replay [ID]       Replay past AI sessions recorded under the cache.
+                        With no argument, the session picker opens. With
+                        an ID (the original pid), jump straight to that
+                        session's event timeline. On Enter, the path of
+                        the focused event is printed to stdout.
     plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
     plugin test PATH    Execute plugin file in sandbox and report status
 

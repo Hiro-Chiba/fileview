@@ -10,6 +10,7 @@ mod image_loader;
 mod preview;
 mod preview_worker;
 mod render;
+pub mod replay;
 mod video;
 
 pub use config::{Config, InitAction, PluginAction, SessionAction};
@@ -17,6 +18,7 @@ pub use config_file::{CommandsConfig, ConfigFile, HooksConfig, PreviewConfig};
 pub use event_loop::{run_app, AppResult};
 pub use image_loader::ImageLoader;
 pub use preview::PreviewState;
+pub use replay::{print_outcome as print_replay_outcome, run_replay_app, ReplayOutcome};
 pub use video::{
     extract_thumbnail, find_ffmpeg, find_ffprobe, get_metadata, is_video_file, VideoMetadata,
 };

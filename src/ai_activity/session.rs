@@ -112,6 +112,54 @@ impl SessionRegistry {
         let _ = fs::remove_dir_all(&info.dir);
     }
 
+    /// List every session directory that has a readable `session.json` and an
+    /// `activity.jsonl`, regardless of whether the original PID is still
+    /// alive. The list is sorted by activity-log mtime (newest first), so
+    /// the replay picker shows recent sessions on top.
+    ///
+    /// Unlike `list_alive`, this does not garbage-collect stale entries:
+    /// the replay UI deliberately wants to see history that outlived its
+    /// original `fv` process.
+    pub fn list_history(&self) -> Vec<SessionInfo> {
+        let Ok(entries) = fs::read_dir(&self.base_dir) else {
+            return Vec::new();
+        };
+        let mut out: Vec<(SystemTime, SessionInfo)> = Vec::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let meta_file = path.join("session.json");
+            let raw = match fs::read_to_string(&meta_file) {
+                Ok(r) => r,
+                Err(_) => continue,
+            };
+            let meta: SessionMeta = match serde_json::from_str(&raw) {
+                Ok(m) => m,
+                Err(_) => continue,
+            };
+            let activity_log = path.join("activity.jsonl");
+            if !activity_log.exists() {
+                continue;
+            }
+            let mtime = fs::metadata(&activity_log)
+                .and_then(|m| m.modified())
+                .unwrap_or(UNIX_EPOCH);
+            out.push((
+                mtime,
+                SessionInfo {
+                    meta,
+                    dir: path,
+                    meta_file,
+                    activity_log,
+                },
+            ));
+        }
+        out.sort_by(|a, b| b.0.cmp(&a.0));
+        out.into_iter().map(|(_, s)| s).collect()
+    }
+
     /// List all sessions currently registered AND alive.
     ///
     /// Stale entries (dead PID / malformed metadata) are garbage-collected.
