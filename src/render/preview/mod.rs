@@ -49,7 +49,10 @@ pub use image::{calculate_centered_image_area, is_image_file, render_image_previ
 pub use pdf::{find_pdftoppm, is_pdf_file, render_pdf_preview, PdfPreview};
 
 // Re-export text preview and detection
-pub use text::{is_text_file, render_text_preview, StyledLine, StyledSegment, TextPreview};
+pub use text::{
+    is_text_file, render_text_preview, warmup as warmup_syntax, StyledLine, StyledSegment,
+    TextPreview,
+};
 
 // Re-export video preview
 pub use video::{render_video_preview, VideoPreview};
