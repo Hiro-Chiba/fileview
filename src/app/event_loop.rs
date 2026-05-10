@@ -921,8 +921,15 @@ pub fn run_app(
                             let _ = reload_tree(&mut navigator, &mut state);
                         }
                         PluginAction::SetClipboard(text) => {
-                            if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                                let _ = clipboard.set_text(&text);
+                            #[cfg(feature = "clipboard")]
+                            {
+                                if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                                    let _ = clipboard.set_text(&text);
+                                }
+                            }
+                            #[cfg(not(feature = "clipboard"))]
+                            {
+                                let _ = text;
                             }
                         }
                         PluginAction::Focus(path) => {

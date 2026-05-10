@@ -36,7 +36,9 @@ fv
 ## Install Options
 
 Chafa image support: `cargo install fileview --features chafa`<br>
-Speed-optimized build: `cargo install fileview --profile release-fast`
+Speed-optimized build: `cargo install fileview --profile release-fast`<br>
+Slim build (drops the `arboard` clipboard dependency on Linux):
+`cargo install fileview --no-default-features`
 
 ## Image Preview
 
