@@ -71,3 +71,71 @@ Release 作成のみ自動化する。crates.io publish を CI から外して�
 - 収束後: `2.4.0-rc.1`
 - 安定化完了: `2.4.0`（推奨版）
 - 緊急修正: `2.4.1`
+
+## Release Notes Format
+
+GitHub Releases ページの本文は以下のテンプレで統一する。`CHANGELOG.md`
+の "Keep a Changelog" 形式と整合するセクション分けで、過去の小刻みリリー
+スで生じた言語・見出し・密度のばらつきを抑える。
+
+### Template
+
+```markdown
+# vX.Y.Z[ - Optional Subtitle]
+
+One or two sentence English summary describing the release theme.
+
+## Highlights
+
+- Headline feature one
+- Headline feature two
+
+## Added
+
+- New CLI flag `--foo` for X (#PR)
+- New keybinding `Alt+B` for Y (#PR)
+
+## Changed
+
+- Behavior of Z now does W (was V) (#PR)
+
+## Fixed
+
+- Bug where A caused B (#PR)
+
+## Notes
+
+Breaking changes, migration steps, or compatibility notes. Omit when
+the section would be empty.
+
+---
+
+**Full Changelog**: https://github.com/Hiro-Chiba/fileview/compare/PREV...vX.Y.Z
+```
+
+### Rules
+
+1. **Language**: English only. The TUI and CLI are English first; release
+   notes follow the same convention. Japanese narrative belongs in
+   `README_ja.md` and `CHANGELOG_ja.md`, not in GitHub Releases.
+2. **Title**: `vX.Y.Z` is required. An optional subtitle separated by
+   ` - ` is allowed for milestone releases (e.g. `v1.24.0 - Claude Code
+   Integration`).
+3. **Heading levels**: The release body starts at h2 (`##`). Do not use
+   `# FileView vX.Y.Z` as a body heading; the `vX.Y.Z` title field
+   already plays that role on the Releases page.
+4. **Section order**: Highlights, Added, Changed, Fixed, Notes. Omit any
+   section that would be empty rather than printing a placeholder.
+5. **No emojis**: Avoid decorative emojis throughout the body. The
+   README also drops marketing phrasing, and Releases follow that tone.
+6. **Pull request references**: Append `(#NNN)` to each bullet when a
+   pull request is the source of the change.
+7. **Full Changelog footer**: End with the GitHub auto-generated compare
+   link so readers can drill into commit-level diffs.
+
+### Why not rely on auto-generated notes alone?
+
+GitHub の "Generate release notes" ボタンは PR タイトル一覧を出すだけ
+で、ユーザ目線の "何が変わったか" がぼやける。Highlights を 2〜3 行手で
+書いてからセクションを並べることで、Releases ページを開いた瞬間に価値が
+伝わるリリースノートにする。
