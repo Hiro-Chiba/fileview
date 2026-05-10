@@ -17,12 +17,19 @@ path = "src/main.rs"
 
 [features]
 # Default keeps the full feature set so existing users see no behavior change.
-default = ["clipboard"]
+default = ["clipboard", "lua"]
 # System clipboard integration via `arboard`. Disabling drops a small Linux
 # dependency surface (X11 / wayland client libraries) and shrinks the binary;
 # `c` and `Ctrl+Y` then surface a one-line "clipboard support disabled" message
 # instead of writing to the OS clipboard.
 clipboard = ["dep:arboard"]
+# Lua plugin runtime via `mlua` with vendored Lua 5.4. Disabling drops the
+# largest single binary contributor (~200 KB plus runtime) and removes
+# `~/.config/fileview/plugins/init.lua` autoload. CLI subcommand
+# `fv plugin test` returns an error explaining that the feature is off; the
+# rest of the TUI works as before because `PluginManager::new()` simply
+# fails and the optional plugin manager stays `None`.
+lua = ["dep:mlua"]
 # Enable Chafa fallback for better image quality on terminals without native protocol support
 # Requires libchafa (>= 1.8.0) to be installed: brew install chafa (macOS) or apt install libchafa-dev (Linux)
 chafa = ["ratatui-image/chafa-dyn"]
@@ -47,7 +54,7 @@ flate2 = "1.1"
 trash = "5"
 tempfile = "3"
 syntect = "5"
-mlua = { version = "0.11", features = ["lua54", "vendored"] }
+mlua = { version = "0.11", features = ["lua54", "vendored"], optional = true }
 regex = "1"
 # v2.0 additions
 thiserror = "2"          # Unified error types
