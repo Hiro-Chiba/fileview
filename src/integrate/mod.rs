@@ -15,6 +15,7 @@ pub mod callback;
 pub mod claude_init;
 pub mod context;
 pub mod context_pack;
+pub mod fingerprint;
 pub mod pick;
 pub mod plugin_cmd;
 pub mod related;
@@ -32,6 +33,7 @@ pub use context_pack::{
     output_context_pack_with_options, ContextAgent, ContextPackFormat, ContextPackOptions,
     ContextPackPreset,
 };
+pub use fingerprint::{detect as detect_fingerprint, Fingerprint, Language};
 pub use pick::{
     exit_code, output_paths, output_paths_claude_format, output_paths_with_content, OutputFormat,
     PickResult,

@@ -2,6 +2,8 @@
 
 use std::io::Stdout;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+use std::thread;
 use std::time::{Duration, Instant};
 
 use crossterm::event::{self, Event};
@@ -86,6 +88,28 @@ pub fn run_app(
     if let Some(model) = config.budget_default_model {
         state.budget_model = model;
     }
+
+    // Kick off a one-shot repo fingerprint detection on a background thread.
+    // The result is shown in the status bar once it lands; we never block
+    // the UI on it. Skip in stdin mode since the "repo" concept doesn't
+    // apply when paths come from a pipe.
+    let fingerprint_rx: Option<mpsc::Receiver<crate::integrate::Fingerprint>> =
+        if config.stdin_paths.is_some() {
+            None
+        } else {
+            let (tx, rx) = mpsc::channel();
+            let root_for_fp = config.root.clone();
+            thread::Builder::new()
+                .name("fv-fingerprint".into())
+                .spawn(move || {
+                    let fp =
+                        crate::integrate::detect_fingerprint(&root_for_fp, Duration::from_secs(2));
+                    let _ = tx.send(fp);
+                })
+                .ok();
+            Some(rx)
+        };
+    let mut fingerprint_shown = false;
 
     // Apply config file settings
     state.show_hidden = config.show_hidden;
@@ -336,6 +360,23 @@ pub fn run_app(
                     }
                 }
                 needs_redraw = true;
+            }
+        }
+
+        // Surface the repo fingerprint once the background thread is done.
+        // We only fire it once per session, and only when there is no other
+        // user-facing message that would be clobbered by it.
+        if !fingerprint_shown {
+            if let Some(rx) = fingerprint_rx.as_ref() {
+                if let Ok(fp) = rx.try_recv() {
+                    fingerprint_shown = true;
+                    if state.message.is_none() {
+                        state.set_message(fp.describe());
+                        needs_redraw = true;
+                    }
+                }
+            } else {
+                fingerprint_shown = true;
             }
         }
 
