@@ -7,7 +7,7 @@ use super::{FocusTarget, ViewMode};
 use crate::action::Clipboard;
 use crate::ai_activity::AiActivityState;
 use crate::git::{DiffRange, GitStatus};
-use crate::integrate::{BudgetModel, BudgetWorker};
+use crate::integrate::{BudgetModel, BudgetWorker, TodoItem};
 
 /// Number of bookmark slots (1-9)
 pub const BOOKMARK_SLOTS: usize = 9;
@@ -218,6 +218,10 @@ pub struct AppState {
     /// Diff-aware tree scope. When `Some`, the tree filters and annotates
     /// based on this range.
     pub diff_range: Option<DiffRange>,
+    /// Cached TODO/FIXME scan results (populated when the popup is opened).
+    pub todo_items: Vec<TodoItem>,
+    /// Whether the last TODO scan ran out of time before completing.
+    pub todo_partial: bool,
 }
 
 impl AppState {
@@ -267,6 +271,8 @@ impl AppState {
             marked_token_cache: HashMap::new(),
             budget_worker: None,
             diff_range: None,
+            todo_items: Vec::new(),
+            todo_partial: false,
         }
     }
 

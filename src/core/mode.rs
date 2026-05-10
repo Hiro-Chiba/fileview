@@ -57,6 +57,11 @@ pub enum ViewMode {
     BookmarkJump,
     /// File filter input mode
     Filter { query: String },
+    /// Repository-wide TODO/FIXME aggregator popup
+    Todos {
+        /// Index of selected entry
+        selected: usize,
+    },
     /// Bulk rename mode
     BulkRename {
         /// Pattern to match (e.g., "*.txt", "old_")

@@ -353,7 +353,11 @@ pub fn handle_action(
         | KeyAction::AiActivityLogUp
         | KeyAction::AiActivityLogDown
         | KeyAction::AiActivityLogSelect
-        | KeyAction::CycleBudgetModel => {
+        | KeyAction::CycleBudgetModel
+        | KeyAction::OpenTodos
+        | KeyAction::TodosUp
+        | KeyAction::TodosDown
+        | KeyAction::TodosSelect => {
             display::handle(action, state, navigator, focused_path)?;
             Ok(ActionResult::Continue)
         }

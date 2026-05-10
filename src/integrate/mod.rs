@@ -20,6 +20,7 @@ pub mod pick;
 pub mod plugin_cmd;
 pub mod related;
 pub mod session;
+pub mod todos;
 pub mod tree;
 
 pub use ai_ignore::{synthesize as synthesize_ai_ignore, AiIgnoreAgent, SynthesisOutcome};
@@ -41,4 +42,5 @@ pub use pick::{
 pub use plugin_cmd::{plugin_init, plugin_test};
 pub use related::{collect_related_candidates, collect_related_paths, RelatedCandidate};
 pub use session::{load_session, load_session_named, save_session, save_session_named, Session};
+pub use todos::{scan_repo as scan_todos, ScanOutcome as TodoScanOutcome, TodoItem, TodoTag};
 pub use tree::{output_tree, print_tree_recursive_pub};

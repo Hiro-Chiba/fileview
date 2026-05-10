@@ -333,6 +333,54 @@ pub fn handle(
                 new_model.window_tokens() / 1_000
             ));
         }
+        KeyAction::OpenTodos => {
+            let outcome =
+                crate::integrate::scan_todos(&state.root, std::time::Duration::from_millis(1500));
+            state.todo_partial = outcome.partial;
+            state.todo_items = outcome.items;
+            state.mode = ViewMode::Todos { selected: 0 };
+            let suffix = if state.todo_partial { " (partial)" } else { "" };
+            state.set_message(format!(
+                "TODOs: {} found{} (j/k, Enter, Esc)",
+                state.todo_items.len(),
+                suffix
+            ));
+        }
+        KeyAction::TodosUp => {
+            if let ViewMode::Todos { selected } = &mut state.mode {
+                *selected = selected.saturating_sub(1);
+            }
+        }
+        KeyAction::TodosDown => {
+            if let ViewMode::Todos { selected } = &mut state.mode {
+                let max = state.todo_items.len().saturating_sub(1);
+                *selected = (*selected + 1).min(max);
+            }
+        }
+        KeyAction::TodosSelect => {
+            if let ViewMode::Todos { selected } = state.mode.clone() {
+                if let Some(item) = state.todo_items.get(selected).cloned() {
+                    if item.path.starts_with(&state.root) {
+                        match reveal_path_in_tree(navigator, state, &item.path) {
+                            Ok(_) => {
+                                state.mode = ViewMode::Browse;
+                                state.set_message(format!(
+                                    "{} {}:{}",
+                                    item.tag.as_str(),
+                                    item.path.display(),
+                                    item.line
+                                ));
+                            }
+                            Err(e) => {
+                                state.set_message(format!("Jump failed: {}", e));
+                            }
+                        }
+                    } else {
+                        state.set_message("Path outside current root");
+                    }
+                }
+            }
+        }
         _ => {}
     }
     Ok(())
