@@ -129,6 +129,10 @@ pub struct Config {
     /// Default model for the context budget bar, sourced from
     /// `[budget].default_model` in config.toml. None means use built-in default.
     pub budget_default_model: Option<BudgetModel>,
+    /// Diff scope. `Some(None)` means worktree changes; `Some(Some(rev))`
+    /// means a specific revspec like `origin/main..HEAD`. `None` means the
+    /// flag was not passed.
+    pub diff_scope: Option<Option<String>>,
 }
 
 impl Config {
@@ -172,11 +176,25 @@ impl Config {
         let mut init_ai_write = false;
         let mut resume_ai_session: Option<String> = None;
         let mut follow_ai = false;
+        let mut diff_scope: Option<Option<String>> = None;
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--pick" | "-p" => pick_mode = true,
                 "--follow-ai" => follow_ai = true,
+                "--diff" => {
+                    let next = args.peek().cloned();
+                    if let Some(value) = next {
+                        if !value.starts_with('-') {
+                            args.next();
+                            diff_scope = Some(Some(value));
+                        } else {
+                            diff_scope = Some(None);
+                        }
+                    } else {
+                        diff_scope = Some(None);
+                    }
+                }
                 "--choosedir" => {
                     choosedir_mode = true;
                     // Check if next arg is a file path (not starting with -)
@@ -547,6 +565,7 @@ impl Config {
             } else {
                 config_file.budget.default_model.parse::<BudgetModel>().ok()
             },
+            diff_scope,
         })
     }
 }
@@ -677,6 +696,9 @@ CLAUDE CODE INTEGRATION:
     init aiignore [--write] [--agents A1,A2] [--force]
                         Generate .claudeignore / .cursorignore / .aiderignore.
                         Default: dry-run, all three agents. --write applies to disk.
+    --diff [REV]        Diff-aware tree mode. With no argument, scope is
+                        the working tree changes. With a revspec (e.g.
+                        origin/main..HEAD) the scope is that range.
     plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
     plugin test PATH    Execute plugin file in sandbox and report status
 
