@@ -10,9 +10,9 @@ use ratatui::{
     Frame,
 };
 
-use super::common::{
-    format_size, get_border_style, truncate_entry_name, unix_timestamp_to_date, ARCHIVE_MAX_ENTRIES,
-};
+use super::common::{format_size, get_border_style};
+#[cfg(feature = "archive")]
+use super::common::{truncate_entry_name, unix_timestamp_to_date, ARCHIVE_MAX_ENTRIES};
 
 /// Archive entry information
 #[derive(Debug, Clone)]
@@ -53,6 +53,7 @@ pub struct ArchivePreview {
 
 impl ArchivePreview {
     /// Load archive preview from zip file
+    #[cfg(feature = "archive")]
     pub fn load_zip(path: &Path) -> anyhow::Result<Self> {
         let file = std::fs::File::open(path)?;
         let mut archive = zip::ZipArchive::new(file)?;
@@ -96,7 +97,14 @@ impl ArchivePreview {
         })
     }
 
+    /// Stub when the `archive` feature is off.
+    #[cfg(not(feature = "archive"))]
+    pub fn load_zip(_path: &Path) -> anyhow::Result<Self> {
+        anyhow::bail!("archive support disabled (rebuild with --features archive)")
+    }
+
     /// Load archive preview from tar.gz file
+    #[cfg(feature = "archive")]
     pub fn load_tar_gz(path: &Path) -> anyhow::Result<Self> {
         let file = std::fs::File::open(path)?;
         let decompressed = flate2::read::GzDecoder::new(file);
@@ -145,6 +153,12 @@ impl ArchivePreview {
             file_count,
             scroll: 0,
         })
+    }
+
+    /// Stub when the `archive` feature is off.
+    #[cfg(not(feature = "archive"))]
+    pub fn load_tar_gz(_path: &Path) -> anyhow::Result<Self> {
+        anyhow::bail!("archive support disabled (rebuild with --features archive)")
     }
 
     /// Get visible line count
