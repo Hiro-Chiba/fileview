@@ -36,6 +36,18 @@ fn get_theme() -> &'static Theme {
     })
 }
 
+/// Warm both lazy caches without doing real work.
+///
+/// First-call cost is roughly 20 to 50 ms for the syntax set and a few
+/// hundred KB of heap for the embedded grammars and theme. Calling this
+/// from a background thread at startup absorbs that cost so the first
+/// preview, the first diff render, and the first Claude / context-pack
+/// invocation do not pay it on the UI thread.
+pub fn warmup() {
+    let _ = get_syntax_set();
+    let _ = get_theme();
+}
+
 /// A segment of styled text (text with color)
 #[derive(Debug, Clone)]
 pub struct StyledSegment {
