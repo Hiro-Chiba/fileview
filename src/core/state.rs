@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use super::{FocusTarget, ViewMode};
 use crate::action::Clipboard;
 use crate::ai_activity::AiActivityState;
-use crate::git::GitStatus;
+use crate::git::{DiffRange, GitStatus};
 use crate::integrate::{BudgetModel, BudgetWorker};
 
 /// Number of bookmark slots (1-9)
@@ -215,6 +215,9 @@ pub struct AppState {
     /// Background token estimator. Lazily spawned when the first file is
     /// marked, so non-AI users never pay the thread cost.
     pub budget_worker: Option<BudgetWorker>,
+    /// Diff-aware tree scope. When `Some`, the tree filters and annotates
+    /// based on this range.
+    pub diff_range: Option<DiffRange>,
 }
 
 impl AppState {
@@ -263,6 +266,7 @@ impl AppState {
             budget_model: BudgetModel::default(),
             marked_token_cache: HashMap::new(),
             budget_worker: None,
+            diff_range: None,
         }
     }
 

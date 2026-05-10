@@ -89,6 +89,25 @@ pub fn run_app(
         state.budget_model = model;
     }
 
+    // Resolve --diff scope. Errors are surfaced to the status bar but never
+    // fatal: the user can keep using the tree as a normal browser.
+    if let Some(scope) = config.diff_scope.clone() {
+        match crate::git::compute_diff_range(&config.root, scope.as_deref()) {
+            Ok(range) => {
+                let count = range.file_count();
+                let label = match &range.revspec {
+                    Some(r) => format!("range {}", r),
+                    None => "working tree".to_string(),
+                };
+                state.set_message(format!("Diff scope: {} ({} files)", label, count));
+                state.diff_range = Some(range);
+            }
+            Err(e) => {
+                state.set_message(format!("Diff scope unavailable: {}", e));
+            }
+        }
+    }
+
     // Kick off a one-shot repo fingerprint detection on a background thread.
     // The result is shown in the status bar once it lands; we never block
     // the UI on it. Skip in stdin mode since the "repo" concept doesn't

@@ -15,6 +15,43 @@ use crate::git::FileStatus;
 use crate::render::icons;
 use crate::tree::VisibleEntry;
 
+/// Build the +N/-M annotation spans for the diff scope when applicable.
+///
+/// Returns spans that can be appended to the end of the entry line. Empty
+/// when no diff range is active or the path is outside it. Suppressed in
+/// Ultra and Narrow modes to keep the row tight.
+fn diff_annotation_spans(
+    state: &AppState,
+    entry: &VisibleEntry,
+    density: UiDensity,
+) -> Vec<Span<'static>> {
+    if matches!(density, UiDensity::Ultra | UiDensity::Narrow) {
+        return Vec::new();
+    }
+    let range = match state.diff_range.as_ref() {
+        Some(r) => r,
+        None => return Vec::new(),
+    };
+    let (added, deleted) = if entry.is_dir {
+        range.totals_under(&entry.path)
+    } else {
+        match range.get(&entry.path) {
+            Some(c) => c,
+            None => return Vec::new(),
+        }
+    };
+    if added == 0 && deleted == 0 {
+        return Vec::new();
+    }
+    let t = theme();
+    vec![
+        Span::raw("  "),
+        Span::styled(format!("+{}", added), Style::default().fg(t.git_untracked)),
+        Span::raw("/"),
+        Span::styled(format!("-{}", deleted), Style::default().fg(t.git_deleted)),
+    ]
+}
+
 /// Render the file tree widget
 pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&VisibleEntry], area: Rect) {
     let visible_height = area.height.saturating_sub(2) as usize;
@@ -204,14 +241,16 @@ fn render_entry(
             } else {
                 format!("{} ", icon)
             };
-            Line::from(vec![
+            let mut spans: Vec<Span<'static>> = vec![
                 Span::styled(mark_indicator, Style::default().fg(t.mark)),
                 stage_indicator,
                 Span::styled(
                     format!("{}{}{}", indent_str, icon_with_space, display_name),
                     style,
                 ),
-            ])
+            ];
+            spans.extend(diff_annotation_spans(state, entry, density));
+            Line::from(spans)
         }
     };
 
