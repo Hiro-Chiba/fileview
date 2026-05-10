@@ -15,7 +15,8 @@ use fileview::app::{run_app, Config, InitAction, PluginAction, SessionAction};
 use fileview::integrate::{
     claude_init, collect_related_candidates, collect_related_paths, exit_code, load_session,
     load_session_named, output_context, output_context_pack_with_options, output_paths,
-    output_tree, plugin_init, plugin_test, run_ai_benchmark, Session,
+    output_tree, plugin_init, plugin_test, run_ai_benchmark, synthesize_ai_ignore, AiIgnoreAgent,
+    Session,
 };
 use fileview::render::create_image_picker;
 
@@ -245,6 +246,46 @@ fn run_init_action(config: &Config, action: InitAction) -> ExitCode {
                     ExitCode::from(exit_code::ERROR as u8)
                 }
             }
+        }
+        InitAction::AiIgnore => run_init_aiignore(config),
+    }
+}
+
+/// Run `init aiignore` (synthesize .claudeignore / .cursorignore / .aiderignore).
+fn run_init_aiignore(config: &Config) -> ExitCode {
+    let agents: Vec<AiIgnoreAgent> = if config.init_ai_agents.is_empty() {
+        AiIgnoreAgent::all()
+    } else {
+        config.init_ai_agents.clone()
+    };
+
+    match synthesize_ai_ignore(
+        &config.root,
+        &agents,
+        config.init_ai_write,
+        config.init_force,
+    ) {
+        Ok(outcomes) => {
+            if config.init_ai_write {
+                for o in &outcomes {
+                    if o.written {
+                        println!("Wrote {}", o.path.display());
+                    } else {
+                        println!("Up-to-date {}", o.path.display());
+                    }
+                }
+            } else {
+                println!("(dry-run; pass --write to apply)");
+                for o in &outcomes {
+                    println!("--- {} ---", o.path.display());
+                    println!("{}", o.content);
+                }
+            }
+            ExitCode::from(exit_code::SUCCESS as u8)
+        }
+        Err(e) => {
+            eprintln!("Failed to synthesize AI ignore files: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
         }
     }
 }

@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use super::config_file::{CommandsConfig, ConfigFile, PreviewConfig};
 use crate::integrate::{
-    exit_code, Callback, ContextAgent, ContextPackFormat, ContextPackOptions, ContextPackPreset,
-    OutputFormat,
+    exit_code, AiIgnoreAgent, Callback, ContextAgent, ContextPackFormat, ContextPackOptions,
+    ContextPackPreset, OutputFormat,
 };
 
 /// Session action (save, restore, clear)
@@ -37,6 +37,8 @@ pub enum PluginAction {
 pub enum InitAction {
     /// Initialize Claude config with fileview MCP entry
     Claude,
+    /// Generate `.{claude,cursor,aider}ignore` files
+    AiIgnore,
 }
 
 /// Application configuration from CLI args and config file
@@ -116,6 +118,10 @@ pub struct Config {
     pub init_path: Option<PathBuf>,
     /// Force overwrite for init command
     pub init_force: bool,
+    /// Agents to target for `init aiignore` (defaults to all when empty)
+    pub init_ai_agents: Vec<AiIgnoreAgent>,
+    /// Whether `init aiignore` should write files (default: dry-run)
+    pub init_ai_write: bool,
     /// Resume AI session by name (default: ai)
     pub resume_ai_session: Option<String>,
     /// Start with AI activity follow-mode enabled (auto-focus on AI's last file)
@@ -159,6 +165,8 @@ impl Config {
         let mut init_action: Option<InitAction> = None;
         let mut init_path: Option<PathBuf> = None;
         let mut init_force = false;
+        let mut init_ai_agents: Vec<AiIgnoreAgent> = Vec::new();
+        let mut init_ai_write = false;
         let mut resume_ai_session: Option<String> = None;
         let mut follow_ai = false;
 
@@ -325,9 +333,9 @@ impl Config {
                     resume_ai_session = Some(name);
                 }
                 "init" => {
-                    let sub = args
-                        .next()
-                        .ok_or_else(|| anyhow::anyhow!("init requires a target (e.g. claude)"))?;
+                    let sub = args.next().ok_or_else(|| {
+                        anyhow::anyhow!("init requires a target (e.g. claude, aiignore)")
+                    })?;
                     match sub.as_str() {
                         "claude" => {
                             init_action = Some(InitAction::Claude);
@@ -343,6 +351,44 @@ impl Config {
                                     "--force" => {
                                         args.next();
                                         init_force = true;
+                                    }
+                                    token if token.starts_with('-') => {
+                                        anyhow::bail!("unknown init option: {}", token);
+                                    }
+                                    _ => break,
+                                }
+                            }
+                        }
+                        "aiignore" => {
+                            init_action = Some(InitAction::AiIgnore);
+                            while let Some(next) = args.peek().cloned() {
+                                match next.as_str() {
+                                    "--write" => {
+                                        args.next();
+                                        init_ai_write = true;
+                                    }
+                                    "--force" => {
+                                        args.next();
+                                        init_force = true;
+                                    }
+                                    "--agents" => {
+                                        args.next();
+                                        let value = args.next().ok_or_else(|| {
+                                            anyhow::anyhow!("--agents requires a value")
+                                        })?;
+                                        for tok in value.split(',') {
+                                            let tok = tok.trim();
+                                            if tok.is_empty() {
+                                                continue;
+                                            }
+                                            let agent: AiIgnoreAgent =
+                                                tok.parse().map_err(|e: String| {
+                                                    anyhow::anyhow!("--agents: {}", e)
+                                                })?;
+                                            if !init_ai_agents.contains(&agent) {
+                                                init_ai_agents.push(agent);
+                                            }
+                                        }
                                     }
                                     token if token.starts_with('-') => {
                                         anyhow::bail!("unknown init option: {}", token);
@@ -489,6 +535,8 @@ impl Config {
             init_action,
             init_path,
             init_force,
+            init_ai_agents,
+            init_ai_write,
             resume_ai_session,
             follow_ai,
         })
@@ -618,6 +666,9 @@ CLAUDE CODE INTEGRATION:
     benchmark ai        Run AI benchmark scenarios (context-pack/review-pack/related/all)
     init claude [--path FILE] [--force]
                         Initialize Claude config with fileview MCP entry
+    init aiignore [--write] [--agents A1,A2] [--force]
+                        Generate .claudeignore / .cursorignore / .aiderignore.
+                        Default: dry-run, all three agents. --write applies to disk.
     plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
     plugin test PATH    Execute plugin file in sandbox and report status
 
