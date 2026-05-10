@@ -71,3 +71,69 @@ GitHub Release 作成のみを自動化する。crates.io publish を CI 経由�
 - 収束後: `2.4.0-rc.1`
 - 安定化完了: `2.4.0`（推奨版）
 - 緊急修正: `2.4.1`
+
+## リリースノート形式
+
+GitHub Releases の本文は次のテンプレで統一する。`CHANGELOG.md` の
+"Keep a Changelog" 形式と整合させ、過去の小刻みリリースで生じていた
+言語・見出し・密度のばらつきを抑える。
+
+### テンプレート
+
+```markdown
+# vX.Y.Z[ - Optional Subtitle]
+
+One or two sentence English summary describing the release theme.
+
+## Highlights
+
+- Headline feature one
+- Headline feature two
+
+## Added
+
+- New CLI flag `--foo` for X (#PR)
+- New keybinding `Alt+B` for Y (#PR)
+
+## Changed
+
+- Behavior of Z now does W (was V) (#PR)
+
+## Fixed
+
+- Bug where A caused B (#PR)
+
+## Notes
+
+Breaking changes, migration steps, or compatibility notes. Omit when
+the section would be empty.
+
+---
+
+**Full Changelog**: https://github.com/Hiro-Chiba/fileview/compare/PREV...vX.Y.Z
+```
+
+### ルール
+
+1. **言語**: 英語のみ。TUI/CLI が英語ベースなので Releases も合わせる。
+   日本語の記述は `README_ja.md` や `CHANGELOG_ja.md` に集約し、
+   GitHub Releases には混在させない。
+2. **タイトル**: `vX.Y.Z` を必須とする。節目リリースには ` - ` 区切り
+   でサブタイトルを付けて良い（例: `v1.24.0 - Claude Code Integration`）。
+3. **見出しレベル**: 本文は h2 (`##`) から始める。`# FileView vX.Y.Z`
+   のような h1 を本文先頭には使わない（タイトルフィールドが同じ役割を
+   果たすため重複になる）。
+4. **セクション順序**: Highlights → Added → Changed → Fixed → Notes。
+   空のセクションはプレースホルダを残さず省略する。
+5. **絵文字なし**: 装飾目的の絵文字は使わない。README も marketing 表現
+   を抑える方針なので、Releases もそれに揃える。
+6. **PR 参照**: 各 bullet の末尾に `(#NNN)` を付ける（PR が出元の場合）。
+7. **Full Changelog**: 末尾に GitHub 自動生成の compare リンクを置き、
+   commit レベルで深掘りできるようにする。
+
+### auto-generate ボタンだけに頼らない理由
+
+GitHub の "Generate release notes" は PR タイトル一覧を吐くだけで、
+ユーザ目線の "何が変わったか" がぼやける。Highlights を 2〜3 行手書きし
+てからセクションを並べることで、Releases ページを開いた瞬間に価値が
+伝わるリリースノートになる。
