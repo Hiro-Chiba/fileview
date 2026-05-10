@@ -156,7 +156,7 @@ impl SessionRegistry {
                 },
             ));
         }
-        out.sort_by(|a, b| b.0.cmp(&a.0));
+        out.sort_by_key(|entry| std::cmp::Reverse(entry.0));
         out.into_iter().map(|(_, s)| s).collect()
     }
 
