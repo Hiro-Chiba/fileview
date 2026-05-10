@@ -13,7 +13,9 @@ use crate::render::{
 };
 use crate::tree::TreeNavigator;
 
-use super::{get_filename_str, reload_tree, ActionContext, ActionResult};
+#[cfg(feature = "clipboard")]
+use super::get_filename_str;
+use super::{reload_tree, ActionContext, ActionResult};
 
 /// Handle app control actions (Quit, QuitAndCd, Cancel)
 pub fn handle_app_control(
@@ -81,20 +83,40 @@ pub fn handle(
         }
         KeyAction::CopyPath => {
             if let Some(path) = focused_path {
-                match arboard::Clipboard::new()
-                    .and_then(|mut cb| cb.set_text(path.display().to_string()))
+                #[cfg(feature = "clipboard")]
                 {
-                    Ok(_) => state.set_message("Copied path"),
-                    Err(_) => state.set_message("Failed: copy path"),
+                    match arboard::Clipboard::new()
+                        .and_then(|mut cb| cb.set_text(path.display().to_string()))
+                    {
+                        Ok(_) => state.set_message("Copied path"),
+                        Err(_) => state.set_message("Failed: copy path"),
+                    }
+                }
+                #[cfg(not(feature = "clipboard"))]
+                {
+                    let _ = path;
+                    state.set_message(
+                        "Clipboard support disabled (rebuild with --features clipboard)",
+                    );
                 }
             }
         }
         KeyAction::CopyFilename => {
             if let Some(path) = focused_path {
-                let name = get_filename_str(Some(path));
-                match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(name)) {
-                    Ok(_) => state.set_message("Copied filename"),
-                    Err(_) => state.set_message("Failed: copy filename"),
+                #[cfg(feature = "clipboard")]
+                {
+                    let name = get_filename_str(Some(path));
+                    match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(name)) {
+                        Ok(_) => state.set_message("Copied filename"),
+                        Err(_) => state.set_message("Failed: copy filename"),
+                    }
+                }
+                #[cfg(not(feature = "clipboard"))]
+                {
+                    let _ = path;
+                    state.set_message(
+                        "Clipboard support disabled (rebuild with --features clipboard)",
+                    );
                 }
             }
         }
@@ -696,10 +718,18 @@ fn copy_file_contents_compact(paths: &[PathBuf]) -> anyhow::Result<(String, usiz
 }
 
 fn copy_text_to_clipboard(text: &str) -> anyhow::Result<()> {
-    arboard::Clipboard::new()
-        .and_then(|mut cb| cb.set_text(text.to_string()))
-        .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;
-    Ok(())
+    #[cfg(feature = "clipboard")]
+    {
+        arboard::Clipboard::new()
+            .and_then(|mut cb| cb.set_text(text.to_string()))
+            .map_err(|e| anyhow::anyhow!("Clipboard error: {}", e))?;
+        Ok(())
+    }
+    #[cfg(not(feature = "clipboard"))]
+    {
+        let _ = text;
+        anyhow::bail!("clipboard support disabled (rebuild with --features clipboard)")
+    }
 }
 
 /// Handle pick mode selection

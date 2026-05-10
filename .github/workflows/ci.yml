@@ -33,6 +33,8 @@ jobs:
       - name: clippy
         # Note: --all-features is not used because 'chafa' requires a system library
         run: cargo clippy --all-targets -- -D warnings
+      - name: clippy (no default features)
+        run: cargo clippy --all-targets --no-default-features -- -D warnings
       - name: rustdoc
         env:
           RUSTDOCFLAGS: -D warnings
