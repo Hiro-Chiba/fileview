@@ -11,7 +11,9 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 
-use fileview::app::{run_app, Config, InitAction, PluginAction, SessionAction};
+use fileview::app::{
+    print_replay_outcome, run_app, run_replay_app, Config, InitAction, PluginAction, SessionAction,
+};
 use fileview::integrate::{
     claude_init, collect_related_candidates, collect_related_paths, exit_code, load_session,
     load_session_named, output_context, output_context_pack_with_options, output_paths,
@@ -53,6 +55,10 @@ fn main() -> ExitCode {
 
     if config.mcp_server {
         return run_mcp_server(&config);
+    }
+
+    if let Some(session_id) = config.replay.as_ref() {
+        return run_replay_mode(session_id.as_deref());
     }
 
     if let Some(ref name) = config.resume_ai_session {
@@ -163,6 +169,20 @@ fn run_mcp_server(config: &Config) -> ExitCode {
         Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
         Err(e) => {
             eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+/// Run the replay UI for past AI sessions.
+fn run_replay_mode(session_id: Option<&str>) -> ExitCode {
+    match run_replay_app(session_id) {
+        Ok(outcome) => {
+            print_replay_outcome(&outcome);
+            ExitCode::from(exit_code::SUCCESS as u8)
+        }
+        Err(e) => {
+            eprintln!("Replay failed: {}", e);
             ExitCode::from(exit_code::ERROR as u8)
         }
     }

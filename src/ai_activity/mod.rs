@@ -24,6 +24,7 @@
 
 pub mod emitter;
 pub mod event;
+pub mod replay;
 pub mod session;
 pub mod watcher;
 
@@ -31,6 +32,7 @@ use std::collections::VecDeque;
 
 pub use emitter::ActivityEmitter;
 pub use event::ActivityEvent;
+pub use replay::read_session_events;
 pub use session::{SessionInfo, SessionMeta, SessionRegistry};
 pub use watcher::ActivityWatcher;
 
