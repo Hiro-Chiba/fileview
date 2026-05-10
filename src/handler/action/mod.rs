@@ -352,7 +352,8 @@ pub fn handle_action(
         | KeyAction::OpenAiActivityLog
         | KeyAction::AiActivityLogUp
         | KeyAction::AiActivityLogDown
-        | KeyAction::AiActivityLogSelect => {
+        | KeyAction::AiActivityLogSelect
+        | KeyAction::CycleBudgetModel => {
             display::handle(action, state, navigator, focused_path)?;
             Ok(ActionResult::Continue)
         }

@@ -1,12 +1,13 @@
 //! Application state management
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use super::{FocusTarget, ViewMode};
 use crate::action::Clipboard;
 use crate::ai_activity::AiActivityState;
 use crate::git::GitStatus;
+use crate::integrate::{BudgetModel, BudgetWorker};
 
 /// Number of bookmark slots (1-9)
 pub const BOOKMARK_SLOTS: usize = 9;
@@ -206,6 +207,14 @@ pub struct AppState {
     pub ai_history: Vec<AiHistoryEntry>,
     /// Live AI activity reflection (MCP tool calls streamed from the server)
     pub ai_activity: AiActivityState,
+    /// Currently selected target model for the context budget bar
+    pub budget_model: BudgetModel,
+    /// Per-path token estimate cache. `None` means a worker has been asked
+    /// for the count but the result has not arrived yet.
+    pub marked_token_cache: HashMap<PathBuf, Option<usize>>,
+    /// Background token estimator. Lazily spawned when the first file is
+    /// marked, so non-AI users never pay the thread cost.
+    pub budget_worker: Option<BudgetWorker>,
 }
 
 impl AppState {
@@ -251,7 +260,113 @@ impl AppState {
             ai_focus_prev_preview_display_mode: PreviewDisplayMode::default(),
             ai_history: Vec::new(),
             ai_activity: AiActivityState::default(),
+            budget_model: BudgetModel::default(),
+            marked_token_cache: HashMap::new(),
+            budget_worker: None,
         }
+    }
+
+    /// Ensure a budget worker is running and return it.
+    fn ensure_budget_worker(&mut self) -> &BudgetWorker {
+        if self.budget_worker.is_none() {
+            self.budget_worker = Some(BudgetWorker::spawn());
+        }
+        self.budget_worker.as_ref().expect("just spawned")
+    }
+
+    /// Hook to call when a path is newly marked. Adds a placeholder cache
+    /// entry and queues a background token estimation for the path.
+    pub fn on_path_marked(&mut self, path: &PathBuf) {
+        if self.marked_token_cache.contains_key(path) {
+            return;
+        }
+        self.marked_token_cache.insert(path.clone(), None);
+        let worker = self.ensure_budget_worker();
+        let _ = worker.enqueue(path.clone());
+    }
+
+    /// Hook to call when a path is unmarked. Removes the cache entry.
+    pub fn on_path_unmarked(&mut self, path: &PathBuf) {
+        self.marked_token_cache.remove(path);
+    }
+
+    /// Hook to call when the entire selection is cleared.
+    pub fn on_selection_cleared(&mut self) {
+        self.marked_token_cache.clear();
+    }
+
+    /// Sync `marked_token_cache` against `selected_paths`.
+    ///
+    /// Adds missing entries (and queues token estimation for them) and
+    /// removes stale entries. Useful when bulk operations like `Select All`
+    /// or `Invert Selection` mutate `selected_paths` directly.
+    pub fn sync_budget_cache(&mut self) {
+        let to_add: Vec<PathBuf> = self
+            .selected_paths
+            .iter()
+            .filter(|p| !self.marked_token_cache.contains_key(*p))
+            .cloned()
+            .collect();
+        let to_remove: Vec<PathBuf> = self
+            .marked_token_cache
+            .keys()
+            .filter(|p| !self.selected_paths.contains(*p))
+            .cloned()
+            .collect();
+        for p in to_remove {
+            self.marked_token_cache.remove(&p);
+        }
+        for p in to_add {
+            self.marked_token_cache.insert(p.clone(), None);
+            let worker = self.ensure_budget_worker();
+            let _ = worker.enqueue(p);
+        }
+    }
+
+    /// Drain pending worker results into the cache.
+    ///
+    /// Returns the number of cache entries that were updated; callers can
+    /// use the value to decide whether to force a redraw.
+    pub fn drain_budget_results(&mut self) -> usize {
+        let Some(worker) = self.budget_worker.as_ref() else {
+            return 0;
+        };
+        let results = worker.drain();
+        let mut updated = 0;
+        for r in results {
+            if !self.marked_token_cache.contains_key(&r.path) {
+                continue;
+            }
+            let val = r.tokens.ok();
+            self.marked_token_cache.insert(r.path, val);
+            updated += 1;
+        }
+        updated
+    }
+
+    /// Total token estimate across files whose count is already known.
+    /// Files still pending estimation are excluded from the total.
+    pub fn known_token_total(&self) -> usize {
+        self.marked_token_cache
+            .values()
+            .filter_map(|v| *v)
+            .sum::<usize>()
+    }
+
+    /// Number of marked files for which the worker has not yet returned a
+    /// count. Used by the status bar to show a `?` indicator while values
+    /// are still settling.
+    pub fn pending_token_count(&self) -> usize {
+        self.marked_token_cache
+            .values()
+            .filter(|v| v.is_none())
+            .count()
+    }
+
+    /// Cycle the budget model and return the new value.
+    pub fn cycle_budget_model(&mut self) -> BudgetModel {
+        self.budget_model = self.budget_model.next();
+        self.budget_model
     }
 
     /// Initialize git status (call after first frame render for faster startup)

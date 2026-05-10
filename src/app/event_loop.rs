@@ -83,6 +83,9 @@ pub fn run_app(
     state.pick_mode = config.pick_mode;
     state.select_mode = config.select_mode;
     state.multi_select = config.multi_select;
+    if let Some(model) = config.budget_default_model {
+        state.budget_model = model;
+    }
 
     // Apply config file settings
     state.show_hidden = config.show_hidden;
@@ -334,6 +337,21 @@ pub fn run_app(
                 }
                 needs_redraw = true;
             }
+        }
+
+        // Sync the budget bar's marked-token cache with the current
+        // selection set. Bulk operations (Select All, Invert, etc.) mutate
+        // selected_paths directly, so we reconcile here rather than wiring
+        // every action handler. Then drain any worker results that arrived
+        // since the last frame.
+        let sync_added = {
+            let before = state.marked_token_cache.len();
+            state.sync_budget_cache();
+            state.marked_token_cache.len() != before
+        };
+        let drained = state.drain_budget_results();
+        if sync_added || drained > 0 {
+            needs_redraw = true;
         }
 
         // Git status polling (configurable interval)

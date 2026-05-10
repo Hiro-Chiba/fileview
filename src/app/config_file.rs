@@ -25,6 +25,17 @@ pub struct ConfigFile {
     pub commands: CommandsConfig,
     /// Event hooks
     pub hooks: HooksConfig,
+    /// Context budget bar settings
+    pub budget: BudgetConfig,
+}
+
+/// Context budget bar settings (`[budget]` section in config.toml)
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+pub struct BudgetConfig {
+    /// Default model used by the budget bar (e.g. "sonnet-4-6-200k").
+    /// Empty string means "use the built-in default".
+    pub default_model: String,
 }
 
 /// General application settings

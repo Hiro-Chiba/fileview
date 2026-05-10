@@ -204,6 +204,8 @@ pub enum KeyAction {
     AiActivityLogDown,
     /// Jump to the path under the AI activity log cursor
     AiActivityLogSelect,
+    /// Cycle the context budget bar's target model
+    CycleBudgetModel,
 }
 
 /// Handle key event and return the resulting action
@@ -412,6 +414,10 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         }
         KeyCode::Char('l') | KeyCode::Char('L') if key.modifiers == KeyModifiers::ALT => {
             KeyAction::OpenAiActivityLog
+        }
+        // Context budget bar: cycle target model (Alt+M).
+        KeyCode::Char('m') | KeyCode::Char('M') if key.modifiers == KeyModifiers::ALT => {
+            KeyAction::CycleBudgetModel
         }
         // Quit
         KeyCode::Char('q') => {
