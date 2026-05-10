@@ -5,6 +5,30 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に基づいており、
 [セマンティックバージョニング](https://semver.org/lang/ja/) に準拠しています。
 
+## [2.6.0] - 2026-05-11
+
+AI 駆動ワークフローと slim ビルドに焦点を当てたリリース。8 つの新機能と
+4 つのオプショナル Cargo feature を追加。`CHANGELOG.md` の英語版が一次情報
+であり、ここでは概要のみ記載する。
+
+### 追加
+- AI 用 ignore ファイル合成 (`fv init aiignore`)
+- マーク中ファイルの context budget bar
+- 起動時のリポジトリ fingerprint
+- diff-aware tree (`fv --diff [REVSPEC]`)
+- TODO/FIXME aggregator (`\` キー)
+- AI session replay (`fv --replay [ID]`)
+
+### 変更
+- syntect / tiktoken のバックグラウンド warmup で初回ラグを除去
+- GitHub Releases の形式統一（英語、Keep a Changelog 準拠）
+
+### ビルド
+- 4 つの Cargo feature 化: `ai`, `archive`, `clipboard`, `lua`
+- `cargo install fileview --no-default-features` で slim ビルドが可能
+
+詳細は `CHANGELOG.md` を参照。
+
 ## [2.3.2] - 2026-02-12
 
 ### 変更
