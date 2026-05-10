@@ -8,10 +8,11 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use fileview::core::{AppState, InputPurpose, PendingAction, ViewMode};
 use fileview::handler::{handle_key_event, update_input_buffer, KeyAction};
 use fileview::render::{
-    calculate_centered_image_area, is_archive_file, is_binary_file, is_image_file, is_text_file,
-    ArchivePreview, DirectoryInfo, FontSize, HexPreview, RecommendedProtocol, TerminalBrand,
-    TextPreview,
+    calculate_centered_image_area, is_binary_file, is_image_file, is_text_file, DirectoryInfo,
+    FontSize, HexPreview, RecommendedProtocol, TerminalBrand, TextPreview,
 };
+#[cfg(feature = "archive")]
+use fileview::render::{is_archive_file, ArchivePreview};
 use ratatui::layout::Rect;
 use tempfile::TempDir;
 
@@ -5457,6 +5458,7 @@ mod fuzzy_finder_tests {
 // Archive Preview Tests
 // =============================================================================
 
+#[cfg(feature = "archive")]
 mod archive_preview_tests {
     use super::*;
     use std::fs;

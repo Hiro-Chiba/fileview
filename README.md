@@ -37,9 +37,10 @@ fv
 
 Chafa image support: `cargo install fileview --features chafa`<br>
 Speed-optimized build: `cargo install fileview --profile release-fast`<br>
-Slim build (drops the `arboard` clipboard and `mlua` Lua plugin
-dependencies): `cargo install fileview --no-default-features`<br>
-Pick individual features: `cargo install fileview --no-default-features --features clipboard,lua`
+Slim build (drops the `arboard` clipboard, `mlua` Lua plugin, and
+`zip` / `tar` / `flate2` archive dependencies):
+`cargo install fileview --no-default-features`<br>
+Pick individual features: `cargo install fileview --no-default-features --features clipboard,lua,archive`
 
 ## Image Preview
 
