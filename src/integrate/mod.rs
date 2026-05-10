@@ -8,6 +8,7 @@
 //! - Context mode: Output project context for AI tools (--context)
 //! - Session: Save/restore selection state
 
+pub mod ai_ignore;
 pub mod benchmark;
 pub mod callback;
 pub mod claude_init;
@@ -19,6 +20,7 @@ pub mod related;
 pub mod session;
 pub mod tree;
 
+pub use ai_ignore::{synthesize as synthesize_ai_ignore, AiIgnoreAgent, SynthesisOutcome};
 pub use benchmark::run_ai_benchmark;
 pub use callback::{Callback, CallbackResult};
 pub use claude_init::claude_init;
