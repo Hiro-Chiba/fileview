@@ -381,9 +381,10 @@ impl Config {
                                             if tok.is_empty() {
                                                 continue;
                                             }
-                                            let agent: AiIgnoreAgent = tok.parse().map_err(
-                                                |e: String| anyhow::anyhow!("--agents: {}", e),
-                                            )?;
+                                            let agent: AiIgnoreAgent =
+                                                tok.parse().map_err(|e: String| {
+                                                    anyhow::anyhow!("--agents: {}", e)
+                                                })?;
                                             if !init_ai_agents.contains(&agent) {
                                                 init_ai_agents.push(agent);
                                             }

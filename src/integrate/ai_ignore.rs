@@ -241,9 +241,8 @@ pub fn synthesize(
         let block = managed_block(*agent);
 
         let existing = if path.exists() {
-            fs::read_to_string(&path).map_err(|e| {
-                anyhow::anyhow!("failed to read {}: {}", path.display(), e)
-            })?
+            fs::read_to_string(&path)
+                .map_err(|e| anyhow::anyhow!("failed to read {}: {}", path.display(), e))?
         } else {
             String::new()
         };
@@ -253,13 +252,11 @@ pub fn synthesize(
 
         let written = if write && (changed || force) {
             if let Some(parent) = path.parent() {
-                fs::create_dir_all(parent).map_err(|e| {
-                    anyhow::anyhow!("failed to create {}: {}", parent.display(), e)
-                })?;
+                fs::create_dir_all(parent)
+                    .map_err(|e| anyhow::anyhow!("failed to create {}: {}", parent.display(), e))?;
             }
-            fs::write(&path, &merged).map_err(|e| {
-                anyhow::anyhow!("failed to write {}: {}", path.display(), e)
-            })?;
+            fs::write(&path, &merged)
+                .map_err(|e| anyhow::anyhow!("failed to write {}: {}", path.display(), e))?;
             true
         } else {
             false
@@ -329,10 +326,22 @@ mod tests {
         );
         let merged = merge_block(&initial, &managed_block(AiIgnoreAgent::Aider));
 
-        assert!(merged.contains("local-only/"), "user rules above markers must survive");
-        assert!(merged.contains("secret.txt"), "user rules below markers must survive");
-        assert!(!merged.contains("old-pattern/"), "old managed region must be replaced");
-        assert!(merged.contains("node_modules/"), "new managed region must be present");
+        assert!(
+            merged.contains("local-only/"),
+            "user rules above markers must survive"
+        );
+        assert!(
+            merged.contains("secret.txt"),
+            "user rules below markers must survive"
+        );
+        assert!(
+            !merged.contains("old-pattern/"),
+            "old managed region must be replaced"
+        );
+        assert!(
+            merged.contains("node_modules/"),
+            "new managed region must be present"
+        );
     }
 
     #[test]
@@ -376,11 +385,7 @@ mod tests {
     fn synthesize_preserves_user_lines_outside_markers() {
         let dir = tempdir().unwrap();
         let path = dir.path().join(".claudeignore");
-        fs::write(
-            &path,
-            "# user header\nmy-secret.json\n",
-        )
-        .unwrap();
+        fs::write(&path, "# user header\nmy-secret.json\n").unwrap();
 
         let _ = synthesize(dir.path(), &[AiIgnoreAgent::Claude], true, false).unwrap();
 
