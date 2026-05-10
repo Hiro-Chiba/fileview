@@ -206,6 +206,14 @@ pub enum KeyAction {
     AiActivityLogSelect,
     /// Cycle the context budget bar's target model
     CycleBudgetModel,
+    /// Open the repository-wide TODO/FIXME aggregator popup
+    OpenTodos,
+    /// Move up in the TODO popup
+    TodosUp,
+    /// Move down in the TODO popup
+    TodosDown,
+    /// Jump to the file under the TODO popup cursor
+    TodosSelect,
 }
 
 /// Handle key event and return the resulting action
@@ -229,6 +237,7 @@ pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
             to_pattern,
             ..
         } => handle_bulk_rename_mode(key, from_pattern, to_pattern),
+        ViewMode::Todos { .. } => handle_todos_mode(key),
     }
 }
 
@@ -297,6 +306,7 @@ pub fn handle_key_event_with_registry(
             to_pattern,
             ..
         } => handle_bulk_rename_mode(key, from_pattern, to_pattern),
+        ViewMode::Todos { .. } => handle_todos_mode(key),
     }
 }
 
@@ -419,6 +429,8 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         KeyCode::Char('m') | KeyCode::Char('M') if key.modifiers == KeyModifiers::ALT => {
             KeyAction::CycleBudgetModel
         }
+        // TODO/FIXME aggregator popup (\)
+        KeyCode::Char('\\') => KeyAction::OpenTodos,
         // Quit
         KeyCode::Char('q') => {
             if state.pick_mode {
@@ -957,6 +969,16 @@ fn handle_ai_activity_log_mode(key: KeyEvent) -> KeyAction {
         KeyCode::Up | KeyCode::Char('k') => KeyAction::AiActivityLogUp,
         KeyCode::Down | KeyCode::Char('j') => KeyAction::AiActivityLogDown,
         KeyCode::Enter => KeyAction::AiActivityLogSelect,
+        _ => KeyAction::None,
+    }
+}
+
+fn handle_todos_mode(key: KeyEvent) -> KeyAction {
+    match key.code {
+        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('\\') => KeyAction::Cancel,
+        KeyCode::Up | KeyCode::Char('k') => KeyAction::TodosUp,
+        KeyCode::Down | KeyCode::Char('j') => KeyAction::TodosDown,
+        KeyCode::Enter => KeyAction::TodosSelect,
         _ => KeyAction::None,
     }
 }
