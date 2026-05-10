@@ -10,6 +10,7 @@
 
 pub mod ai_ignore;
 pub mod benchmark;
+pub mod budget;
 pub mod callback;
 pub mod claude_init;
 pub mod context;
@@ -22,6 +23,7 @@ pub mod tree;
 
 pub use ai_ignore::{synthesize as synthesize_ai_ignore, AiIgnoreAgent, SynthesisOutcome};
 pub use benchmark::run_ai_benchmark;
+pub use budget::{humanize_tokens, BudgetModel, BudgetResult, BudgetSeverity, BudgetWorker};
 pub use callback::{Callback, CallbackResult};
 pub use claude_init::claude_init;
 pub use context::{build_project_context, output_context};

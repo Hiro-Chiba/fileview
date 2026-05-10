@@ -325,6 +325,14 @@ pub fn handle(
                 }
             }
         }
+        KeyAction::CycleBudgetModel => {
+            let new_model = state.cycle_budget_model();
+            state.set_message(format!(
+                "Budget model: {} ({}k window)",
+                new_model.label(),
+                new_model.window_tokens() / 1_000
+            ));
+        }
         _ => {}
     }
     Ok(())

@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use super::config_file::{CommandsConfig, ConfigFile, PreviewConfig};
 use crate::integrate::{
-    exit_code, AiIgnoreAgent, Callback, ContextAgent, ContextPackFormat, ContextPackOptions,
-    ContextPackPreset, OutputFormat,
+    exit_code, AiIgnoreAgent, BudgetModel, Callback, ContextAgent, ContextPackFormat,
+    ContextPackOptions, ContextPackPreset, OutputFormat,
 };
 
 /// Session action (save, restore, clear)
@@ -126,6 +126,9 @@ pub struct Config {
     pub resume_ai_session: Option<String>,
     /// Start with AI activity follow-mode enabled (auto-focus on AI's last file)
     pub follow_ai: bool,
+    /// Default model for the context budget bar, sourced from
+    /// `[budget].default_model` in config.toml. None means use built-in default.
+    pub budget_default_model: Option<BudgetModel>,
 }
 
 impl Config {
@@ -539,6 +542,11 @@ impl Config {
             init_ai_write,
             resume_ai_session,
             follow_ai,
+            budget_default_model: if config_file.budget.default_model.is_empty() {
+                None
+            } else {
+                config_file.budget.default_model.parse::<BudgetModel>().ok()
+            },
         })
     }
 }

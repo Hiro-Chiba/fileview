@@ -21,6 +21,68 @@ use super::theme::theme;
 use crate::core::{
     AppState, InputPurpose, PendingAction, PreviewDisplayMode, SortMode, UiDensity, ViewMode,
 };
+use crate::integrate::{humanize_tokens, BudgetSeverity};
+
+/// Build the spans rendered for the context budget bar.
+///
+/// Returns an empty vector when nothing is selected.
+fn budget_segment_spans(state: &AppState, density: UiDensity) -> Vec<Span<'static>> {
+    if state.selected_paths.is_empty() {
+        return Vec::new();
+    }
+    let t = theme();
+    let used = state.known_token_total();
+    let pending = state.pending_token_count();
+    let window = state.budget_model.window_tokens();
+    let percent = if window > 0 {
+        ((used as f64 / window as f64) * 100.0).round() as u32
+    } else {
+        0
+    };
+    let severity = BudgetSeverity::from_usage(used, window);
+    let color = match severity {
+        BudgetSeverity::Ok => t.git_staged,
+        BudgetSeverity::Warn => t.warning,
+        BudgetSeverity::Hot => t.git_conflict,
+        BudgetSeverity::Over => Color::Magenta,
+    };
+    let used_s = humanize_tokens(used);
+    let win_s = humanize_tokens(window);
+    let pending_marker = if pending > 0 {
+        format!("+{}?", pending)
+    } else {
+        String::new()
+    };
+    let text = match density {
+        UiDensity::Full => format!(
+            "[ctx {}f {}{}/{} {} {}%]",
+            state.selected_paths.len(),
+            used_s,
+            if pending_marker.is_empty() {
+                String::new()
+            } else {
+                format!(" {}", pending_marker)
+            },
+            win_s,
+            state.budget_model.short_label(),
+            percent,
+        ),
+        UiDensity::Compact => format!(
+            "[ctx {}{}/{} {}%]",
+            used_s,
+            if pending_marker.is_empty() {
+                String::new()
+            } else {
+                format!(" {}", pending_marker)
+            },
+            win_s,
+            percent,
+        ),
+        UiDensity::Narrow => format!("[ctx {}/{}]", used_s, win_s),
+        UiDensity::Ultra => format!("[{}]", used_s),
+    };
+    vec![Span::styled(text, Style::default().fg(color))]
+}
 
 /// Render the status bar with adaptive layout based on screen width
 /// Compose the status-bar message, giving AI activity precedence when a
@@ -271,6 +333,15 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         spans.push(Span::styled("\u{f0b0}", Style::default().fg(t.warning)));
     }
 
+    // Budget segment (single bracketed token count)
+    let budget_spans = budget_segment_spans(state, UiDensity::Ultra);
+    if !budget_spans.is_empty() {
+        if !spans.is_empty() {
+            spans.push(Span::raw(" "));
+        }
+        spans.extend(budget_spans);
+    }
+
     // Help hint only if there's space
     let current_width: usize = spans.iter().map(|s| s.width()).sum();
     if current_width < inner_width.saturating_sub(2) && spans.is_empty() {
@@ -337,6 +408,12 @@ fn render_compact_status(
     if selected_count > 0 {
         spans.push(Span::styled(" | ", Style::default().fg(t.git_ignored)));
         spans.push(Span::raw(format!("Sel:{}", selected_count)));
+    }
+
+    let budget_spans = budget_segment_spans(state, UiDensity::Compact);
+    if !budget_spans.is_empty() {
+        spans.push(Span::styled(" | ", Style::default().fg(t.git_ignored)));
+        spans.extend(budget_spans);
     }
 
     let content = Line::from(spans);
@@ -420,7 +497,7 @@ fn render_narrow_status(
         })
         .unwrap_or_default();
 
-    let stats = format!(
+    let stats_text = format!(
         "{}{}{}",
         file_info,
         if selected_count > 0 {
@@ -430,7 +507,14 @@ fn render_narrow_status(
         },
         clipboard_info
     );
-    let stats_widget = Paragraph::new(stats).block(Block::default().borders(Borders::ALL));
+    let mut stats_spans: Vec<Span<'static>> = vec![Span::raw(stats_text)];
+    let budget_spans = budget_segment_spans(state, UiDensity::Narrow);
+    if !budget_spans.is_empty() {
+        stats_spans.push(Span::raw(" "));
+        stats_spans.extend(budget_spans);
+    }
+    let stats_widget =
+        Paragraph::new(Line::from(stats_spans)).block(Block::default().borders(Borders::ALL));
     frame.render_widget(stats_widget, chunks[1]);
 }
 
@@ -526,7 +610,7 @@ fn render_full_status(
         })
         .unwrap_or_default();
 
-    let stats = format!(
+    let stats_text = format!(
         "{}{}{}",
         file_info,
         if selected_count > 0 {
@@ -536,7 +620,14 @@ fn render_full_status(
         },
         clipboard_info
     );
-    let stats_widget = Paragraph::new(stats).block(Block::default().borders(Borders::ALL));
+    let mut stats_spans: Vec<Span<'static>> = vec![Span::raw(stats_text)];
+    let budget_spans = budget_segment_spans(state, UiDensity::Full);
+    if !budget_spans.is_empty() {
+        stats_spans.push(Span::raw(" "));
+        stats_spans.extend(budget_spans);
+    }
+    let stats_widget =
+        Paragraph::new(Line::from(stats_spans)).block(Block::default().borders(Borders::ALL));
     frame.render_widget(stats_widget, chunks[1]);
 }
 
