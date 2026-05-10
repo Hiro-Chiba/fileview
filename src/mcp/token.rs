@@ -1,29 +1,51 @@
 //! Token estimation for AI context optimization
 //!
 //! Provides token counting and estimation for optimizing context sent to AI models.
+//!
+//! With the `ai` feature enabled, `estimate_tokens` uses `tiktoken-rs`'s
+//! `cl100k_base` BPE which is accurate for GPT-4 and a reasonable
+//! approximation for Claude (within roughly 5 to 10 percent). Without it,
+//! the function falls back to a coarse `chars / 4 + 1` heuristic so the
+//! budget bar, context-pack truncation, and token guards keep working at
+//! lower precision.
 
 use std::path::Path;
+#[cfg(feature = "ai")]
 use std::sync::OnceLock;
 
+#[cfg(feature = "ai")]
 use tiktoken_rs::{cl100k_base, CoreBPE};
 
 use crate::error::{FileviewError, Result};
 
 /// Lazy-initialized tokenizer (cl100k_base - used by GPT-4 and Claude)
+#[cfg(feature = "ai")]
 static TOKENIZER: OnceLock<CoreBPE> = OnceLock::new();
 
 /// Get the shared tokenizer instance
+#[cfg(feature = "ai")]
 fn get_tokenizer() -> &'static CoreBPE {
     TOKENIZER.get_or_init(|| cl100k_base().expect("Failed to initialize tokenizer"))
 }
 
 /// Estimate the number of tokens in a string.
 ///
-/// Uses cl100k_base encoding which is compatible with GPT-4 and provides
-/// a reasonable approximation for Claude models.
+/// With `ai` on, uses `cl100k_base` for an accurate count. Without it,
+/// falls back to `chars / 4 + 1` which lines up with the rough rule of
+/// thumb that English text is about four characters per token.
+#[cfg(feature = "ai")]
 pub fn estimate_tokens(text: &str) -> usize {
     let bpe = get_tokenizer();
     bpe.encode_with_special_tokens(text).len()
+}
+
+/// Coarse fallback used when the `ai` feature is off.
+#[cfg(not(feature = "ai"))]
+pub fn estimate_tokens(text: &str) -> usize {
+    if text.is_empty() {
+        return 0;
+    }
+    text.chars().count() / 4 + 1
 }
 
 /// Estimate tokens for a file by reading its content.

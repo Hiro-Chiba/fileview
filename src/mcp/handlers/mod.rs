@@ -4,6 +4,10 @@
 
 pub mod analysis;
 pub mod context;
+#[cfg(feature = "ai")]
+pub mod dependency;
+#[cfg(not(feature = "ai"))]
+#[path = "dependency_stub.rs"]
 pub mod dependency;
 pub mod file;
 pub mod git;
