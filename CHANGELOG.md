@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-05-11
+
+A focused release on AI-driven workflows and slim builds. Adds eight
+user-facing capabilities and four optional Cargo features so users can
+strip dependencies they do not use.
+
+### Added
+
+- **AI ignore synthesizer** (`fv init aiignore`): generates
+  `.claudeignore`, `.cursorignore`, and `.aiderignore` with a curated
+  skip list. Re-running rewrites only the `# === fv-managed start ===`
+  block, keeping user rules outside it intact. (#190)
+- **Context budget bar**: the status bar now shows a live token
+  estimate for the marked file set and percentage of the chosen
+  model's context window (e.g. `[ctx 12f 8.4k/200k S4.6 4%]`). Color
+  switches from green to yellow at 50%, red at 80%, magenta when
+  over. `Alt+M` cycles through Sonnet 4.6 200k / 1M, Opus 4.7,
+  Haiku 4.5, and GPT-4o 128k. Persisted via
+  `[budget].default_model` in `config.toml`. (#192)
+- **Repo fingerprint**: a one-line repo summary surfaces in the
+  status bar shortly after startup
+  (`Rust workspace · 4 crates · 12k LOC · last touched 14m ago`).
+  Detection runs on a background thread bounded by a 2 s budget. (#193)
+- **Diff-aware tree** (`fv --diff [REVSPEC]`): each file in scope
+  shows a `+N/-M` annotation in green and red. With no argument the
+  scope is the working tree (combined unstaged + staged + untracked);
+  with a revspec like `origin/main..HEAD` it is that range. (#194)
+- **TODO/FIXME aggregator** (`\` key): popup that lists every TODO,
+  FIXME, XXX, HACK, BUG, NOTE marker found in source files under the
+  current root. `j`/`k` move, `Enter` jumps, `Esc` closes. Scan is
+  bounded by a 1500 ms time budget. (#195)
+- **AI session replay** (`fv --replay [ID]`): two-pane TUI that
+  lists past `fv --mcp-server` sessions and lets you scrub through
+  every recorded `activity.jsonl` event. `Enter` exits cleanly and
+  prints the focused event's path to stdout for shell integration. (#196)
+
+### Changed
+
+- **Cold-cache warmup**: a detached background thread is spawned at
+  `run_app` entry to warm syntect's grammar / theme load and
+  tiktoken's `cl100k_base` BPE table. The first preview, diff render,
+  and budget update no longer pay the 30 to 80 ms first-call cost on
+  the UI thread. (#198)
+- **Release notes format**: `docs/RELEASE_POLICY.md` now codifies
+  the GitHub Releases body format (English, Keep a Changelog
+  sections, no decorative emojis). All historical milestone releases
+  were rewritten to match. (#191)
+
+### Build
+
+- **Feature flags**: introduced `ai`, `archive`, `clipboard`, and
+  `lua` Cargo features, all on by default. `cargo install fileview
+  --no-default-features` produces a slim binary that drops
+  `tiktoken-rs`, `petgraph`, `zip`, `tar`, `flate2`, `arboard`, and
+  `mlua` (vendored Lua 5.4). Each feature is independently
+  togglable. CI now lints both default and `--no-default-features`
+  builds on every PR. (#197, #199, #200, #201)
+- When `ai` is off, `estimate_tokens` falls back to a `chars / 4 + 1`
+  heuristic so the budget bar and context-pack truncation keep
+  working at reduced precision.
+- When `clipboard` is off, `c` and `Ctrl+Y` surface
+  "clipboard support disabled" instead of writing to the OS
+  clipboard.
+- When `lua` is off, `~/.config/fileview/plugins/init.lua` is no
+  longer auto-loaded; `fv plugin test` returns the disabled error.
+- When `archive` is off, the preview pane shows
+  "archive support disabled" instead of zip / tar.gz contents.
+
+### Notes
+
+- The `image`, `pdf`, and `video` previews remain always-on. They
+  are tracked as a follow-up because making them optional requires
+  a larger refactor of the preview type definitions.
+
 ## [2.5.0] - 2026-04-19
 
 ### Added
