@@ -22,7 +22,13 @@
 //! ```
 
 mod api;
+#[cfg(feature = "lua")]
 mod lua;
+#[cfg(not(feature = "lua"))]
+mod stub;
 
 pub use api::{PluginAction, PluginContext, PluginEvent};
+#[cfg(feature = "lua")]
 pub use lua::{PluginError, PluginManager};
+#[cfg(not(feature = "lua"))]
+pub use stub::{PluginError, PluginManager};
