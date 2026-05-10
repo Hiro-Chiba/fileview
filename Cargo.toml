@@ -17,7 +17,14 @@ path = "src/main.rs"
 
 [features]
 # Default keeps the full feature set so existing users see no behavior change.
-default = ["archive", "clipboard", "lua"]
+default = ["ai", "archive", "clipboard", "lua"]
+# AI helpers backed by `tiktoken-rs` (BPE token estimates) and `petgraph`
+# (dependency graph analysis). Disabling drops both crates and switches
+# `estimate_tokens` to a coarse `chars / 4` heuristic so the budget bar,
+# context-pack truncation, and token guards keep functioning at lower
+# precision. MCP dependency tools (`get_dependency_graph`, etc.) return
+# the disabled error when called.
+ai = ["dep:tiktoken-rs", "dep:petgraph"]
 # Archive preview for `.zip` and `.tar.gz` files. Disabling drops `zip`,
 # `tar`, and `flate2`. `is_archive_file()` continues to return `true` for
 # the matching extensions but the preview pane shows
@@ -63,8 +70,8 @@ mlua = { version = "0.11", features = ["lua54", "vendored"], optional = true }
 regex = "1"
 # v2.0 additions
 thiserror = "2"          # Unified error types
-petgraph = "0.8"         # Dependency graph analysis
-tiktoken-rs = "0.9"      # Token estimation for AI context
+petgraph = { version = "0.8", optional = true } # Dependency graph analysis
+tiktoken-rs = { version = "0.9", optional = true } # Token estimation for AI context
 # AI activity reflection: PID alive check across platforms
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
