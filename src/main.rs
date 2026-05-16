@@ -65,6 +65,10 @@ fn main() -> ExitCode {
         return run_snapshot_diff_mode(name);
     }
 
+    if let Some(ref path) = config.watch_path {
+        return run_watch_mode(path, config.watch_timeout_secs);
+    }
+
     if config.mcp_server {
         return run_mcp_server(&config);
     }
@@ -177,6 +181,27 @@ fn run_snapshot_create_mode(name: &str) -> ExitCode {
         Ok(path) => {
             eprintln!("Snapshot saved to {}", path.display());
             ExitCode::from(exit_code::SUCCESS as u8)
+        }
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+fn run_watch_mode(path: &std::path::Path, timeout_secs: Option<u64>) -> ExitCode {
+    use fileview::integrate::watch::{watch_one, WatchOutcome};
+    let timeout = timeout_secs.map(std::time::Duration::from_secs);
+    match watch_one(path, timeout) {
+        Ok(WatchOutcome::Changed(paths)) => {
+            for p in paths {
+                println!("{}", p.display());
+            }
+            ExitCode::from(exit_code::SUCCESS as u8)
+        }
+        Ok(WatchOutcome::Timeout) => {
+            eprintln!("timeout: no change observed");
+            ExitCode::from(exit_code::CANCELLED as u8)
         }
         Err(e) => {
             eprintln!("Error: {}", e);

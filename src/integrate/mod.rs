@@ -23,6 +23,7 @@ pub mod session;
 pub mod snapshot;
 pub mod todos;
 pub mod tree;
+pub mod watch;
 
 pub use ai_ignore::{synthesize as synthesize_ai_ignore, AiIgnoreAgent, SynthesisOutcome};
 pub use benchmark::run_ai_benchmark;

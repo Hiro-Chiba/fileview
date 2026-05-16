@@ -112,6 +112,10 @@ pub struct Config {
     pub snapshot_create: Option<String>,
     /// `--snapshot-diff <name>`: print diff against named snapshot and exit.
     pub snapshot_diff: Option<String>,
+    /// `--watch <path>`: block until path is modified, then print and exit.
+    pub watch_path: Option<PathBuf>,
+    /// `--watch-timeout-secs <n>`: optional timeout for --watch.
+    pub watch_timeout_secs: Option<u64>,
     /// Session action (save/restore/clear) - non-interactive
     pub session_action: Option<SessionAction>,
     /// Plugin command action
@@ -177,6 +181,8 @@ impl Config {
         let mut tokens_path: Option<PathBuf> = None;
         let mut snapshot_create: Option<String> = None;
         let mut snapshot_diff: Option<String> = None;
+        let mut watch_path: Option<PathBuf> = None;
+        let mut watch_timeout_secs: Option<u64> = None;
         let mut explain_selection = false;
         let mut session_action: Option<SessionAction> = None;
         let mut plugin_action: Option<PluginAction> = None;
@@ -374,6 +380,25 @@ impl Config {
                         snapshot_diff = Some(name);
                     } else {
                         anyhow::bail!("--snapshot-diff requires a snapshot name");
+                    }
+                }
+                "--watch" => {
+                    if let Some(path) = args.next() {
+                        watch_path = Some(PathBuf::from(path));
+                    } else {
+                        anyhow::bail!("--watch requires a file path");
+                    }
+                }
+                "--watch-timeout-secs" => {
+                    if let Some(secs_str) = args.next() {
+                        watch_timeout_secs = Some(secs_str.parse().map_err(|_| {
+                            anyhow::anyhow!(
+                                "--watch-timeout-secs requires a non-negative integer, got '{}'",
+                                secs_str
+                            )
+                        })?);
+                    } else {
+                        anyhow::bail!("--watch-timeout-secs requires a value");
                     }
                 }
                 "--session" => {
@@ -600,6 +625,8 @@ impl Config {
             tokens_path,
             snapshot_create,
             snapshot_diff,
+            watch_path,
+            watch_timeout_secs,
             session_action,
             plugin_action,
             plugin_path,
