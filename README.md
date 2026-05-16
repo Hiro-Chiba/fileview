@@ -68,6 +68,20 @@ Your terminal is auto-detected:
 
 See [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) for the full list.
 
+## One-shot helpers for AI workflows
+
+A few non-interactive flags for use from scripts and AI agents:
+
+```bash
+fv --tokens README.md            # cl100k_base token estimate (one integer to stdout)
+fv --snapshot-create base        # capture working tree manifest to .fileview/snapshots/
+fv --snapshot-diff base          # + added / - removed / M modified since snapshot
+fv --watch path/to/file          # block until the file changes, print path, exit
+fv --watch path/to/file --watch-timeout-secs 5
+```
+
+See [docs/CLAUDE_CODE.md](docs/CLAUDE_CODE.md) for the full list.
+
 ## Claude Code Integration
 
 FileView includes an MCP server for Claude Code (`fv --mcp-server`).

@@ -16,6 +16,12 @@ selected=$(fv --select-mode --multi)
 
 # Run as MCP server
 fv --mcp-server
+
+# One-shot helpers for AI scripting
+fv --tokens src/main.rs                  # token estimate
+fv --snapshot-create base                # capture state
+fv --snapshot-diff base                  # changes since snapshot
+fv --watch src/lib.rs --watch-timeout-secs 5   # block until file changes
 ```
 
 ## CLI Options (AI-related)
@@ -33,6 +39,11 @@ fv --mcp-server
 | `--select-related F` | Output related file paths |
 | `--explain-selection` | Include score/reasons for `--select-related` |
 | `--resume-ai-session [NAME]` | Restore AI session metadata (default: `ai`) |
+| `--tokens F` | Print cl100k_base token estimate for file `F` to stdout |
+| `--snapshot-create N` | Capture working-tree manifest to `.fileview/snapshots/N.json` |
+| `--snapshot-diff N` | Print `+/-/M` lines for changes since snapshot `N` |
+| `--watch F` | Block until file `F` is modified, then print and exit (use with `--watch-timeout-secs`) |
+| `--watch-timeout-secs S` | Optional timeout for `--watch`; exit code 1 on timeout |
 | `benchmark ai` | Run AI workflow benchmarks |
 | `init claude` | Add fileview MCP entry to Claude config |
 

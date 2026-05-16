@@ -5,6 +5,23 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に基づいており、
 [セマンティックバージョニング](https://semver.org/lang/ja/) に準拠しています。
 
+## [2.7.0] - 2026-05-16
+
+AI agent や shell スクリプトから TUI/MCP server を介さず fileview を呼べる
+非対話型フラグを 3 つ追加。`CHANGELOG.md` の英語版が一次情報。
+
+### 追加
+- `fv --tokens <path>` — ファイルの cl100k_base token 推定値を stdout に出力
+- `fv --snapshot-create <name>` / `fv --snapshot-diff <name>` — 作業ツリーの
+  manifest (path/size/mtime) を `.fileview/snapshots/<name>.json` に保存し、
+  後から `+ added / - removed / M modified` の差分を表示
+- `fv --watch <path> [--watch-timeout-secs N]` — 指定ファイルが変更されるまで
+  block、変更時に path を print して exit 0、timeout 時 exit 1
+
+### 内部
+- `integrate::snapshot` / `integrate::watch` モジュール新設、ユニットテスト
+  9 件 + e2e テスト 12 件、合計 21 件追加
+
 ## [2.6.0] - 2026-05-11
 
 AI 駆動ワークフローと slim ビルドに焦点を当てたリリース。8 つの新機能と
