@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-05-16
+
+Three small non-interactive flags that let AI agents and shell scripts
+talk to fileview without spinning up the TUI or the MCP server.
+
+### Added
+
+- `fv --tokens <path>` prints a cl100k_base token estimate for the file
+  to stdout and exits. Useful for budgeting context before assembling a
+  prompt. Falls back to the `chars / 4` heuristic when the `ai` feature
+  is off, matching the rest of the codebase.
+- `fv --snapshot-create <name>` captures a working-tree manifest
+  (path / size / mtime, dotfiles skipped) to
+  `.fileview/snapshots/<name>.json`. `fv --snapshot-diff <name>` then
+  prints `+ added`, `- removed`, and `M modified` lines for every change
+  since the snapshot. Lets a long-running agent answer "what have I
+  touched since this session started" without committing intermediate
+  state.
+- `fv --watch <path> [--watch-timeout-secs N]` blocks until the path is
+  modified externally, prints the changed paths, and exits. Exit code
+  `0` on change, `1` on timeout. Drains the initial filesystem-event
+  burst (notably macOS FSEvents replays) before waiting so a freshly
+  created file does not register as an immediate "change".
+
+### Internal
+
+- New module `integrate::snapshot` with five unit tests covering
+  capture, diff, save/load round-trip, dotfile skipping, and missing
+  snapshots.
+- New module `integrate::watch` with four unit tests covering the
+  empty-paths guard, the missing-path guard, the timeout path, and the
+  modification path.
+- E2E coverage: 5 tests for `--tokens`, 8 for snapshot, 4 for watch
+  (21 new tests in `tests/e2e/`).
+
 ## [2.6.0] - 2026-05-11
 
 A focused release on AI-driven workflows and slim builds. Adds eight
