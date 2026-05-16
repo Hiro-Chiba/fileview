@@ -3,12 +3,6 @@
 # Claude Code (hide all traces)
 .claude/
 
-# Internal docs (not for public)
-docs/MARKET_ANALYSIS.md
-docs/COMPETITIVE_SCORECARD.md
-docs/DEVELOPMENT_HISTORY.md
-docs/ROADMAP.md
-
 # IDE
 .vscode/
 .idea/
