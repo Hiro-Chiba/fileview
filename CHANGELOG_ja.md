@@ -5,6 +5,22 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に基づいており、
 [セマンティックバージョニング](https://semver.org/lang/ja/) に準拠しています。
 
+## [2.7.1] - 2026-05-16
+
+純粋なリファクタとリリースツール修正のみ。挙動・API・依存・バイナリサイズ・
+feature の変更はなし。`CHANGELOG.md` の英語版が一次情報。
+
+### 内部
+- `src/handler/action/tests.rs` (2928 LOC) を `tests/` ディレクトリに
+  6 ファイル分割 (basic / state_transition / sequence / edge_cases /
+  focus / scroll_bounds + 共有ヘルパー入りの mod.rs)
+- `src/render/status.rs` (1644 LOC) を `status/` ディレクトリに
+  6 ファイル分割 (bar / format / popup / help / todos / mod)
+
+### 修正
+- `release.yml` の awk が range pattern の重複で section 抽出に失敗していた
+  問題を state-machine 方式に書き直して修正
+
 ## [2.7.0] - 2026-05-16
 
 AI agent や shell スクリプトから TUI/MCP server を介さず fileview を呼べる
