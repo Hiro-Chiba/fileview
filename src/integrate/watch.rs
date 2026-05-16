@@ -65,6 +65,18 @@ pub fn watch_until_change(
             .map_err(io::Error::other)?;
     }
 
+    // Drain any events delivered for activity that pre-dates the watch
+    // (notably macOS FSEvents replays of the file's own creation moments
+    // before this call). 250 ms is comfortably larger than the debouncer's
+    // 100 ms window and stays well under any practical user timeout.
+    let drain_until = std::time::Instant::now() + Duration::from_millis(250);
+    while let Some(remaining) = drain_until.checked_duration_since(std::time::Instant::now()) {
+        match rx.recv_timeout(remaining) {
+            Ok(_) => continue,
+            Err(_) => break,
+        }
+    }
+
     let recv_result = match timeout {
         Some(d) => rx.recv_timeout(d),
         None => rx.recv().map_err(|_| RecvTimeoutError::Disconnected),
@@ -102,7 +114,9 @@ mod tests {
         let path = tmp.path().join("idle.txt");
         fs::write(&path, "initial\n").unwrap();
 
-        let outcome = watch_one(&path, Some(Duration::from_millis(300))).unwrap();
+        // Past the 250 ms drain window with margin so the timeout itself,
+        // not setup latency, is what the test is exercising.
+        let outcome = watch_one(&path, Some(Duration::from_millis(800))).unwrap();
         assert_eq!(outcome, WatchOutcome::Timeout);
     }
 
