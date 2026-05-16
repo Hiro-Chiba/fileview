@@ -19,7 +19,7 @@ Wanted a yazi-like file manager for day-to-day terminal use that also talks to C
 ## Features
 
 - Auto image preview (Kitty, iTerm2, Sixel, Halfblocks)
-- 2.2ms startup, ~8MB memory ([benchmarks](docs/BENCHMARKS.md))
+- 2.2ms startup, ~8MB memory
 - Git status, syntax highlighting, PDF preview, fuzzy finder
 - Vim keybindings, mouse support, Lua plugins
 - Live reflection of `fv --mcp-server` activity in the TUI ([details](docs/CLAUDE_CODE.md))
