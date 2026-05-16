@@ -106,6 +106,8 @@ pub struct Config {
     pub select_related_path: Option<PathBuf>,
     /// Explain related-file selection scoring
     pub explain_selection: bool,
+    /// `--tokens <path>`: print cl100k_base token estimate for the file and exit.
+    pub tokens_path: Option<PathBuf>,
     /// Session action (save/restore/clear) - non-interactive
     pub session_action: Option<SessionAction>,
     /// Plugin command action
@@ -168,6 +170,7 @@ impl Config {
         let mut context_pack_format = ContextPackFormat::AiMarkdown;
         let mut context_pack_options = ContextPackOptions::default();
         let mut select_related_path: Option<PathBuf> = None;
+        let mut tokens_path: Option<PathBuf> = None;
         let mut explain_selection = false;
         let mut session_action: Option<SessionAction> = None;
         let mut plugin_action: Option<PluginAction> = None;
@@ -346,6 +349,13 @@ impl Config {
                     }
                 }
                 "--explain-selection" => explain_selection = true,
+                "--tokens" => {
+                    if let Some(path) = args.next() {
+                        tokens_path = Some(PathBuf::from(path));
+                    } else {
+                        anyhow::bail!("--tokens requires a file path");
+                    }
+                }
                 "--session" => {
                     if let Some(action) = args.next() {
                         session_action = Some(match action.as_str() {
@@ -567,6 +577,7 @@ impl Config {
             context_pack_options,
             select_related_path,
             explain_selection,
+            tokens_path,
             session_action,
             plugin_action,
             plugin_path,
