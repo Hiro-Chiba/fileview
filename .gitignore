@@ -22,3 +22,6 @@ Thumbs.db
 # Misc
 *.bak
 *.log
+
+# Maintainer-local planning notes
+tasks/
