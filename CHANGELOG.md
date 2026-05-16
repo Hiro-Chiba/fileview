@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.2] - 2026-05-16
+
+Documentation and repository tidy-up. No source code changes; no
+behaviour, API, dependency, binary, or feature impact.
+
+### Removed
+
+- All Japanese documentation (`README_ja.md`, `CHANGELOG_ja.md`,
+  `CONTRIBUTING_ja.md`, and 12 `docs/*_ja.md` files). The project keeps
+  a single English source of truth.
+- Internal maintainer-only docs that no end user needs:
+  `docs/BENCHMARKS.md`, `docs/COMMANDS.md`, `docs/DESIGN.md`,
+  `docs/RELEASE_POLICY.md`, and four previously gitignored notes
+  (`COMPETITIVE_SCORECARD`, `MARKET_ANALYSIS`,
+  `DEVELOPMENT_HISTORY`, `ROADMAP`).
+- Unreferenced asset `assets/screenshot-tree.png` (824 KB) and the
+  now-empty `scripts/` directory (held a single internal demo script).
+
+### Changed
+
+- `CONTRIBUTING.md` rewritten end-to-end in English; the previous file
+  mixed Japanese paragraphs into otherwise English structure.
+- `README.md` drops the language switcher and the dead
+  `docs/BENCHMARKS.md` link.
+- `.github/workflows/release.yml` drops the trailing comment that
+  referenced the removed `docs/RELEASE_POLICY.md`.
+- `.gitignore` drops the "Internal docs" block now that the underlying
+  files are gone.
+
 ## [2.7.1] - 2026-05-16
 
 Pure-refactor and release-tooling release. No behaviour, API, dependency,
