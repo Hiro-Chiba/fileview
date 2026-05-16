@@ -3,7 +3,12 @@
 # - syntect transitively pulls unmaintained crates (bincode 1.x / yaml-rust 0.4.x)
 # - these are currently used for syntax highlighting only (non-network, local parsing path)
 # - tracked for replacement/upgrade in dependency hardening backlog
+# - RUSTSEC-2026-0097: rand soundness bug only triggers when a custom log
+#   crate logger calls `rand::rng()` and reseeds inside the callback.
+#   fileview does not depend on the `log` crate and ships no custom
+#   logger, so none of the trigger conditions apply.
 ignore = [
   "RUSTSEC-2025-0141", # bincode (via syntect)
   "RUSTSEC-2024-0320", # yaml-rust (via syntect)
+  "RUSTSEC-2026-0097", # rand unsoundness, conditions not reachable from fileview
 ]
