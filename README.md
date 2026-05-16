@@ -8,8 +8,6 @@
 
 > Terminal file browser with image preview, written in Rust.
 
-English | [日本語](README_ja.md)
-
 ## Demo
 
 <p align="center">
