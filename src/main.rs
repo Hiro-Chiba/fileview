@@ -53,6 +53,10 @@ fn main() -> ExitCode {
         return run_select_related_mode(path, config.explain_selection);
     }
 
+    if let Some(ref path) = config.tokens_path {
+        return run_tokens_mode(path);
+    }
+
     if config.mcp_server {
         return run_mcp_server(&config);
     }
@@ -139,6 +143,19 @@ fn run_context_pack_mode(
 }
 
 /// Run in related-file output mode (non-interactive)
+fn run_tokens_mode(path: &std::path::Path) -> ExitCode {
+    match fileview::mcp::token::estimate_file_tokens(path) {
+        Ok(n) => {
+            println!("{}", n);
+            ExitCode::from(exit_code::SUCCESS as u8)
+        }
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
 fn run_select_related_mode(path: &std::path::Path, explain: bool) -> ExitCode {
     if explain {
         let related = collect_related_candidates(path);
