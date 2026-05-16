@@ -8,3 +8,4 @@ mod pick_mode;
 mod snapshot;
 mod stdin_mode;
 mod tokens;
+mod watch;
