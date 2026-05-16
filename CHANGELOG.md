@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2026-05-16
+
+Pure-refactor and release-tooling release. No behaviour, API, dependency,
+binary-size, or feature changes.
+
+### Internal
+
+- Split `src/handler/action/tests.rs` (2928 LOC, one file) into a
+  `tests/` directory with one file per pre-existing logical section
+  (`basic`, `state_transition`, `sequence`, `edge_cases`, `focus`,
+  `scroll_bounds`) plus a `mod.rs` that owns the shared helpers and the
+  `call_handle_action!` macro.
+- Split `src/render/status.rs` (1644 LOC, one file) into a `status/`
+  directory: `bar.rs` (density variants + budget segment), `format.rs`
+  (file metadata + size/time formatters), `popup.rs` (input/confirm/mini
+  popups), `help.rs` (help overlay), `todos.rs` (TODO/FIXME popup), with
+  `mod.rs` re-exporting the existing public renderers.
+
+### Fixed
+
+- `release.yml`: the awk pattern range used to extract the per-version
+  changelog section was collapsing to one line because the start header
+  also matched the end pattern. Replaced with a state-machine scan so
+  future tag pushes get the right notes auto-attached to the GitHub
+  Release.
+
 ## [2.7.0] - 2026-05-16
 
 Three small non-interactive flags that let AI agents and shell scripts
