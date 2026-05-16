@@ -108,6 +108,10 @@ pub struct Config {
     pub explain_selection: bool,
     /// `--tokens <path>`: print cl100k_base token estimate for the file and exit.
     pub tokens_path: Option<PathBuf>,
+    /// `--snapshot-create <name>`: capture working tree manifest and exit.
+    pub snapshot_create: Option<String>,
+    /// `--snapshot-diff <name>`: print diff against named snapshot and exit.
+    pub snapshot_diff: Option<String>,
     /// Session action (save/restore/clear) - non-interactive
     pub session_action: Option<SessionAction>,
     /// Plugin command action
@@ -171,6 +175,8 @@ impl Config {
         let mut context_pack_options = ContextPackOptions::default();
         let mut select_related_path: Option<PathBuf> = None;
         let mut tokens_path: Option<PathBuf> = None;
+        let mut snapshot_create: Option<String> = None;
+        let mut snapshot_diff: Option<String> = None;
         let mut explain_selection = false;
         let mut session_action: Option<SessionAction> = None;
         let mut plugin_action: Option<PluginAction> = None;
@@ -354,6 +360,20 @@ impl Config {
                         tokens_path = Some(PathBuf::from(path));
                     } else {
                         anyhow::bail!("--tokens requires a file path");
+                    }
+                }
+                "--snapshot-create" => {
+                    if let Some(name) = args.next() {
+                        snapshot_create = Some(name);
+                    } else {
+                        anyhow::bail!("--snapshot-create requires a snapshot name");
+                    }
+                }
+                "--snapshot-diff" => {
+                    if let Some(name) = args.next() {
+                        snapshot_diff = Some(name);
+                    } else {
+                        anyhow::bail!("--snapshot-diff requires a snapshot name");
                     }
                 }
                 "--session" => {
@@ -578,6 +598,8 @@ impl Config {
             select_related_path,
             explain_selection,
             tokens_path,
+            snapshot_create,
+            snapshot_diff,
             session_action,
             plugin_action,
             plugin_path,

@@ -57,6 +57,14 @@ fn main() -> ExitCode {
         return run_tokens_mode(path);
     }
 
+    if let Some(ref name) = config.snapshot_create {
+        return run_snapshot_create_mode(name);
+    }
+
+    if let Some(ref name) = config.snapshot_diff {
+        return run_snapshot_diff_mode(name);
+    }
+
     if config.mcp_server {
         return run_mcp_server(&config);
     }
@@ -147,6 +155,57 @@ fn run_tokens_mode(path: &std::path::Path) -> ExitCode {
     match fileview::mcp::token::estimate_file_tokens(path) {
         Ok(n) => {
             println!("{}", n);
+            ExitCode::from(exit_code::SUCCESS as u8)
+        }
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+fn run_snapshot_create_mode(name: &str) -> ExitCode {
+    use fileview::integrate::snapshot::{capture_snapshot, save_snapshot};
+    let cwd = match std::env::current_dir() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            return ExitCode::from(exit_code::ERROR as u8);
+        }
+    };
+    match capture_snapshot(name, &cwd).and_then(|s| save_snapshot(&cwd, &s)) {
+        Ok(path) => {
+            eprintln!("Snapshot saved to {}", path.display());
+            ExitCode::from(exit_code::SUCCESS as u8)
+        }
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ExitCode::from(exit_code::ERROR as u8)
+        }
+    }
+}
+
+fn run_snapshot_diff_mode(name: &str) -> ExitCode {
+    use fileview::integrate::snapshot::{diff_snapshot, load_snapshot};
+    let cwd = match std::env::current_dir() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            return ExitCode::from(exit_code::ERROR as u8);
+        }
+    };
+    let snap = match load_snapshot(&cwd, name) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            return ExitCode::from(exit_code::ERROR as u8);
+        }
+    };
+    match diff_snapshot(&cwd, &snap) {
+        Ok(entries) => {
+            for entry in entries {
+                println!("{}", entry.render());
+            }
             ExitCode::from(exit_code::SUCCESS as u8)
         }
         Err(e) => {
