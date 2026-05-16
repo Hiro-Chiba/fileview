@@ -1,6 +1,7 @@
 # Contributing to FileView
 
-FileViewへの貢献に感謝します。本ドキュメントでは、開発に参加する際のルールとガイドラインを定めます。
+Thanks for considering a contribution. This document spells out the
+conventions used when working on the project.
 
 ## Table of Contents
 
@@ -50,12 +51,12 @@ cargo test
 
 ### Code Style
 
-- **インデント**: スペース4つ
-- **行の長さ**: 最大100文字（ドキュメントは80文字推奨）
-- **import順序**:
-  1. 標準ライブラリ (`std::`)
-  2. 外部クレート
-  3. 内部モジュール (`crate::`, `super::`)
+- **Indentation**: 4 spaces
+- **Line length**: 100 characters max (80 preferred for documentation)
+- **Import order**:
+  1. Standard library (`std::`)
+  2. External crates
+  3. Internal modules (`crate::`, `super::`)
 
 ```rust
 // Good
@@ -70,15 +71,15 @@ use crate::event::Event;
 
 ### Documentation
 
-- 公開API（`pub`）には必ずドキュメントコメント（`///`）を付ける
-- 複雑なロジックにはインラインコメント（`//`）を付ける
-- TODOコメントは `// TODO(username): description` 形式
+- Public APIs (`pub`) must carry doc comments (`///`).
+- Complex logic gets inline comments (`//`).
+- TODO comments follow the form `// TODO(username): description`.
 
 ### Error Handling
 
-- `unwrap()` / `expect()` は原則禁止（テストコード除く）
-- エラーは `thiserror` で定義し、`Result<T, E>` で返す
-- 致命的エラーのみ `panic!`
+- Avoid `unwrap()` / `expect()` outside tests.
+- Define errors with `thiserror` and return `Result<T, E>`.
+- Reserve `panic!` for unrecoverable invariants.
 
 ---
 
@@ -89,11 +90,11 @@ use crate::event::Event;
 ```
 main
   │
-  └── feature/xxx    # 新機能開発
-  └── fix/xxx        # バグ修正
-  └── refactor/xxx   # リファクタリング
-  └── docs/xxx       # ドキュメント更新
-  └── test/xxx       # テスト追加
+  └── feature/xxx    # new features
+  └── fix/xxx        # bug fixes
+  └── refactor/xxx   # refactoring
+  └── docs/xxx       # documentation updates
+  └── test/xxx       # added or updated tests
 ```
 
 ### Branch Naming
@@ -112,7 +113,7 @@ Examples:
 
 ## Commit Convention
 
-[Conventional Commits](https://www.conventionalcommits.org/) に準拠する。
+Follows [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Format
 
@@ -128,26 +129,25 @@ Examples:
 
 | Type | Description |
 |------|-------------|
-| `feat` | 新機能追加 |
-| `fix` | バグ修正 |
-| `docs` | ドキュメントのみの変更 |
-| `style` | コードの意味に影響しない変更（空白、フォーマット等） |
-| `refactor` | バグ修正でも機能追加でもないコード変更 |
-| `perf` | パフォーマンス改善 |
-| `test` | テストの追加・修正 |
-| `chore` | ビルドプロセスや補助ツールの変更 |
+| `feat` | new feature |
+| `fix` | bug fix |
+| `docs` | documentation only |
+| `style` | formatting / whitespace, no logic change |
+| `refactor` | code change that is neither a fix nor a feature |
+| `perf` | performance improvement |
+| `test` | added or fixed tests |
+| `chore` | build process or tooling change |
 
 ### Scope (optional)
 
-変更対象のモジュールを指定:
-- `ui`, `event`, `fs`, `config`, `app`
+Name the module the change targets, e.g. `ui`, `event`, `fs`, `config`, `app`.
 
 ### Subject
 
-- 命令形で記述（"Add", "Fix", "Update"）
-- 先頭は大文字
-- 末尾にピリオドを付けない
-- 50文字以内
+- Imperative mood ("Add", "Fix", "Update").
+- Start with a capital letter.
+- No trailing period.
+- 50 characters or fewer.
 
 ### Examples
 
@@ -160,14 +160,14 @@ docs: Update installation instructions
 chore: Bump ratatui to 0.26
 
 # Bad
-added new feature          # 命令形でない、typeがない
-feat: Fixed bug            # typeとsubjectが矛盾
-FEAT(UI): ADD FEATURE.     # 大文字すぎ、ピリオド
+added new feature          # not imperative, no type
+feat: Fixed bug            # type contradicts subject
+FEAT(UI): ADD FEATURE.     # shouting, trailing period
 ```
 
 ### Breaking Changes
 
-破壊的変更がある場合は `!` を追加し、footerに `BREAKING CHANGE:` を記述:
+For breaking changes, add `!` and include a `BREAKING CHANGE:` footer:
 
 ```
 feat(config)!: Change configuration file format
@@ -182,18 +182,17 @@ Migrate existing config.json to config.toml.
 
 ### Before Creating PR
 
-1. **テスト通過を確認**
+1. **Confirm tests pass**
    ```bash
    cargo test
    cargo clippy -- -D warnings
    cargo fmt --check
    ```
 
-2. **コミット履歴を整理**
-   - 意味のある単位でコミットをまとめる
-   - WIPコミットは squash する
+2. **Clean up commits** — group changes into meaningful commits, squash
+   any WIP commits.
 
-3. **ブランチを最新に**
+3. **Rebase onto the latest main**
    ```bash
    git fetch origin
    git rebase origin/main
@@ -201,7 +200,7 @@ Migrate existing config.json to config.toml.
 
 ### PR Title
 
-コミットメッセージと同じ形式を使用:
+Same format as commit messages:
 
 ```
 feat(ui): Add file preview panel
@@ -212,22 +211,22 @@ feat(ui): Add file preview panel
 ```markdown
 ## Summary
 
-変更内容の概要を1-3行で記述
+1-3 lines describing what changed.
 
 ## Changes
 
-- 変更点1
-- 変更点2
-- 変更点3
+- change 1
+- change 2
+- change 3
 
 ## Test Plan
 
-- [ ] テスト項目1
-- [ ] テスト項目2
+- [ ] test item 1
+- [ ] test item 2
 
 ## Screenshots (if applicable)
 
-UIの変更がある場合はスクリーンショットを添付
+Attach screenshots for UI changes.
 
 ## Related Issues
 
@@ -236,57 +235,50 @@ Closes #123
 
 ### Review Process
 
-1. 自動チェック（CI）がすべてパス
-2. 1名以上のレビュー承認
-3. コンフリクトがない状態
-4. Squash merge で main にマージ
+1. All CI checks pass.
+2. At least one review approval.
+3. No merge conflicts.
+4. Squash merge into `main`.
 
 ### Merge Strategy
 
-- **Squash and merge**: 複数コミットを1つにまとめてマージ
-- マージコミットメッセージはPRタイトルを使用
+- **Squash and merge**: collapse multiple commits into one on merge.
+- The merge commit message defaults to the PR title.
 
 ---
 
 ## Testing Requirements
 
-PRを作成する前に、以下のチェックをすべて通過させてください：
+Run all of the following before opening a PR. CI re-checks them too.
 
 ```bash
-# テスト実行
+# tests
 cargo test
 
-# Lintチェック（警告はエラーとして扱う）
+# lint (warnings are treated as errors)
 cargo clippy -- -D warnings
 
-# フォーマットチェック
+# formatting
 cargo fmt --check
 ```
-
-これらはCIでも自動チェックされます。
 
 ---
 
 ## Documentation Updates
 
-機能追加・変更時のドキュメント更新ルール：
+Rules when adding or changing features:
 
-1. **README.md** と **README_ja.md** は常に同期
-   - 英語版を先に更新し、日本語版も同じ内容に更新
-   - 機能の追加・削除・変更は両方に反映
+1. **Document only implemented features.** Skip anything that is not in
+   the current code. Avoid grand framing ("VSCode-style", etc.) in
+   favour of plain, accurate language.
 
-2. **実装済み機能のみ記載**
-   - 未実装の機能を記載しない
-   - 過大な表現（"VSCode-style"等）を避ける
-   - シンプルで正確な表現を心がける
-
-3. **キーバインド変更時**
-   - README.md / README_ja.md のキーバインドテーブルを更新
-   - `src/main.rs` の `print_help()` を更新
-   - `src/handler/action.rs` のヘルプメッセージを更新
+2. **When keybindings change:**
+   - Update the keybinding tables in `README.md` and `docs/KEYBINDINGS.md`.
+   - Update `print_help()` in `src/main.rs`.
+   - Update the help text in `src/handler/action.rs`.
 
 ---
 
 ## Questions?
 
-不明点があれば、Issue を作成してください。
+Open an issue if anything is unclear.

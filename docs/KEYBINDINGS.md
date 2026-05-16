@@ -2,8 +2,6 @@
 
 Complete keybinding reference for FileView (fv).
 
-[English](KEYBINDINGS.md) | [日本語](KEYBINDINGS_ja.md)
-
 ## Navigation
 
 | Key | Action |
