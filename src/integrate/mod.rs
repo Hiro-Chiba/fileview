@@ -20,6 +20,7 @@ pub mod pick;
 pub mod plugin_cmd;
 pub mod related;
 pub mod session;
+pub mod snapshot;
 pub mod todos;
 pub mod tree;
 
