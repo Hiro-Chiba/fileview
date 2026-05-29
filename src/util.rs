@@ -3,18 +3,11 @@
 use std::io;
 use std::path::Path;
 
-/// Default cap for reading config/session/state files into memory (16 MiB).
-///
-/// These files live under the user's own config/cache/repo, so this is purely
-/// defence-in-depth against a maliciously huge file causing unbounded memory
-/// use during parsing rather than a hard security boundary.
+/// Cap for reading config/session/state files into memory (16 MiB).
+/// Defence-in-depth against an oversized file exhausting memory during parsing.
 pub const MAX_STATE_FILE_BYTES: u64 = 16 * 1024 * 1024;
 
-/// Read a file to a string, refusing to read more than `max_bytes`.
-///
-/// Returns an `InvalidData` error if the file exceeds the cap, so callers that
-/// already handle `io::Result` degrade gracefully instead of allocating an
-/// arbitrarily large buffer.
+/// Read a file to a string, returning `InvalidData` if it exceeds `max_bytes`.
 pub fn read_to_string_capped(path: &Path, max_bytes: u64) -> io::Result<String> {
     let len = std::fs::metadata(path)?.len();
     if len > max_bytes {

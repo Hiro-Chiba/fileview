@@ -153,13 +153,10 @@ pub fn run_test(root: &Path, path: Option<&str>, filter: Option<&str>) -> ToolCa
         }
     };
 
-    // Add path filter if specified
+    // Add path filter if specified. The value may be a test-name filter rather
+    // than a real path (cargo, pytest `file::test`), so only reject option-like
+    // values instead of requiring an existing path.
     if let Some(p) = path {
-        // Confine the path to the project root and reject anything that would
-        // be parsed as an option flag by the test runner.
-        if let Err(e) = validate_path(root, p) {
-            return error_result(&e.to_string());
-        }
         if let Err(e) = reject_option_like(p) {
             return error_result(&e.to_string());
         }

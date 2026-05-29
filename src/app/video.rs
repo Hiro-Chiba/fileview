@@ -8,12 +8,8 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-/// Normalize a path for safe use as a positional ffmpeg/ffprobe argument.
-///
-/// ffmpeg and ffprobe treat any argument beginning with `-` as an option. A
-/// relative path whose first component starts with `-` is prefixed with `./`
-/// so a file named e.g. `-show_streams` cannot smuggle a flag (argument
-/// injection). Absolute paths already start with `/` and are returned as-is.
+/// Prefix a relative path starting with `-` with `./` so ffmpeg/ffprobe cannot
+/// parse the filename as an option flag (argument injection).
 fn safe_input_arg(path: &Path) -> PathBuf {
     if path.is_absolute() {
         return path.to_path_buf();

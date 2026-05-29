@@ -189,9 +189,7 @@ pub fn get_references(root: &Path, path: &str, symbol: &str) -> ToolCallResult {
         return error_result("Path is a directory, not a file");
     }
 
-    // Use ripgrep or grep to find references.
-    // `--` stops option parsing so a symbol beginning with `-` cannot be
-    // interpreted as a flag (argument injection).
+    // `--` stops option parsing so a `-`-prefixed symbol is not read as a flag.
     let (cmd, args) = if Command::new("rg").arg("--version").output().is_ok() {
         ("rg", vec!["-n", "--no-heading", "-w", "--", symbol])
     } else {
@@ -258,9 +256,8 @@ pub fn get_diagnostics(root: &Path, path: &str) -> ToolCallResult {
                 .output()
         }
         "py" => {
-            // Python: try ruff, then flake8, then pylint.
-            // Pass the validated canonical (absolute) path rather than the raw
-            // argument so a name beginning with `-` cannot be parsed as a flag.
+            // Pass the canonical (absolute) path so a `-`-prefixed name cannot
+            // be parsed as a flag.
             if Command::new("ruff").arg("--version").output().is_ok() {
                 Command::new("ruff")
                     .arg("check")

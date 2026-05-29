@@ -2,10 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-/// Validate that a user-entered name is a single path component.
-///
-/// Prevents create/rename inputs like `../escape` or `/abs/path` from writing
-/// outside the directory the user is acting in.
+/// Reject create/rename names like `../escape` or `/abs/path` that would write
+/// outside the current directory.
 fn check_component(name: &str) -> anyhow::Result<()> {
     crate::mcp::security::validate_component(name).map_err(|e| anyhow::anyhow!("{}", e))
 }
@@ -72,11 +70,8 @@ pub fn copy_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
     Ok(dest)
 }
 
-/// Move a file or directory into a destination directory.
-///
-/// Like [`copy_to`], the destination name is made unique (via the same
-/// `get_unique_path` helper) so an existing file with the same name is never
-/// silently overwritten.
+/// Move a file or directory into `dest_dir`, allocating a unique name (like
+/// [`copy_to`]) so an existing same-named file is never silently overwritten.
 pub fn move_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
     let file_name = src
         .file_name()

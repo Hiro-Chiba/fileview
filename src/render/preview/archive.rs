@@ -220,8 +220,7 @@ pub fn render_archive_preview(
 
         let date_str = entry.modified.as_deref().unwrap_or("");
 
-        // Calculate name display width. Truncate on a UTF-8 char boundary so a
-        // multibyte archive entry name cannot trigger a slice panic.
+        // Truncate on a char boundary to avoid a panic on multibyte names.
         let max_name_width = area.width.saturating_sub(24) as usize;
         let display_name =
             crate::mcp::security::truncate_string(entry.name.clone(), max_name_width);
