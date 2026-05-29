@@ -301,9 +301,11 @@ fn collect_candidate_files(
     include_tests: bool,
 ) -> Vec<PathBuf> {
     if !selected_paths.is_empty() {
+        // Skip sensitive files (.env, credentials, keys) even when the user
+        // explicitly marked them, so secrets are not embedded into a pack.
         return selected_paths
             .iter()
-            .filter(|p| p.is_file())
+            .filter(|p| p.is_file() && !crate::mcp::security::is_sensitive_path(p))
             .cloned()
             .collect();
     }
@@ -331,7 +333,9 @@ fn collect_candidate_files(
     if out.is_empty() {
         collect_code_files_recursive(root, 0, max_depth, &mut out);
     }
-    out.into_iter().collect()
+    out.into_iter()
+        .filter(|p| !crate::mcp::security::is_sensitive_path(p))
+        .collect()
 }
 
 fn collect_snippets(files: &[PathBuf], token_budget: usize) -> Vec<(PathBuf, String, usize)> {

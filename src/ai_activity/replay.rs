@@ -19,7 +19,7 @@ pub fn read_session_events(activity_log: &Path) -> Result<Vec<ActivityEvent>> {
     if !activity_log.exists() {
         return Ok(Vec::new());
     }
-    let raw = std::fs::read_to_string(activity_log)?;
+    let raw = crate::util::read_to_string_capped(activity_log, crate::util::MAX_STATE_FILE_BYTES)?;
     let mut out = Vec::new();
     for line in raw.lines() {
         let trimmed = line.trim();

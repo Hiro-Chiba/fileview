@@ -145,9 +145,32 @@ The `register_previewer` function supports glob patterns:
 | `test*` | `test.txt`, `testing.md` |
 | `*test*` | `my_test_file`, `testing` |
 
+## Security
+
+Plugins are **not** sandboxed. They run as fully trusted user code in a
+standard Lua 5.4 runtime with the complete standard library available,
+including `os.execute`, `io.*`, `require`, and `package.loadlib`. A plugin can
+therefore run arbitrary commands, read and write any file your account can
+access, and make network connections. This is equivalent to running a shell
+script you wrote yourself.
+
+Consequences to be aware of:
+
+- `~/.config/fileview/plugins/init.lua` is loaded and executed automatically on
+  every startup. Anything able to write that file gains code execution the next
+  time you launch FileView, so treat the plugin directory like any other
+  executable on your `PATH`.
+- Only install plugin code you have read and trust. Do not paste plugins from
+  untrusted sources.
+- When a plugin builds a shell command from a file path, quote it. For example
+  `os.execute("git add " .. file)` is unsafe for a file named `; rm -rf ~`;
+  prefer escaping the path or avoiding the shell.
+
+To run without any plugin code, build with the `lua` feature disabled
+(`cargo build --no-default-features --features ai,archive,clipboard`).
+
 ## Notes
 
-- Plugins run in a sandboxed Lua 5.4 environment
 - Errors in plugins are caught and displayed as notifications
 - Multiple handlers can be registered for the same event
 - Previewers return strings that are displayed in the preview panel

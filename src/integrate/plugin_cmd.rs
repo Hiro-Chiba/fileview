@@ -40,7 +40,8 @@ pub fn plugin_init(path: Option<&Path>) -> anyhow::Result<PathBuf> {
     Ok(plugin_path)
 }
 
-/// Execute a plugin file in sandboxed Lua runtime and return notifications.
+/// Execute a plugin file in the (unsandboxed, fully trusted) Lua runtime and
+/// return notifications. The plugin runs with the user's full permissions.
 pub fn plugin_test(path: &Path) -> anyhow::Result<Vec<String>> {
     let code = fs::read_to_string(path)?;
     let mut manager = PluginManager::new().map_err(|e| anyhow::anyhow!("{}", e))?;

@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Security hardening across the MCP server, interactive file operations, the
+external-tool integrations, and the documentation. No change to the default
+keyboard-driven browsing experience.
+
+### Security
+
+- MCP `write_file` and `delete_file` now refuse sensitive paths (`.git/hooks`,
+  `.git/config`, `.env`, credential files), closing a path where an AI client
+  could plant a git hook that executes on the next git command.
+- MCP `search_code`, `get_references`, `get_diagnostics`, `run_test`, and
+  `run_lint` no longer let a caller-supplied pattern, symbol, path, or filter
+  be interpreted as an option flag (argument injection such as `rg --pre` or
+  `eslint --rulesdir`). A `--` separator, validated canonical paths, and a
+  leading-dash rejection are applied.
+- Interactive create, rename, and bulk-rename reject names containing a path
+  separator or `..`, so input can no longer escape the target directory.
+- Cut/paste (move) now allocates a unique destination name instead of silently
+  overwriting an existing same-named file.
+- `ffprobe`/`ffmpeg` preview calls guard against a leading-dash filename being
+  parsed as an option.
+- The context pack skips sensitive files (e.g. `.env`) even when explicitly
+  selected, so secrets are not embedded.
+
+### Changed
+
+- `validate_path` compares against the canonicalized root, so a root reached
+  through a symlink no longer rejects legitimate in-root paths.
+- Config, session, snapshot, and AI-activity files are read with a size cap as
+  defence-in-depth against an oversized file exhausting memory during parsing.
+- Archive-entry and MCP entry-name truncation slice on UTF-8 boundaries,
+  avoiding a panic on multibyte names.
+- Documentation now states accurately that Lua plugins are trusted, unsandboxed
+  code with full system access, and documents the MCP server's trust model.
+
 ## [2.7.3] - 2026-05-16
 
 Dependency bumps and security-audit policy update. No source-code or

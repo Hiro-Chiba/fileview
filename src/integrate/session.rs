@@ -99,7 +99,7 @@ impl Session {
     /// Load named session from file.
     pub fn load_named(root: &Path, name: Option<&str>) -> io::Result<Self> {
         let path = Self::session_path(root, name);
-        let json = fs::read_to_string(path)?;
+        let json = crate::util::read_to_string_capped(&path, crate::util::MAX_STATE_FILE_BYTES)?;
         serde_json::from_str(&json).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
 

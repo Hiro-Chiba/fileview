@@ -783,7 +783,7 @@ CLAUDE CODE INTEGRATION:
                         session's event timeline. On Enter, the path of
                         the focused event is printed to stdout.
     plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
-    plugin test PATH    Execute plugin file in sandbox and report status
+    plugin test PATH    Execute plugin file (trusted, unsandboxed) and report status
 
 CONFIG FILE:
     ~/.config/fileview/config.toml    Main configuration file

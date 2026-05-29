@@ -220,13 +220,11 @@ pub fn render_archive_preview(
 
         let date_str = entry.modified.as_deref().unwrap_or("");
 
-        // Calculate name display width
+        // Calculate name display width. Truncate on a UTF-8 char boundary so a
+        // multibyte archive entry name cannot trigger a slice panic.
         let max_name_width = area.width.saturating_sub(24) as usize;
-        let display_name = if entry.name.len() > max_name_width {
-            format!("{}...", &entry.name[..max_name_width.saturating_sub(3)])
-        } else {
-            entry.name.clone()
-        };
+        let display_name =
+            crate::mcp::security::truncate_string(entry.name.clone(), max_name_width);
 
         lines.push(Line::from(vec![
             Span::styled(format!("  {} ", icon), Style::default().fg(color)),

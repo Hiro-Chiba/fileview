@@ -189,11 +189,13 @@ pub fn get_references(root: &Path, path: &str, symbol: &str) -> ToolCallResult {
         return error_result("Path is a directory, not a file");
     }
 
-    // Use ripgrep or grep to find references
+    // Use ripgrep or grep to find references.
+    // `--` stops option parsing so a symbol beginning with `-` cannot be
+    // interpreted as a flag (argument injection).
     let (cmd, args) = if Command::new("rg").arg("--version").output().is_ok() {
-        ("rg", vec!["-n", "--no-heading", "-w", symbol])
+        ("rg", vec!["-n", "--no-heading", "-w", "--", symbol])
     } else {
-        ("grep", vec!["-rn", "-w", symbol])
+        ("grep", vec!["-rn", "-w", "--", symbol])
     };
 
     let output = Command::new(cmd).args(&args).current_dir(root).output();
@@ -256,14 +258,20 @@ pub fn get_diagnostics(root: &Path, path: &str) -> ToolCallResult {
                 .output()
         }
         "py" => {
-            // Python: try ruff, then flake8, then pylint
+            // Python: try ruff, then flake8, then pylint.
+            // Pass the validated canonical (absolute) path rather than the raw
+            // argument so a name beginning with `-` cannot be parsed as a flag.
             if Command::new("ruff").arg("--version").output().is_ok() {
                 Command::new("ruff")
-                    .args(["check", path])
+                    .arg("check")
+                    .arg(&canonical)
                     .current_dir(root)
                     .output()
             } else if Command::new("flake8").arg("--version").output().is_ok() {
-                Command::new("flake8").arg(path).current_dir(root).output()
+                Command::new("flake8")
+                    .arg(&canonical)
+                    .current_dir(root)
+                    .output()
             } else {
                 return success_result(
                     "No Python linter found (install ruff or flake8)".to_string(),
@@ -273,7 +281,8 @@ pub fn get_diagnostics(root: &Path, path: &str) -> ToolCallResult {
         "ts" | "tsx" => {
             // TypeScript: use tsc
             Command::new("npx")
-                .args(["tsc", "--noEmit", path])
+                .args(["tsc", "--noEmit"])
+                .arg(&canonical)
                 .current_dir(root)
                 .output()
         }
@@ -286,7 +295,8 @@ pub fn get_diagnostics(root: &Path, path: &str) -> ToolCallResult {
                 .is_ok()
             {
                 Command::new("npx")
-                    .args(["eslint", "--format", "compact", path])
+                    .args(["eslint", "--format", "compact"])
+                    .arg(&canonical)
                     .current_dir(root)
                     .output()
             } else {

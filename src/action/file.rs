@@ -2,8 +2,17 @@
 
 use std::path::{Path, PathBuf};
 
+/// Validate that a user-entered name is a single path component.
+///
+/// Prevents create/rename inputs like `../escape` or `/abs/path` from writing
+/// outside the directory the user is acting in.
+fn check_component(name: &str) -> anyhow::Result<()> {
+    crate::mcp::security::validate_component(name).map_err(|e| anyhow::anyhow!("{}", e))
+}
+
 /// Create a new file
 pub fn create_file(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
+    check_component(name)?;
     let path = parent.join(name);
     std::fs::OpenOptions::new()
         .write(true)
@@ -15,6 +24,7 @@ pub fn create_file(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
 
 /// Create a new directory
 pub fn create_dir(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
+    check_component(name)?;
     let path = parent.join(name);
     std::fs::create_dir(&path)
         .map_err(|e| anyhow::anyhow!("Failed to create directory '{}': {}", path.display(), e))?;
@@ -23,6 +33,7 @@ pub fn create_dir(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
 
 /// Rename a file or directory
 pub fn rename(path: &Path, new_name: &str) -> anyhow::Result<PathBuf> {
+    check_component(new_name)?;
     let parent = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -58,6 +69,21 @@ pub fn copy_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
     } else {
         std::fs::copy(src, &dest)?;
     }
+    Ok(dest)
+}
+
+/// Move a file or directory into a destination directory.
+///
+/// Like [`copy_to`], the destination name is made unique (via the same
+/// `get_unique_path` helper) so an existing file with the same name is never
+/// silently overwritten.
+pub fn move_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
+    let file_name = src
+        .file_name()
+        .ok_or_else(|| anyhow::anyhow!("Cannot move '{}': no filename", src.display()))?;
+    let dest = get_unique_path(&dest_dir.join(file_name));
+    std::fs::rename(src, &dest)
+        .map_err(|e| anyhow::anyhow!("Failed to move '{}': {}", src.display(), e))?;
     Ok(dest)
 }
 
@@ -232,6 +258,51 @@ mod tests {
         assert!(result.exists());
         assert!(result.is_dir());
         assert!(result.join("file.txt").exists());
+    }
+
+    #[test]
+    fn test_rename_rejects_traversal() {
+        let temp = TempDir::new().unwrap();
+        let original = temp.path().join("file.txt");
+        fs::write(&original, "content").unwrap();
+
+        // A rename target that escapes the directory must be refused, and the
+        // original must be left untouched.
+        assert!(rename(&original, "../escaped.txt").is_err());
+        assert!(rename(&original, "sub/nested.txt").is_err());
+        assert!(original.exists());
+        assert!(!temp.path().parent().unwrap().join("escaped.txt").exists());
+    }
+
+    #[test]
+    fn test_create_file_rejects_traversal() {
+        let temp = TempDir::new().unwrap();
+        assert!(create_file(temp.path(), "../evil.txt").is_err());
+        assert!(create_dir(temp.path(), "../evil_dir").is_err());
+    }
+
+    #[test]
+    fn test_move_to_unique_name() {
+        let temp = TempDir::new().unwrap();
+        let src_dir = temp.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+        let src = src_dir.join("file.txt");
+        fs::write(&src, "moved").unwrap();
+
+        let dest_dir = temp.path().join("dest");
+        fs::create_dir(&dest_dir).unwrap();
+        // Pre-existing file with the same name must NOT be overwritten.
+        fs::write(dest_dir.join("file.txt"), "existing").unwrap();
+
+        let result = move_to(&src, &dest_dir).unwrap();
+
+        assert!(!src.exists()); // moved away
+        assert_eq!(result.file_name().unwrap(), "file_1.txt");
+        assert_eq!(
+            fs::read_to_string(dest_dir.join("file.txt")).unwrap(),
+            "existing"
+        );
+        assert_eq!(fs::read_to_string(&result).unwrap(), "moved");
     }
 
     #[test]
