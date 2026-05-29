@@ -95,7 +95,7 @@ pub fn load_snapshot(root: &Path, name: &str) -> io::Result<Snapshot> {
             format!("snapshot '{}' not found at {}", name, path.display()),
         ));
     }
-    let text = fs::read_to_string(&path)?;
+    let text = crate::util::read_to_string_capped(&path, crate::util::MAX_STATE_FILE_BYTES)?;
     serde_json::from_str(&text).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 

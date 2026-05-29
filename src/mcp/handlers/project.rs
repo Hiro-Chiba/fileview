@@ -7,7 +7,7 @@ use std::path::Path;
 use std::process::Command;
 
 use super::{error_result, success_result, ToolCallResult};
-use crate::mcp::security::validate_path;
+use crate::mcp::security::{reject_option_like, validate_path};
 
 /// Detected project type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -153,8 +153,13 @@ pub fn run_test(root: &Path, path: Option<&str>, filter: Option<&str>) -> ToolCa
         }
     };
 
-    // Add path filter if specified
+    // Add path filter if specified. The value may be a test-name filter rather
+    // than a real path (cargo, pytest `file::test`), so only reject option-like
+    // values instead of requiring an existing path.
     if let Some(p) = path {
+        if let Err(e) = reject_option_like(p) {
+            return error_result(&e.to_string());
+        }
         match project_type {
             ProjectType::Rust => {
                 // Cargo test with path
@@ -179,6 +184,9 @@ pub fn run_test(root: &Path, path: Option<&str>, filter: Option<&str>) -> ToolCa
 
     // Add name filter if specified
     if let Some(f) = filter {
+        if let Err(e) = reject_option_like(f) {
+            return error_result(&e.to_string());
+        }
         match project_type {
             ProjectType::Rust => {
                 if !args.contains(&"--".to_string()) {
@@ -242,6 +250,9 @@ pub fn run_lint(root: &Path, path: Option<&str>, fix: bool) -> ToolCallResult {
 
     // Add path filter if specified
     if let Some(p) = path {
+        if let Err(e) = reject_option_like(p) {
+            return error_result(&e.to_string());
+        }
         match validate_path(root, p) {
             Ok(_) => {
                 // Replace "." with specific path

@@ -228,7 +228,8 @@ impl ConfigFile {
         Self::config_path()
             .and_then(|path| {
                 if path.exists() {
-                    fs::read_to_string(&path).ok()
+                    crate::util::read_to_string_capped(&path, crate::util::MAX_STATE_FILE_BYTES)
+                        .ok()
                 } else {
                     None
                 }

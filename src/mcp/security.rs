@@ -27,9 +27,13 @@ pub const MAX_BATCH_SIZE: usize = 1000;
 pub fn validate_path(root: &Path, path: &str) -> Result<PathBuf> {
     let target = root.join(path);
 
+    // Compare against the canonicalized root so a symlinked root does not make
+    // in-root paths fail the containment check.
+    let root_canonical = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+
     match target.canonicalize() {
         Ok(canonical) => {
-            if !canonical.starts_with(root) {
+            if !canonical.starts_with(&root_canonical) {
                 return Err(FileviewError::path(
                     canonical,
                     "path is outside root directory",
@@ -39,6 +43,37 @@ pub fn validate_path(root: &Path, path: &str) -> Result<PathBuf> {
         }
         Err(e) => Err(FileviewError::path(target, format!("invalid path: {}", e))),
     }
+}
+
+/// Validate that a user-supplied name is a single path component, so create and
+/// rename cannot escape the current directory. Rejects empty, `.`/`..`, and any
+/// path separator.
+pub fn validate_component(name: &str) -> Result<()> {
+    if name.is_empty() {
+        return Err(FileviewError::path(name, "name cannot be empty"));
+    }
+    if name == "." || name == ".." {
+        return Err(FileviewError::path(name, "name cannot be '.' or '..'"));
+    }
+    if name.contains('/') || name.contains('\\') {
+        return Err(FileviewError::path(
+            name,
+            "name cannot contain a path separator",
+        ));
+    }
+    Ok(())
+}
+
+/// Reject a value that an external tool would parse as an option flag (begins
+/// with `-`). Defence-in-depth against argument injection like `rg --pre`.
+pub fn reject_option_like(value: &str) -> Result<()> {
+    if value.starts_with('-') {
+        return Err(FileviewError::mcp(format!(
+            "argument '{}' may not begin with '-'",
+            value
+        )));
+    }
+    Ok(())
 }
 
 /// Validate a path for a new file that doesn't exist yet.
@@ -104,10 +139,15 @@ pub fn is_root(root: &Path, path: &Path) -> bool {
     }
 }
 
-/// Truncate a string if it exceeds the maximum length.
+/// Truncate a string to `max_len` bytes, slicing on a UTF-8 char boundary so a
+/// multibyte name cannot trigger a panic.
 pub fn truncate_string(s: String, max_len: usize) -> String {
     if s.len() > max_len {
-        format!("{}...", &s[..max_len.saturating_sub(3)])
+        let mut end = max_len.saturating_sub(3);
+        while end > 0 && !s.is_char_boundary(end) {
+            end -= 1;
+        }
+        format!("{}...", &s[..end])
     } else {
         s
     }
@@ -225,5 +265,43 @@ mod tests {
         assert!(validate_batch_size(100).is_ok());
         assert!(validate_batch_size(1000).is_ok());
         assert!(validate_batch_size(1001).is_err());
+    }
+
+    #[test]
+    fn test_truncate_string_multibyte_no_panic() {
+        // A long string of 3-byte characters must not panic when the cut point
+        // lands inside a multibyte codepoint.
+        let s = "あ".repeat(3000); // 9000 bytes
+        let truncated = truncate_string(s, 100);
+        assert!(truncated.len() <= 100);
+        assert!(truncated.ends_with("..."));
+        // Result must still be valid UTF-8 (guaranteed by String, but assert
+        // it round-trips through chars without loss of the boundary).
+        assert!(truncated.chars().count() > 0);
+    }
+
+    #[test]
+    fn test_validate_component_ok() {
+        assert!(validate_component("file.txt").is_ok());
+        assert!(validate_component("my-dir_2").is_ok());
+    }
+
+    #[test]
+    fn test_validate_component_rejects_traversal() {
+        assert!(validate_component("").is_err());
+        assert!(validate_component(".").is_err());
+        assert!(validate_component("..").is_err());
+        assert!(validate_component("../evil").is_err());
+        assert!(validate_component("sub/dir").is_err());
+        assert!(validate_component("/abs/path").is_err());
+        assert!(validate_component("a\\b").is_err());
+    }
+
+    #[test]
+    fn test_reject_option_like() {
+        assert!(reject_option_like("pattern").is_ok());
+        assert!(reject_option_like("foo_bar").is_ok());
+        assert!(reject_option_like("--pre").is_err());
+        assert!(reject_option_like("-rf").is_err());
     }
 }

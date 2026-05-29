@@ -7,7 +7,9 @@ use std::path::Path;
 use std::process::Command;
 
 use super::{error_result, success_result, ToolCallResult, ToolContent};
-use crate::mcp::security::{truncate_entry_name, validate_new_path, validate_path};
+use crate::mcp::security::{
+    is_sensitive_path, truncate_entry_name, validate_new_path, validate_path,
+};
 
 /// List directory contents
 pub fn list_directory(root: &Path, path: Option<&str>) -> ToolCallResult {
@@ -153,6 +155,12 @@ pub fn write_file(root: &Path, path: &str, content: &str, create_dirs: bool) -> 
         Err(e) => return error_result(&e.to_string()),
     };
 
+    // Refuse sensitive files (a planted git hook would run on the next git
+    // command). Check the relative path to avoid false positives on the root.
+    if is_sensitive_path(Path::new(path)) {
+        return error_result(&format!("Refusing to write to sensitive path: {}", path));
+    }
+
     // Create parent directories if requested
     if create_dirs {
         if let Some(parent) = target.parent() {
@@ -184,6 +192,11 @@ pub fn delete_file(root: &Path, path: &str, recursive: bool, use_trash: bool) ->
         if canonical == root_canonical {
             return error_result("Cannot delete root directory");
         }
+    }
+
+    // Refuse sensitive files. Check the relative path to avoid false positives.
+    if is_sensitive_path(Path::new(path)) {
+        return error_result(&format!("Refusing to delete sensitive path: {}", path));
     }
 
     let is_dir = canonical.is_dir();
@@ -232,11 +245,12 @@ pub fn search_code(root: &Path, pattern: &str, path: Option<&str>) -> ToolCallRe
         return error_result("Search pattern contains invalid characters");
     }
 
-    // Try ripgrep first, fall back to grep
+    // `--` stops option parsing so a `-`-prefixed pattern (e.g. `rg --pre`)
+    // cannot be smuggled in as a flag.
     let (cmd, args) = if Command::new("rg").arg("--version").output().is_ok() {
-        ("rg", vec!["-n", "--no-heading", pattern])
+        ("rg", vec!["-n", "--no-heading", "--", pattern])
     } else {
-        ("grep", vec!["-rn", pattern])
+        ("grep", vec!["-rn", "--", pattern])
     };
 
     let search_path = match path {
@@ -292,5 +306,69 @@ pub fn search_code(root: &Path, pattern: &str, path: Option<&str>) -> ToolCallRe
             success_result(result)
         }
         Err(e) => error_result(&format!("Failed to run search: {}", e)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_write_file_refuses_sensitive_path() {
+        let temp = tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+
+        let result = write_file(&root, ".env", "SECRET=1", false);
+        assert_eq!(result.is_error, Some(true));
+        assert!(!root.join(".env").exists());
+    }
+
+    #[test]
+    fn test_write_file_refuses_git_hook() {
+        let temp = tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        fs::create_dir_all(root.join(".git/hooks")).unwrap();
+
+        let result = write_file(&root, ".git/hooks/pre-commit", "#!/bin/sh\nevil", true);
+        assert_eq!(result.is_error, Some(true));
+        assert!(!root.join(".git/hooks/pre-commit").exists());
+    }
+
+    #[test]
+    fn test_write_file_allows_normal_path() {
+        let temp = tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+
+        let result = write_file(&root, "src/main.rs", "fn main() {}", true);
+        assert_eq!(result.is_error, None);
+        assert!(root.join("src/main.rs").exists());
+    }
+
+    #[test]
+    fn test_write_file_allows_normal_path_under_sensitive_named_root() {
+        // A project directory whose own name contains a trigger word (e.g.
+        // "credentials") must not block writes to ordinary files inside it.
+        let temp = tempdir().unwrap();
+        let root = temp.path().join("credentials-app");
+        fs::create_dir_all(&root).unwrap();
+        let root = root.canonicalize().unwrap();
+
+        let result = write_file(&root, "src/main.rs", "fn main() {}", true);
+        assert_eq!(result.is_error, None);
+        assert!(root.join("src/main.rs").exists());
+    }
+
+    #[test]
+    fn test_delete_file_refuses_sensitive_path() {
+        let temp = tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        fs::create_dir_all(root.join(".git")).unwrap();
+        fs::write(root.join(".git/config"), "[core]").unwrap();
+
+        let result = delete_file(&root, ".git/config", false, false);
+        assert_eq!(result.is_error, Some(true));
+        assert!(root.join(".git/config").exists());
     }
 }

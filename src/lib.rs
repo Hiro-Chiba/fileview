@@ -15,4 +15,5 @@ pub mod mcp;
 pub mod plugin;
 pub mod render;
 pub mod tree;
+pub mod util;
 pub mod watcher;

@@ -8,6 +8,20 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::Duration;
 
+/// Prefix a relative path starting with `-` with `./` so ffmpeg/ffprobe cannot
+/// parse the filename as an option flag (argument injection).
+fn safe_input_arg(path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        return path.to_path_buf();
+    }
+    let starts_dash = path.to_str().map(|s| s.starts_with('-')).unwrap_or(false);
+    if starts_dash {
+        Path::new("./").join(path)
+    } else {
+        path.to_path_buf()
+    }
+}
+
 /// Cached ffmpeg path detection
 static FFMPEG_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
@@ -181,7 +195,7 @@ pub fn get_metadata(path: &Path) -> anyhow::Result<VideoMetadata> {
         .args(["-v", "quiet"])
         .args(["-print_format", "json"])
         .args(["-show_format", "-show_streams"])
-        .arg(path)
+        .arg(safe_input_arg(path))
         .output()?;
 
     if !output.status.success() {
@@ -348,7 +362,7 @@ pub fn extract_thumbnail(path: &Path) -> anyhow::Result<PathBuf> {
     let status = Command::new(ffmpeg)
         .args(["-y", "-ss", "1"])
         .arg("-i")
-        .arg(path)
+        .arg(safe_input_arg(path))
         .args(["-vframes", "1"])
         .args([
             "-vf",
@@ -364,7 +378,7 @@ pub fn extract_thumbnail(path: &Path) -> anyhow::Result<PathBuf> {
         let status = Command::new(ffmpeg)
             .args(["-y"])
             .arg("-i")
-            .arg(path)
+            .arg(safe_input_arg(path))
             .args(["-vframes", "1"])
             .args([
                 "-vf",

@@ -301,9 +301,11 @@ fn collect_candidate_files(
     include_tests: bool,
 ) -> Vec<PathBuf> {
     if !selected_paths.is_empty() {
+        // Skip sensitive files even when explicitly marked, so secrets are not
+        // embedded into a pack.
         return selected_paths
             .iter()
-            .filter(|p| p.is_file())
+            .filter(|p| p.is_file() && !is_sensitive(root, p))
             .cloned()
             .collect();
     }
@@ -331,7 +333,14 @@ fn collect_candidate_files(
     if out.is_empty() {
         collect_code_files_recursive(root, 0, max_depth, &mut out);
     }
-    out.into_iter().collect()
+    out.into_iter().filter(|p| !is_sensitive(root, p)).collect()
+}
+
+/// Whether `path` is a sensitive file, judged on its location relative to
+/// `root` so the project's own directory name cannot trigger a false positive.
+fn is_sensitive(root: &Path, path: &Path) -> bool {
+    let rel = path.strip_prefix(root).unwrap_or(path);
+    crate::mcp::security::is_sensitive_path(rel)
 }
 
 fn collect_snippets(files: &[PathBuf], token_budget: usize) -> Vec<(PathBuf, String, usize)> {

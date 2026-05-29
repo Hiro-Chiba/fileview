@@ -34,10 +34,7 @@ pub fn handle(
                         }
                         ClipboardContent::Cut(paths) => {
                             for src in &paths {
-                                if let Some(name) = src.file_name() {
-                                    let new_path = dest.join(name);
-                                    std::fs::rename(src, new_path)?;
-                                }
+                                file_ops::move_to(src, &dest)?;
                             }
                             state.set_message(format!("Moved {} item(s)", paths.len()));
                         }
