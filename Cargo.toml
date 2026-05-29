@@ -1,6 +1,6 @@
 [package]
 name = "fileview"
-version = "2.7.3"
+version = "2.7.4"
 edition = "2021"
 rust-version = "1.90.0"  # MSRV - Minimum Supported Rust Version
 description = "A fast, keyboard-driven TUI file browser with previews and git"
