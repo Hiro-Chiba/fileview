@@ -53,8 +53,8 @@ pub fn calculate_centered_image_area(
     font_size: FontSize,
 ) -> Rect {
     // Convert cell dimensions to pixel dimensions using font_size
-    let area_pixel_width = area.width as f64 * font_size.0 as f64;
-    let area_pixel_height = area.height as f64 * font_size.1 as f64;
+    let area_pixel_width = area.width as f64 * font_size.width as f64;
+    let area_pixel_height = area.height as f64 * font_size.height as f64;
 
     // Calculate scale factors for both dimensions
     let scale_x = area_pixel_width / img_width as f64;
@@ -67,8 +67,8 @@ pub fn calculate_centered_image_area(
     let scaled_pixel_width = img_width as f64 * scale;
     let scaled_pixel_height = img_height as f64 * scale;
 
-    let scaled_cell_width = (scaled_pixel_width / font_size.0 as f64).round() as u16;
-    let scaled_cell_height = (scaled_pixel_height / font_size.1 as f64).round() as u16;
+    let scaled_cell_width = (scaled_pixel_width / font_size.width as f64).round() as u16;
+    let scaled_cell_height = (scaled_pixel_height / font_size.height as f64).round() as u16;
 
     // Calculate padding to center the image
     let padding_x = area.width.saturating_sub(scaled_cell_width) / 2;

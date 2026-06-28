@@ -37,7 +37,7 @@ pub fn render_frame(frame: &mut Frame, mut ctx: RenderContext) {
         .image_picker
         .as_ref()
         .map(|p| p.font_size())
-        .unwrap_or((10, 20));
+        .unwrap_or(FontSize::new(10, 20));
 
     // Check if fullscreen preview mode is active
     let is_fullscreen_preview = matches!(ctx.state.mode, ViewMode::Preview { .. });
