@@ -361,7 +361,7 @@ fn collect_paths_recursive(
 
             paths.push(path.clone());
 
-            if path.is_dir() {
+            if entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
                 collect_paths_recursive(&path, paths, show_hidden, depth + 1, max_depth);
             }
         }
@@ -576,6 +576,22 @@ mod tests {
         let paths = collect_paths(&temp.path().to_path_buf(), false);
         // Should include a, a/b, a/b/c, and a/b/c/file.txt
         assert!(paths.len() >= 4);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_collect_paths_does_not_follow_directory_symlinks() {
+        use std::os::unix::fs::symlink;
+        use tempfile::tempdir;
+
+        let root = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        std::fs::write(outside.path().join("outside.txt"), "outside").unwrap();
+        symlink(outside.path(), root.path().join("external")).unwrap();
+
+        let paths = collect_paths(&root.path().to_path_buf(), false);
+        assert!(paths.contains(&root.path().join("external")));
+        assert!(!paths.iter().any(|path| path.ends_with("outside.txt")));
     }
 
     #[test]

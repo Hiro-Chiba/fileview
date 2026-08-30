@@ -39,6 +39,17 @@ pub fn rename(path: &Path, new_name: &str) -> anyhow::Result<PathBuf> {
             anyhow::anyhow!("Cannot determine parent directory for '{}'", path.display())
         })?;
     let new_path = parent.join(new_name);
+
+    if new_path == path {
+        return Ok(new_path);
+    }
+    if new_path.exists() && path.canonicalize().ok() != new_path.canonicalize().ok() {
+        anyhow::bail!(
+            "Cannot rename to '{}': destination already exists",
+            new_name
+        );
+    }
+
     std::fs::rename(path, &new_path).map_err(|e| {
         anyhow::anyhow!(
             "Failed to rename '{}' to '{}': {}",
@@ -60,8 +71,15 @@ pub fn copy_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
     let file_name = src
         .file_name()
         .ok_or_else(|| anyhow::anyhow!("Cannot copy '{}': no filename", src.display()))?;
-    let dest = get_unique_path(&dest_dir.join(file_name));
+    if src.is_dir() {
+        let source = src.canonicalize()?;
+        let destination_dir = dest_dir.canonicalize()?;
+        if destination_dir.starts_with(&source) {
+            anyhow::bail!("Cannot copy directory '{}' into itself", src.display());
+        }
+    }
 
+    let dest = get_unique_path(&dest_dir.join(file_name));
     if src.is_dir() {
         copy_dir_recursive(src, &dest)?;
     } else {
@@ -125,7 +143,7 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> anyhow::Result<()> {
         let src_path = entry.path();
         let dest_path = dest.join(entry.file_name());
 
-        if src_path.is_dir() {
+        if entry.file_type()?.is_dir() {
             copy_dir_recursive(&src_path, &dest_path)?;
         } else {
             std::fs::copy(&src_path, &dest_path)?;
@@ -199,6 +217,19 @@ mod tests {
     }
 
     #[test]
+    fn test_rename_does_not_overwrite_existing_file() {
+        let temp = TempDir::new().unwrap();
+        let original = temp.path().join("original.txt");
+        let existing = temp.path().join("existing.txt");
+        fs::write(&original, "original").unwrap();
+        fs::write(&existing, "existing").unwrap();
+
+        assert!(rename(&original, "existing.txt").is_err());
+        assert_eq!(fs::read_to_string(&original).unwrap(), "original");
+        assert_eq!(fs::read_to_string(&existing).unwrap(), "existing");
+    }
+
+    #[test]
     #[ignore] // Requires Finder/trash permissions; run manually
     fn test_delete_file() {
         let temp = TempDir::new().unwrap();
@@ -253,6 +284,34 @@ mod tests {
         assert!(result.exists());
         assert!(result.is_dir());
         assert!(result.join("file.txt").exists());
+    }
+
+    #[test]
+    fn test_copy_directory_into_descendant_is_rejected() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("source");
+        let descendant = src.join("child");
+        fs::create_dir_all(&descendant).unwrap();
+        fs::write(src.join("file.txt"), "content").unwrap();
+
+        assert!(copy_to(&src, &descendant).is_err());
+        assert!(!descendant.join("source").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_copy_directory_does_not_follow_directory_symlinks() {
+        use std::os::unix::fs::symlink;
+
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("source");
+        let dest = temp.path().join("dest");
+        fs::create_dir(&src).unwrap();
+        fs::create_dir(&dest).unwrap();
+        symlink(&src, src.join("loop")).unwrap();
+
+        assert!(copy_to(&src, &dest).is_err());
+        assert!(!dest.join("source/loop/loop").exists());
     }
 
     #[test]

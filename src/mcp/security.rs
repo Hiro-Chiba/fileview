@@ -5,6 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::error::{FileviewError, Result};
+use crate::util::utf8_prefix;
 
 /// Maximum length for entry names (prevent DoS from malicious input)
 pub const MAX_ENTRY_NAME_LEN: usize = 4096;
@@ -25,11 +26,7 @@ pub const MAX_BATCH_SIZE: usize = 1000;
 /// * `Ok(PathBuf)` - The canonicalized path if valid
 /// * `Err(FileviewError)` - If the path is invalid or outside root
 pub fn validate_path(root: &Path, path: &str) -> Result<PathBuf> {
-    let target = root.join(path);
-
-    // Compare against the canonicalized root so a symlinked root does not make
-    // in-root paths fail the containment check.
-    let root_canonical = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let (root_canonical, target) = contained_target(root, path)?;
 
     match target.canonicalize() {
         Ok(canonical) => {
@@ -86,33 +83,102 @@ pub fn reject_option_like(value: &str) -> Result<()> {
 /// * `Ok(PathBuf)` - The target path if the parent directory is valid
 /// * `Err(FileviewError)` - If the parent is invalid or outside root
 pub fn validate_new_path(root: &Path, path: &str) -> Result<PathBuf> {
-    let target = root.join(path);
-    let parent = target.parent().unwrap_or(root);
+    let (root_canonical, target) = contained_target(root, path)?;
 
-    // For new files, check if parent exists and is within root
-    if parent.exists() {
-        if let Ok(canonical_parent) = parent.canonicalize() {
-            if !canonical_parent.starts_with(root) {
-                return Err(FileviewError::path(
-                    target,
-                    "parent directory is outside root",
-                ));
-            }
-        }
-    } else {
-        // Parent doesn't exist - check if path traverses outside root
-        // by checking if normalized path stays within root
-        let normalized = normalize_path(&target);
-        let root_normalized = normalize_path(root);
-        if !normalized.starts_with(&root_normalized) {
+    if let Ok(metadata) = std::fs::symlink_metadata(&target) {
+        if metadata.file_type().is_symlink() {
             return Err(FileviewError::path(
                 target,
-                "path would be outside root directory",
+                "refusing to write through a symbolic link",
             ));
         }
+
+        let canonical = target
+            .canonicalize()
+            .map_err(|e| FileviewError::path(&target, format!("invalid path: {}", e)))?;
+        if !canonical.starts_with(&root_canonical) {
+            return Err(FileviewError::path(
+                canonical,
+                "path is outside root directory",
+            ));
+        }
+        return Ok(canonical);
     }
 
+    validate_parent(&root_canonical, &target)?;
     Ok(target)
+}
+
+/// Validate an existing path for deletion without following a symlink in the
+/// final path component. Removing an in-root symlink must remove the link, not
+/// the file or directory it points to.
+pub fn validate_delete_path(root: &Path, path: &str) -> Result<PathBuf> {
+    let (root_canonical, target) = contained_target(root, path)?;
+    let metadata = std::fs::symlink_metadata(&target)
+        .map_err(|e| FileviewError::path(&target, format!("invalid path: {}", e)))?;
+
+    if metadata.file_type().is_symlink() {
+        validate_parent(&root_canonical, &target)?;
+        return Ok(target);
+    }
+
+    let canonical = target
+        .canonicalize()
+        .map_err(|e| FileviewError::path(&target, format!("invalid path: {}", e)))?;
+    if !canonical.starts_with(&root_canonical) {
+        return Err(FileviewError::path(
+            canonical,
+            "path is outside root directory",
+        ));
+    }
+    Ok(canonical)
+}
+
+fn contained_target(root: &Path, path: &str) -> Result<(PathBuf, PathBuf)> {
+    let root_canonical = root
+        .canonicalize()
+        .map_err(|e| FileviewError::path(root, format!("invalid root: {}", e)))?;
+    let root_absolute = if root.is_absolute() {
+        normalize_path(root)
+    } else {
+        let current = std::env::current_dir()
+            .map_err(|e| FileviewError::path(root, format!("invalid root: {}", e)))?;
+        normalize_path(&current.join(root))
+    };
+    let input = Path::new(path);
+    let target = if input.is_absolute() {
+        normalize_path(input)
+    } else {
+        normalize_path(&root_absolute.join(input))
+    };
+
+    if !target.starts_with(&root_absolute) && !target.starts_with(&root_canonical) {
+        return Err(FileviewError::path(
+            target,
+            "path is outside root directory",
+        ));
+    }
+    Ok((root_canonical, target))
+}
+
+fn validate_parent(root_canonical: &Path, target: &Path) -> Result<()> {
+    let mut ancestor = target.parent().unwrap_or(root_canonical);
+    while !ancestor.exists() {
+        ancestor = ancestor.parent().ok_or_else(|| {
+            FileviewError::path(target, "cannot resolve an existing parent directory")
+        })?;
+    }
+
+    let canonical = ancestor
+        .canonicalize()
+        .map_err(|e| FileviewError::path(ancestor, format!("invalid parent path: {}", e)))?;
+    if !canonical.starts_with(root_canonical) {
+        return Err(FileviewError::path(
+            target,
+            "parent directory is outside root",
+        ));
+    }
+    Ok(())
 }
 
 /// Normalize a path without requiring it to exist.
@@ -143,11 +209,7 @@ pub fn is_root(root: &Path, path: &Path) -> bool {
 /// multibyte name cannot trigger a panic.
 pub fn truncate_string(s: String, max_len: usize) -> String {
     if s.len() > max_len {
-        let mut end = max_len.saturating_sub(3);
-        while end > 0 && !s.is_char_boundary(end) {
-            end -= 1;
-        }
-        format!("{}...", &s[..end])
+        format!("{}...", utf8_prefix(&s, max_len.saturating_sub(3)))
     } else {
         s
     }
@@ -171,7 +233,7 @@ pub fn validate_batch_size(count: usize) -> Result<()> {
 
 /// Check if a path is a sensitive file that shouldn't be modified.
 pub fn is_sensitive_path(path: &Path) -> bool {
-    let path_str = path.to_string_lossy().to_lowercase();
+    let path_str = path.to_string_lossy().replace('\\', "/").to_lowercase();
 
     // Check for sensitive file patterns
     let sensitive_patterns = [
@@ -234,6 +296,47 @@ mod tests {
     }
 
     #[test]
+    fn test_validate_new_absolute_path_within_root() {
+        let temp = tempdir().unwrap();
+        let target = temp.path().join("new.txt");
+
+        assert!(validate_new_path(temp.path(), target.to_str().unwrap()).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_validate_new_path_rejects_symlink_leaf_and_ancestor() {
+        use std::os::unix::fs::symlink;
+
+        let root_dir = tempdir().unwrap();
+        let outside_dir = tempdir().unwrap();
+        let root = root_dir.path().canonicalize().unwrap();
+        let outside = outside_dir.path().canonicalize().unwrap();
+        fs::write(outside.join("target.txt"), "outside").unwrap();
+        symlink(outside.join("target.txt"), root.join("file-link")).unwrap();
+        symlink(&outside, root.join("dir-link")).unwrap();
+
+        assert!(validate_new_path(&root, "file-link").is_err());
+        assert!(validate_new_path(&root, "dir-link/new.txt").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_validate_delete_path_preserves_symlink_leaf() {
+        use std::os::unix::fs::symlink;
+
+        let root_dir = tempdir().unwrap();
+        let outside_dir = tempdir().unwrap();
+        let root = root_dir.path().canonicalize().unwrap();
+        let outside_file = outside_dir.path().join("target.txt");
+        fs::write(&outside_file, "outside").unwrap();
+        let link = root.join("link");
+        symlink(&outside_file, &link).unwrap();
+
+        assert_eq!(validate_delete_path(&root, "link").unwrap(), link);
+    }
+
+    #[test]
     fn test_truncate_entry_name() {
         let short = "short.txt".to_string();
         assert_eq!(truncate_entry_name(short.clone()), short);
@@ -250,6 +353,9 @@ mod tests {
         assert!(is_sensitive_path(Path::new("/project/.env")));
         assert!(is_sensitive_path(Path::new("/repo/.git/config")));
         assert!(!is_sensitive_path(Path::new("/project/src/main.rs")));
+        assert!(is_sensitive_path(Path::new(
+            r"project\.git\hooks\pre-commit"
+        )));
     }
 
     #[test]

@@ -166,7 +166,7 @@ pub fn git_log(root: &Path, limit: Option<usize>, path: Option<&str>) -> ToolCal
 pub fn stage_files(root: &Path, paths: &[&str]) -> ToolCallResult {
     // Security: Validate all paths before staging
     for p in paths {
-        if let Err(e) = validate_path(root, p) {
+        if let Err(e) = validate_path(root, p).or_else(|_| validate_new_path(root, p)) {
             return error_result(&format!("Invalid path '{}': {}", p, e));
         }
     }
@@ -174,7 +174,7 @@ pub fn stage_files(root: &Path, paths: &[&str]) -> ToolCallResult {
     let args: Vec<&str> = if paths.is_empty() {
         vec!["add", "-A"]
     } else {
-        let mut a = vec!["add"];
+        let mut a = vec!["add", "--"];
         a.extend(paths);
         a
     };
@@ -225,5 +225,92 @@ pub fn create_commit(root: &Path, message: &str) -> ToolCallResult {
             }
         }
         Err(e) => error_result(&format!("Failed to run git: {}", e)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    fn git_available() -> bool {
+        Command::new("git")
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success())
+    }
+
+    fn init_repo(root: &Path) {
+        let status = Command::new("git")
+            .arg("init")
+            .current_dir(root)
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+
+    #[test]
+    fn stage_files_treats_option_like_name_as_path() {
+        if !git_available() {
+            return;
+        }
+
+        let temp = tempdir().unwrap();
+        init_repo(temp.path());
+        fs::write(temp.path().join("-A"), "only this file").unwrap();
+        fs::write(temp.path().join("other.txt"), "leave untracked").unwrap();
+
+        let result = stage_files(temp.path(), &["-A"]);
+        assert_eq!(result.is_error, None);
+        let output = Command::new("git")
+            .args(["diff", "--cached", "--name-only", "-z"])
+            .current_dir(temp.path())
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"-A\0");
+    }
+
+    #[test]
+    fn stage_files_accepts_deleted_path() {
+        if !git_available() {
+            return;
+        }
+
+        let temp = tempdir().unwrap();
+        init_repo(temp.path());
+        fs::write(temp.path().join("deleted.txt"), "tracked").unwrap();
+        assert!(Command::new("git")
+            .args(["add", "--", "deleted.txt"])
+            .current_dir(temp.path())
+            .status()
+            .unwrap()
+            .success());
+        assert!(Command::new("git")
+            .args([
+                "-c",
+                "user.name=FileView Test",
+                "-c",
+                "user.email=fileview@example.invalid",
+                "commit",
+                "-m",
+                "initial",
+            ])
+            .current_dir(temp.path())
+            .status()
+            .unwrap()
+            .success());
+        fs::remove_file(temp.path().join("deleted.txt")).unwrap();
+
+        let result = stage_files(temp.path(), &["deleted.txt"]);
+        assert_eq!(result.is_error, None);
+        let output = Command::new("git")
+            .args(["diff", "--cached", "--name-status"])
+            .current_dir(temp.path())
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        assert_eq!(String::from_utf8_lossy(&output.stdout), "D\tdeleted.txt\n");
     }
 }

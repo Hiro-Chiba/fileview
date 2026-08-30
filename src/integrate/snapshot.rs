@@ -140,13 +140,17 @@ fn collect(root: &Path, dir: &Path, out: &mut BTreeMap<String, FileEntry>) -> io
             continue;
         }
         let path = entry.path();
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(_) => continue,
+        };
+        if file_type.is_symlink() {
+            continue;
+        }
         let metadata = match entry.metadata() {
             Ok(m) => m,
             Err(_) => continue,
         };
-        if metadata.file_type().is_symlink() {
-            continue;
-        }
         if metadata.is_dir() {
             collect(root, &path, out)?;
         } else if metadata.is_file() {
@@ -254,6 +258,21 @@ mod tests {
         assert!(snap.files.contains_key("src/lib.rs"));
         assert!(!snap.files.iter().any(|(p, _)| p.contains(".hidden")));
         assert!(!snap.files.iter().any(|(p, _)| p.contains(".cache")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn capture_does_not_follow_symlinks() {
+        use std::os::unix::fs::symlink;
+
+        let root = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        touch(outside.path(), "outside.txt", "outside\n");
+        symlink(outside.path(), root.path().join("external")).unwrap();
+        symlink(root.path(), root.path().join("loop")).unwrap();
+
+        let snapshot = capture_snapshot("base", root.path()).unwrap();
+        assert!(snapshot.files.is_empty());
     }
 
     #[test]

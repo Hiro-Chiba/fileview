@@ -8,7 +8,7 @@ use std::process::Command;
 
 use super::{error_result, success_result, ToolCallResult, ToolContent};
 use crate::mcp::security::{
-    is_sensitive_path, truncate_entry_name, validate_new_path, validate_path,
+    is_sensitive_path, truncate_entry_name, validate_delete_path, validate_new_path, validate_path,
 };
 
 /// List directory contents
@@ -182,7 +182,7 @@ pub fn write_file(root: &Path, path: &str, content: &str, create_dirs: bool) -> 
 
 /// Delete a file or directory
 pub fn delete_file(root: &Path, path: &str, recursive: bool, use_trash: bool) -> ToolCallResult {
-    let canonical = match validate_path(root, path) {
+    let canonical = match validate_delete_path(root, path) {
         Ok(p) => p,
         Err(e) => return error_result(&e.to_string()),
     };
@@ -370,5 +370,41 @@ mod tests {
         let result = delete_file(&root, ".git/config", false, false);
         assert_eq!(result.is_error, Some(true));
         assert!(root.join(".git/config").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_write_file_refuses_symlink_outside_root() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let target = outside.path().join("target.txt");
+        fs::write(&target, "original").unwrap();
+        symlink(&target, root.join("alias.txt")).unwrap();
+
+        let result = write_file(&root, "alias.txt", "changed", false);
+        assert_eq!(result.is_error, Some(true));
+        assert_eq!(fs::read_to_string(target).unwrap(), "original");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_delete_file_removes_symlink_not_target() {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let target = outside.path().join("target.txt");
+        fs::write(&target, "keep").unwrap();
+        let alias = root.join("alias.txt");
+        symlink(&target, &alias).unwrap();
+
+        let result = delete_file(&root, "alias.txt", false, false);
+        assert_eq!(result.is_error, None);
+        assert!(!alias.exists());
+        assert_eq!(fs::read_to_string(target).unwrap(), "keep");
     }
 }
