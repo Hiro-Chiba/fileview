@@ -694,7 +694,7 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::NextTab,
         KeyCode::Char('T') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::PrevTab,
 
-        // Smart selection (Ctrl+T for test pair)
+        // Smart selection (Ctrl+Shift+T for test pair)
         KeyCode::Char('T') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::SelectTestPair
         }
@@ -829,26 +829,28 @@ fn handle_visual_select_mode(state: &AppState, key: KeyEvent) -> KeyAction {
 /// Update input buffer based on key event
 /// Returns the new buffer content, or None if no change
 pub fn update_input_buffer(key: KeyEvent, buffer: &str, cursor: usize) -> Option<(String, usize)> {
+    let mut chars: Vec<char> = buffer.chars().collect();
+    if cursor > chars.len() {
+        return None;
+    }
+
     match key.code {
         KeyCode::Char(c) => {
-            let mut new_buffer = buffer.to_string();
-            new_buffer.insert(cursor, c);
-            Some((new_buffer, cursor + 1))
+            chars.insert(cursor, c);
+            Some((chars.into_iter().collect(), cursor + 1))
         }
         KeyCode::Backspace => {
             if cursor > 0 {
-                let mut new_buffer = buffer.to_string();
-                new_buffer.remove(cursor - 1);
-                Some((new_buffer, cursor - 1))
+                chars.remove(cursor - 1);
+                Some((chars.into_iter().collect(), cursor - 1))
             } else {
                 None
             }
         }
         KeyCode::Delete => {
-            if cursor < buffer.len() {
-                let mut new_buffer = buffer.to_string();
-                new_buffer.remove(cursor);
-                Some((new_buffer, cursor))
+            if cursor < chars.len() {
+                chars.remove(cursor);
+                Some((chars.into_iter().collect(), cursor))
             } else {
                 None
             }
@@ -861,7 +863,7 @@ pub fn update_input_buffer(key: KeyEvent, buffer: &str, cursor: usize) -> Option
             }
         }
         KeyCode::Right => {
-            if cursor < buffer.len() {
+            if cursor < chars.len() {
                 Some((buffer.to_string(), cursor + 1))
             } else {
                 None
@@ -875,8 +877,8 @@ pub fn update_input_buffer(key: KeyEvent, buffer: &str, cursor: usize) -> Option
             }
         }
         KeyCode::End => {
-            if cursor < buffer.len() {
-                Some((buffer.to_string(), buffer.len()))
+            if cursor < chars.len() {
+                Some((buffer.to_string(), chars.len()))
             } else {
                 None
             }
@@ -1089,6 +1091,31 @@ mod tests {
     fn test_preview_mode_o_cancels() {
         let action = handle_preview_mode(key_event(KeyCode::Char('o')));
         assert!(matches!(action, KeyAction::Cancel));
+    }
+
+    #[test]
+    fn test_update_input_buffer_handles_multibyte_characters() {
+        let (buffer, cursor) =
+            update_input_buffer(key_event(KeyCode::Char('本')), "日", 1).unwrap();
+        assert_eq!(buffer, "日本");
+        assert_eq!(cursor, 2);
+
+        let (buffer, cursor) =
+            update_input_buffer(key_event(KeyCode::Left), &buffer, cursor).unwrap();
+        assert_eq!(cursor, 1);
+        let (buffer, cursor) =
+            update_input_buffer(key_event(KeyCode::Delete), &buffer, cursor).unwrap();
+        assert_eq!(buffer, "日");
+        assert_eq!(cursor, 1);
+        let (buffer, cursor) =
+            update_input_buffer(key_event(KeyCode::Backspace), &buffer, cursor).unwrap();
+        assert_eq!(buffer, "");
+        assert_eq!(cursor, 0);
+    }
+
+    #[test]
+    fn test_update_input_buffer_rejects_invalid_cursor() {
+        assert!(update_input_buffer(key_event(KeyCode::Char('x')), "日", 2).is_none());
     }
 
     // Tests for arrow key focus switching when preview is visible

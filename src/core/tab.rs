@@ -7,6 +7,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use crate::tree::TreeNavigator;
+use crate::util::utf8_prefix;
 
 use super::{FocusTarget, SortMode, ViewMode, BOOKMARK_SLOTS};
 
@@ -41,14 +42,17 @@ pub struct Tab {
 impl Tab {
     /// Create a new tab for the given directory
     pub fn new(root: PathBuf, show_hidden: bool) -> anyhow::Result<Self> {
+        let navigator = TreeNavigator::new(&root, show_hidden)?;
+        Ok(Self::with_navigator(root, show_hidden, navigator))
+    }
+
+    fn with_navigator(root: PathBuf, show_hidden: bool, navigator: TreeNavigator) -> Self {
         let name = root
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| root.display().to_string());
 
-        let navigator = TreeNavigator::new(&root, show_hidden)?;
-
-        Ok(Self {
+        Self {
             root,
             name,
             navigator,
@@ -61,7 +65,7 @@ impl Tab {
             bookmarks: [const { None }; BOOKMARK_SLOTS],
             filter_pattern: None,
             sort_mode: SortMode::default(),
-        })
+        }
     }
 
     /// Get a short display name for the tab bar
@@ -69,7 +73,7 @@ impl Tab {
         if self.name.len() <= max_len {
             self.name.clone()
         } else {
-            format!("{}...", &self.name[..max_len.saturating_sub(3)])
+            format!("{}...", utf8_prefix(&self.name, max_len.saturating_sub(3)))
         }
     }
 }
@@ -90,6 +94,17 @@ impl TabManager {
             tabs: vec![initial_tab],
             active_index: 0,
         })
+    }
+
+    pub(crate) fn with_navigator(
+        root: PathBuf,
+        show_hidden: bool,
+        navigator: TreeNavigator,
+    ) -> Self {
+        Self {
+            tabs: vec![Tab::with_navigator(root, show_hidden, navigator)],
+            active_index: 0,
+        }
     }
 
     /// Get the currently active tab
@@ -209,6 +224,17 @@ mod tests {
     }
 
     #[test]
+    fn test_tab_manager_uses_existing_navigator() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path().to_path_buf();
+        let navigator = TreeNavigator::new(&root, false).unwrap();
+
+        let manager = TabManager::with_navigator(root.clone(), false, navigator);
+        assert_eq!(manager.active().root, root);
+        assert_eq!(manager.len(), 1);
+    }
+
+    #[test]
     fn test_tab_manager_close_tab() {
         let temp = TempDir::new().unwrap();
         let mut manager = TabManager::new(temp.path().to_path_buf(), false).unwrap();
@@ -261,6 +287,14 @@ mod tests {
         tab.name = "short".to_string();
 
         assert_eq!(tab.short_name(10), "short");
+    }
+
+    #[test]
+    fn test_tab_short_name_multibyte() {
+        let (_temp, mut tab) = create_temp_tab();
+        tab.name = "日本語fileview".to_string();
+
+        assert_eq!(tab.short_name(10), "日本...");
     }
 
     #[test]

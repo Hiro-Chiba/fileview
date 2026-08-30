@@ -17,6 +17,10 @@ thread_local! {
     static FILE_INFO_CACHE: RefCell<Option<FileInfoCache>> = const { RefCell::new(None) };
 }
 
+pub(crate) fn invalidate_file_info_cache() {
+    FILE_INFO_CACHE.with(|cache| *cache.borrow_mut() = None);
+}
+
 /// Run `f` with cached metadata for `path`. Only calls stat() when the path changes.
 fn with_cached_metadata<T>(path: &Path, f: impl FnOnce(&FileInfoCache) -> T) -> Option<T> {
     FILE_INFO_CACHE.with(|cache| {

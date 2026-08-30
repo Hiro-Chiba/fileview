@@ -75,6 +75,39 @@ fn handle_file_drop(
     Ok(success_count)
 }
 
+fn save_active_tab(tab_manager: &mut TabManager, navigator: &TreeNavigator, state: &AppState) {
+    let tab = tab_manager.active_mut();
+    tab.navigator = navigator.clone();
+    tab.focus_index = state.focus_index;
+    tab.viewport_top = state.viewport_top;
+    tab.selected_paths = state.selected_paths.clone();
+    tab.mode = state.mode.clone();
+    tab.focus_target = state.focus_target;
+    tab.show_hidden = state.show_hidden;
+    tab.bookmarks = state.bookmarks.clone();
+    tab.filter_pattern = state.filter_pattern.clone();
+    tab.sort_mode = state.sort_mode;
+}
+
+fn restore_active_tab(
+    tab_manager: &TabManager,
+    navigator: &mut TreeNavigator,
+    state: &mut AppState,
+) {
+    let tab = tab_manager.active();
+    *navigator = tab.navigator.clone();
+    state.root = tab.root.clone();
+    state.focus_index = tab.focus_index;
+    state.viewport_top = tab.viewport_top;
+    state.selected_paths = tab.selected_paths.clone();
+    state.mode = tab.mode.clone();
+    state.focus_target = tab.focus_target;
+    state.show_hidden = tab.show_hidden;
+    state.bookmarks = tab.bookmarks.clone();
+    state.filter_pattern = tab.filter_pattern.clone();
+    state.sort_mode = tab.sort_mode;
+}
+
 /// Main event loop
 pub fn run_app(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
@@ -158,9 +191,6 @@ pub fn run_app(
         // Note: config file icons setting is already applied in AppState::new via env var check
     }
 
-    // Create tab manager with initial tab
-    let mut tab_manager = TabManager::new(config.root.clone(), state.show_hidden)?;
-
     // Create navigator based on stdin mode
     let mut navigator = if let Some(paths) = config.stdin_paths.clone() {
         state.stdin_mode = true;
@@ -168,6 +198,9 @@ pub fn run_app(
     } else {
         TreeNavigator::new(&config.root, state.show_hidden)?
     };
+    // Reuse the initial navigator so startup scans the root only once.
+    let mut tab_manager =
+        TabManager::with_navigator(config.root.clone(), state.show_hidden, navigator.clone());
     let mut click_detector = ClickDetector::new();
     let mut path_buffer = PathBuffer::new();
 
@@ -363,6 +396,8 @@ pub fn run_app(
         if let Some(ref watcher) = file_watcher {
             if watcher.poll() {
                 reload_tree(&mut navigator, &mut state)?;
+                preview.invalidate();
+                crate::render::invalidate_file_info_cache();
                 last_git_poll = Instant::now(); // Reset git poll timer
                 needs_redraw = true;
             }
@@ -487,7 +522,9 @@ pub fn run_app(
                     }
 
                     if let ViewMode::Search { query } = &state.mode {
-                        if let Some((new_buf, _)) = update_input_buffer(key, query, query.len()) {
+                        if let Some((new_buf, _)) =
+                            update_input_buffer(key, query, query.chars().count())
+                        {
                             state.mode = ViewMode::Search { query: new_buf };
                             continue;
                         }
@@ -495,7 +532,9 @@ pub fn run_app(
 
                     // Handle fuzzy finder text input
                     if let ViewMode::FuzzyFinder { query, .. } = &state.mode {
-                        if let Some((new_buf, _)) = update_input_buffer(key, query, query.len()) {
+                        if let Some((new_buf, _)) =
+                            update_input_buffer(key, query, query.chars().count())
+                        {
                             // Refresh results when query changes (incremental narrowing)
                             fuzzy_results = fuzzy_match_incremental(
                                 &new_buf,
@@ -513,7 +552,9 @@ pub fn run_app(
 
                     // Handle filter text input
                     if let ViewMode::Filter { query } = &state.mode {
-                        if let Some((new_buf, _)) = update_input_buffer(key, query, query.len()) {
+                        if let Some((new_buf, _)) =
+                            update_input_buffer(key, query, query.chars().count())
+                        {
                             state.mode = ViewMode::Filter { query: new_buf };
                             continue;
                         }
@@ -561,20 +602,14 @@ pub fn run_app(
                                 })
                                 .unwrap_or_else(|| state.root.clone());
 
+                            save_active_tab(&mut tab_manager, &navigator, &state);
                             match tab_manager.new_tab(current_dir, state.show_hidden) {
                                 Ok(()) => {
-                                    // Sync state from new tab
-                                    let tab = tab_manager.active();
-                                    navigator = tab.navigator.clone();
-                                    state.root = tab.root.clone();
-                                    state.focus_index = 0;
-                                    state.viewport_top = 0;
-                                    state.selected_paths.clear();
-                                    state.mode = ViewMode::Browse;
+                                    restore_active_tab(&tab_manager, &mut navigator, &mut state);
                                     state.set_message(format!(
                                         "Tab {}: {}",
                                         tab_manager.len(),
-                                        tab.name
+                                        tab_manager.active().name
                                     ));
                                 }
                                 Err(e) => {
@@ -585,23 +620,10 @@ pub fn run_app(
                         }
                         KeyAction::CloseTab => {
                             if tab_manager.len() > 1 {
-                                // Save current tab state before closing
-                                tab_manager.active_mut().navigator = navigator.clone();
-                                tab_manager.active_mut().focus_index = state.focus_index;
-                                tab_manager.active_mut().viewport_top = state.viewport_top;
-                                tab_manager.active_mut().selected_paths =
-                                    state.selected_paths.clone();
-                                tab_manager.active_mut().mode = state.mode.clone();
+                                save_active_tab(&mut tab_manager, &navigator, &state);
 
                                 if tab_manager.close_tab() {
-                                    // Restore state from new active tab
-                                    let tab = tab_manager.active();
-                                    navigator = tab.navigator.clone();
-                                    state.root = tab.root.clone();
-                                    state.focus_index = tab.focus_index;
-                                    state.viewport_top = tab.viewport_top;
-                                    state.selected_paths = tab.selected_paths.clone();
-                                    state.mode = tab.mode.clone();
+                                    restore_active_tab(&tab_manager, &mut navigator, &mut state);
                                     state.set_message(format!(
                                         "Closed tab, {} remaining",
                                         tab_manager.len()
@@ -614,47 +636,17 @@ pub fn run_app(
                         }
                         KeyAction::NextTab => {
                             if tab_manager.len() > 1 {
-                                // Save current tab state
-                                tab_manager.active_mut().navigator = navigator.clone();
-                                tab_manager.active_mut().focus_index = state.focus_index;
-                                tab_manager.active_mut().viewport_top = state.viewport_top;
-                                tab_manager.active_mut().selected_paths =
-                                    state.selected_paths.clone();
-                                tab_manager.active_mut().mode = state.mode.clone();
-
+                                save_active_tab(&mut tab_manager, &navigator, &state);
                                 tab_manager.next_tab();
-
-                                // Restore state from new active tab
-                                let tab = tab_manager.active();
-                                navigator = tab.navigator.clone();
-                                state.root = tab.root.clone();
-                                state.focus_index = tab.focus_index;
-                                state.viewport_top = tab.viewport_top;
-                                state.selected_paths = tab.selected_paths.clone();
-                                state.mode = tab.mode.clone();
+                                restore_active_tab(&tab_manager, &mut navigator, &mut state);
                             }
                             continue;
                         }
                         KeyAction::PrevTab => {
                             if tab_manager.len() > 1 {
-                                // Save current tab state
-                                tab_manager.active_mut().navigator = navigator.clone();
-                                tab_manager.active_mut().focus_index = state.focus_index;
-                                tab_manager.active_mut().viewport_top = state.viewport_top;
-                                tab_manager.active_mut().selected_paths =
-                                    state.selected_paths.clone();
-                                tab_manager.active_mut().mode = state.mode.clone();
-
+                                save_active_tab(&mut tab_manager, &navigator, &state);
                                 tab_manager.prev_tab();
-
-                                // Restore state from new active tab
-                                let tab = tab_manager.active();
-                                navigator = tab.navigator.clone();
-                                state.root = tab.root.clone();
-                                state.focus_index = tab.focus_index;
-                                state.viewport_top = tab.viewport_top;
-                                state.selected_paths = tab.selected_paths.clone();
-                                state.mode = tab.mode.clone();
+                                restore_active_tab(&tab_manager, &mut navigator, &mut state);
                             }
                             continue;
                         }
@@ -689,6 +681,11 @@ pub fn run_app(
                                 };
                             }
                         }
+                    }
+
+                    if matches!(action, KeyAction::Refresh) {
+                        preview.invalidate();
+                        crate::render::invalidate_file_info_cache();
                     }
 
                     match handle_action(
@@ -932,6 +929,8 @@ pub fn run_app(
                         }
                         PluginAction::Refresh => {
                             let _ = reload_tree(&mut navigator, &mut state);
+                            preview.invalidate();
+                            crate::render::invalidate_file_info_cache();
                         }
                         PluginAction::SetClipboard(text) => {
                             #[cfg(feature = "clipboard")]
@@ -979,5 +978,41 @@ pub fn run_app(
                 choosedir_path: state.choosedir_path.clone(),
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn tab_switch_restores_saved_state() {
+        let temp = tempdir().unwrap();
+        let first = temp.path().join("first");
+        let second = temp.path().join("second");
+        std::fs::create_dir(&first).unwrap();
+        std::fs::create_dir(&second).unwrap();
+        let mut navigator = TreeNavigator::new(&first, false).unwrap();
+        let mut tabs = TabManager::with_navigator(first.clone(), false, navigator.clone());
+        let mut state = AppState::new(first.clone());
+        state.focus_index = 3;
+        state.viewport_top = 2;
+        state.selected_paths.insert(first.join("selected.txt"));
+        state.filter_pattern = Some("*.rs".to_string());
+
+        save_active_tab(&mut tabs, &navigator, &state);
+        tabs.new_tab(second.clone(), false).unwrap();
+        restore_active_tab(&tabs, &mut navigator, &mut state);
+        assert_eq!(state.root, second);
+        assert_eq!(state.focus_index, 0);
+
+        tabs.prev_tab();
+        restore_active_tab(&tabs, &mut navigator, &mut state);
+        assert_eq!(state.root, first);
+        assert_eq!(state.focus_index, 3);
+        assert_eq!(state.viewport_top, 2);
+        assert_eq!(state.filter_pattern.as_deref(), Some("*.rs"));
+        assert_eq!(state.selected_paths.len(), 1);
     }
 }

@@ -2,6 +2,8 @@
 
 use ratatui::style::{Color, Style};
 
+use crate::util::utf8_prefix;
+
 /// Maximum depth for recursive directory size calculation (for performance)
 pub const MAX_DIR_SIZE_DEPTH: u32 = 3;
 
@@ -29,7 +31,7 @@ pub fn get_border_style(focused: bool) -> Style {
 /// Truncate archive entry name if too long
 pub fn truncate_entry_name(name: String) -> String {
     if name.len() > MAX_ENTRY_NAME_LEN {
-        format!("{}...", &name[..MAX_ENTRY_NAME_LEN - 3])
+        format!("{}...", utf8_prefix(&name, MAX_ENTRY_NAME_LEN - 3))
     } else {
         name
     }
@@ -158,5 +160,13 @@ mod tests {
         assert_eq!(format_size(1024 * 1024 * 1024 * 1024), "1.0 TB");
         assert_eq!(format_size(1536), "1.5 KB");
         assert_eq!(format_size(2 * 1024 * 1024 + 512 * 1024), "2.5 MB");
+    }
+
+    #[test]
+    fn test_truncate_entry_name_handles_multibyte_boundary() {
+        let name = format!("{}本", "a".repeat(MAX_ENTRY_NAME_LEN - 2));
+        let truncated = truncate_entry_name(name);
+        assert!(truncated.ends_with("..."));
+        assert!(truncated.len() <= MAX_ENTRY_NAME_LEN);
     }
 }

@@ -65,6 +65,17 @@ impl PreviewState {
         self.video = None;
     }
 
+    /// Discard cached content after an explicit or watched filesystem refresh.
+    pub fn invalidate(&mut self) {
+        self.preview_cache.clear();
+        self.image_loader.cancel();
+        self.loading_image_path = None;
+        self.loading_video_thumbnail = None;
+        self.last_path = None;
+        self.is_loading = false;
+        self.clear_all();
+    }
+
     /// Update preview for the given path if it has changed
     pub fn update(
         &mut self,
@@ -91,6 +102,9 @@ impl PreviewState {
             return;
         }
 
+        self.image_loader.cancel();
+        self.loading_image_path = None;
+        self.loading_video_thumbnail = None;
         self.last_path = path.cloned();
         self.is_loading = false;
 
@@ -373,8 +387,8 @@ impl PreviewState {
                                 // Try to extract thumbnail and load via ImageLoader
                                 match extract_thumbnail(&path) {
                                     Ok(thumb_path) => {
-                                        if self.image_loader.request(thumb_path) {
-                                            self.loading_video_thumbnail = Some(path);
+                                        if self.image_loader.request(thumb_path.clone()) {
+                                            self.loading_video_thumbnail = Some(thumb_path);
                                         }
                                     }
                                     Err(e) => {
@@ -442,7 +456,7 @@ impl PreviewState {
                         state.set_message(format!("Failed: preview - {}", e));
                     }
                 }
-            } else if self.loading_video_thumbnail.is_some() {
+            } else if self.loading_video_thumbnail.as_ref() == Some(&result.path) {
                 if let Some(ref mut video) = self.video {
                     match result.result {
                         Ok(dyn_img) => {
@@ -473,5 +487,44 @@ impl PreviewState {
     /// Check if an image is currently being loaded
     pub fn is_loading_image(&self) -> bool {
         self.loading_image_path.is_some() || self.loading_video_thumbnail.is_some()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn changing_path_cancels_pending_image_result() {
+        let temp = tempdir().unwrap();
+        let image = temp.path().join("image.png");
+        let text = temp.path().join("file.txt");
+        fs::write(&image, "not a real image").unwrap();
+        fs::write(&text, "text").unwrap();
+
+        let mut preview = PreviewState::new();
+        let mut picker = None;
+        let mut state = AppState::new(temp.path().to_path_buf());
+        preview.update(Some(&image), &mut picker, &mut state);
+        assert_eq!(preview.loading_image_path.as_ref(), Some(&image));
+
+        preview.update(Some(&text), &mut picker, &mut state);
+        assert!(preview.loading_image_path.is_none());
+        assert_eq!(preview.last_path.as_ref(), Some(&text));
+    }
+
+    #[test]
+    fn invalidate_discards_current_preview_identity() {
+        let mut preview = PreviewState::new();
+        preview.last_path = Some(PathBuf::from("file.txt"));
+        preview.is_loading = true;
+
+        preview.invalidate();
+
+        assert!(preview.last_path.is_none());
+        assert!(!preview.is_loading);
+        assert!(!preview.has_content());
     }
 }

@@ -26,6 +26,7 @@ const EXCLUDED_DIRS: &[&str] = &[
 pub struct FileWatcher {
     debouncer: Debouncer<notify::RecommendedWatcher>,
     rx: Receiver<Result<Vec<notify_debouncer_mini::DebouncedEvent>, notify::Error>>,
+    root: PathBuf,
     watched_paths: HashSet<PathBuf>,
 }
 
@@ -49,6 +50,7 @@ impl FileWatcher {
         Ok(Self {
             debouncer,
             rx,
+            root: root.to_path_buf(),
             watched_paths,
         })
     }
@@ -57,11 +59,12 @@ impl FileWatcher {
     ///
     /// Adds watches for newly expanded directories and removes watches for collapsed ones.
     pub fn sync_with_expanded(&mut self, expanded_paths: &[PathBuf]) {
-        let new_set: HashSet<PathBuf> = expanded_paths
+        let mut new_set: HashSet<PathBuf> = expanded_paths
             .iter()
             .filter(|p| !Self::is_excluded(p))
             .cloned()
             .collect();
+        new_set.insert(self.root.clone());
 
         // Remove watches for collapsed directories
         for path in self.watched_paths.difference(&new_set) {
@@ -98,5 +101,23 @@ impl FileWatcher {
             has_events = true;
         }
         has_events
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn sync_keeps_root_even_when_its_name_is_excluded() {
+        let temp = tempdir().unwrap();
+        let root = temp.path().join("target");
+        std::fs::create_dir(&root).unwrap();
+        let mut watcher = FileWatcher::new(&root).unwrap();
+
+        watcher.sync_with_expanded(&[]);
+
+        assert!(watcher.watched_paths.contains(&root));
     }
 }

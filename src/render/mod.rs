@@ -32,6 +32,7 @@ pub use preview::{
 };
 pub use ratatui_image::picker::Picker;
 pub use ratatui_image::FontSize;
+pub(crate) use status::invalidate_file_info_cache;
 pub use status::{render_help_popup, render_input_popup, render_status_bar, render_todos_popup};
 pub use tabs::render_tab_bar;
 pub use terminal::{RecommendedProtocol, TerminalBrand};

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use crate::action::file as file_ops;
 use crate::core::{AppState, ViewMode};
-use crate::handler::key::KeyAction;
+use crate::handler::key::{update_input_buffer, KeyAction};
 use crate::tree::TreeNavigator;
 
 use super::reload_tree;
@@ -43,9 +43,9 @@ pub fn handle(
             {
                 let new_field = (*selected_field + 1) % 2;
                 let new_cursor = if new_field == 0 {
-                    from_pattern.len()
+                    from_pattern.chars().count()
                 } else {
-                    to_pattern.len()
+                    to_pattern.chars().count()
                 };
 
                 state.mode = ViewMode::BulkRename {
@@ -162,8 +162,6 @@ fn apply_pattern(filename: &str, from_pattern: &str, to_pattern: &str) -> Option
 
 /// Update bulk rename input buffer
 pub fn update_bulk_rename_buffer(key: crossterm::event::KeyEvent, state: &mut AppState) -> bool {
-    use crossterm::event::KeyCode;
-
     if let ViewMode::BulkRename {
         from_pattern,
         to_pattern,
@@ -177,60 +175,7 @@ pub fn update_bulk_rename_buffer(key: crossterm::event::KeyEvent, state: &mut Ap
             (to_pattern, *cursor)
         };
 
-        let result = match key.code {
-            KeyCode::Char(c) => {
-                let mut new_buffer = buffer.to_string();
-                new_buffer.insert(cur, c);
-                Some((new_buffer, cur + 1))
-            }
-            KeyCode::Backspace => {
-                if cur > 0 {
-                    let mut new_buffer = buffer.to_string();
-                    new_buffer.remove(cur - 1);
-                    Some((new_buffer, cur - 1))
-                } else {
-                    None
-                }
-            }
-            KeyCode::Delete => {
-                if cur < buffer.len() {
-                    let mut new_buffer = buffer.to_string();
-                    new_buffer.remove(cur);
-                    Some((new_buffer, cur))
-                } else {
-                    None
-                }
-            }
-            KeyCode::Left => {
-                if cur > 0 {
-                    Some((buffer.to_string(), cur - 1))
-                } else {
-                    None
-                }
-            }
-            KeyCode::Right => {
-                if cur < buffer.len() {
-                    Some((buffer.to_string(), cur + 1))
-                } else {
-                    None
-                }
-            }
-            KeyCode::Home => {
-                if cur > 0 {
-                    Some((buffer.to_string(), 0))
-                } else {
-                    None
-                }
-            }
-            KeyCode::End => {
-                if cur < buffer.len() {
-                    Some((buffer.to_string(), buffer.len()))
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        };
+        let result = update_input_buffer(key, buffer, cur);
 
         if let Some((new_buffer, new_cursor)) = result {
             state.mode = if *selected_field == 0 {
@@ -503,6 +448,32 @@ mod tests {
         {
             assert_eq!(from_pattern, "from"); // Unchanged
             assert_eq!(to_pattern, "x"); // Changed
+        }
+    }
+
+    #[test]
+    fn test_update_bulk_rename_buffer_handles_multibyte_characters() {
+        let mut state = AppState::new(PathBuf::from("/tmp"));
+        state.mode = ViewMode::BulkRename {
+            from_pattern: "日".to_string(),
+            to_pattern: String::new(),
+            selected_field: 0,
+            cursor: 1,
+        };
+
+        let key = KeyEvent::new(KeyCode::Char('本'), KeyModifiers::NONE);
+        assert!(update_bulk_rename_buffer(key, &mut state));
+
+        if let ViewMode::BulkRename {
+            from_pattern,
+            cursor,
+            ..
+        } = &state.mode
+        {
+            assert_eq!(from_pattern, "日本");
+            assert_eq!(*cursor, 2);
+        } else {
+            panic!("Expected BulkRename mode");
         }
     }
 

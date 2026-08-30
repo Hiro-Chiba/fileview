@@ -17,6 +17,7 @@ use crate::core::{AppState, PreviewDisplayMode, SortMode, UiDensity};
 use crate::integrate::{humanize_tokens, BudgetSeverity};
 use crate::render::layout::LayoutEngine;
 use crate::render::theme::theme;
+use crate::util::utf8_prefix;
 
 /// Build the spans rendered for the context budget bar.
 ///
@@ -156,7 +157,10 @@ fn render_peek_status(
         };
         header_spans.push(Span::raw(" "));
         let branch_abbrev = if branch.len() > max_branch_len {
-            format!("\u{e0a0}{}…", &branch[..max_branch_len - 1])
+            format!(
+                "\u{e0a0}{}…",
+                utf8_prefix(branch, max_branch_len.saturating_sub(1))
+            )
         } else {
             format!("\u{e0a0}{}", branch)
         };
@@ -181,7 +185,7 @@ fn render_peek_status(
             if max_name_len > 3 {
                 header_spans.push(Span::styled(separator, Style::default().fg(t.git_ignored)));
                 let display_name = if name.len() > max_name_len {
-                    format!("{}…", &name[..max_name_len.saturating_sub(1)])
+                    format!("{}…", utf8_prefix(name, max_name_len.saturating_sub(1)))
                 } else {
                     name.to_string()
                 };
@@ -208,7 +212,7 @@ fn render_peek_status(
         // Truncate long lines
         let max_width = area.width.saturating_sub(2) as usize;
         let display = if line.len() > max_width {
-            format!("{}…", &line[..max_width.saturating_sub(1)])
+            format!("{}…", utf8_prefix(&line, max_width.saturating_sub(1)))
         } else {
             line
         };
@@ -299,7 +303,7 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         }
         // Max 4 chars for branch in ultra mode
         let branch_abbrev = if branch.len() > 4 {
-            format!("\u{e0a0}{}…", &branch[..3])
+            format!("\u{e0a0}{}…", utf8_prefix(branch, 3))
         } else {
             format!("\u{e0a0}{}", branch)
         };
@@ -352,7 +356,7 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         if available > 3 {
             spans.push(Span::raw(" "));
             let truncated = if message.len() > available {
-                format!("{}…", &message[..available.saturating_sub(1)])
+                format!("{}…", utf8_prefix(&message, available.saturating_sub(1)))
             } else {
                 message.clone()
             };

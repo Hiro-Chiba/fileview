@@ -236,6 +236,10 @@ impl PreviewCache {
             self.entries.pop_back();
         }
     }
+
+    pub fn clear(&mut self) {
+        self.entries.clear();
+    }
 }
 
 impl Default for PreviewCache {

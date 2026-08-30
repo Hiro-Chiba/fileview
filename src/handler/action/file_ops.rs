@@ -73,7 +73,7 @@ pub fn handle(
                         original: path.clone(),
                     },
                     buffer: name.clone(),
-                    cursor: name.len(),
+                    cursor: name.chars().count(),
                 };
             }
         }

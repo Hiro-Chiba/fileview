@@ -14,6 +14,7 @@ use crate::core::{AppState, FocusTarget, UiDensity};
 use crate::git::FileStatus;
 use crate::render::icons;
 use crate::tree::VisibleEntry;
+use crate::util::{utf8_prefix, utf8_suffix};
 
 /// Build the +N/-M annotation spans for the diff scope when applicable.
 ///
@@ -72,7 +73,7 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&VisibleEntry
 
     let title = format!(
         " {} ",
-        abbreviate_path(&state.root, area.width as usize - 4)
+        abbreviate_path(&state.root, area.width.saturating_sub(4) as usize)
     );
 
     // Highlight border when tree has focus (and preview is visible)
@@ -201,7 +202,7 @@ fn render_entry(
     // Truncate filename if needed for narrow modes
     let max_name_width = tree_cols.filename_width_at_depth(entry.depth) as usize;
     let display_name = if entry.name.len() > max_name_width && max_name_width > 3 {
-        format!("{}…", &entry.name[..max_name_width - 1])
+        format!("{}…", utf8_prefix(&entry.name, max_name_width - 1))
     } else {
         entry.name.clone()
     };
@@ -281,7 +282,7 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
     if max_width < 20 {
         if last.len() > max_width {
             // Truncate filename with ellipsis
-            return format!("…{}", &last[last.len().saturating_sub(max_width - 1)..]);
+            return format!("…{}", utf8_suffix(last, max_width.saturating_sub(1)));
         }
         return (*last).to_string();
     }
@@ -291,7 +292,7 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
         if components.len() >= 2 {
             let parent = components[components.len() - 2];
             let short_parent = if parent.len() > 8 {
-                format!("{}…", &parent[..7])
+                format!("{}…", utf8_prefix(parent, 7))
             } else {
                 parent.to_string()
             };
@@ -302,7 +303,7 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
         }
         // Fall back to just filename
         if last.len() > max_width {
-            return format!("…{}", &last[last.len().saturating_sub(max_width - 1)..]);
+            return format!("…{}", utf8_suffix(last, max_width.saturating_sub(1)));
         }
         return (*last).to_string();
     }
@@ -324,7 +325,7 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
 
     if result.len() > max_width {
         if last.len() > max_width {
-            format!("…{}", &last[last.len().saturating_sub(max_width - 1)..])
+            format!("…{}", utf8_suffix(last, max_width.saturating_sub(1)))
         } else {
             (*last).to_string()
         }
@@ -336,4 +337,22 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
 /// Calculate visible height for the tree area
 pub fn visible_height(area: Rect) -> usize {
     area.height.saturating_sub(2) as usize
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn abbreviate_multibyte_path_at_tiny_width() {
+        let result = abbreviate_path(Path::new("/日本語/ファイル"), 4);
+        assert_eq!(result, "…ル");
+    }
+
+    #[test]
+    fn abbreviate_path_handles_zero_width() {
+        let result = abbreviate_path(Path::new("/long/path"), 0);
+        assert_eq!(result, "…");
+    }
 }
