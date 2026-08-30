@@ -142,14 +142,7 @@ impl TreeEntry {
 pub fn sort_entries(entries: &mut [TreeEntry], sort_mode: SortMode) {
     match sort_mode {
         SortMode::Name => {
-            entries.sort_by(|a, b| {
-                match (a.is_dir, b.is_dir) {
-                    (true, false) => return std::cmp::Ordering::Less,
-                    (false, true) => return std::cmp::Ordering::Greater,
-                    _ => {}
-                }
-                a.name.to_lowercase().cmp(&b.name.to_lowercase())
-            });
+            entries.sort_by_cached_key(|entry| (!entry.is_dir, entry.name.to_lowercase()));
         }
         SortMode::Size => {
             let keys: Vec<u64> = entries
@@ -200,6 +193,12 @@ pub fn sort_entries(entries: &mut [TreeEntry], sort_mode: SortMode) {
 
 /// Reorder elements in-place according to the given index permutation.
 fn apply_index_permutation<T>(entries: &mut [T], mut indices: Vec<usize>) {
+    let mut target_positions = vec![0; indices.len()];
+    for (new_index, &old_index) in indices.iter().enumerate() {
+        target_positions[old_index] = new_index;
+    }
+    indices = target_positions;
+
     for i in 0..entries.len() {
         while indices[i] != i {
             let j = indices[i];
@@ -299,6 +298,29 @@ mod tests {
 
         // Should have 3 children (subdir, file.txt, and .hidden)
         assert_eq!(entry.children().len(), 3);
+    }
+
+    #[test]
+    fn test_size_sort_orders_directories_then_largest_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("small.txt"), "1").unwrap();
+        fs::write(temp.path().join("large.txt"), "12345").unwrap();
+        fs::write(temp.path().join("medium.txt"), "123").unwrap();
+        fs::create_dir(temp.path().join("dir")).unwrap();
+        let mut entry = TreeEntry::new(temp.path().to_path_buf(), 0);
+
+        entry
+            .load_children_with_sort(false, SortMode::Size)
+            .unwrap();
+        let names: Vec<&str> = entry.children().iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, ["dir", "large.txt", "medium.txt", "small.txt"]);
+    }
+
+    #[test]
+    fn test_index_permutation_handles_three_cycle() {
+        let mut values = ["first", "second", "third"];
+        apply_index_permutation(&mut values, vec![2, 0, 1]);
+        assert_eq!(values, ["third", "first", "second"]);
     }
 
     #[test]
