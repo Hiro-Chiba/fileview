@@ -244,6 +244,17 @@ mod tests {
         assert!(long_tokens > tokens);
     }
 
+    #[cfg(feature = "ai")]
+    #[test]
+    fn test_cl100k_token_counts_remain_stable() {
+        assert_eq!(estimate_tokens("Hello, world!"), 4);
+        assert_eq!(
+            estimate_tokens("FileViewは高速なターミナルファイルブラウザです。"),
+            22
+        );
+        assert_eq!(estimate_tokens("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), 4);
+    }
+
     #[test]
     fn test_token_budget() {
         let budget = TokenBudget::new(10000);
