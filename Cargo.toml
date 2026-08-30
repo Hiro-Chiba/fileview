@@ -54,7 +54,7 @@ toml = "1.1"
 dirs = "6.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-arboard = { version = "3.4", optional = true }
+arboard = { version = "3.4", default-features = false, optional = true }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
 ratatui-image = { version = "11.0.2", default-features = false, features = ["crossterm"] }
 nucleo-matcher = "0.3"
