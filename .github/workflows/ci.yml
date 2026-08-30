@@ -29,13 +29,13 @@ jobs:
         run: cargo fmt --all -- --check
       - name: clippy
         # Note: --all-features is not used because 'chafa' requires a system library
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --locked --all-targets -- -D warnings
       - name: clippy (no default features)
-        run: cargo clippy --all-targets --no-default-features -- -D warnings
+        run: cargo clippy --locked --all-targets --no-default-features -- -D warnings
       - name: rustdoc
         env:
           RUSTDOCFLAGS: -D warnings
-        run: cargo doc --no-deps
+        run: cargo doc --locked --no-deps
 
   # Tests across supported OSes on stable
   test:

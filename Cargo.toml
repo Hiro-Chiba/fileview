@@ -66,18 +66,17 @@ flate2 = { version = "1.1", optional = true }
 trash = "5"
 tempfile = "3"
 syntect = "5"
-mlua = { version = "0.11", features = ["lua54", "vendored"], optional = true }
+mlua = { version = "0.12", features = ["lua54", "vendored"], optional = true }
 regex = "1"
 # v2.0 additions
 thiserror = "2"          # Unified error types
 petgraph = { version = "0.8", optional = true } # Dependency graph analysis
-tiktoken-rs = { version = "0.11", optional = true } # Token estimation for AI context
+tiktoken-rs = { version = "0.12", optional = true } # Token estimation for AI context
 # AI activity reflection: PID alive check across platforms
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
 [dev-dependencies]
-tempfile = "3"
 assert_cmd = "2"
 predicates = "3"
 
