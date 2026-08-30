@@ -2,41 +2,25 @@
 //!
 //! This module provides functions to stage and unstage files in a Git repository.
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::Path;
+use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-/// Cached git executable path (shared with status.rs)
-static GIT_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
+/// Cached Git availability (shared with status.rs)
+static GIT_AVAILABLE: OnceLock<bool> = OnceLock::new();
 
-/// Find git executable path using standard locations or which command
-pub fn find_git_executable() -> Option<&'static PathBuf> {
-    GIT_PATH
-        .get_or_init(|| {
-            let candidates = [
-                "/usr/bin/git",
-                "/usr/local/bin/git",
-                "/opt/homebrew/bin/git",
-            ];
-
-            for path in candidates {
-                let p = PathBuf::from(path);
-                if p.exists() {
-                    return Some(p);
-                }
-            }
-
-            // Fallback: which git
-            std::process::Command::new("which")
-                .arg("git")
-                .output()
-                .ok()
-                .filter(|o| o.status.success())
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| PathBuf::from(s.trim()))
-                .filter(|p| p.exists())
-        })
-        .as_ref()
+/// Find Git using the operating system's normal PATH resolution.
+pub(super) fn find_git_executable() -> Option<&'static Path> {
+    let available = GIT_AVAILABLE.get_or_init(|| {
+        Command::new("git")
+            .arg("--version")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    });
+    available.then(|| Path::new("git"))
 }
 
 /// Stage a file (git add)
@@ -174,11 +158,12 @@ mod tests {
 
     #[test]
     fn test_find_git_executable() {
-        // This test may fail on systems without git installed
-        let git = find_git_executable();
-        if let Some(path) = git {
-            assert!(path.exists());
-            assert!(path.to_string_lossy().contains("git"));
+        let command_available = StdCommand::new("git")
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| output.status.success());
+        if command_available {
+            assert_eq!(find_git_executable(), Some(Path::new("git")));
         }
     }
 

@@ -3,41 +3,8 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
 
-/// Cached git executable path
-static GIT_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
-
-/// Find git executable path using standard locations or which command
-fn find_git_executable() -> Option<&'static PathBuf> {
-    GIT_PATH
-        .get_or_init(|| {
-            // Priority: standard paths → which command fallback
-            let candidates = [
-                "/usr/bin/git",
-                "/usr/local/bin/git",
-                "/opt/homebrew/bin/git",
-            ];
-
-            for path in candidates {
-                let p = PathBuf::from(path);
-                if p.exists() {
-                    return Some(p);
-                }
-            }
-
-            // Fallback: which git
-            std::process::Command::new("which")
-                .arg("git")
-                .output()
-                .ok()
-                .filter(|o| o.status.success())
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| PathBuf::from(s.trim()))
-                .filter(|p| p.exists())
-        })
-        .as_ref()
-}
+use super::operations::find_git_executable;
 
 /// Create a git Command using the validated executable path
 fn git_command() -> Option<Command> {
