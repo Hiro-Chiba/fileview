@@ -267,7 +267,7 @@ fn build_wide_help() -> Vec<Line<'static>> {
             help_desc(" Mark   "),
             help_key(" Ctrl+G "),
             help_desc(" Git changed   "),
-            help_key(" Ctrl+T "),
+            help_key(" Ctrl+Shift+T "),
             help_desc(" Test pair"),
         ]),
         Line::from(""),

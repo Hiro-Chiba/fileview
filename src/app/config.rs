@@ -829,7 +829,7 @@ KEYBINDINGS:
 
 SMART SELECTION:
     Ctrl+G      Select all git changed files
-    Ctrl+T      Select test pair for focused file
+    Ctrl+Shift+T Select test pair for focused file
     Ctrl+R      Select related files
     Ctrl+E      Select error-context files
 

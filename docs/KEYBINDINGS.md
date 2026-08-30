@@ -147,7 +147,7 @@ PDF files are rendered as images using `pdftoppm` from poppler-utils:
 |-----|--------|
 | `Ctrl+Y` | Copy in Claude-friendly format |
 | `Ctrl+Shift+Y` | Copy AI context pack |
-| `Ctrl+Enter` | Copy review context pack |
+| `Ctrl+Shift+Enter` | Copy review context pack |
 | `Alt+Y` | Copy in compact format |
 | `Ctrl+A` | Toggle AI focus mode |
 | `Alt+A` | Toggle AI follow-mode (auto-focus on the AI's most recent file) |
