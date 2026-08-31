@@ -1,0 +1,7 @@
+# Dependency changes are rendered separately by whats-changed.
+changelog:
+  exclude:
+    labels:
+      - dependencies
+    authors:
+      - "dependabot[bot]"
