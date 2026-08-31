@@ -151,7 +151,7 @@ pub fn render_text_preview(
                 )];
                 for segment in &styled_line.segments {
                     spans.push(Span::styled(
-                        segment.text.clone(),
+                        segment.text.as_str(),
                         Style::default().fg(segment.color),
                     ));
                 }
