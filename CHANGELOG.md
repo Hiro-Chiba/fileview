@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.5] - 2026-08-31
+
+Reliability and dependency maintenance release. The existing CLI, keybindings,
+configuration, and default feature set remain unchanged.
+
+### Fixed
+
+- Kept selection, focus, preview, and reload state consistent during interactive
+  navigation.
+- Hardened filesystem boundary checks for file operations, symlinks, directory
+  copies, snapshots, and MCP requests.
+- Applied file-sort permutations correctly so entries and their metadata stay
+  aligned.
+- Resolved Git through the platform search path instead of assuming a fixed
+  executable location.
+
+### Security
+
+- Updated the dependency graph to resolve the current RustSec advisories in
+  `anyhow`, `quick-xml`, and `crossbeam-epoch`.
+- Replaced the affected `aes` and `lru` releases with corrected versions.
+
+### Changed
+
+- Updated `mlua` to 0.12 and `tiktoken-rs` to 0.12 while preserving the Lua
+  plugin API and token-count behavior covered by existing tests.
+- Removed unused clipboard image dependencies and a duplicate `tempfile`
+  declaration.
+- Strengthened locked default and minimal-feature CI checks across Linux,
+  macOS, Windows, and the minimum supported Rust version.
+- Added maintainer approval and crates.io Trusted Publishing to releases, with
+  dependency changes included in the generated release notes.
+
 ## [2.7.4] - 2026-05-29
 
 Security hardening across the MCP server, interactive file operations, the
