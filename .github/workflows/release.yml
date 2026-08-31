@@ -11,10 +11,35 @@ env:
 permissions:
   contents: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  check:
+    name: Current toolchain (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Ubuntu
+          - os: macos-latest
+            label: macOS
+          - os: windows-latest
+            label: Windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install --no-self-update
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+
   # Build binaries for multiple platforms
   build:
     name: Build (${{ matrix.target }})
+    needs: check
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -69,10 +94,40 @@ jobs:
           path: fileview-${{ github.ref_name }}-${{ matrix.target }}.*
           if-no-files-found: error
 
+  publish-crate:
+    name: Publish crate
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: rustup toolchain install --no-self-update
+      - name: Verify release metadata
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "fileview") | .version')"
+          test "$TAG" = "v$version"
+          grep -F "## [$version]" CHANGELOG.md
+          git merge-base --is-ancestor HEAD origin/main
+      - run: cargo package --locked
+      - name: Authenticate with crates.io
+        id: crates-io-auth
+        uses: rust-lang/crates-io-auth-action@v1
+      - name: Publish to crates.io
+        run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates-io-auth.outputs.token }}
+
   # Create GitHub Release
   release:
-    name: Create Release
-    needs: build
+    name: Create GitHub Release
+    needs: publish-crate
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -131,7 +186,3 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           generate_release_notes: true
-
-# Note: crates.io publishing is done manually (`cargo publish --no-verify`)
-# so the release timing can be controlled without keeping a
-# `CARGO_REGISTRY_TOKEN` secret in GitHub Actions.
