@@ -114,17 +114,12 @@ pub fn run_app(
     config: Config,
     image_picker: &mut Option<Picker>,
 ) -> anyhow::Result<AppResult> {
-    // Warm the heavy lazy caches in a background thread so the first
-    // preview, syntax highlight, or token estimate doesn't pay the
-    // 30 to 80 ms first-call cost on the UI thread. The thread is
-    // detached: results land in `OnceLock`s shared with the rest of
-    // the app, so we don't need to hold onto a JoinHandle.
+    // Warm syntax data in the background so the first text preview does not
+    // pay the initialization cost on the UI thread. Token data stays lazy
+    // because its table is large and the budget worker already runs off-thread.
     thread::Builder::new()
         .name("fv-warmup".into())
-        .spawn(|| {
-            crate::render::warmup_syntax();
-            let _ = crate::mcp::token::estimate_tokens("");
-        })
+        .spawn(crate::render::warmup_syntax)
         .ok();
 
     let mut state = AppState::new(config.root.clone());
