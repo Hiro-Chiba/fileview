@@ -154,35 +154,11 @@ jobs:
             touch dependency_changes.md
           fi
 
-      - name: Generate release notes
-        id: release_notes
+      - name: Prepare release notes
         run: |
-          # Extract version from tag
-          VERSION="${{ github.ref_name }}"
-          VER_NUM="${VERSION#v}"
-
-          # Extract the changelog section for this version.
-          # State-machine scan: turn on when we see the matching header,
-          # turn off (and exit) on the next "## " header. The previous
-          # range-based pattern collapsed to one line because the start
-          # header (e.g. "## [2.7.0]") also matched the end pattern.
-          if [ -f CHANGELOG.md ]; then
-            NOTES=$(awk -v ver="$VER_NUM" '
-              $0 ~ "^## \\[" ver "\\]" || $0 ~ "^## " ver "( |$)" { in_section = 1; next }
-              in_section && /^## / { exit }
-              in_section { print }
-            ' CHANGELOG.md)
-            if [ -z "$NOTES" ]; then
-              NOTES="Release ${VERSION}"
-            fi
-          else
-            NOTES="Release ${VERSION}"
-          fi
-
-          # Save to file for multiline support
-          echo "$NOTES" > release_notes.md
+          : > release_notes.md
           if [ -s dependency_changes.md ]; then
-            printf '\n\n## Dependency changes\n\n' >> release_notes.md
+            printf '## Dependency changes\n\n' >> release_notes.md
             sed 's/^## Package:/### Package:/' dependency_changes.md >> release_notes.md
           fi
 
