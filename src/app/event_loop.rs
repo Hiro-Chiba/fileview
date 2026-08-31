@@ -299,8 +299,7 @@ pub fn run_app(
         // On the second iteration, we detect Git status.
         if skip_git_init_once {
             skip_git_init_once = false;
-        } else if state.git_status.is_none() {
-            state.init_git_status();
+        } else if state.init_git_status() && state.git_status.is_some() {
             needs_redraw = true;
         }
 
@@ -464,9 +463,10 @@ pub fn run_app(
 
         // Git status polling (configurable interval)
         if last_git_poll.elapsed() >= git_poll_interval {
-            state.refresh_git_status();
+            if state.refresh_git_status() {
+                needs_redraw = true;
+            }
             last_git_poll = Instant::now();
-            needs_redraw = true;
         }
 
         // Poll for completed async preview loads (worker + image loader)

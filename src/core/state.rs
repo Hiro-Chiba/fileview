@@ -175,6 +175,8 @@ pub struct AppState {
     pub clipboard: Option<Clipboard>,
     /// Git repository status
     pub git_status: Option<GitStatus>,
+    /// Whether the initial Git repository detection has already run
+    git_detection_attempted: bool,
     /// Whether to show Nerd Fonts icons
     pub icons_enabled: bool,
     /// Directory path to cd on exit (shell integration)
@@ -251,6 +253,7 @@ impl AppState {
             multi_select: false,
             clipboard: None,
             git_status: None, // Lazy-initialized for faster startup
+            git_detection_attempted: false,
             icons_enabled,
             choosedir_path: None,
             fuzzy_jump_target: None,
@@ -379,17 +382,26 @@ impl AppState {
         self.budget_model
     }
 
-    /// Initialize git status (call after first frame render for faster startup)
-    pub fn init_git_status(&mut self) {
-        if self.git_status.is_none() {
-            self.git_status = GitStatus::detect(&self.root);
+    /// Initialize git status once after the first frame is rendered.
+    ///
+    /// Returns whether detection ran. A non-Git directory is still considered
+    /// attempted so the event loop does not repeatedly spawn `git`.
+    pub fn init_git_status(&mut self) -> bool {
+        if self.git_detection_attempted {
+            return false;
         }
+        self.git_detection_attempted = true;
+        self.git_status = GitStatus::detect(&self.root);
+        true
     }
 
-    /// Refresh git status (call after file operations)
-    pub fn refresh_git_status(&mut self) {
+    /// Refresh Git status, retrying detection for a non-Git directory.
+    pub fn refresh_git_status(&mut self) -> bool {
         if let Some(ref mut git) = self.git_status {
-            git.refresh();
+            git.refresh()
+        } else {
+            self.git_status = GitStatus::detect(&self.root);
+            self.git_status.is_some()
         }
     }
 
@@ -506,5 +518,19 @@ impl AppState {
     /// Push an AI history entry (keeps at most 10)
     pub fn push_ai_history(&mut self, title: String, content: String) {
         self.push_ai_history_with_meta(title, content, None, 0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn git_detection_is_attempted_only_once() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        assert!(state.init_git_status());
+        assert!(!state.init_git_status());
     }
 }

@@ -99,13 +99,19 @@ impl GitStatus {
         &self.repo_root
     }
 
-    /// Refresh git status (call after file operations)
-    pub fn refresh(&mut self) {
-        self.branch = get_current_branch(&self.repo_root);
+    /// Refresh git status and report whether anything changed.
+    pub fn refresh(&mut self) -> bool {
+        let branch = get_current_branch(&self.repo_root);
         let (statuses, dir_statuses, staged_files) = load_git_status(&self.repo_root);
+        let changed = self.branch != branch
+            || self.statuses != statuses
+            || self.dir_statuses != dir_statuses
+            || self.staged_files != staged_files;
+        self.branch = branch;
         self.statuses = statuses;
         self.dir_statuses = dir_statuses;
         self.staged_files = staged_files;
+        changed
     }
 
     /// Check if a file is staged (has changes in the index)
@@ -331,6 +337,9 @@ fn merge_status(a: FileStatus, b: FileStatus) -> FileStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::process::Command as StdCommand;
+    use tempfile::tempdir;
 
     #[test]
     fn test_parse_status_modified() {
@@ -385,5 +394,30 @@ mod tests {
             merge_status(FileStatus::Untracked, FileStatus::Added),
             FileStatus::Added
         );
+    }
+
+    #[test]
+    fn refresh_reports_only_actual_changes() {
+        let temp = tempdir().unwrap();
+        let initialized = StdCommand::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(temp.path())
+            .status()
+            .is_ok_and(|status| status.success());
+        if !initialized {
+            return;
+        }
+
+        let mut status = GitStatus::detect(temp.path()).unwrap();
+        assert!(!status.refresh());
+
+        let changed = temp.path().join("changed.txt");
+        fs::write(&changed, "changed").unwrap();
+        assert!(status.refresh());
+        assert_eq!(
+            status.get_status(Path::new("changed.txt")),
+            FileStatus::Untracked
+        );
+        assert!(!status.refresh());
     }
 }
