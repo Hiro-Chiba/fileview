@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-08-31
+
+Performance release that keeps the existing CLI, keybindings, configuration,
+default features, and user-visible behavior unchanged.
+
+### Performance
+
+- Deferred token and syntax table initialization until those features are used,
+  reducing median idle TUI memory from 44,416 KB to 19,632 KB in local testing.
+- Avoided repeated Git repository detection outside repositories and redraws
+  when Git status is unchanged. Git subprocess calls over a three-second idle
+  run fell from 43 to 2.
+- Borrowed highlighted text during rendering, reducing measured allocations per
+  preview frame from 660 to 204 without changing the rendered content.
+- Coalesced stale preview and image requests and reused filesystem metadata,
+  avoiding work for selections that can no longer be displayed.
+
 ## [2.7.5] - 2026-08-31
 
 Reliability and dependency maintenance release. The existing CLI, keybindings,
