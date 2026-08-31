@@ -77,7 +77,12 @@ impl PreviewWorker {
     }
 
     fn worker_loop(request_rx: Receiver<PreviewRequest>, result_tx: Sender<PreviewResponse>) {
-        while let Ok(req) = request_rx.recv() {
+        while let Ok(mut req) = request_rx.recv() {
+            // Intermediate selections can no longer become visible, so avoid
+            // doing their filesystem or subprocess work.
+            while let Ok(latest) = request_rx.try_recv() {
+                req = latest;
+            }
             let payload = match req.kind {
                 PreviewKind::Text => Self::generate_text(&req.path),
                 PreviewKind::Diff => Self::generate_diff(
@@ -332,5 +337,29 @@ mod tests {
         let s2 = worker.request(PathBuf::from("/tmp/b"), PreviewKind::Directory, None, None);
         assert_eq!(s1, 1);
         assert_eq!(s2, 2);
+    }
+
+    #[test]
+    fn worker_processes_only_the_latest_queued_request() {
+        let (request_tx, request_rx) = mpsc::channel();
+        let (result_tx, result_rx) = mpsc::channel();
+        for serial in 1..=3 {
+            request_tx
+                .send(PreviewRequest {
+                    path: PathBuf::from(format!("/missing-{serial}")),
+                    kind: PreviewKind::Text,
+                    serial,
+                    git_repo_root: None,
+                    git_file_status: None,
+                })
+                .unwrap();
+        }
+        drop(request_tx);
+
+        PreviewWorker::worker_loop(request_rx, result_tx);
+
+        let responses: Vec<_> = result_rx.try_iter().collect();
+        assert_eq!(responses.len(), 1);
+        assert_eq!(responses[0].serial, 3);
     }
 }
