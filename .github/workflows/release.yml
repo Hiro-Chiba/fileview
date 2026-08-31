@@ -142,6 +142,18 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Generate dependency changes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cargo install whats-changed --version 1.0.0 --locked
+          previous_tag="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          if [ -n "$previous_tag" ]; then
+            whats-changed "$previous_tag" > dependency_changes.md
+          else
+            touch dependency_changes.md
+          fi
+
       - name: Generate release notes
         id: release_notes
         run: |
@@ -169,6 +181,10 @@ jobs:
 
           # Save to file for multiline support
           echo "$NOTES" > release_notes.md
+          if [ -s dependency_changes.md ]; then
+            printf '\n\n## Dependency changes\n\n' >> release_notes.md
+            sed 's/^## Package:/### Package:/' dependency_changes.md >> release_notes.md
+          fi
 
       - name: Create SHA256 checksums
         run: |
