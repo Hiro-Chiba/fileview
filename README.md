@@ -14,7 +14,17 @@
   <img src="assets/demo.gif" alt="FileView Demo" width="80%">
 </p>
 
-Wanted a yazi-like file manager for day-to-day terminal use that also talks to Claude Code. So I wrote this.
+## Why FileView?
+
+FileView was built for people who want more built-in functionality than a
+deliberately minimal file manager such as nnn offers, while keeping the same
+spirit of simplicity and speed. Install it, run `fv`, and start browsing without
+writing a configuration first.
+
+The goal is not to be the smallest file manager at any cost. It is to make
+previews, Git status, search, and image support immediately useful without making
+the basic workflow feel heavy. See the [performance comparison](docs/BENCHMARKS.md)
+for measurements against other terminal file managers and the test limitations.
 
 ## Features
 
@@ -102,6 +112,7 @@ Details: [docs/CLAUDE_CODE.md](docs/CLAUDE_CODE.md)
 - [Keybindings](docs/KEYBINDINGS.md)
 - [Claude Code / MCP](docs/CLAUDE_CODE.md)
 - [Lua Plugins](docs/PLUGINS.md)
+- [Performance comparison](docs/BENCHMARKS.md)
 
 
 ## License
