@@ -7,12 +7,16 @@ use std::path::PathBuf;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use fileview::core::{AppState, InputPurpose, PendingAction, ViewMode};
 use fileview::handler::{handle_key_event, update_input_buffer, KeyAction};
+#[cfg(unix)]
 use fileview::render::{
-    calculate_centered_image_area, is_binary_file, is_image_file, is_text_file, DirectoryInfo,
-    FontSize, HexPreview, RecommendedProtocol, TerminalBrand, TextPreview,
+    calculate_centered_image_area, FontSize, RecommendedProtocol, TerminalBrand,
 };
 #[cfg(feature = "archive")]
 use fileview::render::{is_archive_file, ArchivePreview};
+use fileview::render::{
+    is_binary_file, is_image_file, is_text_file, DirectoryInfo, HexPreview, TextPreview,
+};
+#[cfg(unix)]
 use ratatui::layout::Rect;
 use tempfile::TempDir;
 
