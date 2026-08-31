@@ -114,14 +114,6 @@ pub fn run_app(
     config: Config,
     image_picker: &mut Option<Picker>,
 ) -> anyhow::Result<AppResult> {
-    // Warm syntax data in the background so the first text preview does not
-    // pay the initialization cost on the UI thread. Token data stays lazy
-    // because its table is large and the budget worker already runs off-thread.
-    thread::Builder::new()
-        .name("fv-warmup".into())
-        .spawn(crate::render::warmup_syntax)
-        .ok();
-
     let mut state = AppState::new(config.root.clone());
     state.pick_mode = config.pick_mode;
     state.select_mode = config.select_mode;
