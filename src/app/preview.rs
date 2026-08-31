@@ -113,32 +113,38 @@ impl PreviewState {
             return;
         };
 
-        // Check for custom preview first (if not a directory)
-        if !path.is_dir() {
-            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                if let Some(cmd) = custom_previews.get(ext) {
-                    match CustomPreview::execute(cmd, path) {
-                        Ok(preview) => {
-                            self.custom = Some(preview);
-                            self.text = None;
-                            self.image = None;
-                            self.dir_info = None;
-                            self.hex = None;
-                            self.archive = None;
-                            self.pdf = None;
-                            self.diff = None;
-                            return;
-                        }
-                        Err(e) => {
-                            state.set_message(format!("Custom preview failed: {}", e));
-                            // Fall through to default preview
-                        }
+        // Check for custom preview first (if configured for a non-directory)
+        if let Some(cmd) = path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .and_then(|extension| custom_previews.get(extension))
+        {
+            if !path.is_dir() {
+                match CustomPreview::execute(cmd, path) {
+                    Ok(preview) => {
+                        self.custom = Some(preview);
+                        self.text = None;
+                        self.image = None;
+                        self.dir_info = None;
+                        self.hex = None;
+                        self.archive = None;
+                        self.pdf = None;
+                        self.diff = None;
+                        return;
+                    }
+                    Err(e) => {
+                        state.set_message(format!("Custom preview failed: {}", e));
+                        // Fall through to default preview
                     }
                 }
             }
         }
 
-        if path.is_dir() {
+        let metadata = path.metadata().ok();
+        let is_dir = metadata.as_ref().is_some_and(|metadata| metadata.is_dir());
+        let is_file = metadata.as_ref().is_some_and(|metadata| metadata.is_file());
+
+        if is_dir {
             // Check cache first
             if let Some(CachedPreview::Directory(ref info)) = self.preview_cache.get(path) {
                 self.dir_info = Some(info.clone());
@@ -283,7 +289,7 @@ impl PreviewState {
                 state.set_message("PDF preview requires pdftoppm (poppler-utils)");
                 self.load_hex_fallback(path, state);
             }
-        } else if is_binary_file(path) || path.is_file() {
+        } else if is_binary_file(path) || is_file {
             // Hex preview — stays synchronous (only 4KB, fast enough)
             match HexPreview::load(path) {
                 Ok(hex) => {

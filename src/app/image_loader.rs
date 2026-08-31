@@ -58,7 +58,11 @@ impl ImageLoader {
 
     /// Worker thread main loop
     fn worker_loop(request_rx: Receiver<ImageLoadRequest>, result_tx: Sender<ImageLoadResult>) {
-        while let Ok(request) = request_rx.recv() {
+        while let Ok(mut request) = request_rx.recv() {
+            // Only the newest queued selection can still be displayed.
+            while let Ok(latest) = request_rx.try_recv() {
+                request = latest;
+            }
             let result = match image::open(&request.path) {
                 Ok(img) => Ok(img),
                 Err(e) => Err(format!("Failed to load image: {}", e)),
@@ -205,5 +209,25 @@ mod tests {
             assert_eq!(r.path, path);
             assert!(r.result.is_err());
         }
+    }
+
+    #[test]
+    fn worker_processes_only_the_latest_queued_request() {
+        let (request_tx, request_rx) = mpsc::channel();
+        let (result_tx, result_rx) = mpsc::channel();
+        for index in 1..=3 {
+            request_tx
+                .send(ImageLoadRequest {
+                    path: PathBuf::from(format!("/missing-{index}.png")),
+                })
+                .unwrap();
+        }
+        drop(request_tx);
+
+        ImageLoader::worker_loop(request_rx, result_tx);
+
+        let results: Vec<_> = result_rx.try_iter().collect();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].path, PathBuf::from("/missing-3.png"));
     }
 }
