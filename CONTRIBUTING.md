@@ -19,17 +19,20 @@ conventions used when working on the project.
 
 ### Prerequisites
 
-- Rust 1.75.0+
+- Rust 1.90.0 or newer
 - cargo
 - Git
+
+Use the current stable Rust toolchain for the checks below to match CI. CI also
+checks compilation with the minimum supported Rust version, 1.90.0.
 
 ### Build
 
 ```bash
 git clone https://github.com/Hiro-Chiba/fileview.git
 cd fileview
-cargo build
-cargo test
+cargo build --locked
+cargo test --locked
 ```
 
 ---
@@ -182,12 +185,7 @@ Migrate existing config.json to config.toml.
 
 ### Before Creating PR
 
-1. **Confirm tests pass**
-   ```bash
-   cargo test
-   cargo clippy -- -D warnings
-   cargo fmt --check
-   ```
+1. **Run the local checks** described in [Testing Requirements](#testing-requirements).
 
 2. **Clean up commits** — group changes into meaningful commits, squash
    any WIP commits.
@@ -249,17 +247,18 @@ Closes #123
 
 ## Testing Requirements
 
-Run all of the following before opening a PR. CI re-checks them too.
+Run the following with the current stable Rust toolchain before opening a PR.
+These match the main lint and test checks in CI, including builds without the
+default features. The optional `chafa` feature requires a system library, so these
+checks do not enable all features.
 
 ```bash
-# tests
-cargo test
-
-# lint (warnings are treated as errors)
-cargo clippy -- -D warnings
-
-# formatting
-cargo fmt --check
+cargo fmt --all -- --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo clippy --locked --all-targets --no-default-features -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps
+cargo test --locked
+cargo test --locked --no-default-features
 ```
 
 ---

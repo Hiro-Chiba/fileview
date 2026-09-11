@@ -25,6 +25,9 @@ ending below, then extract it and run the included executable from a terminal.
 | Linux, x86-64 (GNU) | `x86_64-unknown-linux-gnu.tar.gz` |
 | Windows, x86-64 | `x86_64-pc-windows-msvc.zip` |
 
+The Linux binary requires glibc 2.39 or newer. For older glibc versions or
+musl-based systems, use the Cargo installation below to build for your environment.
+
 ### macOS and Linux
 
 Save your downloaded archive as `fileview.tar.gz`. In the folder containing it, run:
@@ -45,6 +48,8 @@ Expand-Archive -Path .\fileview.zip -DestinationPath .\fileview
 
 Use `j/k` to move, `/` to search, `P` to toggle the preview, and `q` to quit.
 Git status requires Git to be installed. Image previews adapt to your terminal.
+To use `fv` from any folder or in the MCP configuration below, place the executable
+in a directory on your `PATH`.
 
 ### Install with Cargo
 
