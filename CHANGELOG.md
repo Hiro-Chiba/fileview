@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.2] - 2026-09-12
+
+### Changed
+
+- Reorganized the README around the demo and prebuilt binary downloads, with
+  platform-specific extraction and launch instructions that do not require Rust.
+- Clarified preview requirements and linked performance claims to documented
+  measurements and test conditions.
+
 ## [2.8.1] - 2026-09-12
 
 ### Fixed
