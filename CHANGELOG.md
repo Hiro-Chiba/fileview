@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Clear the previous file's preview when switching selections, including cached
+  content and synchronous PDF or binary previews.
+- Parse ffprobe JSON structurally so video resolution, codecs, duration, and
+  frame rate work with standard output and remain safe for unavailable values.
+- Discover FFmpeg and Poppler executables on PATH without requiring `which`,
+  including `.exe` files on Windows.
+
+### Changed
+
+- Document user-local installation and updates, first-use controls, and the
+  optional tools needed for video and PDF previews.
+
 ## [2.8.3] - 2026-09-12
 
 ### Changed

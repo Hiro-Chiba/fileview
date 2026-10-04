@@ -37,6 +37,19 @@ tar -xzf fileview.tar.gz
 ./fv
 ```
 
+To install for your user, run these commands from the same folder:
+
+```sh
+mkdir -p "$HOME/.local/bin"
+install -m 755 ./fv "$HOME/.local/bin/fv"
+export PATH="$HOME/.local/bin:$PATH"
+fv
+```
+
+The `export` applies to the current terminal session. If `~/.local/bin` is not
+already on your `PATH`, add that line to your shell's startup file to use `fv`
+in new terminals. Repeat the download and `install` steps to update.
+
 ### Windows (PowerShell)
 
 Save your downloaded archive as `fileview.zip`. In the folder containing it, run:
@@ -46,10 +59,15 @@ Expand-Archive -Path .\fileview.zip -DestinationPath .\fileview
 .\fileview\fv.exe
 ```
 
-Use `j/k` to move, `/` to search, `P` to toggle the preview, and `q` to quit.
-Git status requires Git to be installed. Image previews adapt to your terminal.
 To use `fv` from any folder or in the MCP configuration below, place the executable
 in a directory on your `PATH`.
+
+### First minute
+
+Start FileView in a project folder. Use `j/k` or the up/down arrows to select a
+file, `l` to expand a directory, and `h` to collapse it. Press `P` to show the
+preview, then move between source files and images. Press `/` to search or
+`Ctrl+P` to find a file by name. Press `?` for help and `q` to quit.
 
 ### Install with Cargo
 
@@ -64,7 +82,8 @@ fv
 
 - Image previews with automatic terminal detection (Kitty, iTerm2, Sixel, Halfblocks)
 - Git status, syntax highlighting, search, and fuzzy finder
-- PDF previews with Poppler's `pdftoppm` installed
+- Video thumbnails and metadata with FFmpeg installed
+- PDF previews with Poppler installed
 - Vim keybindings, mouse support, Lua plugins
 - Live reflection of `fv --mcp-server` activity in the TUI ([details](docs/CLAUDE_CODE.md))
 
@@ -79,6 +98,22 @@ Slim build (drops `arboard` clipboard, `mlua` Lua plugin,
 `zip` / `tar` / `flate2` archive, and `tiktoken-rs` /  `petgraph`
 AI helper dependencies): `cargo install fileview --no-default-features`<br>
 Pick individual features: `cargo install fileview --no-default-features --features ai,clipboard,lua,archive`
+
+### Optional preview tools
+
+File browsing, text previews, image previews, and search work without these tools.
+Install only the tools for the features you want, then restart FileView.
+
+| Feature | Required tools |
+| --- | --- |
+| Git status and diffs | `git` |
+| Video thumbnails | FFmpeg's `ffmpeg` and `ffprobe` |
+| Video duration, resolution, and codec information | FFmpeg's `ffprobe` |
+| PDF pages and page counts | Poppler's `pdftoppm` and `pdfinfo` |
+
+If a video or PDF preview is unavailable, check that the required tools are
+installed and available on your `PATH`. Image previews adapt to your terminal
+as described below.
 
 ## Image Preview
 
@@ -102,6 +137,7 @@ Your terminal is auto-detected:
 | `/` | Search |
 | `Ctrl+P` | Fuzzy finder |
 | `P` | Preview panel |
+| `?` | Help |
 | `q` | Quit |
 
 See [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) for the full list.
