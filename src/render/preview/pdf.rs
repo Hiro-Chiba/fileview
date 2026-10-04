@@ -19,56 +19,14 @@ static PDFINFO_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 /// Find pdftoppm executable path (lazy detection with caching)
 pub fn find_pdftoppm() -> Option<&'static PathBuf> {
     PDFTOPPM_PATH
-        .get_or_init(|| {
-            let candidates = [
-                "/usr/bin/pdftoppm",
-                "/usr/local/bin/pdftoppm",
-                "/opt/homebrew/bin/pdftoppm",
-            ];
-            for path in candidates {
-                let p = PathBuf::from(path);
-                if p.exists() {
-                    return Some(p);
-                }
-            }
-            // fallback: which pdftoppm
-            std::process::Command::new("which")
-                .arg("pdftoppm")
-                .output()
-                .ok()
-                .filter(|o| o.status.success())
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| PathBuf::from(s.trim()))
-                .filter(|p| p.exists())
-        })
+        .get_or_init(|| crate::util::find_preview_tool("pdftoppm"))
         .as_ref()
 }
 
 /// Find pdfinfo executable path (lazy detection with caching)
 fn find_pdfinfo() -> Option<&'static PathBuf> {
     PDFINFO_PATH
-        .get_or_init(|| {
-            let candidates = [
-                "/usr/bin/pdfinfo",
-                "/usr/local/bin/pdfinfo",
-                "/opt/homebrew/bin/pdfinfo",
-            ];
-            for path in candidates {
-                let p = PathBuf::from(path);
-                if p.exists() {
-                    return Some(p);
-                }
-            }
-            // fallback: which pdfinfo
-            std::process::Command::new("which")
-                .arg("pdfinfo")
-                .output()
-                .ok()
-                .filter(|o| o.status.success())
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| PathBuf::from(s.trim()))
-                .filter(|p| p.exists())
-        })
+        .get_or_init(|| crate::util::find_preview_tool("pdfinfo"))
         .as_ref()
 }
 

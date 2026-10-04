@@ -107,6 +107,9 @@ impl PreviewState {
         self.loading_video_thumbnail = None;
         self.last_path = path.cloned();
         self.is_loading = false;
+        // Every new selection starts without content from the previous file,
+        // including when a cache hit or synchronous loader returns early.
+        self.clear_all();
 
         let Some(path) = path else {
             self.clear_all();
@@ -501,6 +504,84 @@ mod tests {
     use super::*;
     use std::fs;
     use tempfile::tempdir;
+
+    fn video_preview(path: &std::path::Path) -> VideoPreview {
+        VideoPreview::new(
+            path,
+            crate::app::video::VideoMetadata {
+                duration: std::time::Duration::from_secs(1),
+                resolution: (16, 16),
+                codec: "H264".to_string(),
+                audio_codec: None,
+                file_size: 128,
+                frame_rate: Some(25.0),
+                bitrate: None,
+            },
+        )
+    }
+
+    #[test]
+    fn switching_from_video_to_binary_discards_video() {
+        let temp = tempdir().unwrap();
+        let video = temp.path().join("video.mp4");
+        let binary = temp.path().join("data.bin");
+        fs::write(&binary, [0, 1, 2, 3]).unwrap();
+
+        let mut preview = PreviewState::new();
+        preview.last_path = Some(video.clone());
+        preview.video = Some(video_preview(&video));
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        preview.update(Some(&binary), &mut None, &mut state);
+
+        assert!(preview.hex.is_some());
+        assert!(
+            preview.video.is_none(),
+            "previous video must not hide the binary preview"
+        );
+        assert_eq!(preview.last_path.as_ref(), Some(&binary));
+    }
+
+    #[test]
+    fn switching_from_video_to_cached_text_discards_video() {
+        let temp = tempdir().unwrap();
+        let video = temp.path().join("video.mp4");
+        let text = temp.path().join("file.txt");
+        fs::write(&text, "cached text").unwrap();
+
+        let mut preview = PreviewState::new();
+        preview.last_path = Some(video.clone());
+        preview.video = Some(video_preview(&video));
+        preview.preview_cache.insert(
+            text.clone(),
+            CachedPreview::Text(TextPreview::with_highlighting("cached text", &text)),
+        );
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        preview.update(Some(&text), &mut None, &mut state);
+
+        assert!(preview.text.is_some());
+        assert!(
+            !preview.is_loading,
+            "cached content should be immediately available"
+        );
+        assert!(preview.video.is_none());
+    }
+
+    #[test]
+    fn updating_same_video_preserves_preview() {
+        let temp = tempdir().unwrap();
+        let video = temp.path().join("video.mp4");
+        let mut preview = PreviewState::new();
+        preview.last_path = Some(video.clone());
+        preview.video = Some(video_preview(&video));
+        let mut state = AppState::new(temp.path().to_path_buf());
+
+        preview.update(Some(&video), &mut None, &mut state);
+
+        assert!(preview.video.is_some());
+        assert!(!preview.is_loading);
+    }
 
     #[test]
     fn changing_path_cancels_pending_image_result() {

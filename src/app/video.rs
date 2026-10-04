@@ -31,56 +31,14 @@ static FFPROBE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 /// Find ffmpeg executable path (lazy detection with caching)
 pub fn find_ffmpeg() -> Option<&'static PathBuf> {
     FFMPEG_PATH
-        .get_or_init(|| {
-            let candidates = [
-                "/usr/bin/ffmpeg",
-                "/usr/local/bin/ffmpeg",
-                "/opt/homebrew/bin/ffmpeg",
-            ];
-            for path in candidates {
-                let p = PathBuf::from(path);
-                if p.exists() {
-                    return Some(p);
-                }
-            }
-            // Fallback: which ffmpeg
-            Command::new("which")
-                .arg("ffmpeg")
-                .output()
-                .ok()
-                .filter(|o| o.status.success())
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| PathBuf::from(s.trim()))
-                .filter(|p| p.exists())
-        })
+        .get_or_init(|| crate::util::find_preview_tool("ffmpeg"))
         .as_ref()
 }
 
 /// Find ffprobe executable path (lazy detection with caching)
 pub fn find_ffprobe() -> Option<&'static PathBuf> {
     FFPROBE_PATH
-        .get_or_init(|| {
-            let candidates = [
-                "/usr/bin/ffprobe",
-                "/usr/local/bin/ffprobe",
-                "/opt/homebrew/bin/ffprobe",
-            ];
-            for path in candidates {
-                let p = PathBuf::from(path);
-                if p.exists() {
-                    return Some(p);
-                }
-            }
-            // Fallback: which ffprobe
-            Command::new("which")
-                .arg("ffprobe")
-                .output()
-                .ok()
-                .filter(|o| o.status.success())
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| PathBuf::from(s.trim()))
-                .filter(|p| p.exists())
-        })
+        .get_or_init(|| crate::util::find_preview_tool("ffprobe"))
         .as_ref()
 }
 
@@ -208,83 +166,50 @@ pub fn get_metadata(path: &Path) -> anyhow::Result<VideoMetadata> {
 
 /// Parse ffprobe JSON output
 fn parse_ffprobe_json(json_str: &str, file_size: u64) -> anyhow::Result<VideoMetadata> {
-    // Simple JSON parsing without external crate
-    // We only need specific fields, so we parse manually
+    let root: serde_json::Value = serde_json::from_str(json_str)?;
+    let format = &root["format"];
+    let streams = root["streams"].as_array();
+    let video = streams.and_then(|streams| {
+        streams
+            .iter()
+            .find(|stream| stream["codec_type"] == "video")
+    });
+    let audio = streams.and_then(|streams| {
+        streams
+            .iter()
+            .find(|stream| stream["codec_type"] == "audio")
+    });
 
-    let mut duration = Duration::ZERO;
-    let mut resolution = (0u32, 0u32);
-    let mut codec = String::new();
-    let mut audio_codec = None;
-    let mut frame_rate = None;
-    let mut bitrate = None;
-
-    // Parse duration from format section
-    if let Some(dur_str) = extract_json_value(json_str, "duration") {
-        if let Ok(dur_secs) = dur_str.parse::<f64>() {
-            duration = Duration::from_secs_f64(dur_secs);
-        }
-    }
-
-    // Parse bitrate from format section
-    if let Some(br_str) = extract_json_value(json_str, "bit_rate") {
-        if let Ok(br) = br_str.parse::<u64>() {
-            bitrate = Some(br);
-        }
-    }
-
-    // Find video stream section
-    let streams_start = json_str.find("\"streams\"");
-    if let Some(start) = streams_start {
-        let streams_section = &json_str[start..];
-
-        // Find video stream (codec_type: "video")
-        if let Some(video_pos) = streams_section.find("\"codec_type\":\"video\"") {
-            // Find the start of this stream object
-            let stream_start = streams_section[..video_pos].rfind('{').unwrap_or(0);
-            let stream_section = &streams_section[stream_start..];
-
-            // Extract video codec
-            if let Some(codec_name) = extract_json_value(stream_section, "codec_name") {
-                codec = codec_name.to_uppercase();
-            }
-
-            // Extract resolution
-            if let Some(width_str) = extract_json_value(stream_section, "width") {
-                if let Ok(w) = width_str.parse::<u32>() {
-                    resolution.0 = w;
-                }
-            }
-            if let Some(height_str) = extract_json_value(stream_section, "height") {
-                if let Ok(h) = height_str.parse::<u32>() {
-                    resolution.1 = h;
-                }
-            }
-
-            // Extract frame rate (e.g., "30/1" or "29.97")
-            if let Some(fps_str) = extract_json_value(stream_section, "r_frame_rate") {
-                frame_rate = parse_frame_rate(fps_str);
-            } else if let Some(fps_str) = extract_json_value(stream_section, "avg_frame_rate") {
-                frame_rate = parse_frame_rate(fps_str);
-            }
-        }
-
-        // Find audio stream (codec_type: "audio")
-        if let Some(audio_pos) = streams_section.find("\"codec_type\":\"audio\"") {
-            let stream_start = streams_section[..audio_pos].rfind('{').unwrap_or(0);
-            let stream_section = &streams_section[stream_start..];
-
-            if let Some(codec_name) = extract_json_value(stream_section, "codec_name") {
-                audio_codec = Some(codec_name.to_uppercase());
-            }
-        }
-    }
-
-    // Fallback: if codec is empty, try to get it from format
-    if codec.is_empty() {
-        if let Some(format_name) = extract_json_value(json_str, "format_name") {
-            codec = format_name.to_uppercase();
-        }
-    }
+    let duration = format["duration"]
+        .as_str()
+        .and_then(|value| value.parse::<f64>().ok())
+        .and_then(|seconds| Duration::try_from_secs_f64(seconds).ok())
+        .unwrap_or_default();
+    let bitrate = format["bit_rate"]
+        .as_str()
+        .and_then(|value| value.parse::<u64>().ok());
+    let codec = video
+        .and_then(|stream| stream["codec_name"].as_str())
+        .filter(|name| !name.is_empty())
+        .or_else(|| format["format_name"].as_str())
+        .unwrap_or_default()
+        .to_uppercase();
+    let audio_codec = audio
+        .and_then(|stream| stream["codec_name"].as_str())
+        .map(str::to_uppercase);
+    let dimension = |key: &str| {
+        video
+            .and_then(|stream| stream[key].as_u64())
+            .and_then(|value| u32::try_from(value).ok())
+            .unwrap_or_default()
+    };
+    let resolution = (dimension("width"), dimension("height"));
+    let frame_rate = video.and_then(|stream| {
+        stream["r_frame_rate"]
+            .as_str()
+            .and_then(parse_frame_rate)
+            .or_else(|| stream["avg_frame_rate"].as_str().and_then(parse_frame_rate))
+    });
 
     Ok(VideoMetadata {
         duration,
@@ -297,37 +222,19 @@ fn parse_ffprobe_json(json_str: &str, file_size: u64) -> anyhow::Result<VideoMet
     })
 }
 
-/// Extract a string value from JSON (simple parser)
-fn extract_json_value<'a>(json: &'a str, key: &str) -> Option<&'a str> {
-    let pattern = format!("\"{}\":", key);
-    let pos = json.find(&pattern)?;
-    let rest = &json[pos + pattern.len()..];
-
-    // Skip whitespace
-    let rest = rest.trim_start();
-
-    if rest.starts_with('"') {
-        // String value
-        let start = 1;
-        let end = rest[start..].find('"')?;
-        Some(&rest[start..start + end])
-    } else {
-        // Numeric or other value
-        let end = rest.find([',', '}', '\n']).unwrap_or(rest.len());
-        Some(rest[..end].trim())
-    }
-}
-
-/// Parse frame rate string (e.g., "30/1" or "29.97")
+/// Parse a positive, finite frame rate (e.g., "30/1" or "29.97").
 fn parse_frame_rate(fps_str: &str) -> Option<f32> {
-    if let Some(slash_pos) = fps_str.find('/') {
-        let num = fps_str[..slash_pos].parse::<f32>().ok()?;
-        let den = fps_str[slash_pos + 1..].parse::<f32>().ok()?;
-        if den > 0.0 {
-            return Some(num / den);
+    let rate = if let Some((numerator, denominator)) = fps_str.split_once('/') {
+        let num = numerator.parse::<f32>().ok()?;
+        let den = denominator.parse::<f32>().ok()?;
+        if !num.is_finite() || !den.is_finite() || num <= 0.0 || den <= 0.0 {
+            return None;
         }
-    }
-    fps_str.parse::<f32>().ok()
+        num / den
+    } else {
+        fps_str.parse::<f32>().ok()?
+    };
+    (rate.is_finite() && rate > 0.0).then_some(rate)
 }
 
 /// Extract a thumbnail frame from a video at 1 second
@@ -505,13 +412,74 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_json_value() {
-        let json = r#"{"duration":"120.5","width":1920,"height":1080}"#;
+    fn test_parse_ffprobe_pretty_json() {
+        let json = r#"{
+            "streams": [
+                {
+                    "codec_name": "aac", "codec_type": "audio",
+                    "duration": "100", "bit_rate": "128000"
+                },
+                {
+                    "codec_name": "h264", "codec_type": "video",
+                    "width": 1920, "height": 1080,
+                    "r_frame_rate": "30000/1001"
+                }
+            ],
+            "format": {"duration": "120.5", "bit_rate": "5500000"}
+        }"#;
+        let meta = parse_ffprobe_json(json, 1234).unwrap();
+        assert_eq!(meta.resolution, (1920, 1080));
+        assert_eq!(meta.codec, "H264");
+        assert_eq!(meta.audio_codec.as_deref(), Some("AAC"));
+        assert_eq!(meta.duration, Duration::from_millis(120500));
+        assert_eq!(meta.bitrate, Some(5500000));
+        assert_eq!(meta.file_size, 1234);
+        assert_eq!(meta.frame_rate, Some(29.97003));
+    }
 
-        assert_eq!(extract_json_value(json, "duration"), Some("120.5"));
-        assert_eq!(extract_json_value(json, "width"), Some("1920"));
-        assert_eq!(extract_json_value(json, "height"), Some("1080"));
-        assert_eq!(extract_json_value(json, "nonexistent"), None);
+    #[test]
+    fn test_parse_ffprobe_stream_boundaries() {
+        let json = r#"{"streams":[{"codec_type":"video"},
+            {"codec_type":"audio","codec_name":"aac","duration":"12","bit_rate":"128000"},
+            {"codec_type":"video","codec_name":"vp9","width":640,"height":360}],
+            "format":{"format_name":"matroska"}}"#;
+        let meta = parse_ffprobe_json(json, 0).unwrap();
+        assert_eq!(meta.codec, "MATROSKA");
+        assert_eq!(meta.resolution, (0, 0));
+        assert_eq!(meta.duration, Duration::ZERO);
+        assert_eq!(meta.bitrate, None);
+    }
+
+    #[test]
+    fn test_parse_ffprobe_invalid_duration() {
+        for duration in ["-1", "NaN", "inf", "1e100", "N/A"] {
+            let json = format!(r#"{{"format":{{"duration":"{duration}"}}}}"#);
+            assert_eq!(
+                parse_ffprobe_json(&json, 0).unwrap().duration,
+                Duration::ZERO
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_ffprobe_invalid_json() {
+        assert!(parse_ffprobe_json("not json", 0).is_err());
+    }
+
+    #[test]
+    fn test_parse_ffprobe_frame_rate_fallback() {
+        let json = r#"{"streams":[{"codec_type":"video",
+            "r_frame_rate":"0/0","avg_frame_rate":"24/1"}]}"#;
+        assert_eq!(parse_ffprobe_json(json, 0).unwrap().frame_rate, Some(24.0));
+    }
+
+    #[test]
+    fn test_parse_frame_rate_invalid_values() {
+        for rate in [
+            "0", "-30", "NaN", "inf", "1e100", "-30/1", "1/0", "0/1", "inf/1", "1/inf", "-1/-1",
+        ] {
+            assert_eq!(parse_frame_rate(rate), None, "rate: {rate}");
+        }
     }
 
     #[test]
