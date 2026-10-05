@@ -6,190 +6,76 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MSRV](https://img.shields.io/badge/MSRV-1.90-blue.svg)](https://www.rust-lang.org)
 
-> Browse files with image previews, Git status, and search in your terminal. No configuration needed.
+> Browse files, preview their contents, and search your project from the terminal.
 
 <p align="center">
   <img src="assets/demo.gif" alt="FileView terminal file browser demo" width="80%">
 </p>
 
-## Quick Start
+FileView shows text and image previews alongside your files, with Git status and
+keyboard or mouse navigation. No configuration is needed to get started.
 
-[Download a prebuilt binary](https://github.com/Hiro-Chiba/fileview/releases/latest)
-for your OS. Rust is not required. Choose the archive with the matching filename
-ending below, then extract it and run the included executable from a terminal.
+## Install
 
-| System | Archive filename ending |
-| --- | --- |
-| macOS, Apple Silicon | `aarch64-apple-darwin.tar.gz` |
-| macOS, Intel | `x86_64-apple-darwin.tar.gz` |
-| Linux, x86-64 (GNU) | `x86_64-unknown-linux-gnu.tar.gz` |
-| Windows, x86-64 | `x86_64-pc-windows-msvc.zip` |
+[Download a binary for macOS, Linux, or Windows](https://github.com/Hiro-Chiba/fileview/releases/latest).
+You don't need Rust. The [installation guide](docs/INSTALLATION.md) covers which
+archive to choose, how to run it, and how to add `fv` to your `PATH`.
 
-The Linux binary requires glibc 2.39 or newer. For older glibc versions or
-musl-based systems, use the Cargo installation below to build for your environment.
-
-### macOS and Linux
-
-Save your downloaded archive as `fileview.tar.gz`. In the folder containing it, run:
-
-```sh
-tar -xzf fileview.tar.gz
-./fv
-```
-
-To install for your user, run these commands from the same folder:
-
-```sh
-mkdir -p "$HOME/.local/bin"
-install -m 755 ./fv "$HOME/.local/bin/fv"
-export PATH="$HOME/.local/bin:$PATH"
-fv
-```
-
-The `export` applies to the current terminal session. If `~/.local/bin` is not
-already on your `PATH`, add that line to your shell's startup file to use `fv`
-in new terminals. Repeat the download and `install` steps to update.
-
-### Windows (PowerShell)
-
-Save your downloaded archive as `fileview.zip`. In the folder containing it, run:
-
-```powershell
-Expand-Archive -Path .\fileview.zip -DestinationPath .\fileview
-.\fileview\fv.exe
-```
-
-To use `fv` from any folder or in the MCP configuration below, place the executable
-in a directory on your `PATH`.
-
-### First minute
-
-Start FileView in a project folder. Use `j/k` or the up/down arrows to select a
-file, `l` to expand a directory, and `h` to collapse it. Press `P` to show the
-preview, then move between source files and images. Press `/` to search or
-`Ctrl+P` to find a file by name. Press `?` for help and `q` to quit.
-
-### Install with Cargo
-
-If you already have Rust 1.90 or newer:
+If you have Rust 1.90 or newer:
 
 ```sh
 cargo install fileview --locked
-fv
 ```
 
-FileView 3.0 adds background Ctrl+P search and structured
-filters through the same engine as `fv search 'ext:rs type:file' .` and MCP.
-Use `text:TODO` in Ctrl+P, `fv search 'text:TODO' --json`, or MCP to search
-file contents with optional ripgrep (`rg`). Selecting a content result opens
-the matching line. Text previews read bounded pages as you scroll. See
-[the design and validation notes](docs/WORKSPACE_ENGINE.md) for its current limits.
-See [what changed in 3.0](CHANGELOG.md#300---2026-10-05) for examples and upgrade notes.
+## Get started
 
-## Features
+Run `fv` in a project folder, or pass a path:
 
-- Image previews with automatic terminal detection (Kitty, iTerm2, Sixel, Halfblocks)
-- Git status, syntax highlighting, search, and fuzzy finder
-- Video thumbnails and metadata with FFmpeg installed
-- PDF previews with Poppler installed
-- Vim keybindings, mouse support, Lua plugins
-- Live reflection of `fv --mcp-server` activity in the TUI ([details](docs/CLAUDE_CODE.md))
-
-See the [performance comparison](docs/BENCHMARKS.md) for local measurements and
-their test conditions.
-
-## Install Options
-
-Chafa image support: `cargo install fileview --features chafa`<br>
-Speed-optimized build: `cargo install fileview --profile release-fast`<br>
-Slim build (drops `arboard` clipboard, `mlua` Lua plugin,
-`zip` / `tar` / `flate2` archive, and `tiktoken-rs` /  `petgraph`
-AI helper dependencies): `cargo install fileview --no-default-features`<br>
-Pick individual features: `cargo install fileview --no-default-features --features ai,clipboard,lua,archive`
-
-### Optional preview tools
-
-File browsing, text previews, image previews, and filename search work without these tools.
-Install only the tools for the features you want, then restart FileView.
-
-| Feature | Required tools |
-| --- | --- |
-| Content search (`text:`) | ripgrep (`rg`) |
-| Git status and diffs | `git` |
-| Video thumbnails | FFmpeg's `ffmpeg` and `ffprobe` |
-| Video duration, resolution, and codec information | FFmpeg's `ffprobe` |
-| PDF pages and page counts | Poppler's `pdftoppm` and `pdfinfo` |
-
-If a video or PDF preview is unavailable, check that the required tools are
-installed and available on your `PATH`. Image previews adapt to your terminal
-as described below.
-
-## Image Preview
-
-Your terminal is auto-detected:
-
-| Terminal | Protocol |
-|----------|----------|
-| Kitty / Ghostty / Konsole | Kitty Graphics |
-| iTerm2 / WezTerm / Warp | iTerm2 Inline |
-| Foot / Windows Terminal | Sixel |
-| VS Code / Alacritty | Halfblocks |
-
-## Keybindings
+```sh
+fv ./my-project
+```
 
 | Key | Action |
-|-----|--------|
-| `j/k` | Navigate up/down |
-| `h/l` | Collapse/expand |
-| `g/G` | Top/bottom |
-| `Space` | Toggle mark |
-| `/` | Search |
-| `Ctrl+P` | Fuzzy finder |
-| `P` | Preview panel |
-| `?` | Help |
+| --- | --- |
+| `j` / `k` or up/down arrows | Move through files |
+| `h` / `l` | Collapse or expand a directory |
+| `P` | Toggle the preview panel |
+| `Ctrl+P` | Find a file or search its contents |
+| `?` | Show help |
 | `q` | Quit |
 
-See [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md) for the full list.
+## Search and preview
 
-## One-shot helpers for AI workflows
+Press `Ctrl+P` and type a filename. Use `ext:rs git:changed` to find Rust files
+with Git changes, or `text:TODO` to search inside files. Select a content result
+and press Enter to open the matching line and column.
 
-A few non-interactive flags for use from scripts and AI agents:
+Content search needs [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) on your
+`PATH`. It matches literal text, is case-sensitive, and cannot be combined with
+filename filters. Filename search works without `rg`. Search respects project
+ignore rules, including `.gitignore` and `.ignore`.
 
-```bash
-fv --tokens README.md            # cl100k_base token estimate (one integer to stdout)
-fv --snapshot-create base        # capture working tree manifest to .fileview/snapshots/
-fv --snapshot-diff base          # + added / - removed / M modified since snapshot
-fv --watch path/to/file          # block until the file changes, print path, exit
-fv --watch path/to/file --watch-timeout-secs 5
+The same queries work from the terminal, with JSON output for scripts:
+
+```sh
+fv search main
+fv search 'ext:rs git:changed' . --json
+fv search 'text:TODO' . --json
 ```
 
-See [docs/CLAUDE_CODE.md](docs/CLAUDE_CODE.md) for the full list.
+Text previews load pages as you scroll. With the preview focused, use `g` for
+the beginning and `G` for the end. See the [3.0 release notes](CHANGELOG.md#300---2026-10-05)
+for the changes and upgrade notes.
 
-## Claude Code Integration
+## More details
 
-FileView includes an MCP server for Claude Code (`fv --mcp-server`).
-
-```json
-{
-  "mcpServers": {
-    "fileview": {
-      "command": "fv",
-      "args": ["--mcp-server"]
-    }
-  }
-}
-```
-
-Details: [docs/CLAUDE_CODE.md](docs/CLAUDE_CODE.md)
-
-## Docs
-
-- [Keybindings](docs/KEYBINDINGS.md)
-- [Claude Code / MCP](docs/CLAUDE_CODE.md)
-- [Lua Plugins](docs/PLUGINS.md)
-- [Performance comparison](docs/BENCHMARKS.md)
-
+- [Installation, optional tools, and image support](docs/INSTALLATION.md)
+- [All keybindings](docs/KEYBINDINGS.md) and [configuration](docs/CONFIGURATION.md)
+- [Claude Code, MCP, and scripting](docs/CLAUDE_CODE.md)
+- [Lua plugins](docs/PLUGINS.md)
+- [Search and preview design](docs/WORKSPACE_ENGINE.md), including current limits
+- [Performance measurements](docs/BENCHMARKS.md) and [changelog](CHANGELOG.md)
 
 ## License
 
-MIT
+[MIT](LICENSE)
