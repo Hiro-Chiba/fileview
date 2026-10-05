@@ -1,0 +1,285 @@
+{
+  "arch": "aarch64",
+  "baseline": {
+    "open_and_search": {
+      "max_ms": 84.676417,
+      "p50_ms": 67.00883300000001,
+      "p95_ms": 79.466791,
+      "samples": 40
+    },
+    "queries": {
+      "file": {
+        "max_ms": 28.655542,
+        "p50_ms": 28.02025,
+        "p95_ms": 28.429,
+        "samples": 40
+      },
+      "file_000420": {
+        "max_ms": 20.995707999999997,
+        "p50_ms": 20.722,
+        "p95_ms": 20.984042000000002,
+        "samples": 40
+      },
+      "m42rs": {
+        "max_ms": 18.625542,
+        "p50_ms": 18.486042,
+        "p95_ms": 18.61225,
+        "samples": 40
+      },
+      "md": {
+        "max_ms": 33.60574999999999,
+        "p50_ms": 32.263583,
+        "p95_ms": 33.192792,
+        "samples": 40
+      },
+      "module_042": {
+        "max_ms": 28.225584,
+        "p50_ms": 27.835708,
+        "p95_ms": 28.082417,
+        "samples": 40
+      },
+      "png": {
+        "max_ms": 19.153208000000003,
+        "p50_ms": 18.774541,
+        "p95_ms": 19.050917000000002,
+        "samples": 40
+      },
+      "rs": {
+        "max_ms": 18.782375000000002,
+        "p50_ms": 18.492375,
+        "p95_ms": 18.766208,
+        "samples": 40
+      },
+      "zzzz_not_found": {
+        "max_ms": 18.071707999999997,
+        "p50_ms": 16.728832999999998,
+        "p95_ms": 17.364667,
+        "samples": 40
+      }
+    },
+    "scan": {
+      "max_ms": 56.242,
+      "p50_ms": 46.368333,
+      "p95_ms": 52.674208,
+      "samples": 40
+    },
+    "search": {
+      "max_ms": 33.60574999999999,
+      "p50_ms": 19.153208000000003,
+      "p95_ms": 32.34525,
+      "samples": 320
+    }
+  },
+  "cache_condition": "warm filesystem cache after fixture creation and explicit warmup",
+  "directories": 100,
+  "engine": {
+    "cache_bytes": 15952802,
+    "cache_error": null,
+    "cache_load_and_revalidate": {
+      "max_ms": 441.87587499999995,
+      "p50_ms": 437.05175,
+      "p95_ms": 441.721791,
+      "samples": 40
+    },
+    "cache_load_warm_os_cache": {
+      "max_ms": 171.229542,
+      "p50_ms": 167.62929200000002,
+      "p95_ms": 169.801167,
+      "samples": 40
+    },
+    "cache_save": {
+      "max_ms": 77.485958,
+      "p50_ms": 73.109208,
+      "p95_ms": 76.62629199999999,
+      "samples": 40
+    },
+    "delta_matches_fresh_rebuild": true,
+    "delta_workload": "alternating create/delete; filesystem mutations excluded from timings",
+    "directory_1000_file_delta": {
+      "max_ms": 4.323333000000001,
+      "p50_ms": 2.6624589999999997,
+      "p95_ms": 4.271291,
+      "samples": 40
+    },
+    "initialize_without_cache": {
+      "max_ms": 274.06199999999995,
+      "p50_ms": 266.666042,
+      "p95_ms": 269.515334,
+      "samples": 40
+    },
+    "process_rss_kib": {
+      "after_first_build": 72848,
+      "after_repeated_cache_loads": 726512,
+      "after_repeated_rebuilds": 95760,
+      "before_build": 51536,
+      "scope": "whole process current RSS; includes allocator retention and baseline work"
+    },
+    "queries": {
+      "file": {
+        "max_ms": 11.968917000000001,
+        "p50_ms": 9.519542000000001,
+        "p95_ms": 9.837584,
+        "samples": 40
+      },
+      "file_000420": {
+        "max_ms": 7.37325,
+        "p50_ms": 6.797667000000001,
+        "p95_ms": 6.982875,
+        "samples": 40
+      },
+      "m42rs": {
+        "max_ms": 4.65825,
+        "p50_ms": 4.2849580000000005,
+        "p95_ms": 4.49475,
+        "samples": 40
+      },
+      "md": {
+        "max_ms": 11.46375,
+        "p50_ms": 10.739375,
+        "p95_ms": 11.096667,
+        "samples": 40
+      },
+      "module_042": {
+        "max_ms": 12.76725,
+        "p50_ms": 12.419833,
+        "p95_ms": 12.72975,
+        "samples": 40
+      },
+      "png": {
+        "max_ms": 4.095790999999999,
+        "p50_ms": 3.767041,
+        "p95_ms": 4.04875,
+        "samples": 40
+      },
+      "rs": {
+        "max_ms": 3.9336670000000002,
+        "p50_ms": 3.6023330000000002,
+        "p95_ms": 3.7829159999999997,
+        "samples": 40
+      },
+      "zzzz_not_found": {
+        "max_ms": 3.278625,
+        "p50_ms": 2.9091669999999996,
+        "p95_ms": 3.116583,
+        "samples": 40
+      }
+    },
+    "rebuild": {
+      "max_ms": 290.014208,
+      "p50_ms": 274.7685,
+      "p95_ms": 280.463917,
+      "samples": 40
+    },
+    "search": {
+      "max_ms": 12.76725,
+      "p50_ms": 4.65825,
+      "p95_ms": 12.445417,
+      "samples": 320
+    },
+    "single_file_delta": {
+      "max_ms": 1.22125,
+      "p50_ms": 1.017625,
+      "p95_ms": 1.050542,
+      "samples": 40
+    },
+    "top_scores_match_baseline": true
+  },
+  "files": 100000,
+  "indexed_paths": 100100,
+  "iterations_per_query": 40,
+  "os": "macos",
+  "path_index": {
+    "experimental_candidate": "path/type index with metadata read only for top 15 winners",
+    "indexed_paths": 100100,
+    "initialize_and_search": {
+      "max_ms": 150.20475,
+      "p50_ms": 142.355541,
+      "p95_ms": 149.79075,
+      "samples": 40
+    },
+    "initialize_without_metadata": {
+      "max_ms": 140.597375,
+      "p50_ms": 136.74425000000002,
+      "p95_ms": 137.85091699999998,
+      "samples": 40
+    },
+    "limitations": "No incremental update implementation. Search metadata reads are synchronous in benchmark worker. Git predicates excluded. Warm OS filesystem cache.",
+    "queries": {
+      "ext:png": {
+        "max_ms": 0.938833,
+        "p50_ms": 0.732,
+        "p95_ms": 0.7723749999999999,
+        "samples": 40
+      },
+      "file": {
+        "max_ms": 9.506625,
+        "p50_ms": 8.771667,
+        "p95_ms": 9.00975,
+        "samples": 40
+      },
+      "file ext:rs type:file": {
+        "max_ms": 2.252875,
+        "p50_ms": 1.9445000000000001,
+        "p95_ms": 2.03925,
+        "samples": 40
+      },
+      "file_000420": {
+        "max_ms": 6.769166,
+        "p50_ms": 6.147958,
+        "p95_ms": 6.2871250000000005,
+        "samples": 40
+      },
+      "m42rs": {
+        "max_ms": 4.087999999999999,
+        "p50_ms": 3.743125,
+        "p95_ms": 3.8687080000000003,
+        "samples": 40
+      },
+      "md": {
+        "max_ms": 11.080417,
+        "p50_ms": 10.182833,
+        "p95_ms": 10.427125,
+        "samples": 40
+      },
+      "module_042": {
+        "max_ms": 12.755374999999999,
+        "p50_ms": 11.87725,
+        "p95_ms": 12.235207999999998,
+        "samples": 40
+      },
+      "png": {
+        "max_ms": 5.933541,
+        "p50_ms": 3.346708,
+        "p95_ms": 4.151959000000001,
+        "samples": 40
+      },
+      "rs": {
+        "max_ms": 3.56925,
+        "p50_ms": 3.148375,
+        "p95_ms": 3.333625,
+        "samples": 40
+      },
+      "type:dir": {
+        "max_ms": 0.37512500000000004,
+        "p50_ms": 0.25625000000000003,
+        "p95_ms": 0.26941600000000004,
+        "samples": 40
+      },
+      "zzzz_not_found": {
+        "max_ms": 2.681958,
+        "p50_ms": 2.453166,
+        "p95_ms": 2.5505419999999996,
+        "samples": 40
+      }
+    },
+    "results_equal_rich_index": true,
+    "search_including_winner_metadata": {
+      "max_ms": 12.755374999999999,
+      "p50_ms": 5.933541,
+      "p95_ms": 11.918666,
+      "samples": 320
+    }
+  },
+  "query_condition": "independent full query each time; baseline incremental state reset",
+  "timing_scope": "in-process operations only; fixture creation and deletion excluded"
+}

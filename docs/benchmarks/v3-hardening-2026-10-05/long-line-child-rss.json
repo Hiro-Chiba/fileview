@@ -1,0 +1,48 @@
+{
+  "scope": "rg child process only, warm files, one sample each; timing is smoke not benchmark",
+  "rg": "ripgrep 15.2.0 (rev e89fff89ac)",
+  "results": [
+    {
+      "size_bytes": 16777216,
+      "mode": "file-late",
+      "output_bytes": 128,
+      "max_rss_bytes": 71270400,
+      "elapsed_ms": 42.11133299395442
+    },
+    {
+      "size_bytes": 16777216,
+      "mode": "file-dense",
+      "output_bytes": 100,
+      "max_rss_bytes": 54329344,
+      "elapsed_ms": 236.22379201697186
+    },
+    {
+      "size_bytes": 16777216,
+      "mode": "directory-late",
+      "output_bytes": 128,
+      "max_rss_bytes": 71270400,
+      "elapsed_ms": 36.0986250161659
+    },
+    {
+      "size_bytes": 134217728,
+      "mode": "file-late",
+      "output_bytes": 130,
+      "max_rss_bytes": 284213248,
+      "elapsed_ms": 146.46433299640194
+    },
+    {
+      "size_bytes": 134217728,
+      "mode": "file-dense",
+      "output_bytes": 100,
+      "max_rss_bytes": 149897216,
+      "elapsed_ms": 2394.2616670101415
+    },
+    {
+      "size_bytes": 134217728,
+      "mode": "directory-late",
+      "output_bytes": 130,
+      "max_rss_bytes": 284344320,
+      "elapsed_ms": 120.02970799221657
+    }
+  ]
+}

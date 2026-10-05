@@ -1,0 +1,105 @@
+{
+  "arch": "aarch64",
+  "cache_condition": "warm filesystem cache after fixture creation and explicit warmup",
+  "directories": 100,
+  "files": 100000,
+  "iterations_per_query": 40,
+  "os": "macos",
+  "path_index_vec": {
+    "experimental_candidate": "path/type index with metadata read only for top 15 winners",
+    "indexed_paths": 100100,
+    "initialize_and_search": {
+      "max_ms": 136.969209,
+      "p50_ms": 130.19825,
+      "p95_ms": 136.31733400000002,
+      "samples": 40
+    },
+    "initialize_without_metadata": {
+      "max_ms": 128.002875,
+      "p50_ms": 124.618041,
+      "p95_ms": 126.753959,
+      "samples": 40
+    },
+    "limitations": "No incremental update implementation. Search metadata reads are synchronous in benchmark worker. Git predicates excluded. Warm OS filesystem cache.",
+    "queries": {
+      "ext:png": {
+        "max_ms": 0.735208,
+        "p50_ms": 0.698834,
+        "p95_ms": 0.7272080000000001,
+        "samples": 40
+      },
+      "file": {
+        "max_ms": 8.471083,
+        "p50_ms": 8.017332999999999,
+        "p95_ms": 8.184999999999999,
+        "samples": 40
+      },
+      "file ext:rs type:file": {
+        "max_ms": 1.888166,
+        "p50_ms": 1.781583,
+        "p95_ms": 1.877417,
+        "samples": 40
+      },
+      "file_000420": {
+        "max_ms": 5.751875,
+        "p50_ms": 5.3975,
+        "p95_ms": 5.623959,
+        "samples": 40
+      },
+      "m42rs": {
+        "max_ms": 3.351208,
+        "p50_ms": 3.21075,
+        "p95_ms": 3.335541,
+        "samples": 40
+      },
+      "md": {
+        "max_ms": 10.691291,
+        "p50_ms": 9.847458,
+        "p95_ms": 10.367875,
+        "samples": 40
+      },
+      "module_042": {
+        "max_ms": 11.174458999999999,
+        "p50_ms": 10.869042,
+        "p95_ms": 10.962,
+        "samples": 40
+      },
+      "png": {
+        "max_ms": 2.9918750000000003,
+        "p50_ms": 2.947375,
+        "p95_ms": 2.987625,
+        "samples": 40
+      },
+      "rs": {
+        "max_ms": 3.014708,
+        "p50_ms": 2.791042,
+        "p95_ms": 2.828959,
+        "samples": 40
+      },
+      "type:dir": {
+        "max_ms": 0.1235,
+        "p50_ms": 0.08925,
+        "p95_ms": 0.098,
+        "samples": 40
+      },
+      "zzzz_not_found": {
+        "max_ms": 2.244042,
+        "p50_ms": 2.218083,
+        "p95_ms": 2.231458,
+        "samples": 40
+      }
+    },
+    "results_equal_rich_index": true,
+    "search_including_winner_metadata": {
+      "max_ms": 11.174458999999999,
+      "p50_ms": 3.351208,
+      "p95_ms": 10.876459,
+      "samples": 320
+    },
+    "storage": "sorted Vec"
+  },
+  "process_rss_at_completion_kib": 51952,
+  "query_condition": "independent full query each time; baseline incremental state reset",
+  "timing_scope": "in-process operations only; fixture creation and deletion excluded",
+  "variant": "vec"
+}

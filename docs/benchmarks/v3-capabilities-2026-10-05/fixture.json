@@ -1,0 +1,28 @@
+{
+  "root": "/var/folders/n_/ty_109cx3bsbjj8_vcsv4q3w0000gn/T/fv-v3-probes-zyuc9cwf",
+  "line_bytes": 128,
+  "files": [
+    {
+      "path": "/var/folders/n_/ty_109cx3bsbjj8_vcsv4q3w0000gn/T/fv-v3-probes-zyuc9cwf/log-10mib.log",
+      "bytes": 10485760,
+      "first_line": 17,
+      "last_hit_line": 81905,
+      "last_hit_offset": 10483712
+    },
+    {
+      "path": "/var/folders/n_/ty_109cx3bsbjj8_vcsv4q3w0000gn/T/fv-v3-probes-zyuc9cwf/log-100mib.log",
+      "bytes": 104857600,
+      "first_line": 17,
+      "last_hit_line": 819185,
+      "last_hit_offset": 104855552
+    },
+    {
+      "path": "/var/folders/n_/ty_109cx3bsbjj8_vcsv4q3w0000gn/T/fv-v3-probes-zyuc9cwf/log-1024mib.log",
+      "bytes": 1073741824,
+      "first_line": 17,
+      "last_hit_line": 8388593,
+      "last_hit_offset": 1073739776
+    }
+  ],
+  "cache": "warm filesystem after actual byte writes, not sparse or cold disk"
+}

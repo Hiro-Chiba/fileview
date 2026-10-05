@@ -1,0 +1,60 @@
+{
+  "verified_at_jst": "2026-10-04T23:56:35+09:00",
+  "platform": "Linux aarch64 (Docker)",
+  "image": "rust:1.93-bookworm",
+  "rustc": "1.93.1 (01f6ddf75 2026-02-11)",
+  "git": "2.39.5",
+  "python": "3.11.2",
+  "uid": 1000,
+  "source_mount": "read-only; copied into container /tmp/work without target or .git",
+  "cargo_home": "/tmp/cargo",
+  "home": "/tmp/home",
+  "minimal": {
+    "command": "cargo test --locked --no-default-features --all-targets",
+    "passed": 1082,
+    "failed": 0,
+    "ignored": 16,
+    "exit_status": 0
+  },
+  "default": {
+    "command": "cargo test --locked --all-targets",
+    "passed": 1136,
+    "failed": 0,
+    "ignored": 16,
+    "output": "linux-validation.txt",
+    "exit_status": 0
+  },
+  "non_utf8": {
+    "filesystem_probe": "passed",
+    "tests_executed": [
+      "symlink_directories_are_not_followed_and_non_utf8_paths_are_preserved",
+      "rejects_unrepresentable_paths_without_lossy_aliases",
+      "json_search_reports_non_utf8_paths_without_panicking"
+    ]
+  },
+  "pty": {
+    "command": "python3 scripts/workspace_pty_smoke.py",
+    "minimal": "passed",
+    "default": "passed",
+    "cases": [
+      "structured filters",
+      "cancel and reopen",
+      "Enter selects matching file and preview content",
+      "invalid query clears stale matches",
+      "watcher updates an open search",
+      "hidden toggle",
+      "deleting selected result then selecting remaining result",
+      "real stdin pipe remains interactive",
+      "stdin searches only supplied paths and creates no workspace cache"
+    ]
+  },
+  "cleanup": {
+    "validation_containers_remaining": false,
+    "container_targets_and_cargo_caches_removed": true
+  },
+  "limitations": [
+    "Rust 1.93.1, not the Rust 1.90 minimum supported version",
+    "all-targets does not include doctests",
+    "No Windows runtime verification"
+  ]
+}

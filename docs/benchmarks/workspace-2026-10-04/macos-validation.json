@@ -1,0 +1,76 @@
+{
+  "completed_at_jst": "2026-10-04T23:57:56+09:00",
+  "platform": "macOS 27.0.1 arm64",
+  "rustc": "1.98.1",
+  "msrv_compile": "1.90.0",
+  "test_configurations": {
+    "default": {
+      "passed": 1136,
+      "failed": 0,
+      "ignored": 16
+    },
+    "minimal": {
+      "passed": 1082,
+      "failed": 0,
+      "ignored": 16
+    }
+  },
+  "checks": {
+    "fmt": {
+      "passed": true,
+      "output": ""
+    },
+    "clippy": {
+      "passed": true,
+      "output": "Checking fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.53s"
+    },
+    "clippy-minimal": {
+      "passed": true,
+      "output": "Checking fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.31s"
+    },
+    "doc": {
+      "passed": true,
+      "output": "Documenting fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n    Checking fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.97s\n   Generated /Users/chibahiroyuki/hobby/apps/fileview/target/doc/fileview/index.html and 1 other file"
+    },
+    "msrv": {
+      "passed": true,
+      "output": "Checking fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.25s"
+    },
+    "build": {
+      "passed": true,
+      "output": "Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.24s"
+    },
+    "pty": {
+      "passed": true,
+      "output": "PASS structured search, cancel/reopen, Enter/preview, invalid query, live updates, hidden toggle, result deletion\nPASS real stdin pipe remains interactive, searches supplied paths, and creates no workspace cache"
+    }
+  },
+  "mcp_process_smoke": {
+    "tool_registration": true,
+    "live_update_same_process": true,
+    "invalid_limit_rejected": true
+  },
+  "source_sha256": {
+    "Cargo.toml": "8194e091082b55ac5f883a417345868ea7571505ef57876ab6c3d6e1bbf3101f",
+    "Cargo.lock": "442bf8206c3b5bc551b81a29db619d7ddcc547635aeb1c2b1e0ffcba3fe630b4",
+    "src/app/event_loop.rs": "e233843b56a60985b3dfb3e16f7aa11e05ccba9793cc802777f432b8a88cdcb2",
+    "src/git/status.rs": "5f69b2d47c5780cf9c4700f52fa5158504da17692f1c86b716053887d707f499",
+    "src/mcp/handlers/workspace.rs": "ff868517c25733c79ad165e2f98626a7391a0c7f8184aee81102def82cebf3cf",
+    "scripts/workspace_pty_smoke.py": "8fab417f175059ac1e341fcda2a6331363a352c1c88655115974b65574881550",
+    "src/workspace/cache.rs": "984b6441d96ac0011e72490f92927f83497d24b8e110dc6c4dcfd6cbfe3fc009",
+    "src/workspace/cli.rs": "7eb1ff756c961d252b2f2221280a171462a0b3649a72559845c0db662aec0204",
+    "src/workspace/index.rs": "fe6945ce3c3855fbf569d26ff4367ed48a13380b49b91286f7218c335afa312d",
+    "src/workspace/mod.rs": "0d2f8b289ca0d522a53d8a61a341634bd266215b8b3016f325a360c74f4add72",
+    "src/workspace/query.rs": "5d2d0fe032e296979f36700b1315955ca9218e5d8108112709a77c77a5a531f9",
+    "src/workspace/saved.rs": "160c349e3473bb49e0097bfc01ffa97f76b238e3908af90720f9b0f6fea66624",
+    "src/workspace/service.rs": "8674eb762360e8cd8f6469fd0ffdc33a563aef8203962e4b7c249bf4fc600ffa",
+    "tests/workspace_cli.rs": "aa9d6d0ddb4a67d119ffeb19cb6bdda4b8ecde46cfc50419d2207bd05eb67970",
+    "tests/workspace_stress.rs": "f07ca98c9f89cad0789747ab7eb876b873755ca023abded850d493595cbdf36b"
+  },
+  "limitations": [
+    "16 existing ignored tests per configuration",
+    "Invalid UTF-8 filesystem paths verified on Linux, not this APFS setup",
+    "No Windows execution",
+    "Search benchmarks measure computation with warm filesystem cache, not full UI latency"
+  ]
+}
