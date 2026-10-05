@@ -1,0 +1,193 @@
+{
+  "arch": "aarch64",
+  "baseline": {
+    "open_and_search": {
+      "max_ms": 68.36904100000001,
+      "p50_ms": 58.102334,
+      "p95_ms": 67.11449999999999,
+      "samples": 40
+    },
+    "queries": {
+      "file": {
+        "max_ms": 21.465875,
+        "p50_ms": 21.286917,
+        "p95_ms": 21.455459,
+        "samples": 40
+      },
+      "file_000420": {
+        "max_ms": 15.622416,
+        "p50_ms": 15.327209,
+        "p95_ms": 15.56325,
+        "samples": 40
+      },
+      "m42rs": {
+        "max_ms": 15.580916,
+        "p50_ms": 15.227334,
+        "p95_ms": 15.472166000000001,
+        "samples": 40
+      },
+      "md": {
+        "max_ms": 25.013417,
+        "p50_ms": 24.562333,
+        "p95_ms": 24.906875,
+        "samples": 40
+      },
+      "module_042": {
+        "max_ms": 22.65675,
+        "p50_ms": 22.014458,
+        "p95_ms": 22.5555,
+        "samples": 40
+      },
+      "png": {
+        "max_ms": 16.139542,
+        "p50_ms": 15.679875,
+        "p95_ms": 16.085709,
+        "samples": 40
+      },
+      "rs": {
+        "max_ms": 15.928999999999998,
+        "p50_ms": 15.521583999999999,
+        "p95_ms": 15.726459000000002,
+        "samples": 40
+      },
+      "zzzz_not_found": {
+        "max_ms": 14.89325,
+        "p50_ms": 14.557250000000002,
+        "p95_ms": 14.784708,
+        "samples": 40
+      }
+    },
+    "scan": {
+      "max_ms": 46.236459,
+      "p50_ms": 41.950874999999996,
+      "p95_ms": 43.57325,
+      "samples": 40
+    },
+    "search": {
+      "max_ms": 25.013417,
+      "p50_ms": 15.56325,
+      "p95_ms": 24.639708,
+      "samples": 320
+    }
+  },
+  "cache_condition": "warm filesystem cache after fixture creation and explicit warmup",
+  "directories": 100,
+  "engine": {
+    "cache_bytes": 15952802,
+    "cache_error": null,
+    "cache_load_and_revalidate": {
+      "max_ms": 392.991917,
+      "p50_ms": 386.545708,
+      "p95_ms": 391.316375,
+      "samples": 40
+    },
+    "cache_load_warm_os_cache": {
+      "max_ms": 132.71949999999998,
+      "p50_ms": 125.461833,
+      "p95_ms": 126.66308300000001,
+      "samples": 40
+    },
+    "cache_save": {
+      "max_ms": 59.219083999999995,
+      "p50_ms": 43.354292,
+      "p95_ms": 48.720959,
+      "samples": 40
+    },
+    "delta_matches_fresh_rebuild": true,
+    "delta_workload": "alternating create/delete; filesystem mutations excluded from timings",
+    "directory_1000_file_delta": {
+      "max_ms": 4.792125,
+      "p50_ms": 2.683084,
+      "p95_ms": 4.387709,
+      "samples": 40
+    },
+    "initialize_without_cache": {
+      "max_ms": 265.830542,
+      "p50_ms": 257.95179099999996,
+      "p95_ms": 263.193917,
+      "samples": 40
+    },
+    "process_rss_kib": {
+      "after_first_build": 72848,
+      "after_repeated_cache_loads": 728208,
+      "after_repeated_rebuilds": 98816,
+      "before_build": 51488,
+      "scope": "whole process current RSS; includes allocator retention and baseline work"
+    },
+    "queries": {
+      "file": {
+        "max_ms": 7.298500000000001,
+        "p50_ms": 5.113334,
+        "p95_ms": 5.486209,
+        "samples": 40
+      },
+      "file_000420": {
+        "max_ms": 2.2629170000000003,
+        "p50_ms": 1.889459,
+        "p95_ms": 2.21975,
+        "samples": 40
+      },
+      "m42rs": {
+        "max_ms": 1.839917,
+        "p50_ms": 1.531875,
+        "p95_ms": 1.694959,
+        "samples": 40
+      },
+      "md": {
+        "max_ms": 6.28425,
+        "p50_ms": 5.873875,
+        "p95_ms": 6.0926670000000005,
+        "samples": 40
+      },
+      "module_042": {
+        "max_ms": 5.584124999999999,
+        "p50_ms": 5.435874999999999,
+        "p95_ms": 5.579167,
+        "samples": 40
+      },
+      "png": {
+        "max_ms": 2.0292090000000003,
+        "p50_ms": 1.6559579999999998,
+        "p95_ms": 1.9598749999999998,
+        "samples": 40
+      },
+      "rs": {
+        "max_ms": 2.082125,
+        "p50_ms": 1.578,
+        "p95_ms": 1.8476670000000002,
+        "samples": 40
+      },
+      "zzzz_not_found": {
+        "max_ms": 1.670917,
+        "p50_ms": 1.323375,
+        "p95_ms": 1.433666,
+        "samples": 40
+      }
+    },
+    "rebuild": {
+      "max_ms": 271.483542,
+      "p50_ms": 262.662833,
+      "p95_ms": 268.49137499999995,
+      "samples": 40
+    },
+    "search": {
+      "max_ms": 7.298500000000001,
+      "p50_ms": 1.839917,
+      "p95_ms": 5.912959,
+      "samples": 320
+    },
+    "single_file_delta": {
+      "max_ms": 1.30375,
+      "p50_ms": 0.992,
+      "p95_ms": 1.023167,
+      "samples": 40
+    },
+    "top_scores_match_baseline": true
+  },
+  "files": 100000,
+  "indexed_paths": 100100,
+  "iterations_per_query": 40,
+  "os": "macos",
+  "query_condition": "independent full query each time; baseline incremental state reset",
+  "timing_scope": "in-process operations only; fixture creation and deletion excluded"
+}

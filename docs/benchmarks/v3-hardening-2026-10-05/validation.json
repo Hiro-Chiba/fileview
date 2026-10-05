@@ -1,0 +1,78 @@
+{
+  "recorded_at_jst": "2026-10-05T12:10:56.871371+09:00",
+  "base_commit": "081ca0787b339f7482bf68e17157cffbbc75069d",
+  "state": "local uncommitted, no PR/push/release/workflow dispatch",
+  "macOS": {
+    "cpu": "Apple M4",
+    "ram_bytes": 17179869184,
+    "rustc": "1.98.1",
+    "msrv": "1.90.0",
+    "rg": "15.2.0",
+    "tests": {
+      "default": {
+        "passed": 1181,
+        "failed": 0,
+        "ignored": 16
+      },
+      "minimal": {
+        "passed": 1127,
+        "failed": 0,
+        "ignored": 16
+      }
+    },
+    "pty": "release workspace and content including16MiBsingleline; actual1GiBwarmfile"
+  },
+  "linux": {
+    "image": "rust:1.93-bookworm",
+    "architecture": "aarch64",
+    "rustc": "1.93.1",
+    "rg": "13.0.0",
+    "uid": 1000,
+    "tests": {
+      "minimal": {
+        "passed": 1173,
+        "failed": 0,
+        "ignored": 16
+      },
+      "default": {
+        "passed": 1227,
+        "failed": 0,
+        "ignored": 16
+      }
+    },
+    "commands": [
+      "cargo test --locked --no-default-features --all-targets",
+      "cargo test --locked --all-targets"
+    ],
+    "pty": "both configs workspace/content including16MiBsingleline;actual10MiBdebugTUI",
+    "source_mount": "readonly copied to isolated container",
+    "container_removed": true
+  },
+  "windows": {
+    "target": "x86_64-pc-windows-gnu",
+    "compiler": "Rust1.93.1 with MinGW GCC POSIX on Linux",
+    "commands": [
+      "cargo check --locked --target x86_64-pc-windows-gnu --no-default-features --all-targets",
+      "cargo check --locked --target x86_64-pc-windows-gnu --all-targets"
+    ],
+    "passed": true,
+    "linked": false,
+    "runtime_verified": false
+  },
+  "source_hashes": {
+    "src/app/preview.rs": "6c362826c0fff354ad5dab53edb0d0aff34ee3ba6f825e2d25b0d1bae45dabfa",
+    "src/app/preview_worker.rs": "73c8909367ccb89e1c69227b7a956af1d273225ef7d396343f705b7e90a95151",
+    "src/render/preview/text.rs": "f54bf8f50ed9df826229cf6cd91318c334c9a3cb59d9e8279ed3a5accef78828",
+    "src/render/preview/text_syntax.rs": "f65f441c61d784c28a6a2e052bdabac5a78e6cca8eecb86dd5877b582eb1b96f",
+    "src/workspace/content.rs": "e6284e4868d993fa630ff676143d705e5509b2fc456e7458cc56a25e56ccf6ac",
+    "src/watcher/mod.rs": "5d4bdd259828bc61db168491fb7fc582376351e6f014a2b877c8ab51177a5799",
+    "scripts/content_pty_smoke.py": "102ed59ceaa83cd43b8b1931f99a9c62f28564ca00d0669ecbcd6317f3da20e9",
+    ".github/workflows/ci.yml": "0b83ebdce56a2933d327963a11e2632594791c9f041c396ff61945ac1d97a9a0"
+  },
+  "cross_platform_source_manifest": "171 entries matched local final sources",
+  "limitations": [
+    "Windows native runtime is not available locally; local CI provisionsrg andbothfeaturesbut wasnotrunremotely.",
+    "Syntax reconstruction limits are cooperative and can retain plain text with visible reason.",
+    "Ripgrep child memory still grows with giant singlelines. RSS smoke timings are not a controlled benchmark."
+  ]
+}

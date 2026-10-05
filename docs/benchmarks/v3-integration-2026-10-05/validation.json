@@ -1,0 +1,39 @@
+{
+  "recorded_at_jst": "2026-10-05T11:42:04.544247+09:00",
+  "base_commit": "081ca0787b339f7482bf68e17157cffbbc75069d",
+  "state": "uncommitted local implementation, no PR/push/release",
+  "platform": "macOS 27.0.1, Apple M4, 16GiB, APFS",
+  "rustc": "1.98.1",
+  "ripgrep": "15.2.0",
+  "msrv_checked": "1.90.0",
+  "tests": {
+    "default": {
+      "passed": 1169,
+      "failed": 0,
+      "ignored": 16
+    },
+    "minimal": {
+      "passed": 1115,
+      "failed": 0,
+      "ignored": 16
+    }
+  },
+  "checks": "format; default/minimal all-target Clippy with warnings denied; rustdoc with warnings denied; MSRV all-target check; default release build; existing and content PTY scripts",
+  "source_hashes": {
+    "src/app/event_loop.rs": "20c1ca11034c12c3d46907263ed4da150a694f218281538f1c5097f8e22d6be4",
+    "src/app/preview.rs": "657d3e6cef13d7b9e6e08ffa38e73c2298a3e190c02eb4f6cf90c2509b676b0a",
+    "src/app/preview_worker.rs": "43dea4ef461d6058bfa4c88b31ee263a3befd2f58df9092f516be7009647767f",
+    "src/render/preview/window.rs": "e0ae5fe152d6782dc1c97222d041d900f8071ea5cb194c73ab2e2c8e734a016f",
+    "src/render/preview/text.rs": "8510e01d9c1cbf9316208123a8a367242cd0c0a4df3b78973f417bae73a699ba",
+    "src/render/fuzzy.rs": "e009bf8ac3b5f955ded47a9cb72cfd27b5f19002b9a7517dcf35a64df5acc45b",
+    "src/workspace/content.rs": "6654f63d90bf1d31a49f9b51b126f66f60cf46c5bcc4b76f05ab5a8445acc4e8",
+    "src/workspace/content_service.rs": "a2c46485b359fea2fa9f6dc364efd1741c05a4584dfdd6c6e78068f06d1dcb4a",
+    "src/workspace/cli.rs": "113d8b174d96ba56152b66920456e52375d019b4638fd34dc0d7ba5b5cd2aac1",
+    "src/mcp/handlers/workspace.rs": "3f8ddf5d250b6ab4f906d471674dfde4be8bcec066663cbb50bed024738aa5c3",
+    "src/mcp/registry.rs": "41e6bc224fa0d4d599f3456a0df98fdcbc43c47b75eefcca597d00a7b2a6db01",
+    "tests/workspace_cli.rs": "a8519b6bb88e7052fe6e8f7c3910060c50a5a60847b59504d8e3516c11ec8714",
+    "scripts/content_pty_smoke.py": "0244d48967babd647041486bf809a3a70b7f7f3395a4af58b9a57193aff20306",
+    "scripts/large_preview_pty.py": "ff61a78ed277d699fb66b632987bb0339db5c0ee76bc5861e77fb8cce4b05736"
+  },
+  "limits": "TUI RSS is sampled, excludes rg child, is not a peak or hard cap. Warm 1GiB fully written file. Other operating systems and cold/network storage were not validated. Distant preview pages plain text; oversized rg JSON records error. Temporary fixtures removed by context-manager cleanup."
+}

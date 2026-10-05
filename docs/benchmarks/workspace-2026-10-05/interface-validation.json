@@ -1,0 +1,57 @@
+{
+  "checked_at_jst": "2026-10-05T00:10:53+09:00",
+  "platform": "macOS arm64",
+  "rustc": "1.98.1",
+  "msrv_compile": "1.90.0",
+  "change": "One fv search command; saved-query management removed; MCP query required",
+  "checks": {
+    "tests": {
+      "passed": 1136,
+      "failed": 0,
+      "ignored": 16
+    },
+    "minimal": {
+      "passed": 1082,
+      "failed": 0,
+      "ignored": 16
+    },
+    "clippy": {
+      "passed": true,
+      "output": "Checking fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.68s"
+    },
+    "clippy-minimal": {
+      "passed": true,
+      "output": "Checking fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.25s"
+    },
+    "doc": {
+      "passed": true,
+      "output": "Checking fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n Documenting fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.25s\n   Generated /Users/chibahiroyuki/hobby/apps/fileview/target/doc/fileview/index.html and 1 other file"
+    },
+    "msrv": {
+      "passed": true,
+      "output": "Checking fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.05s"
+    },
+    "build": {
+      "passed": true,
+      "output": "Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.16s"
+    },
+    "pty": {
+      "passed": true,
+      "output": "PASS structured search, cancel/reopen, Enter/preview, invalid query, live updates, hidden toggle, result deletion\nPASS real stdin pipe remains interactive, searches supplied paths, and creates no workspace cache"
+    }
+  },
+  "fmt_and_diff_check": true,
+  "actual_cli_mcp_parity_and_schema_check": true,
+  "source_sha256": {
+    "src/workspace/cli.rs": "acce7147b5bbf9c37595a4b32cd977b331c692a6c5b03145022b9ad1a39389b0",
+    "src/workspace/mod.rs": "fe721f2913b8e941e6c47bfb9736c9600ed1207027f64be16e2b8c83ac15b01e",
+    "src/workspace/service.rs": "6d8fb07f6e396ecc21efe5716e7053194884b59d19a615556b9f5c6f52a34090",
+    "src/main.rs": "229dc8c47a04630cec3d064aa84bff76012778435af74d7bafeb1413d94464b5",
+    "src/app/config.rs": "ef2baae1ee11a70274fb30b7f46f4affdd5791d4516a69ec2fcd8d21b199a8f9",
+    "src/mcp/handlers/workspace.rs": "e0c300b848f691ade3fe29f20c363862f0fabb59106ff68734f7915a64f7fcc4",
+    "src/mcp/registry.rs": "2c4f4e40d8abf1a595231d785df2fc0d71b21e309e975301e62dfc7e8befc9a0",
+    "tests/workspace_cli.rs": "21bee66c707a9b3787c2c1157c73b942a08b5e9f29c788eb46a5e692d997af50",
+    "scripts/workspace_pty_smoke.py": "c2a35803b7866742940e14cdc66fc20d76d740eaffaefc5ce9698d3ecfc5628d"
+  },
+  "scope": "Local simplification verification. No new performance measurement or Linux/Windows run in this pass. Previous reports remain historical."
+}

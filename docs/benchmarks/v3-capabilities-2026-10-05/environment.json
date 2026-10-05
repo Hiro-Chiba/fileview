@@ -1,0 +1,24 @@
+{
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "date_jst": "2026-10-05",
+  "cache": "warm, fixtures fully written and fsynced",
+  "runs": "sequential release profile",
+  "scope": "isolated prototypes, not full TUI",
+  "cpu": "Apple M4",
+  "physical_memory_bytes": 17179869184,
+  "filesystem": "APFS on SSD",
+  "rustc": "1.98.1",
+  "msrv_checked": "1.90.0",
+  "ripgrep": "15.2.0",
+  "release_profile": "opt-level=z, lto=true, codegen-units=1",
+  "recorded_at_jst": "2026-10-05T11:22:14.517810+09:00",
+  "source_hashes": {
+    "examples/support/copy_probe.rs": "dbe1ad5204522a321e74c3ee94b98ff65fc09fd68de8ae4c7383429d07c01e96",
+    "examples/support/viewport_probe.rs": "e15b6e516d2dbb24d5ed7bc676b29bc0976d7e9463b764e958433ac20d2cad05",
+    "examples/support/content_probe.rs": "9f009438a6e374d2ed91a6163cb67e72a87c565a0265a1a4a8ce5b36adfbc5c6",
+    "examples/copy_probe.rs": "5731ad3872442eacb82f72b33e5e031d2b54b7df0b2405c2edd9fd193871cd29",
+    "examples/viewport_probe.rs": "a5f0b67c3c0418d3fa47baf9e3d54acc17112d5b02ab7ef6c2baa714913fc536",
+    "examples/content_view_probe.rs": "4ae2b55bf4d2dae85aa53191a17827b5fc2a0569d59f352a78086d5cb5b65c76",
+    "examples/content_search_probe.rs": "ca9cb36d9f69c6ceaffffb1b2dd2dcaee9269767c495ad5d5255ff2198543924"
+  }
+}

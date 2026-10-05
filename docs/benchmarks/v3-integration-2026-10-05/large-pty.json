@@ -1,0 +1,12 @@
+{
+  "file_bytes": 1073741824,
+  "final_line": 8388608,
+  "tui_rss_kib": {
+    "before": 11072,
+    "after_search": 11840,
+    "after_preview": 11872,
+    "after_cancel": 13408
+  },
+  "result": "passed",
+  "scope": "real release TUI, warm actual file; sampled RSS, not continuous peak or latency benchmark"
+}

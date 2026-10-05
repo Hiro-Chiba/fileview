@@ -1,0 +1,71 @@
+   Compiling fileview v2.8.4 (/Users/chibahiroyuki/hobby/apps/fileview)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.97s
+     Running unittests examples/content_search_probe.rs (target/debug/examples/content_search_probe-6c9bbaf0fc383673)
+
+running 13 tests
+test content_probe::tests::non_utf8_paths_remain_exact ... ok
+test viewport_probe::tests::cancellation_and_mid_read_mutation_are_detected ... ok
+test viewport_probe::tests::pages_match_whole_small_fixture_and_near_eof ... ok
+test viewport_probe::tests::rejects_changed_truncated_and_replaced_files ... ok
+test viewport_probe::tests::same_length_edit_invalidates_anchor_by_modification_time ... ok
+test viewport_probe::tests::huge_single_line_and_utf8_cap_remain_bounded ... ok
+test viewport_probe::tests::match_near_end_of_long_line_is_visible_without_reading_prefix ... ok
+test tests::emitted_line_anchor_opens_the_actual_match_line_and_rejects_later_changes ... ok
+test content_probe::tests::cancellation_limits_and_changed_file_are_explicit ... ok
+test content_probe::tests::ignores_hidden_binary_and_symlink_paths_and_reports_late_nul ... ok
+test content_probe::tests::chunk_boundaries_unicode_crlf_and_overlapping_literal_semantics ... ok
+test tests::streamed_locations_match_installed_rg_json_and_whole_read_reference ... ok
+test content_probe::tests::long_line_keeps_bounded_snippet_and_exact_line_start ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests examples/content_view_probe.rs (target/debug/examples/content_view_probe-8d19473bc922a350)
+
+running 15 tests
+test content_probe::tests::non_utf8_paths_remain_exact ... ok
+test viewport_probe::tests::cancellation_and_mid_read_mutation_are_detected ... ok
+test viewport_probe::tests::huge_single_line_and_utf8_cap_remain_bounded ... ok
+test viewport_probe::tests::pages_match_whole_small_fixture_and_near_eof ... ok
+test viewport_probe::tests::match_near_end_of_long_line_is_visible_without_reading_prefix ... ok
+test viewport_probe::tests::same_length_edit_invalidates_anchor_by_modification_time ... ok
+test viewport_probe::tests::rejects_changed_truncated_and_replaced_files ... ok
+test content_probe::tests::cancellation_limits_and_changed_file_are_explicit ... ok
+test tests::ordinary_long_prefix_is_scrolled_to_a_japanese_match ... ok
+test tests::streamed_search_renders_unicode_crlf_match_at_the_right_line ... ok
+test content_probe::tests::ignores_hidden_binary_and_symlink_paths_and_reports_late_nul ... ok
+test content_probe::tests::chunk_boundaries_unicode_crlf_and_overlapping_literal_semantics ... ok
+test tests::query_wider_than_terminal_renders_its_visible_prefix ... ok
+test tests::far_match_on_a_giant_line_is_visible_without_loading_the_prefix ... ok
+test content_probe::tests::long_line_keeps_bounded_snippet_and_exact_line_start ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests examples/copy_probe.rs (target/debug/examples/copy_probe-dd48feadb2007340)
+
+running 11 tests
+test copy_probe::tests::cancellation_before_start_and_commit_boundary ... ok
+test copy_probe::tests::cancellation_removes_partial_output_and_keeps_source ... ok
+test copy_probe::tests::cancellation_and_commit_have_exactly_one_winner ... ok
+test copy_probe::tests::empty_regular_file_and_invalid_chunk ... ok
+test copy_probe::tests::source_changes_are_rejected_without_publishing ... ok
+test copy_probe::tests::symlink_source_and_dangling_destination_are_rejected ... ok
+test copy_probe::tests::partial_write_disk_full_is_cleaned ... ok
+test copy_probe::tests::accepted_cancellation_after_last_write_still_prevents_publication ... ok
+test copy_probe::tests::replacing_source_with_same_size_and_mtime_is_detected_by_identity ... ok
+test copy_probe::tests::successful_copy_and_monotonic_progress ... ok
+test copy_probe::tests::existing_and_racing_destinations_are_never_overwritten ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests examples/viewport_probe.rs (target/debug/examples/viewport_probe-20d86493637b7a63)
+
+running 6 tests
+test viewport_probe::tests::same_length_edit_invalidates_anchor_by_modification_time ... ok
+test viewport_probe::tests::pages_match_whole_small_fixture_and_near_eof ... ok
+test viewport_probe::tests::rejects_changed_truncated_and_replaced_files ... ok
+test viewport_probe::tests::cancellation_and_mid_read_mutation_are_detected ... ok
+test viewport_probe::tests::match_near_end_of_long_line_is_visible_without_reading_prefix ... ok
+test viewport_probe::tests::huge_single_line_and_utf8_cap_remain_bounded ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

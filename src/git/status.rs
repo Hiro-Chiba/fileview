@@ -8,7 +8,11 @@ use super::operations::find_git_executable;
 
 /// Create a git Command using the validated executable path
 fn git_command() -> Option<Command> {
-    find_git_executable().map(Command::new)
+    find_git_executable().map(|executable| {
+        let mut command = Command::new(executable);
+        command.env("GIT_OPTIONAL_LOCKS", "0");
+        command
+    })
 }
 
 /// Git file status
@@ -34,7 +38,7 @@ pub enum FileStatus {
 }
 
 /// Git repository status information
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct GitStatus {
     /// Root directory of the git repository
     repo_root: PathBuf,
@@ -46,14 +50,24 @@ pub struct GitStatus {
     branch: Option<String>,
     /// Files that are staged (have changes in the index)
     staged_files: std::collections::HashSet<PathBuf>,
+    include_ignored: bool,
 }
 
 impl GitStatus {
     /// Detect git repository and load status
     pub fn detect(path: &Path) -> Option<Self> {
+        Self::detect_with_ignored(path, true)
+    }
+
+    /// Load workspace predicates without enumerating ignored files.
+    pub fn detect_for_workspace(path: &Path) -> Option<Self> {
+        Self::detect_with_ignored(path, false)
+    }
+
+    fn detect_with_ignored(path: &Path, include_ignored: bool) -> Option<Self> {
         let repo_root = find_git_root(path)?;
         let branch = get_current_branch(&repo_root);
-        let (statuses, dir_statuses, staged_files) = load_git_status(&repo_root);
+        let (statuses, dir_statuses, staged_files) = load_git_status(&repo_root, include_ignored);
 
         Some(Self {
             repo_root,
@@ -61,6 +75,7 @@ impl GitStatus {
             dir_statuses,
             branch,
             staged_files,
+            include_ignored,
         })
     }
 
@@ -102,7 +117,8 @@ impl GitStatus {
     /// Refresh git status and report whether anything changed.
     pub fn refresh(&mut self) -> bool {
         let branch = get_current_branch(&self.repo_root);
-        let (statuses, dir_statuses, staged_files) = load_git_status(&self.repo_root);
+        let (statuses, dir_statuses, staged_files) =
+            load_git_status(&self.repo_root, self.include_ignored);
         let changed = self.branch != branch
             || self.statuses != statuses
             || self.dir_statuses != dir_statuses
@@ -140,6 +156,7 @@ impl GitStatus {
             dir_statuses: std::collections::HashMap::new(),
             branch: None,
             staged_files: std::collections::HashSet::new(),
+            include_ignored: true,
         }
     }
 }
@@ -153,8 +170,8 @@ fn find_git_root(path: &Path) -> Option<PathBuf> {
         .ok()?;
 
     if output.status.success() {
-        let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        Some(PathBuf::from(root))
+        let bytes = output.stdout.strip_suffix(b"\n").unwrap_or(&output.stdout);
+        status_path(bytes)
     } else {
         None
     }
@@ -193,6 +210,7 @@ fn get_current_branch(repo_root: &Path) -> Option<String> {
 /// Load git status for all files in the repository
 fn load_git_status(
     repo_root: &Path,
+    include_ignored: bool,
 ) -> (
     HashMap<PathBuf, FileStatus>,
     HashMap<PathBuf, FileStatus>,
@@ -209,35 +227,31 @@ fn load_git_status(
     let Some(mut cmd) = git_command() else {
         return (statuses, dir_statuses, staged_files);
     };
-    let output = cmd
-        .args(["status", "--porcelain=v1", "-uall", "--ignored"])
-        .current_dir(repo_root)
-        .output();
+    cmd.args(["status", "--porcelain=v1", "-z", "-uall"]);
+    if include_ignored {
+        cmd.arg("--ignored");
+    }
+    let output = cmd.current_dir(repo_root).output();
 
     let output = match output {
         Ok(o) if o.status.success() => o,
         _ => return (statuses, dir_statuses, staged_files),
     };
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-
-    for line in stdout.lines() {
-        if line.len() < 4 {
+    let mut records = output.stdout.split(|byte| *byte == 0);
+    while let Some(record) = records.next() {
+        if record.len() < 4 {
             continue;
         }
-
-        let index_status = line.chars().next().unwrap_or(' ');
-        let worktree_status = line.chars().nth(1).unwrap_or(' ');
-        let path_str = &line[3..];
-
-        // Handle renamed files (format: "R  old -> new")
-        let file_path = if path_str.contains(" -> ") {
-            path_str.split(" -> ").last().unwrap_or(path_str)
-        } else {
-            path_str
+        let index_status = record[0] as char;
+        let worktree_status = record[1] as char;
+        // With -z, paths are raw bytes and rename destinations precede sources.
+        let Some(path) = status_path(&record[3..]) else {
+            continue;
         };
-
-        let path = PathBuf::from(file_path);
+        if matches!(index_status, 'R' | 'C') || matches!(worktree_status, 'R' | 'C') {
+            let _ = records.next();
+        }
         let status = parse_status(index_status, worktree_status);
 
         // Track staged files (index has changes: M, A, D, R, C)
@@ -264,6 +278,19 @@ fn load_git_status(
     }
 
     (statuses, dir_statuses, staged_files)
+}
+
+// Git emits native path bytes on Unix and UTF-8 paths on Windows.
+fn status_path(bytes: &[u8]) -> Option<PathBuf> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        Some(PathBuf::from(std::ffi::OsStr::from_bytes(bytes)))
+    }
+    #[cfg(not(unix))]
+    {
+        std::str::from_utf8(bytes).ok().map(PathBuf::from)
+    }
 }
 
 /// Parse git status characters into FileStatus
@@ -419,5 +446,110 @@ mod tests {
             FileStatus::Untracked
         );
         assert!(!status.refresh());
+    }
+    #[test]
+    fn workspace_status_excludes_ignored_entries_and_preserves_visible_changes() {
+        let temp = tempdir().unwrap();
+        if !StdCommand::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(temp.path())
+            .status()
+            .is_ok_and(|status| status.success())
+        {
+            return;
+        }
+        fs::write(temp.path().join(".gitignore"), "ignored.txt\n").unwrap();
+        fs::write(temp.path().join("ignored.txt"), "ignored").unwrap();
+        fs::write(temp.path().join("visible.txt"), "visible").unwrap();
+        let full = GitStatus::detect(temp.path()).unwrap();
+        assert_eq!(
+            full.get_status(Path::new("ignored.txt")),
+            FileStatus::Ignored
+        );
+        let mut workspace = GitStatus::detect_for_workspace(temp.path()).unwrap();
+        assert_eq!(
+            workspace.get_status(Path::new("ignored.txt")),
+            FileStatus::Clean
+        );
+        assert_eq!(
+            workspace.get_status(Path::new("visible.txt")),
+            FileStatus::Untracked
+        );
+        assert!(!workspace.refresh());
+        assert_eq!(
+            workspace.get_status(Path::new("ignored.txt")),
+            FileStatus::Clean
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn nul_status_handles_unicode_quotes_newlines_and_rename_destinations() {
+        let temp = tempdir().unwrap();
+        let git = |args: &[&str]| {
+            StdCommand::new("git")
+                .args(args)
+                .current_dir(temp.path())
+                .output()
+                .unwrap()
+        };
+        if !git(&["init", "--quiet"]).status.success() {
+            return;
+        }
+        for name in [
+            "日本語.txt",
+            "quote\"file.txt",
+            "line\nfile.txt",
+            "space name.txt",
+            "arrow -> name.txt",
+        ] {
+            fs::write(temp.path().join(name), "contents").unwrap();
+        }
+        let status = GitStatus::detect(temp.path()).unwrap();
+        for name in [
+            "日本語.txt",
+            "quote\"file.txt",
+            "line\nfile.txt",
+            "space name.txt",
+            "arrow -> name.txt",
+        ] {
+            assert_eq!(
+                status.get_status(Path::new(name)),
+                FileStatus::Untracked,
+                "{name:?}"
+            );
+        }
+        assert!(git(&["add", "."]).status.success());
+        assert!(git(&[
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "--quiet",
+            "-m",
+            "fixture"
+        ])
+        .status
+        .success());
+        fs::rename(
+            temp.path().join("日本語.txt"),
+            temp.path().join("renamed -> 日本語.txt"),
+        )
+        .unwrap();
+        assert!(git(&["add", "-A"]).status.success());
+        let status = GitStatus::detect(temp.path()).unwrap();
+        assert_eq!(
+            status.get_status(Path::new("renamed -> 日本語.txt")),
+            FileStatus::Renamed
+        );
+        fs::write(temp.path().join("space name.txt"), "modified").unwrap();
+        let status = GitStatus::detect(temp.path()).unwrap();
+        assert_eq!(
+            status.get_status(Path::new("space name.txt")),
+            FileStatus::Modified
+        );
     }
 }

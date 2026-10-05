@@ -1,0 +1,48 @@
+Traceback (most recent call last):
+  File "/tmp/fv-work/scripts/content_pty_smoke.py", line 64, in <module>
+    smoke(str(Path(args.binary).resolve()))
+  File "/tmp/fv-work/scripts/content_pty_smoke.py", line 35, in smoke
+    app.wait_for(lambda: "LAST_PAGE_MARKER" in app.screen.text() and "10000" in app.screen.text(), "bounded last page")
+  File "/tmp/fv-work/scripts/workspace_pty_smoke.py", line 130, in wait_for
+    raise AssertionError(f"Timed out waiting for {description}\n{self.screen.text()}")
+AssertionError: Timed out waiting for bounded last page
+┌  sample.log (press o or q to close)  ────────────────────────────────────────────────────────────────────────────────┐
+│   1 FIRST_PAGE_MARKER                                                                                                │
+│   2 ROW_00002 ordinary text                                                                                          │
+│   3 ROW_00003 ordinary text                                                                                          │
+│   4 ROW_00004 ordinary text                                                                                          │
+│   5 ROW_00005 ordinary text                                                                                          │
+│   6 ROW_00006 ordinary text                                                                                          │
+│   7 ROW_00007 ordinary text                                                                                          │
+│   8 ROW_00008 ordinary text                                                                                          │
+│   9 ROW_00009 ordinary text                                                                                          │
+│  10 ROW_00010 ordinary text                                                                                          │
+│  11 ROW_00011 ordinary text                                                                                          │
+│  12 ROW_00012 ordinary text                                                                                          │
+│  13 ROW_00013 ordinary text                                                                                          │
+│  14 ROW_00014 ordinary text                                                                                          │
+│  15 ROW_00015 ordinary text                                                                                          │
+│  16 ROW_00016 ordinary text                                                                                          │
+│  17 ROW_00017 ordinary text                                                                                          │
+│  18 ROW_00018 ordinary text                                                                                          │
+│  19 ROW_00019 ordinary text                                                                                          │
+│  20 ROW_00020 ordinary text                                                                                          │
+│  21 ROW_00021 ordinary text                                                                                          │
+│  22 ROW_00022 ordinary text                                                                                          │
+│  23 ROW_00023 ordinary text                                                                                          │
+│  24 ROW_00024 ordinary text                                                                                          │
+│  25 ROW_00025 ordinary text                                                                                          │
+│  26 ROW_00026 ordinary text                                                                                          │
+│  27 ROW_00027 ordinary text                                                                                          │
+│  28 ROW_00028 ordinary text                                                                                          │
+│  29 ROW_00029 ordinary text                                                                                          │
+│  30 ROW_00030 ordinary text                                                                                          │
+│  31 ROW_00031 ordinary text                                                                                          │
+│  32 ROW_00032 ordinary text                                                                                          │
+│  33 ROW_00033 ordinary text                                                                                          │
+│  34 ROW_00034 ordinary text                                                                                          │
+│  35 ROW_00035 ordinary text                                                                                          │
+│  36 ROW_00036 ordinary text                                                                                          │
+│  37 ROW_00037 ordinary text                                                                                          │
+│  38 ROW_00038 ordinary text                                                                                          │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

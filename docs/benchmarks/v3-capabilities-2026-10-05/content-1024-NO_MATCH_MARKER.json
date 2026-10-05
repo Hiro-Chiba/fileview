@@ -1,0 +1,215 @@
+{
+  "experimental": true,
+  "input": "/var/folders/n_/ty_109cx3bsbjj8_vcsv4q3w0000gn/T/fv-v3-probes-zyuc9cwf/log-1024mib.log",
+  "input_bytes": 1073741824,
+  "measurement": "regular OS reads, cooperative cancellation between bounded chunks; warm filesystem cache if fixture was recently written; no production integration",
+  "memory": {
+    "peak_after_references_kib": 3072,
+    "peak_before_references_kib": 3008,
+    "rss_after_stream_kib": 3008,
+    "rss_before_kib": 2192
+  },
+  "needle": "NO_MATCH_MARKER",
+  "policy": "literal case-sensitive single-line UTF-8 query; skip NUL in first chunk, stop on later NUL with earlier hits retained; skip symlinks; bounded preceding-context snippets; changed stamp requires re-search before navigation",
+  "rg_reference": {
+    "first_hit_ms": null,
+    "hit_limit_reached": false,
+    "matches": [],
+    "total_ms": 240.33212500000002
+  },
+  "rg_version": "ripgrep 15.2.0 (rev e89fff89ac)",
+  "streaming": {
+    "cancel_ack": null,
+    "first_hit": null,
+    "locations": [],
+    "total": {
+      "max_ms": 1035.597125,
+      "p50_ms": 997.2524999999999,
+      "p95_ms": 1035.597125,
+      "samples": 10
+    },
+    "trials": [
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 981.597667
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 991.460208
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 1035.597125
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 1008.2838750000001
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 1011.2512499999999
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 959.467292
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 997.2524999999999
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 990.508375
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 1002.9433329999999
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 1073741824,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": null,
+          "hit_limit_reached": false,
+          "hits": 0,
+          "total_ms": 999.502083
+        }
+      }
+    ]
+  },
+  "whole_read_reference": null
+}
