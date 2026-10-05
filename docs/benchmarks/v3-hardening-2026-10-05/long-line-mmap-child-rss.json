@@ -1,0 +1,34 @@
+{
+  "scope": "rg explicit mmap child process only, warm files, one sample each; timing is smoke not benchmark",
+  "rg": "ripgrep 15.2.0 (rev e89fff89ac)",
+  "results": [
+    {
+      "pattern": "(\u65e5\u672c\u8a9eTARGET)(?-u:.*)",
+      "output_bytes": 126,
+      "max_rss_bytes": 284262400,
+      "elapsed_ms": 301.3371250126511,
+      "size_bytes": 134217728
+    },
+    {
+      "pattern": "(x)(?-u:.*)",
+      "output_bytes": 96,
+      "max_rss_bytes": 149766144,
+      "elapsed_ms": 4032.843833003426,
+      "size_bytes": 134217728
+    },
+    {
+      "size_bytes": 16777216,
+      "pattern": "(\u65e5\u672c\u8a9eTARGET)(?-u:.*)",
+      "output_bytes": 124,
+      "max_rss_bytes": 71172096,
+      "elapsed_ms": 383.4170409827493
+    },
+    {
+      "size_bytes": 16777216,
+      "pattern": "(x)(?-u:.*)",
+      "output_bytes": 96,
+      "max_rss_bytes": 54312960,
+      "elapsed_ms": 2143.404125003144
+    }
+  ]
+}

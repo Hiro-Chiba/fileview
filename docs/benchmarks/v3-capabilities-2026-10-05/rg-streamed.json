@@ -1,0 +1,300 @@
+[
+  {
+    "needle": "FV_NEAR_START",
+    "trials": [
+      {
+        "first_ms": 9.042165998835117,
+        "total_ms": 227.20558299624827,
+        "max_rss_bytes": 4702208,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      },
+      {
+        "first_ms": 9.492708995821886,
+        "total_ms": 221.8728339939844,
+        "max_rss_bytes": 4718592,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      },
+      {
+        "first_ms": 9.17870800185483,
+        "total_ms": 257.78625000384636,
+        "max_rss_bytes": 4653056,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      },
+      {
+        "first_ms": 10.336708000977524,
+        "total_ms": 219.96670799853746,
+        "max_rss_bytes": 4636672,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      },
+      {
+        "first_ms": 9.857917000772431,
+        "total_ms": 228.266000005533,
+        "max_rss_bytes": 4685824,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      },
+      {
+        "first_ms": 8.711541988304816,
+        "total_ms": 227.3911669908557,
+        "max_rss_bytes": 4653056,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      },
+      {
+        "first_ms": 10.187375009991229,
+        "total_ms": 252.93429200246464,
+        "max_rss_bytes": 4685824,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      },
+      {
+        "first_ms": 9.89349999872502,
+        "total_ms": 261.40879100421444,
+        "max_rss_bytes": 4685824,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      },
+      {
+        "first_ms": 12.05729199864436,
+        "total_ms": 235.49779200402554,
+        "max_rss_bytes": 4702208,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      },
+      {
+        "first_ms": 10.932874996797182,
+        "total_ms": 209.94854099990334,
+        "max_rss_bytes": 4767744,
+        "matches": [
+          {
+            "line": 17,
+            "offset": 2048
+          }
+        ]
+      }
+    ],
+    "scope": "rg --line-buffered JSON pipe, /usr/bin/time process RSS includes mapped pages; warm 1GiB fixture"
+  },
+  {
+    "needle": "FV_NEAR_END",
+    "trials": [
+      {
+        "first_ms": 305.5434999987483,
+        "total_ms": 306.9834579946473,
+        "max_rss_bytes": 4653056,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      },
+      {
+        "first_ms": 294.0114579978399,
+        "total_ms": 295.403708005324,
+        "max_rss_bytes": 4718592,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      },
+      {
+        "first_ms": 294.8725409951294,
+        "total_ms": 296.443208004348,
+        "max_rss_bytes": 4669440,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      },
+      {
+        "first_ms": 294.98104100639466,
+        "total_ms": 296.1842910008272,
+        "max_rss_bytes": 4702208,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      },
+      {
+        "first_ms": 244.56875000032596,
+        "total_ms": 245.65062500187196,
+        "max_rss_bytes": 4653056,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      },
+      {
+        "first_ms": 245.3828750003595,
+        "total_ms": 246.3452500087442,
+        "max_rss_bytes": 4751360,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      },
+      {
+        "first_ms": 260.9118340042187,
+        "total_ms": 261.9928749918472,
+        "max_rss_bytes": 4685824,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      },
+      {
+        "first_ms": 252.7738339995267,
+        "total_ms": 253.73099998978432,
+        "max_rss_bytes": 4669440,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      },
+      {
+        "first_ms": 250.5884580023121,
+        "total_ms": 251.6038329922594,
+        "max_rss_bytes": 4653056,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      },
+      {
+        "first_ms": 257.92716699652374,
+        "total_ms": 258.9964999933727,
+        "max_rss_bytes": 4669440,
+        "matches": [
+          {
+            "line": 8388593,
+            "offset": 1073739776
+          }
+        ]
+      }
+    ],
+    "scope": "rg --line-buffered JSON pipe, /usr/bin/time process RSS includes mapped pages; warm 1GiB fixture"
+  },
+  {
+    "needle": "NO_MATCH_MARKER",
+    "trials": [
+      {
+        "first_ms": null,
+        "total_ms": 260.62158300192095,
+        "max_rss_bytes": 4685824,
+        "matches": []
+      },
+      {
+        "first_ms": null,
+        "total_ms": 252.92425000225194,
+        "max_rss_bytes": 4636672,
+        "matches": []
+      },
+      {
+        "first_ms": null,
+        "total_ms": 261.1438339954475,
+        "max_rss_bytes": 4702208,
+        "matches": []
+      },
+      {
+        "first_ms": null,
+        "total_ms": 236.8494589900365,
+        "max_rss_bytes": 4685824,
+        "matches": []
+      },
+      {
+        "first_ms": null,
+        "total_ms": 233.4148750087479,
+        "max_rss_bytes": 4653056,
+        "matches": []
+      },
+      {
+        "first_ms": null,
+        "total_ms": 246.4630830072565,
+        "max_rss_bytes": 4653056,
+        "matches": []
+      },
+      {
+        "first_ms": null,
+        "total_ms": 257.94479199976195,
+        "max_rss_bytes": 4751360,
+        "matches": []
+      },
+      {
+        "first_ms": null,
+        "total_ms": 250.01366699871141,
+        "max_rss_bytes": 4718592,
+        "matches": []
+      },
+      {
+        "first_ms": null,
+        "total_ms": 247.32929099991452,
+        "max_rss_bytes": 4751360,
+        "matches": []
+      },
+      {
+        "first_ms": null,
+        "total_ms": 254.00862500828225,
+        "max_rss_bytes": 4636672,
+        "matches": []
+      }
+    ],
+    "scope": "rg --line-buffered JSON pipe, /usr/bin/time process RSS includes mapped pages; warm 1GiB fixture"
+  }
+]

@@ -248,7 +248,7 @@ pub fn render_fuzzy_finder(
     frame.render_widget(Paragraph::new(input_line), chunks[0]);
 
     // Render separator
-    let separator = "─".repeat(chunks[1].width as usize);
+    let separator = "Files by name · text:word searches contents";
     frame.render_widget(
         Paragraph::new(separator).style(Style::default().fg(Color::DarkGray)),
         chunks[1],

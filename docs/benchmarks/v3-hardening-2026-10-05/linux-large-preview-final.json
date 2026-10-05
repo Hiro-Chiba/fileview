@@ -1,0 +1,12 @@
+{
+  "file_bytes": 10485760,
+  "final_line": 81920,
+  "tui_rss_kib": {
+    "before": 12932,
+    "after_search": 14724,
+    "after_preview": 14820,
+    "after_cancel": 17088
+  },
+  "result": "passed",
+  "scope": "Linux aarch64 real debug TUI, warm actual 10 MiB file; sampled RSS, not continuous peak or latency benchmark"
+}

@@ -1,0 +1,27 @@
+{
+  "first_result": {
+    "first_rendered_row": "  8388593 FV_NEAR_END Japanese target",
+    "line": 8388593,
+    "line_start": 1073739776,
+    "match_offset": 1073739776,
+    "prefix_clipped": false,
+    "search_to_render_ms": 1005.4692919999999,
+    "viewport_bytes_read": 2048
+  },
+  "scan": {
+    "binary_skipped": 0,
+    "binary_stopped_after_prefix": 0,
+    "byte_limit_reached": false,
+    "bytes_read": 1073741824,
+    "callback_stopped": false,
+    "cancelled": false,
+    "changed_files": 0,
+    "files_searched": 1,
+    "files_seen": 1,
+    "first_hit_ms": 1004.5765829999999,
+    "hit_limit_reached": false,
+    "hits": 1,
+    "total_ms": 1005.5007499999999
+  },
+  "scope": "streamed callback to offscreen ratatui frame; not full FileView TUI latency"
+}

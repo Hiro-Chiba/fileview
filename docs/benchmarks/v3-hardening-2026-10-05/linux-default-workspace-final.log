@@ -1,0 +1,2 @@
+PASS structured search, cancel/reopen, Enter/preview, invalid query, live updates, hidden toggle, result deletion
+PASS real stdin pipe remains interactive, searches supplied paths, and creates no workspace cache

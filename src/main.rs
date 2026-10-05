@@ -23,6 +23,16 @@ use fileview::integrate::{
 use fileview::render::create_image_picker;
 
 fn main() -> ExitCode {
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    if args.first().is_some_and(|arg| arg == "search") {
+        return match fileview::workspace::cli::run(&args[1..]) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("Error: {error}");
+                ExitCode::from(exit_code::ERROR as u8)
+            }
+        };
+    }
     // Parse config first to return INVALID exit code for argument errors
     let config = match Config::from_args() {
         Ok(c) => c,

@@ -10,13 +10,21 @@ use crate::app::preview_worker::{
 };
 use crate::app::video::{extract_thumbnail, is_video_file};
 use crate::app::ImageLoader;
-use crate::core::AppState;
+use crate::core::{AppState, ViewMode};
 use crate::git::FileStatus;
+use crate::handler::key::KeyAction;
+use crate::render::preview::window::TextAnchor;
 use crate::render::{
     find_pdftoppm, is_archive_file, is_binary_file, is_image_file, is_pdf_file, is_tar_gz_file,
     is_text_file, ArchivePreview, CustomPreview, DiffPreview, DirectoryInfo, HexPreview,
     ImagePreview, PdfPreview, Picker, TextPreview, VideoPreview,
 };
+
+enum TextPagePosition {
+    Offset(usize),
+    Line(u64),
+    Bottom,
+}
 
 /// Preview state container
 #[derive(Default)]
@@ -45,6 +53,7 @@ pub struct PreviewState {
     pub is_loading: bool,
     /// Serial number of the latest preview request
     pending_serial: u64,
+    pending_text_position: Option<TextPagePosition>,
 }
 
 impl PreviewState {
@@ -54,6 +63,12 @@ impl PreviewState {
 
     /// Clear all preview data
     pub fn clear_all(&mut self) {
+        self.pending_serial = self.preview_worker.cancel();
+        self.pending_text_position = None;
+        self.is_loading = false;
+        self.image_loader.cancel();
+        self.loading_image_path = None;
+        self.loading_video_thumbnail = None;
         self.text = None;
         self.image = None;
         self.dir_info = None;
@@ -315,6 +330,161 @@ impl PreviewState {
         }
     }
 
+    /// Open a stamped content-search hit as plain text, bypassing custom and
+    /// Git diff previews so the original match location remains meaningful.
+    pub fn open_content_match(
+        &mut self,
+        path: PathBuf,
+        anchor: TextAnchor,
+        match_offset: u64,
+        state: &mut AppState,
+    ) {
+        self.clear_all();
+        self.last_path = Some(path.clone());
+        state.preview_visible = true;
+        state.mode = ViewMode::Preview { scroll: 0 };
+        self.is_loading = true;
+        self.pending_text_position = Some(TextPagePosition::Offset(0));
+        self.pending_serial = self.preview_worker.request(
+            path,
+            PreviewKind::TextWindow {
+                anchor,
+                match_offset: Some(match_offset),
+                backward: false,
+            },
+            None,
+            None,
+        );
+    }
+
+    /// Handle text navigation when it crosses a bounded page. Ordinary movement
+    /// within the current page continues through the existing action handler.
+    pub fn handle_text_navigation(&mut self, action: &KeyAction, state: &mut AppState) -> bool {
+        if !matches!(
+            action,
+            KeyAction::PreviewScrollUp
+                | KeyAction::PreviewScrollDown
+                | KeyAction::PreviewPageUp
+                | KeyAction::PreviewPageDown
+                | KeyAction::PreviewToTop
+                | KeyAction::PreviewToBottom
+        ) {
+            return false;
+        }
+        if self.is_loading {
+            // A bottom scan may be long. Going to the top replaces it even if
+            // the currently displayed page is already the first window.
+            if matches!(action, KeyAction::PreviewToTop) && self.text.is_some() {
+                if let Some(path) = self.last_path.clone() {
+                    self.pending_text_position = Some(TextPagePosition::Offset(0));
+                    self.pending_serial =
+                        self.preview_worker
+                            .request(path, PreviewKind::Text, None, None);
+                    state.set_message("Loading text window…");
+                }
+            }
+            return true;
+        }
+        let Some(text) = self.text.as_ref() else {
+            return false;
+        };
+        let Some(anchor) = text.anchor.as_ref() else {
+            return false;
+        };
+        let Some(path) = self.last_path.clone() else {
+            return false;
+        };
+        let request = match action {
+            KeyAction::PreviewScrollDown | KeyAction::PreviewPageDown => {
+                let step = if matches!(action, KeyAction::PreviewPageDown) {
+                    20
+                } else {
+                    1
+                };
+                let target = text.scroll.saturating_add(step);
+                if target < text.lines.len() {
+                    return false;
+                }
+                text.next.clone().map(|next| {
+                    (
+                        PreviewKind::TextWindow {
+                            anchor: next,
+                            match_offset: None,
+                            backward: false,
+                        },
+                        TextPagePosition::Offset(target.saturating_sub(text.lines.len())),
+                    )
+                })
+            }
+            KeyAction::PreviewScrollUp | KeyAction::PreviewPageUp => {
+                let step = if matches!(action, KeyAction::PreviewPageUp) {
+                    20
+                } else {
+                    1
+                };
+                if text.scroll >= step || anchor.byte_offset == 0 {
+                    return false;
+                }
+                let line = text
+                    .first_line
+                    .saturating_add(text.scroll as u64)
+                    .saturating_sub(step as u64)
+                    .max(1);
+                Some((
+                    PreviewKind::TextWindow {
+                        anchor: anchor.clone(),
+                        match_offset: None,
+                        backward: true,
+                    },
+                    TextPagePosition::Line(line),
+                ))
+            }
+            KeyAction::PreviewToTop if anchor.byte_offset > 0 => {
+                Some((PreviewKind::Text, TextPagePosition::Offset(0)))
+            }
+            KeyAction::PreviewToBottom if text.next.is_some() => {
+                Some((PreviewKind::TextBottom, TextPagePosition::Bottom))
+            }
+            _ => None,
+        };
+        let Some((kind, position)) = request else {
+            return false;
+        };
+        self.pending_text_position = Some(position);
+        self.is_loading = true;
+        self.pending_serial = self.preview_worker.request(path, kind, None, None);
+        state.set_message("Loading text window…");
+        true
+    }
+
+    fn apply_text_preview(
+        &mut self,
+        path: PathBuf,
+        mut text: TextPreview,
+        refinement: bool,
+        state: &mut AppState,
+    ) {
+        if let Some(position) = self.pending_text_position.take() {
+            text.scroll = match position {
+                TextPagePosition::Offset(offset) => offset,
+                TextPagePosition::Line(line) => line.saturating_sub(text.first_line) as usize,
+                TextPagePosition::Bottom => text.lines.len().saturating_sub(1),
+            }
+            .min(text.lines.len().saturating_sub(1));
+        } else if refinement {
+            // Input may have scrolled the plain page while syntax was replayed.
+            if let Some(current) = &self.text {
+                text.scroll = current.scroll.min(text.lines.len().saturating_sub(1));
+            }
+        }
+        if let ViewMode::Preview { scroll } = &mut state.mode {
+            *scroll = text.scroll;
+        }
+        self.preview_cache
+            .insert(path, CachedPreview::Text(text.clone()));
+        self.text = Some(text);
+    }
+
     /// Load hex preview as fallback for PDF files
     fn load_hex_fallback(&mut self, path: &std::path::Path, state: &mut AppState) {
         match HexPreview::load(path) {
@@ -370,9 +540,12 @@ impl PreviewState {
                     Ok(payload) => {
                         match payload {
                             PreviewPayload::Text(tp) => {
-                                self.preview_cache
-                                    .insert(response.path, CachedPreview::Text(tp.clone()));
-                                self.text = Some(tp);
+                                self.apply_text_preview(
+                                    response.path,
+                                    tp,
+                                    response.refinement,
+                                    state,
+                                );
                             }
                             PreviewPayload::Diff(dp) => {
                                 self.preview_cache
@@ -521,6 +694,25 @@ mod tests {
     }
 
     #[test]
+    fn syntax_refinement_keeps_scroll_and_pending_page_position() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("source.rs");
+        let mut preview = PreviewState::new();
+        let mut state = AppState::new(temp.path().to_owned());
+        state.mode = ViewMode::Preview { scroll: 0 };
+        let text = TextPreview::new(&"line\n".repeat(100));
+        preview.pending_text_position = Some(TextPagePosition::Offset(30));
+        // The worker may finish syntax before the plain response is consumed.
+        preview.apply_text_preview(path.clone(), text.clone(), true, &mut state);
+        assert_eq!(preview.text.as_ref().unwrap().scroll, 30);
+        // Later style updates must not undo input on the visible plain page.
+        preview.text.as_mut().unwrap().scroll = 45;
+        preview.apply_text_preview(path, text, true, &mut state);
+        assert_eq!(preview.text.as_ref().unwrap().scroll, 45);
+        assert_eq!(state.mode, ViewMode::Preview { scroll: 45 });
+    }
+
+    #[test]
     fn switching_from_video_to_binary_discards_video() {
         let temp = tempdir().unwrap();
         let video = temp.path().join("video.mp4");
@@ -554,7 +746,14 @@ mod tests {
         preview.video = Some(video_preview(&video));
         preview.preview_cache.insert(
             text.clone(),
-            CachedPreview::Text(TextPreview::with_highlighting("cached text", &text)),
+            CachedPreview::Text(
+                TextPreview::from_window(
+                    crate::render::preview::window::read_window(&text, None, &|| false).unwrap(),
+                    &text,
+                    &|| false,
+                )
+                .unwrap(),
+            ),
         );
         let mut state = AppState::new(temp.path().to_path_buf());
 
@@ -612,6 +811,109 @@ mod tests {
 
         assert!(preview.last_path.is_none());
         assert!(!preview.is_loading);
+        assert!(!preview.has_content());
+    }
+    fn wait_for_text(preview: &mut PreviewState, state: &mut AppState) {
+        let start = std::time::Instant::now();
+        while preview.is_loading {
+            preview.poll_preview_result(&mut None, state);
+            assert!(
+                start.elapsed() < std::time::Duration::from_secs(5),
+                "text window timed out"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert!(preview.text.is_some());
+    }
+
+    #[test]
+    fn text_navigation_crosses_windows_and_returns_to_top_and_bottom() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("many.txt");
+        fs::write(
+            &path,
+            (1..=600)
+                .map(|line| format!("line {line}\n"))
+                .collect::<String>(),
+        )
+        .unwrap();
+        let mut preview = PreviewState::new();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        preview.update(Some(&path), &mut None, &mut state);
+        wait_for_text(&mut preview, &mut state);
+        assert_eq!(preview.text.as_ref().unwrap().first_line, 1);
+        preview.text.as_mut().unwrap().scroll = 255;
+        assert!(preview.handle_text_navigation(&KeyAction::PreviewScrollDown, &mut state));
+        wait_for_text(&mut preview, &mut state);
+        assert_eq!(preview.text.as_ref().unwrap().first_line, 257);
+        assert!(preview.handle_text_navigation(&KeyAction::PreviewScrollUp, &mut state));
+        wait_for_text(&mut preview, &mut state);
+        let text = preview.text.as_ref().unwrap();
+        assert_eq!(text.first_line + text.scroll as u64, 256);
+        assert!(preview.handle_text_navigation(&KeyAction::PreviewToBottom, &mut state));
+        wait_for_text(&mut preview, &mut state);
+        let text = preview.text.as_ref().unwrap();
+        assert_eq!(text.first_line + text.scroll as u64, 600);
+        assert!(preview.handle_text_navigation(&KeyAction::PreviewToTop, &mut state));
+        wait_for_text(&mut preview, &mut state);
+        assert_eq!(preview.text.as_ref().unwrap().first_line, 1);
+        assert_eq!(preview.text.as_ref().unwrap().scroll, 0);
+    }
+
+    #[test]
+    fn top_navigation_supersedes_pending_bottom_from_first_page() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("many.txt");
+        fs::write(&path, "line\n".repeat(100_000)).unwrap();
+        let mut preview = PreviewState::new();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        preview.update(Some(&path), &mut None, &mut state);
+        wait_for_text(&mut preview, &mut state);
+        assert_eq!(
+            preview
+                .text
+                .as_ref()
+                .unwrap()
+                .anchor
+                .as_ref()
+                .unwrap()
+                .byte_offset,
+            0
+        );
+        assert!(preview.handle_text_navigation(&KeyAction::PreviewToBottom, &mut state));
+        let bottom_serial = preview.pending_serial;
+        assert!(preview.is_loading);
+        assert!(preview.handle_text_navigation(&KeyAction::PreviewToTop, &mut state));
+        assert!(preview.pending_serial > bottom_serial);
+        wait_for_text(&mut preview, &mut state);
+        assert_eq!(preview.text.as_ref().unwrap().first_line, 1);
+        assert_eq!(preview.text.as_ref().unwrap().scroll, 0);
+    }
+
+    #[test]
+    fn explicit_match_bypasses_other_previews_and_clear_cancels_worker() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("content.txt");
+        fs::write(&path, "first\nsecond target\nlast").unwrap();
+        let anchor = TextAnchor {
+            line_number: 2,
+            byte_offset: 6,
+            stamp: crate::render::preview::window::FileStamp::capture(&path).unwrap(),
+        };
+        let mut preview = PreviewState::new();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        preview.open_content_match(path.clone(), anchor, 13, &mut state);
+        wait_for_text(&mut preview, &mut state);
+        assert_eq!(preview.text.as_ref().unwrap().first_line, 2);
+        assert!(preview.text.as_ref().unwrap().lines[0].contains("target"));
+        assert!(matches!(state.mode, ViewMode::Preview { .. }));
+        preview.pending_serial =
+            preview
+                .preview_worker
+                .request(path, PreviewKind::Text, None, None);
+        preview.clear_all();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        assert!(preview.preview_worker.try_recv().is_none());
         assert!(!preview.has_content());
     }
 }

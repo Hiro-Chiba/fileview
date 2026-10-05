@@ -1,10 +1,14 @@
 //! File system watcher for real-time updates
 
-use notify_debouncer_mini::{new_debouncer, Debouncer};
+use notify::Watcher;
+use std::cell::Cell;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{channel, Receiver};
-use std::time::Duration;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+use std::time::{Duration, Instant};
 
 /// Directories to exclude from watching (common large/generated directories)
 const EXCLUDED_DIRS: &[&str] = &[
@@ -24,8 +28,9 @@ const EXCLUDED_DIRS: &[&str] = &[
 
 /// File watcher with debouncing for real-time file system monitoring
 pub struct FileWatcher {
-    debouncer: Debouncer<notify::RecommendedWatcher>,
-    rx: Receiver<Result<Vec<notify_debouncer_mini::DebouncedEvent>, notify::Error>>,
+    watcher: notify::RecommendedWatcher,
+    dirty: Arc<AtomicBool>,
+    pending_since: Cell<Option<Instant>>,
     root: PathBuf,
     watched_paths: HashSet<PathBuf>,
 }
@@ -33,23 +38,25 @@ pub struct FileWatcher {
 impl FileWatcher {
     /// Create a new file watcher (initially watches only root)
     pub fn new(root: &Path) -> anyhow::Result<Self> {
-        let (tx, rx) = channel();
-
-        let mut debouncer = new_debouncer(Duration::from_millis(500), move |res| {
-            let _ = tx.send(res);
-        })?;
-
-        // Watch root directory only (non-recursive)
-        debouncer
-            .watcher()
-            .watch(root, notify::RecursiveMode::NonRecursive)?;
+        let dirty = Arc::new(AtomicBool::new(false));
+        let event_dirty = dirty.clone();
+        let mut watcher =
+            notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
+                // Linux reports open/read/close as access events. Debouncing those
+                // into generic changes creates a preview-read/refresh feedback loop.
+                if event.as_ref().map_or(true, |event| !event.kind.is_access()) {
+                    event_dirty.store(true, Ordering::Release);
+                }
+            })?;
+        watcher.watch(root, notify::RecursiveMode::NonRecursive)?;
 
         let mut watched_paths = HashSet::new();
         watched_paths.insert(root.to_path_buf());
 
         Ok(Self {
-            debouncer,
-            rx,
+            watcher,
+            dirty,
+            pending_since: Cell::new(None),
             root: root.to_path_buf(),
             watched_paths,
         })
@@ -68,14 +75,13 @@ impl FileWatcher {
 
         // Remove watches for collapsed directories
         for path in self.watched_paths.difference(&new_set) {
-            let _ = self.debouncer.watcher().unwatch(path);
+            let _ = self.watcher.unwatch(path);
         }
 
         // Add watches for newly expanded directories
         for path in new_set.difference(&self.watched_paths) {
             let _ = self
-                .debouncer
-                .watcher()
+                .watcher
                 .watch(path, notify::RecursiveMode::NonRecursive);
         }
 
@@ -90,17 +96,23 @@ impl FileWatcher {
             .unwrap_or(false)
     }
 
-    /// Check for pending file change events (non-blocking)
-    ///
-    /// Drains all pending events from the channel and returns true if any were found.
-    /// This prevents event buildup that could cause repeated expensive reloads.
+    /// Coalesce mutations in a bounded flag, refreshing at most twice per second.
+    /// The deadline starts at the first event, so continuous writes cannot starve
+    /// updates. Access-only events never enter this queue.
     pub fn poll(&self) -> bool {
-        let mut has_events = false;
-        // Drain all pending events to avoid buildup
-        while let Ok(Ok(_)) = self.rx.try_recv() {
-            has_events = true;
+        if self.dirty.swap(false, Ordering::AcqRel) && self.pending_since.get().is_none() {
+            self.pending_since.set(Some(Instant::now()));
         }
-        has_events
+        if self
+            .pending_since
+            .get()
+            .is_some_and(|start| start.elapsed() >= Duration::from_millis(500))
+        {
+            self.pending_since.set(None);
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -108,6 +120,29 @@ impl FileWatcher {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn file_reads_do_not_refresh_but_writes_still_do() {
+        let root = tempdir().unwrap();
+        let path = root.path().join("preview.txt");
+        std::fs::write(&path, "original").unwrap();
+        let watcher = FileWatcher::new(root.path()).unwrap();
+        for _ in 0..12 {
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), "original");
+            std::thread::sleep(Duration::from_millis(100));
+            assert!(!watcher.poll(), "reading a preview must not invalidate it");
+        }
+        std::fs::write(&path, "changed").unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !watcher.poll() {
+            assert!(
+                Instant::now() < deadline,
+                "a write must still refresh the tree"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
 
     #[test]
     fn sync_keeps_root_even_when_its_name_is_excluded() {

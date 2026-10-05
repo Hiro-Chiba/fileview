@@ -1,0 +1,5 @@
+# Preserve raw validation output and collapse generated evidence in reviews.
+docs/benchmarks/**/*.log -whitespace linguist-generated=true
+docs/benchmarks/**/*.json linguist-generated=true
+docs/benchmarks/**/*.time linguist-generated=true
+docs/benchmarks/**/*.sha256 linguist-generated=true

@@ -1,0 +1,102 @@
+{
+  "background_controller_heartbeat": {
+    "max_ms": 1.282667,
+    "p50_ms": 1.257791,
+    "p95_ms": 1.26625,
+    "samples": 361
+  },
+  "bytes": 104857600,
+  "cancel_request_to_worker_return": {
+    "max_ms": 6.424416,
+    "p50_ms": 1.786,
+    "p95_ms": 2.8965,
+    "samples": 30
+  },
+  "cancel_requested_after_observed_bytes": 8388608,
+  "cancelled_copied_bytes": [
+    9437184,
+    9437184,
+    9437184,
+    8388608,
+    9437184,
+    9437184,
+    9437184,
+    9437184,
+    9437184,
+    11534336,
+    10485760,
+    9437184,
+    11534336,
+    10485760,
+    11534336,
+    10485760,
+    9437184,
+    9437184,
+    10485760,
+    10485760,
+    10485760,
+    10485760,
+    9437184,
+    9437184,
+    9437184,
+    9437184,
+    9437184,
+    9437184,
+    9437184,
+    9437184
+  ],
+  "checksum": "5d348d937914e560",
+  "checksum_method": "Rust DefaultHasher streaming checksum; noncryptographic, same-process content comparison; all reads outside timing",
+  "chunk_bytes": 1048576,
+  "completed_before_cancel": 0,
+  "heartbeat_target_ms": 1,
+  "interpretation": "std::fs::copy may use APFS cloning and does not include explicit fsync, so its logical copy timing is not physical byte throughput. Streaming prototype includes fsync and no-clobber publication. Heartbeats measure a standalone controller thread, not actual TUI responsiveness. Synchronous handler blocking inferred from direct calls, not a TUI benchmark.",
+  "iterations": 5,
+  "limitations": "Single regular file only. No metadata preservation, directories, undo, resumable jobs, cross-device move rollback, atomic source snapshot or crash-recovery guarantees. Cancellation cannot interrupt an OS syscall and is rejected after the commit boundary. Parent-directory replacement attacks are outside this prototype.",
+  "median_effective_rates": {
+    "std_logical_mib_per_second": 411875.1853438334,
+    "stream_background_effective_mib_per_second": 1181.4965773757324,
+    "stream_sync_effective_mib_per_second": 1506.509060710432
+  },
+  "outputs_verified": true,
+  "progress_observations": 361,
+  "progress_slots": 1,
+  "prototype_background_copy": {
+    "max_ms": 127.97016599999999,
+    "p50_ms": 84.63841699999999,
+    "p95_ms": 127.97016599999999,
+    "samples": 5
+  },
+  "prototype_sync_including_file_sync_and_publish": {
+    "max_ms": 206.20654199999998,
+    "p50_ms": 66.378625,
+    "p95_ms": 206.20654199999998,
+    "samples": 5
+  },
+  "source_checksum_unchanged": true,
+  "source_name": {
+    "Unix": [
+      108,
+      111,
+      103,
+      45,
+      49,
+      48,
+      48,
+      109,
+      105,
+      98,
+      46,
+      108,
+      111,
+      103
+    ]
+  },
+  "std_fs_copy": {
+    "max_ms": 0.333125,
+    "p50_ms": 0.242792,
+    "p95_ms": 0.333125,
+    "samples": 5
+  },
+  "temporary_files_cleaned": true
+}

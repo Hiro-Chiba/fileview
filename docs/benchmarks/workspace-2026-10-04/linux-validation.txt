@@ -1,0 +1,21 @@
+uid=1000 gid=1000 groups=1000
+Linux aarch64
+rustc 1.93.1 (01f6ddf75 2026-02-11)
+git version 2.39.5
+Python 3.11.2
+Non-UTF8 filesystem probe passed; Linux tests exercise these paths without skipping.
+test result: ok. 690 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 1.17s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+test result: ok. 89 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.81s
+test result: ok. 346 passed; 0 failed; 13 ignored; 0 measured; 0 filtered out; finished in 0.47s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test mcp::handlers::workspace::tests::rejects_unrepresentable_paths_without_lossy_aliases ... ok
+test workspace::index::tests::symlink_directories_are_not_followed_and_non_utf8_paths_are_preserved ... ok
+test concurrent_saves_preserve_every_name ... ok
+test json_search_reports_non_utf8_paths_without_panicking ... ok
+PASS structured search, cancel/reopen, Enter/preview, invalid query, live updates, hidden toggle, result deletion
+PASS real stdin pipe remains interactive, searches supplied paths, and creates no workspace cache

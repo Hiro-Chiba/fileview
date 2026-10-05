@@ -1,0 +1,12 @@
+{
+  "minimal": {
+    "passed": 1173,
+    "failed": 0,
+    "ignored": 16
+  },
+  "default": {
+    "passed": 1227,
+    "failed": 0,
+    "ignored": 16
+  }
+}

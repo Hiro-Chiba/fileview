@@ -21,6 +21,7 @@ pub mod image;
 pub mod pdf;
 pub mod text;
 pub mod video;
+pub mod window;
 
 // Re-export common utilities
 pub use common::{format_size, get_border_style};

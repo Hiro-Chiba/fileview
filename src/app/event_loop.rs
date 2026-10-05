@@ -22,9 +22,7 @@ use crate::handler::{
     mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer},
 };
 use crate::plugin::{PluginAction, PluginEvent, PluginManager};
-use crate::render::{
-    collect_paths, fuzzy_match_incremental, visible_height, FuzzyMatch, FuzzyState, Picker,
-};
+use crate::render::{fuzzy_match_incremental, visible_height, FuzzyMatch, FuzzyState, Picker};
 use crate::tree::TreeNavigator;
 use crate::watcher::FileWatcher;
 
@@ -205,6 +203,13 @@ pub fn run_app(
     let mut fuzzy_paths: Vec<PathBuf> = Vec::new();
     let mut fuzzy_results: Vec<FuzzyMatch> = Vec::new();
     let mut fuzzy_state = FuzzyState::new();
+    let mut workspace: Option<crate::workspace::WorkspaceEngine> = None;
+    let mut workspace_root = PathBuf::new();
+    let mut workspace_query: Option<(String, bool)> = None;
+    let mut workspace_request = 0;
+    let mut content_search: Option<crate::workspace::content_service::ContentSearch> = None;
+    let mut content_hits: Vec<crate::workspace::content::ContentHit> = Vec::new();
+    let mut content_request = 0;
 
     // Lazy initialization: defer Git detection until after the first frame
     // to improve perceived startup time (first frame renders faster)
@@ -281,6 +286,148 @@ pub fn run_app(
     let mut focused_path: Option<PathBuf> = None;
 
     loop {
+        // The index and matcher run off the UI thread. A changed root drops the
+        // previous engine, and request IDs prevent late results replacing input.
+        if !state.stdin_mode {
+            if workspace_root != state.root {
+                workspace = None;
+                if let Some(search) = &content_search {
+                    search.cancel();
+                }
+                content_hits.clear();
+                workspace_root = state.root.clone();
+                workspace_query = None;
+                fuzzy_results.clear();
+            }
+            if let ViewMode::FuzzyFinder { query, .. } = &state.mode {
+                let key = (query.clone(), state.show_hidden);
+                if workspace_query.as_ref() != Some(&key) {
+                    workspace_query = Some(key);
+                    fuzzy_results.clear();
+                    content_hits.clear();
+                    if let Some(search) = &content_search {
+                        search.cancel();
+                    }
+                    if let Some(engine) = &workspace {
+                        engine.cancel_search();
+                    }
+                    needs_redraw = true;
+                    let query = &workspace_query.as_ref().unwrap().0;
+                    if let Some(literal) = query.strip_prefix("text:") {
+                        if literal.is_empty() {
+                            state.set_message("Type text after text: to search file contents");
+                        } else {
+                            let search = content_search.get_or_insert_with(
+                                crate::workspace::content_service::ContentSearch::new,
+                            );
+                            content_request = search.request(
+                                state.root.clone(),
+                                literal.to_owned(),
+                                state.show_hidden,
+                            );
+                            state.set_message("Searching contents…");
+                        }
+                    } else {
+                        if workspace.is_none() {
+                            match crate::workspace::WorkspaceEngine::new(&state.root) {
+                                Ok(engine) => workspace = Some(engine),
+                                Err(error) => state.set_message(format!("Workspace: {error}")),
+                            }
+                        }
+                        if let Some(engine) = &workspace {
+                            workspace_request = engine.request_search(
+                                &workspace_query.as_ref().unwrap().0,
+                                state.show_hidden,
+                                15,
+                            );
+                            if !engine.status().ready {
+                                state.set_message("Indexing workspace…");
+                            }
+                        }
+                    }
+                }
+                if workspace_query
+                    .as_ref()
+                    .is_some_and(|(query, _)| query.starts_with("text:"))
+                {
+                    if let Some(response) = content_search.as_ref().and_then(|search| search.poll())
+                    {
+                        if response.id == content_request {
+                            content_hits = response.hits;
+                            fuzzy_results = content_hits
+                                .iter()
+                                .map(|hit| FuzzyMatch {
+                                    path: hit.path.clone(),
+                                    display: format!(
+                                        "{}:{}  {}",
+                                        hit.path
+                                            .strip_prefix(&state.root)
+                                            .unwrap_or(&hit.path)
+                                            .display(),
+                                        hit.line_number,
+                                        hit.snippet
+                                    ),
+                                    score: 0,
+                                    indices: Vec::new(),
+                                })
+                                .collect();
+                            if let Some(error) = response.error {
+                                state.set_message(error);
+                            } else if response.done {
+                                state
+                                    .set_message(format!("{} content matches", content_hits.len()));
+                            }
+                            if let ViewMode::FuzzyFinder { selected, .. } = &mut state.mode {
+                                *selected = (*selected).min(fuzzy_results.len().saturating_sub(1));
+                            }
+                            needs_redraw = true;
+                        }
+                    }
+                } else if let Some(engine) = &workspace {
+                    if let Some(response) = engine.poll_search() {
+                        if response.request_id == workspace_request {
+                            if let Some(error) = response.error.or(response.status.error.clone()) {
+                                fuzzy_results.clear();
+                                state.set_message(format!("Workspace: {error}"));
+                            } else {
+                                fuzzy_results = response
+                                    .matches
+                                    .into_iter()
+                                    .map(|m| FuzzyMatch {
+                                        path: m.path,
+                                        display: m.display,
+                                        score: m.score,
+                                        indices: m.indices,
+                                    })
+                                    .collect();
+                                if response.status.refreshing {
+                                    state.set_message("Refreshing search…");
+                                } else if !response.status.ready {
+                                    state.set_message("Indexing workspace…");
+                                } else {
+                                    state.set_message(format!(
+                                        "Workspace: {} indexed entries",
+                                        response.status.entries
+                                    ));
+                                }
+                            }
+                            if let ViewMode::FuzzyFinder { selected, .. } = &mut state.mode {
+                                *selected = (*selected).min(fuzzy_results.len().saturating_sub(1));
+                            }
+                            needs_redraw = true;
+                        }
+                    }
+                }
+            } else if workspace_query.take().is_some() {
+                if let Some(search) = &content_search {
+                    search.cancel();
+                }
+                content_hits.clear();
+                if let Some(engine) = &workspace {
+                    engine.cancel_search();
+                }
+            }
+        }
         // Initialize git status after the first frame is rendered.
         // On the first iteration, we skip to render the UI immediately.
         // On the second iteration, we detect Git status.
@@ -486,7 +633,12 @@ pub fn run_app(
         }
 
         // Handle events (60ms timeout balances responsiveness and CPU usage)
-        if event::poll(Duration::from_millis(60))? {
+        let poll_ms = if matches!(state.mode, ViewMode::FuzzyFinder { .. }) {
+            16
+        } else {
+            60
+        };
+        if event::poll(Duration::from_millis(poll_ms))? {
             needs_redraw = true;
             match event::read()? {
                 Event::Key(key) => {
@@ -523,12 +675,16 @@ pub fn run_app(
                             update_input_buffer(key, query, query.chars().count())
                         {
                             // Refresh results when query changes (incremental narrowing)
-                            fuzzy_results = fuzzy_match_incremental(
-                                &new_buf,
-                                &fuzzy_paths,
-                                &state.root,
-                                &mut fuzzy_state,
-                            );
+                            if state.stdin_mode {
+                                fuzzy_results = fuzzy_match_incremental(
+                                    &new_buf,
+                                    &fuzzy_paths,
+                                    &state.root,
+                                    &mut fuzzy_state,
+                                );
+                            } else {
+                                fuzzy_results.clear();
+                            }
                             state.mode = ViewMode::FuzzyFinder {
                                 query: new_buf,
                                 selected: 0, // Reset selection on query change
@@ -642,39 +798,48 @@ pub fn run_app(
 
                     // Handle fuzzy finder special actions
                     if matches!(action, KeyAction::OpenFuzzyFinder) {
-                        // Collect paths when fuzzy finder opens
-                        fuzzy_paths = if state.stdin_mode {
-                            navigator.collect_all_paths()
-                        } else {
-                            collect_paths(&state.root, state.show_hidden)
-                        };
-                        fuzzy_state.reset();
-                        fuzzy_results = fuzzy_match_incremental(
-                            "",
-                            &fuzzy_paths,
-                            &state.root,
-                            &mut fuzzy_state,
-                        );
+                        fuzzy_results.clear();
+                        workspace_query = None;
+                        if state.stdin_mode {
+                            fuzzy_paths = navigator.collect_all_paths();
+                            fuzzy_state.reset();
+                            fuzzy_results = fuzzy_match_incremental(
+                                "",
+                                &fuzzy_paths,
+                                &state.root,
+                                &mut fuzzy_state,
+                            );
+                        }
                     }
 
+                    let mut content_jump = None;
                     // Fill in actual path for FuzzyConfirm
                     if matches!(action, KeyAction::FuzzyConfirm { .. }) {
                         if let ViewMode::FuzzyFinder { selected, .. } = &state.mode {
                             let actual_selected =
                                 (*selected).min(fuzzy_results.len().saturating_sub(1));
                             if let Some(result) = fuzzy_results.get(actual_selected) {
+                                content_jump = content_hits.get(actual_selected).cloned();
                                 action = KeyAction::FuzzyConfirm {
                                     path: result.path.clone(),
                                 };
+                            } else {
+                                action = KeyAction::None;
                             }
                         }
                     }
 
                     if matches!(action, KeyAction::Refresh) {
+                        if let Some(engine) = &workspace {
+                            engine.refresh();
+                        }
                         preview.invalidate();
                         crate::render::invalidate_file_info_cache();
                     }
 
+                    if preview.handle_text_navigation(&action, &mut state) {
+                        action = KeyAction::None;
+                    }
                     match handle_action(
                         action,
                         &mut state,
@@ -714,6 +879,9 @@ pub fn run_app(
 
                     // Handle fuzzy finder jump target
                     if let Some(target) = state.fuzzy_jump_target.take() {
+                        // A workspace result can be outside the current tree filter.
+                        // Tree focus indices must use the same unfiltered entries below.
+                        state.filter_pattern = None;
                         // Expand parent directories to make the target visible
                         if let Err(e) = navigator.reveal_path(&target) {
                             state.set_message(format!("Failed: reveal path - {}", e));
@@ -723,6 +891,21 @@ pub fn run_app(
                             let entries = navigator.visible_entries();
                             if let Some(idx) = entries.iter().position(|e| e.path == target) {
                                 state.focus_index = idx;
+                                if let Some(hit) = content_jump.take() {
+                                    let anchor = crate::render::preview::window::TextAnchor {
+                                        line_number: hit.line_number,
+                                        byte_offset: hit.line_start,
+                                        stamp: hit.stamp,
+                                    };
+                                    preview.open_content_match(
+                                        hit.path,
+                                        anchor,
+                                        hit.match_offset,
+                                        &mut state,
+                                    );
+                                    state.preview_visible = true;
+                                    state.set_focus(FocusTarget::Preview);
+                                }
                             }
                         }
                     }
@@ -779,8 +962,15 @@ pub fn run_app(
                         MouseAction::ScrollUp { amount, col } => {
                             if state.preview_visible && col >= preview_boundary {
                                 // Scroll preview (text, hex, or archive)
-                                if let Some(ref mut tp) = preview.text {
-                                    tp.scroll = tp.scroll.saturating_sub(amount);
+                                for _ in 0..amount.min(100) {
+                                    if !preview.handle_text_navigation(
+                                        &KeyAction::PreviewScrollUp,
+                                        &mut state,
+                                    ) {
+                                        if let Some(tp) = &mut preview.text {
+                                            tp.scroll = tp.scroll.saturating_sub(1);
+                                        }
+                                    }
                                 }
                                 if let Some(ref mut hp) = preview.hex {
                                     hp.scroll = hp.scroll.saturating_sub(amount);
@@ -796,8 +986,18 @@ pub fn run_app(
                         MouseAction::ScrollDown { amount, col } => {
                             if state.preview_visible && col >= preview_boundary {
                                 // Scroll preview (text, hex, or archive)
-                                if let Some(ref mut tp) = preview.text {
-                                    tp.scroll += amount;
+                                for _ in 0..amount.min(100) {
+                                    if !preview.handle_text_navigation(
+                                        &KeyAction::PreviewScrollDown,
+                                        &mut state,
+                                    ) {
+                                        if let Some(tp) = &mut preview.text {
+                                            tp.scroll = tp
+                                                .scroll
+                                                .saturating_add(1)
+                                                .min(tp.lines.len().saturating_sub(1));
+                                        }
+                                    }
                                 }
                                 if let Some(ref mut hp) = preview.hex {
                                     hp.scroll += amount;

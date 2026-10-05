@@ -1,0 +1,19 @@
+Error: benchmark stopped at the 2 GiB process RSS safety bound
+      275.71 real        13.62 user       104.64 sys
+          2188066816  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              209767  page reclaims
+                  81  page faults
+                   0  swaps
+                   0  block input operations
+                  36  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+              249400  voluntary context switches
+               59464  involuntary context switches
+       1976482029069  instructions retired
+        470710333880  cycles elapsed
+          1903298840  peak memory footprint

@@ -1,0 +1,47 @@
+{
+  "recorded_at_jst": "2026-10-04T23:36:27+09:00",
+  "finished_at_jst": "2026-10-04T23:52:30+09:00",
+  "base_commit": "081ca0787b339f7482bf68e17157cffbbc75069d",
+  "source_state": "Uncommitted workspace-engine prototypes. Initial comparison engine fields measure eager metadata before the later production path-only refactor.",
+  "os": "macOS 27.0.1 (26A434)",
+  "cpu": "Apple M4",
+  "architecture": "arm64",
+  "physical_memory_bytes": 17179869184,
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "filesystem": "APFS on SSD",
+  "profiles": {
+    "release": "opt-level=z, LTO=true, codegen-units=1, strip=true",
+    "release-fast": "opt-level=3, LTO=true, codegen-units=1, strip=true"
+  },
+  "features": "default features",
+  "fixture": "100 directories and N independent real files with rs/md/png/toml/txt suffixes, 18-byte contents. Filesystem warmed by fixture generation. No Git repository.",
+  "method": "Monotonic in-process timing, nearest-rank p50/p95, eight independent queries reset baseline incremental state. 40 samples per query for 100k runs. Candidate correctness additionally checks three structured predicates.",
+  "memory_scope": "time files report whole-process maximum RSS in bytes, including baseline, repeated rebuild/cache cycles, correctness reference and fixture lifecycle. These are not engine-only steady-state memory.",
+  "aborted_998k": "Combined run stopped at the 2 GiB current process RSS guard. No phase timings were emitted by that earlier binary, so the failure must not be attributed specifically to the engine. Fixture cleanup completed. No swaps.",
+  "command_template": "/usr/bin/time -l target/<profile>/examples/workspace_benchmark --files <N> --iterations <samples> [--variant <variant>]",
+  "historical_note": "Old rich-index figures are retained as raw historical evidence, not reproducible by the current --variant engine implementation. Current variants are baseline, engine, path, vec, all. 100k initial comparison used all before vec existed; 100k vec used --variant vec. Single-pass memory used --iterations 1 and has no statistically meaningful latency percentiles. Current engine persistence timings require --cache-experiment. The typing variant specifically measures legacy incremental reuse, unlike the independent-query comparisons.",
+  "source_hashes_production": {
+    "src/workspace/index.rs": "4461722279fabbfd2cb9f9a936679bd023d4e1ce79bf0c8bbb17122ffb7c452f",
+    "src/workspace/cache.rs": "984b6441d96ac0011e72490f92927f83497d24b8e110dc6c4dcfd6cbfe3fc009",
+    "src/workspace/service.rs": "8674eb762360e8cd8f6469fd0ffdc33a563aef8203962e4b7c249bf4fc600ffa",
+    "examples/workspace_benchmark.rs": "1577943e6dbd17a5bf64f3459b591c2fd1e5410945191e8997e1dd488da63ef7",
+    "examples/support/path_index.rs": "74d29bfbe14ec95fc980d9a9b3330bd475be0997194c5660fb842a06e06038af",
+    "Cargo.toml": "8194e091082b55ac5f883a417345868ea7571505ef57876ab6c3d6e1bbf3101f",
+    "Cargo.lock": "442bf8206c3b5bc551b81a29db619d7ddcc547635aeb1c2b1e0ffcba3fe630b4"
+  },
+  "current_commands": {
+    "100k-production-release": "cargo build --locked --release --example workspace_benchmark && /usr/bin/time -l target/release/examples/workspace_benchmark --files 100000 --iterations 40 --variant engine",
+    "998k-production-release": "/usr/bin/time -l target/release/examples/workspace_benchmark --files 998000 --iterations 10 --variant engine",
+    "optional_cache_cost": "target/release/examples/workspace_benchmark --files 100000 --iterations 40 --variant engine --cache-experiment",
+    "100k-typing-release": "/usr/bin/time -l target/release/examples/workspace_benchmark --files 100000 --iterations 40 --variant typing"
+  },
+  "production_cache_note": "The final production runs omit disk cache experiments, matching the default in-memory service. Historical initial comparison runs measured explicit save/load/revalidation experiments.",
+  "large_sample_caution": "998k runs use 10 samples per query and 80 pooled search samples. Nearest-rank p95 of 10 initialization trials equals the observed maximum and is an exploratory tail estimate.",
+  "source_hashes_typing_filter_final": {
+    "src/workspace/index.rs": "fe6945ce3c3855fbf569d26ff4367ed48a13380b49b91286f7218c335afa312d",
+    "examples/workspace_benchmark.rs": "372667e3f7ed153c288a275630c311614b76602d8e600e17644a6e4c0bbf9841",
+    "examples/support/path_index.rs": "74d29bfbe14ec95fc980d9a9b3330bd475be0997194c5660fb842a06e06038af"
+  },
+  "final_optimization_note": "Typing and filter-only runs additionally include the ordered first-K early exit for queries with no fuzzy text. The eight nonempty fuzzy expressions in the prior production runs use the unchanged scoring path.",
+  "typing_method": "20 update strings including prefix extensions, backspaces, clearing and switching queries. Forty traces after one warmup trace, legacy FuzzyState preserved within each trace, algorithm order alternated per trace. Scores verified on every update outside timings. Pooled samples=800. Sum measures compute time, not human typing or wall-clock UI latency. Three filter-only expressions additionally checked against unbounded sorted prefixes."
+}

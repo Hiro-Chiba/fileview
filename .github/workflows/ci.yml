@@ -51,10 +51,26 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.os }}
+      - name: Ensure content search runtime is available
+        shell: bash
+        run: |
+          if ! command -v rg >/dev/null 2>&1; then
+            cargo install ripgrep --locked
+          fi
+          rg --version
       - run: cargo test --locked
+      - name: Terminal search and preview (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          python3 scripts/workspace_pty_smoke.py --binary target/debug/fv
+          python3 scripts/content_pty_smoke.py target/debug/fv
       - name: Test without default features
-        if: matrix.os == 'ubuntu-latest'
         run: cargo test --locked --no-default-features
+      - name: Minimal terminal search and preview (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          python3 scripts/workspace_pty_smoke.py --binary target/debug/fv
+          python3 scripts/content_pty_smoke.py target/debug/fv
 
   # MSRV: compile only (tests are covered by stable)
   msrv:

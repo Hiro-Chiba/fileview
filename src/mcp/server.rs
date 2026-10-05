@@ -24,6 +24,7 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
     // inside `emit` so the MCP server never fails a tool call because the UI
     // side was unreachable.
     let emitter = ActivityEmitter::new();
+    let mut workspace = None;
 
     for line in reader.lines() {
         let line = match line {
@@ -38,7 +39,7 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
             continue;
         }
 
-        let response = handle_request(root, &line, &emitter);
+        let response = handle_request(root, &line, &emitter, &mut workspace);
         let response_json = serde_json::to_string(&response)?;
         writeln!(writer, "{}", response_json)?;
         writer.flush()?;
@@ -48,7 +49,12 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
 }
 
 /// Handle a single JSON-RPC request
-fn handle_request(root: &Path, request_str: &str, emitter: &ActivityEmitter) -> JsonRpcResponse {
+fn handle_request(
+    root: &Path,
+    request_str: &str,
+    emitter: &ActivityEmitter,
+    workspace: &mut Option<crate::workspace::WorkspaceEngine>,
+) -> JsonRpcResponse {
     let request: JsonRpcRequest = match serde_json::from_str(request_str) {
         Ok(r) => r,
         Err(e) => {
@@ -64,7 +70,7 @@ fn handle_request(root: &Path, request_str: &str, emitter: &ActivityEmitter) -> 
         "initialize" => handle_initialize(request.id),
         "initialized" => JsonRpcResponse::success(request.id, json!({})),
         "tools/list" => handle_tools_list(request.id),
-        "tools/call" => handle_tools_call(root, request.id, request.params, emitter),
+        "tools/call" => handle_tools_call(root, request.id, request.params, emitter, workspace),
         "ping" => JsonRpcResponse::success(request.id, json!({})),
         _ => JsonRpcResponse::error(
             request.id,
@@ -112,6 +118,7 @@ fn handle_tools_call(
     id: Option<serde_json::Value>,
     params: serde_json::Value,
     emitter: &ActivityEmitter,
+    workspace: &mut Option<crate::workspace::WorkspaceEngine>,
 ) -> JsonRpcResponse {
     let call_params: ToolCallParams = match serde_json::from_value(params) {
         Ok(p) => p,
@@ -137,7 +144,11 @@ fn handle_tools_call(
         }
     }
 
-    let result = dispatch_tool_call(root, &call_params);
+    let result = if call_params.name == "search_workspace" {
+        super::handlers::workspace::search(root, &call_params.arguments, workspace)
+    } else {
+        dispatch_tool_call(root, &call_params)
+    };
     match serde_json::to_value(result) {
         Ok(v) => JsonRpcResponse::success(id, v),
         Err(e) => JsonRpcResponse::error(id, error_codes::INTERNAL_ERROR, e.to_string()),

@@ -1,0 +1,242 @@
+{
+  "experimental": true,
+  "input": "/var/folders/n_/ty_109cx3bsbjj8_vcsv4q3w0000gn/T/fv-v3-probes-zyuc9cwf/log-100mib.log",
+  "input_bytes": 104857600,
+  "measurement": "regular OS reads, cooperative cancellation between bounded chunks; warm filesystem cache if fixture was recently written; no production integration",
+  "memory": {
+    "peak_after_references_kib": 107520,
+    "peak_before_references_kib": 3040,
+    "rss_after_stream_kib": 3040,
+    "rss_before_kib": 2192
+  },
+  "needle": "FV_NEAR_END",
+  "policy": "literal case-sensitive single-line UTF-8 query; skip NUL in first chunk, stop on later NUL with earlier hits retained; skip symlinks; bounded preceding-context snippets; changed stamp requires re-search before navigation",
+  "rg_reference": {
+    "first_hit_ms": 29.317916999999998,
+    "hit_limit_reached": false,
+    "matches": [
+      {
+        "line_number": 819185,
+        "line_start": 104855552,
+        "match_offset": 104855552
+      }
+    ],
+    "total_ms": 29.949875000000002
+  },
+  "rg_version": "ripgrep 15.2.0 (rev e89fff89ac)",
+  "streaming": {
+    "cancel_ack": null,
+    "first_hit": {
+      "max_ms": 98.039417,
+      "p50_ms": 92.616458,
+      "p95_ms": 98.039417,
+      "samples": 10
+    },
+    "locations": [
+      {
+        "line_number": 819185,
+        "line_start": 104855552,
+        "match_offset": 104855552
+      }
+    ],
+    "total": {
+      "max_ms": 98.08233399999999,
+      "p50_ms": 92.700458,
+      "p95_ms": 98.08233399999999,
+      "samples": 10
+    },
+    "trials": [
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 90.093875,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 90.12266600000001
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 90.230375,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 90.25783299999999
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 91.009334,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 91.04025
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 95.710833,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 95.760333
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 94.896917,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 94.93662499999999
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 89.98225,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 90.010166
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 92.616458,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 92.700458
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 96.381542,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 96.41829200000001
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 97.059792,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 97.10249999999999
+        }
+      },
+      {
+        "cancel_ack_ms": null,
+        "stats": {
+          "binary_skipped": 0,
+          "binary_stopped_after_prefix": 0,
+          "byte_limit_reached": false,
+          "bytes_read": 104857600,
+          "callback_stopped": false,
+          "cancelled": false,
+          "changed_files": 0,
+          "files_searched": 1,
+          "files_seen": 1,
+          "first_hit_ms": 98.039417,
+          "hit_limit_reached": false,
+          "hits": 1,
+          "total_ms": 98.08233399999999
+        }
+      }
+    ]
+  },
+  "whole_read_reference": {
+    "first_hit_ms": 83.99879200000001,
+    "matches": [
+      {
+        "line_number": 819185,
+        "line_start": 104855552,
+        "match_offset": 104855552
+      }
+    ],
+    "total_ms": 84.020167
+  }
+}

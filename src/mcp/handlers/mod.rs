@@ -12,6 +12,7 @@ pub mod dependency;
 pub mod file;
 pub mod git;
 pub mod project;
+pub mod workspace;
 
 // Re-export common types
 pub use super::types::{ToolCallResult, ToolContent};

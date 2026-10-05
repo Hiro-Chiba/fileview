@@ -732,6 +732,7 @@ fn print_help() {
 USAGE:
     fv [OPTIONS] [PATH]
     command | fv --stdin [OPTIONS]
+    fv search QUERY [PATH] [--hidden] [--json] [--limit N]
     fv benchmark ai [--scenario NAME] [--iterations N] [PATH]
 
 OPTIONS:
@@ -782,6 +783,7 @@ CLAUDE CODE INTEGRATION:
                         an ID (the original pid), jump straight to that
                         session's event timeline. On Enter, the path of
                         the focused event is printed to stdout.
+    search --help       Search file paths, with optional filters and JSON output
     plugin init [PATH]  Create plugin template file (default: ~/.config/fileview/plugins/init.lua)
     plugin test PATH    Execute plugin file (trusted, unsandboxed) and report status
 

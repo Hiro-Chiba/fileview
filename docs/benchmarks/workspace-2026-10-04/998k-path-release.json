@@ -1,0 +1,105 @@
+{
+  "arch": "aarch64",
+  "cache_condition": "warm filesystem cache after fixture creation and explicit warmup",
+  "directories": 100,
+  "files": 998000,
+  "iterations_per_query": 10,
+  "os": "macos",
+  "path_index": {
+    "experimental_candidate": "path/type index with metadata read only for top 15 winners",
+    "indexed_paths": 998100,
+    "initialize_and_search": {
+      "max_ms": 1852.2755,
+      "p50_ms": 1615.261292,
+      "p95_ms": 1852.2755,
+      "samples": 10
+    },
+    "initialize_without_metadata": {
+      "max_ms": 1752.724792,
+      "p50_ms": 1564.498917,
+      "p95_ms": 1752.724792,
+      "samples": 10
+    },
+    "limitations": "No incremental update implementation. Search metadata reads are synchronous in benchmark worker. Git predicates excluded. Warm OS filesystem cache.",
+    "queries": {
+      "ext:png": {
+        "max_ms": 15.196958,
+        "p50_ms": 14.953667000000001,
+        "p95_ms": 15.196958,
+        "samples": 10
+      },
+      "file": {
+        "max_ms": 98.58175,
+        "p50_ms": 92.430042,
+        "p95_ms": 98.58175,
+        "samples": 10
+      },
+      "file ext:rs type:file": {
+        "max_ms": 26.742417,
+        "p50_ms": 26.559208,
+        "p95_ms": 26.742417,
+        "samples": 10
+      },
+      "file_000420": {
+        "max_ms": 62.28225,
+        "p50_ms": 61.539083,
+        "p95_ms": 62.28225,
+        "samples": 10
+      },
+      "m42rs": {
+        "max_ms": 52.046958,
+        "p50_ms": 50.848166,
+        "p95_ms": 52.046958,
+        "samples": 10
+      },
+      "md": {
+        "max_ms": 110.1925,
+        "p50_ms": 109.358417,
+        "p95_ms": 110.1925,
+        "samples": 10
+      },
+      "module_042": {
+        "max_ms": 138.601833,
+        "p50_ms": 135.02145800000002,
+        "p95_ms": 138.601833,
+        "samples": 10
+      },
+      "png": {
+        "max_ms": 42.115708000000005,
+        "p50_ms": 41.077374999999996,
+        "p95_ms": 42.115708000000005,
+        "samples": 10
+      },
+      "rs": {
+        "max_ms": 40.4005,
+        "p50_ms": 39.606875,
+        "p95_ms": 40.4005,
+        "samples": 10
+      },
+      "type:dir": {
+        "max_ms": 9.301958,
+        "p50_ms": 9.092457999999999,
+        "p95_ms": 9.301958,
+        "samples": 10
+      },
+      "zzzz_not_found": {
+        "max_ms": 34.561791,
+        "p50_ms": 34.419,
+        "p95_ms": 34.561791,
+        "samples": 10
+      }
+    },
+    "results_equal_rich_index": true,
+    "search_including_winner_metadata": {
+      "max_ms": 138.601833,
+      "p50_ms": 52.046958,
+      "p95_ms": 135.580375,
+      "samples": 80
+    },
+    "storage": "BTreeMap"
+  },
+  "process_rss_at_completion_kib": 466464,
+  "query_condition": "independent full query each time; baseline incremental state reset",
+  "timing_scope": "in-process operations only; fixture creation and deletion excluded",
+  "variant": "path"
+}
