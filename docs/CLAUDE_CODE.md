@@ -67,6 +67,8 @@ fv init claude --path ~/.claude.json
 
 ## MCP Server Setup (Manual)
 
+Make sure `fv` is on your `PATH` so the client can start it.
+
 ```json
 {
   "mcpServers": {
@@ -82,12 +84,17 @@ fv init claude --path ~/.claude.json
 
 **File**: `list_directory`, `get_tree`, `read_file`, `read_files`, `write_file`, `delete_file`, `search_code`, `search_workspace`
 
-The experimental `search_workspace` tool reuses an index within the server process.
+The `search_workspace` tool reuses an index within the server process.
 Pass the required `query` string (for example, `ext:rs git:changed`), with an
 optional `show_hidden` boolean and `limit` from 1 to 1000. Unknown arguments are
 rejected. The same filters are available through `fv search`. It searches within the
 server root and returns relative paths plus index freshness. See
 [workspace search](WORKSPACE_ENGINE.md) for consistency and ignore behavior.
+
+For literal content search, pass `{"query":"text:TODO"}` to `search_workspace`.
+This requires ripgrep (`rg`) on your `PATH` and returns `path`, one-based `line`,
+zero-based `byte_offset`, and a bounded `text` snippet. The same query works in Ctrl+P and
+`fv search`. Content search does not build the filename index.
 
 **Git**: `get_git_status`, `get_git_diff`, `git_log`, `stage_files`, `create_commit`
 
@@ -183,8 +190,3 @@ share state through a file-based protocol in your user cache directory:
   is no longer alive on the next emit. You can also remove
   `~/.cache/fileview/sessions/*` by hand. The interactive fileview will
   recreate its own entry on startup.
-
-For literal content search, pass `{"query":"text:TODO"}` to `search_workspace`.
-This uses optional ripgrep and returns `path`, one-based `line`, zero-based
-`byte_offset`, and a bounded `text` snippet. The same query works in Ctrl+P and
-`fv search`. Content search does not build the filename index.
