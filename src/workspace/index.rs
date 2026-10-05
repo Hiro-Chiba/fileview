@@ -617,6 +617,13 @@ mod tests {
 
     #[test]
     fn ignore_rules_hidden_paths_and_ignore_changes_remain_consistent() {
+        // Compare path components so native Windows separators remain valid.
+        let paths = |index: &WorkspaceIndex, query: &str| {
+            names(index, query, false)
+                .into_iter()
+                .map(PathBuf::from)
+                .collect::<Vec<_>>()
+        };
         let temp = tempdir().unwrap();
         fs::create_dir_all(temp.path().join("ignored/nested")).unwrap();
         fs::create_dir_all(temp.path().join("visible")).unwrap();
@@ -634,7 +641,10 @@ mod tests {
         }
         let mut index = WorkspaceIndex::new(temp.path()).unwrap();
         index.rebuild(&|| false).unwrap();
-        assert_eq!(names(&index, "type:file", false), ["visible/keep.rs"]);
+        assert_eq!(
+            paths(&index, "type:file"),
+            [PathBuf::from("visible/keep.rs")]
+        );
         assert!(names(&index, "", true).contains(&".secret".to_owned()));
         index
             .reconcile(
@@ -642,14 +652,20 @@ mod tests {
                 &|| false,
             )
             .unwrap();
-        assert_eq!(names(&index, "type:file", false), ["visible/keep.rs"]);
+        assert_eq!(
+            paths(&index, "type:file"),
+            [PathBuf::from("visible/keep.rs")]
+        );
         fs::write(temp.path().join("visible/.gitignore"), "").unwrap();
         index
             .reconcile(&["visible/.gitignore".into()], &|| false)
             .unwrap();
         assert_eq!(
-            names(&index, "ext:rs", false),
-            ["visible/keep.rs", "visible/no.rs"]
+            paths(&index, "ext:rs"),
+            [
+                PathBuf::from("visible/keep.rs"),
+                PathBuf::from("visible/no.rs")
+            ]
         );
     }
 
