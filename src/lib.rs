@@ -17,3 +17,4 @@ pub mod render;
 pub mod tree;
 pub mod util;
 pub mod watcher;
+pub mod workspace;

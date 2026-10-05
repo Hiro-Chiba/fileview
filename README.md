@@ -78,6 +78,14 @@ cargo install fileview --locked
 fv
 ```
 
+The local workspace-engine experiment adds background Ctrl+P search and structured
+filters through the same engine as `fv search 'ext:rs type:file' .` and MCP.
+Use `text:TODO` in Ctrl+P, `fv search 'text:TODO' --json`, or MCP to search
+file contents with optional ripgrep (`rg`). Selecting a content result opens
+the matching line. Text previews read bounded pages as you scroll. See
+[the design and validation notes](docs/WORKSPACE_ENGINE.md) for its current limits.
+It is not part of the published 2.8.4 release.
+
 ## Features
 
 - Image previews with automatic terminal detection (Kitty, iTerm2, Sixel, Halfblocks)

@@ -80,8 +80,17 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 | `Enter` | Jump to selected file |
 | `Esc` / `Ctrl+P` | Cancel |
 
-- Type to filter files by name
-- Results are sorted by match score
+- Type to filter files by name. Workspace search also accepts `ext:rs`,
+  `type:file`, `type:dir`, and `git:changed` filters.
+- Workspace search runs in the background and respects local ignore files.
+  Stdin selection searches only the supplied paths.
+- The same search is available from the CLI with `fv search 'ext:rs' .`.
+  See [the workspace experiment](WORKSPACE_ENGINE.md) for current limits.
+- Start a query with `text:` to search literal, case-sensitive file contents
+  using ripgrep (`rg`), for example `text:TODO`. Enter opens the matching line.
+  This applies to workspace browsing, not stdin selection. Selecting a workspace
+  result clears the tree filter so the target can be focused correctly.
+- Filename results are sorted by match score; content results follow scan order.
 - Hidden files follow the current visibility setting
 
 ## Preview
@@ -216,3 +225,9 @@ Press `F` to set or clear a file filter:
 | Double-click | Expand/collapse directory or open preview |
 | Scroll | Navigate list or scroll preview |
 | Drag | Move files (experimental) |
+
+Text previews load at most 64KiB or 256 lines per window. Existing scroll, page,
+`g`, and `G` controls continue across windows. `G` scans line counts in the
+background; `g` can cancel it. Windows opened in the middle of a file display plain
+text first, then receive background syntax colors. Expensive syntax reconstruction
+falls back to readable plain text with a reason in the title.

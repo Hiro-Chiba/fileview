@@ -52,6 +52,22 @@ impl ToolCategory {
 pub fn get_all_tools() -> Vec<ToolDefinition> {
     let mut tools = Vec::new();
 
+    tools.push(ToolDefinition {
+        name: "search_workspace",
+        description: "Search workspace paths with fuzzy text and ext:, type:, git: filters, or use text:LITERAL for case-sensitive file contents (requires rg). Read-only; excludes hidden and ignored paths by default.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Fuzzy path query, or text:LITERAL for content matches with line and byte_offset"},
+                "show_hidden": {"type": "boolean", "default": false},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 100}
+            },
+            "additionalProperties": false,
+            "required": ["query"]
+        }),
+        category: ToolCategory::File,
+    });
+
     // File operations
     tools.extend(file_tools());
 
