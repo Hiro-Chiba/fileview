@@ -78,13 +78,13 @@ cargo install fileview --locked
 fv
 ```
 
-The local workspace-engine experiment adds background Ctrl+P search and structured
+FileView 3.0 adds background Ctrl+P search and structured
 filters through the same engine as `fv search 'ext:rs type:file' .` and MCP.
 Use `text:TODO` in Ctrl+P, `fv search 'text:TODO' --json`, or MCP to search
 file contents with optional ripgrep (`rg`). Selecting a content result opens
 the matching line. Text previews read bounded pages as you scroll. See
 [the design and validation notes](docs/WORKSPACE_ENGINE.md) for its current limits.
-It is not part of the published 2.8.4 release.
+See [what changed in 3.0](CHANGELOG.md#300---2026-10-05) for examples and upgrade notes.
 
 ## Features
 
@@ -109,11 +109,12 @@ Pick individual features: `cargo install fileview --no-default-features --featur
 
 ### Optional preview tools
 
-File browsing, text previews, image previews, and search work without these tools.
+File browsing, text previews, image previews, and filename search work without these tools.
 Install only the tools for the features you want, then restart FileView.
 
 | Feature | Required tools |
 | --- | --- |
+| Content search (`text:`) | ripgrep (`rg`) |
 | Git status and diffs | `git` |
 | Video thumbnails | FFmpeg's `ffmpeg` and `ffprobe` |
 | Video duration, resolution, and codec information | FFmpeg's `ffprobe` |

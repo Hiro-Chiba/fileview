@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-10-05
+
+FileView 3.0 introduces a shared workspace search engine and paged text previews.
+Find files, search their contents, and jump to a match from the same `Ctrl+P` interface.
+
+### Highlights
+
+- **Find files across your project.** Background indexing keeps filename search
+  available while you browse and refreshes results as files change. Narrow results
+  with filters such as `ext:rs`, `type:dir`, or `git:changed`.
+- **Search inside files and jump to the match.** Type `text:TODO` in `Ctrl+P`, then
+  press Enter on a result to open its matching line and column. Content search
+  requires ripgrep (`rg`) on your `PATH`.
+- **Read large text files in pages.** Previews load bounded windows as you scroll.
+  Use `g` and `G` in preview mode to jump to the start or end. Syntax highlighting
+  is refined in the background, with readable plain text when its limits are reached.
+- **Use the same queries in scripts and AI tools.** The new `fv search` command
+  supports JSON output, and the `search_workspace` MCP tool shares its query syntax.
+  New queries supersede older work so stale results do not replace your selection.
+
+### Try it
+
+In FileView, press `Ctrl+P` and enter `ext:rs git:changed` or `text:TODO`.
+From a terminal:
+
+```sh
+fv search main
+fv search 'ext:rs git:changed' . --json
+fv search 'text:TODO' . --json
+```
+
+### Upgrade notes
+
+- `Ctrl+P` now respects project ignore rules, including `.gitignore` and `.ignore`.
+  Previously visible ignored files may no longer appear. Equally ranked filename
+  results use relative-path order. Existing keybindings and configuration remain.
+- `text:` searches are literal and case-sensitive. Everything after the prefix is
+  search text, so filename filters cannot be combined with a content query.
+  Filename search does not require ripgrep.
+- Paged previews bound FileView's text buffers, not the total memory used by
+  ripgrep. Extremely long lines can still increase the search process's memory use.
+
 ## [2.8.4] - 2026-10-04
 
 ### Fixed

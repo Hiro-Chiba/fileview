@@ -1,7 +1,8 @@
-# Workspace engine experiment
+# Workspace engine design and validation
 
-This work evaluates a shared metadata index for interactive, CLI, and MCP searches.
-It is an experimental local branch, not a released FileView 3.0 feature.
+FileView 3.0 uses a shared metadata index for interactive, CLI, and MCP searches.
+This document records its design, current limits, and historical experiments.
+Prototype measurements below are not guarantees for every workspace.
 
 ## Validation plan
 
