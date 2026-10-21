@@ -5473,7 +5473,7 @@ mod archive_preview_tests {
     fn create_test_zip(path: &std::path::Path, files: &[(&str, &[u8])]) {
         let file = fs::File::create(path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
-        let options: FileOptions<'_, ()> =
+        let options: FileOptions<'_, '_, ()> =
             FileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
         for (name, content) in files {
@@ -5540,6 +5540,27 @@ mod archive_preview_tests {
 
         // Should have 3 entries total (1 dir + 2 files)
         assert_eq!(preview.entries.len(), 3);
+    }
+
+    #[test]
+    fn test_archive_preview_zip_keeps_entry_names() {
+        let temp = TempDir::new().unwrap();
+        let zip_path = temp.path().join("names.zip");
+        create_test_zip(
+            &zip_path,
+            &[
+                ("readme.txt", b"a"),
+                ("docs/", &[]),
+                ("docs/日本語.md", b"b"),
+            ],
+        );
+
+        let preview = ArchivePreview::load_zip(&zip_path).unwrap();
+
+        let names: Vec<&str> = preview.entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"readme.txt"));
+        assert!(names.contains(&"docs/日本語.md"));
+        assert!(names.iter().any(|n| n.trim_end_matches('/') == "docs"));
     }
 
     #[test]
