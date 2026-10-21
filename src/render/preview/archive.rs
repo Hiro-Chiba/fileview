@@ -66,7 +66,7 @@ impl ArchivePreview {
             let entry = archive.by_index(i)?;
             let is_dir = entry.is_dir();
             let size = entry.size();
-            let name = truncate_entry_name(entry.name().to_string());
+            let name = truncate_entry_name(entry.name()?.to_string());
 
             // Format modified time if available
             let modified = entry

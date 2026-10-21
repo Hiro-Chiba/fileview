@@ -5473,7 +5473,7 @@ mod archive_preview_tests {
     fn create_test_zip(path: &std::path::Path, files: &[(&str, &[u8])]) {
         let file = fs::File::create(path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
-        let options: FileOptions<'_, ()> =
+        let options: FileOptions<'_, '_, ()> =
             FileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
         for (name, content) in files {
