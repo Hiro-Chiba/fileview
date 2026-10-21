@@ -5543,6 +5543,27 @@ mod archive_preview_tests {
     }
 
     #[test]
+    fn test_archive_preview_zip_keeps_entry_names() {
+        let temp = TempDir::new().unwrap();
+        let zip_path = temp.path().join("names.zip");
+        create_test_zip(
+            &zip_path,
+            &[
+                ("readme.txt", b"a"),
+                ("docs/", &[]),
+                ("docs/日本語.md", b"b"),
+            ],
+        );
+
+        let preview = ArchivePreview::load_zip(&zip_path).unwrap();
+
+        let names: Vec<&str> = preview.entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"readme.txt"));
+        assert!(names.contains(&"docs/日本語.md"));
+        assert!(names.iter().any(|n| n.trim_end_matches('/') == "docs"));
+    }
+
+    #[test]
     fn test_archive_preview_load_corrupted_zip() {
         let temp = TempDir::new().unwrap();
         let zip_path = temp.path().join("corrupted.zip");
