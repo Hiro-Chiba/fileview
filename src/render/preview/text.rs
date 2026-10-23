@@ -310,12 +310,11 @@ fn render_markdown_preview(
     focused: bool,
 ) {
     let visible_height = area.height.saturating_sub(2) as usize;
-    let lines: Vec<Line> = super::markdown::render(&preview.lines, area.width)
-        .into_iter()
-        .skip_while(|(source, _)| *source < preview.scroll)
-        .take(visible_height)
-        .map(|(_, line)| line)
-        .collect();
+    let lines: Vec<Line> =
+        super::markdown::render(&preview.lines, area.width, preview.scroll, visible_height)
+            .into_iter()
+            .map(|(_, line)| line)
+            .collect();
     let widget = Paragraph::new(lines).wrap(Wrap { trim: false }).block(
         Block::default()
             .borders(Borders::ALL)

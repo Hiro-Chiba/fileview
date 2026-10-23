@@ -15,6 +15,11 @@ use ratatui::{
 /// Preview panes at least this wide (including borders) show rendered Markdown.
 pub const MIN_RENDER_WIDTH: u16 = 80;
 
+/// Longer lines are shown as written. Inline parsing looks ahead for closing
+/// markers, so its cost grows with the square of the line length, and a page
+/// may hold a single 64 KiB line.
+const MAX_INLINE_BYTES: usize = 1024;
+
 /// Check if a path looks like a Markdown document
 pub fn is_markdown_file(path: &Path) -> bool {
     path.extension()
@@ -23,14 +28,25 @@ pub fn is_markdown_file(path: &Path) -> bool {
         .is_some_and(|e| matches!(e.as_str(), "md" | "markdown" | "mdown" | "mkd"))
 }
 
-/// Render source lines, pairing each output line with its source line index.
+/// Render at most `max` output lines starting at source line `from`, pairing
+/// each output line with its source line index.
 ///
-/// Fence delimiters produce no output, so a source index may be skipped.
-pub fn render(lines: &[String], width: u16) -> Vec<(usize, Line<'static>)> {
-    let mut out = Vec::with_capacity(lines.len());
+/// Earlier lines are only scanned for code fences, so the cost of a frame
+/// depends on the visible lines. Fence delimiters produce no output, so a
+/// source index may be skipped.
+pub fn render(
+    lines: &[String],
+    width: u16,
+    from: usize,
+    max: usize,
+) -> Vec<(usize, Line<'static>)> {
+    let mut out = Vec::with_capacity(max.min(lines.len()));
     let mut fence: Option<&str> = None;
 
     for (i, line) in lines.iter().enumerate() {
+        if out.len() >= max {
+            break;
+        }
         let trimmed = line.trim_start();
 
         if let Some(marker) = fence {
@@ -41,7 +57,7 @@ pub fn render(lines: &[String], width: u16) -> Vec<(usize, Line<'static>)> {
                     .is_empty()
             {
                 fence = None;
-            } else {
+            } else if i >= from {
                 out.push((
                     i,
                     Line::from(Span::styled(format!("  {line}"), code_style())),
@@ -55,7 +71,9 @@ pub fn render(lines: &[String], width: u16) -> Vec<(usize, Line<'static>)> {
             continue;
         }
 
-        out.push((i, render_block_line(line, width)));
+        if i >= from {
+            out.push((i, render_block_line(line, width)));
+        }
     }
 
     out
@@ -72,6 +90,9 @@ fn fence_marker(trimmed: &str) -> Option<&'static str> {
 }
 
 fn render_block_line(line: &str, width: u16) -> Line<'static> {
+    if line.len() > MAX_INLINE_BYTES {
+        return Line::raw(line.to_string());
+    }
     let trimmed = line.trim_start();
     let indent = &line[..line.len() - trimmed.len()];
 
@@ -341,6 +362,10 @@ fn emphasis_boundary(text: &str, i: usize, marker: char, open: bool) -> bool {
 mod tests {
     use super::*;
 
+    fn render_all(lines: &[String], width: u16) -> Vec<(usize, Line<'static>)> {
+        render(lines, width, 0, usize::MAX)
+    }
+
     fn lines(src: &str) -> Vec<String> {
         src.lines().map(String::from).collect()
     }
@@ -358,7 +383,7 @@ mod tests {
 
     #[test]
     fn headings_drop_hash_marks_and_are_bold() {
-        let out = render(&lines("# Title\n### Sub ###"), 80);
+        let out = render_all(&lines("# Title\n### Sub ###"), 80);
         assert_eq!(text_of(&out[0].1), "Title");
         assert_eq!(text_of(&out[1].1), "Sub");
         assert!(span_with(&out[0].1, "Title")
@@ -369,13 +394,13 @@ mod tests {
 
     #[test]
     fn hash_without_space_is_not_a_heading() {
-        let out = render(&lines("#hashtag"), 80);
+        let out = render_all(&lines("#hashtag"), 80);
         assert_eq!(text_of(&out[0].1), "#hashtag");
     }
 
     #[test]
     fn list_items_use_bullets_and_keep_numbers_and_tasks() {
-        let out = render(
+        let out = render_all(
             &lines("- one\n  * two\n3. three\n- [x] done\n- [ ] todo"),
             80,
         );
@@ -385,7 +410,7 @@ mod tests {
 
     #[test]
     fn code_fences_are_hidden_and_their_body_is_not_parsed() {
-        let out = render(&lines("```rust\n# not heading **x**\n```\nafter"), 80);
+        let out = render_all(&lines("```rust\n# not heading **x**\n```\nafter"), 80);
         let texts: Vec<String> = out.iter().map(|(_, l)| text_of(l)).collect();
         assert_eq!(texts, ["  # not heading **x**", "after"]);
         assert_eq!(out.iter().map(|(i, _)| *i).collect::<Vec<_>>(), [1, 3]);
@@ -393,7 +418,7 @@ mod tests {
 
     #[test]
     fn inline_markup_is_removed_and_styled() {
-        let out = render(
+        let out = render_all(
             &lines("a **b** *c* `d` ~~e~~ [f](http://x) ![g](i.png)"),
             80,
         );
@@ -420,7 +445,7 @@ mod tests {
 
     #[test]
     fn identifiers_and_lone_markers_stay_literal() {
-        let out = render(&lines("call snake_case_name with 2 * 3 and a**b"), 80);
+        let out = render_all(&lines("call snake_case_name with 2 * 3 and a**b"), 80);
         assert_eq!(
             text_of(&out[0].1),
             "call snake_case_name with 2 * 3 and a**b"
@@ -429,17 +454,32 @@ mod tests {
 
     #[test]
     fn escaped_markers_are_shown_literally() {
-        let out = render(&lines(r"\*not italic\* and \`tick\`"), 80);
+        let out = render_all(&lines(r"\*not italic\* and \`tick\`"), 80);
         assert_eq!(text_of(&out[0].1), "*not italic* and `tick`");
     }
 
     #[test]
     fn rules_quotes_and_table_separators_render() {
-        let out = render(&lines("---\n> quoted\n| a | b |\n|---|:-:|"), 12);
+        let out = render_all(&lines("---\n> quoted\n| a | b |\n|---|:-:|"), 12);
         assert_eq!(text_of(&out[0].1), "─".repeat(10));
         assert_eq!(text_of(&out[1].1), "│ quoted");
         assert_eq!(text_of(&out[2].1), "| a | b |");
         assert_eq!(out[3].1.spans[0].style.fg, Some(Color::DarkGray));
+    }
+
+    #[test]
+    fn only_the_requested_window_is_rendered_and_fences_carry_over() {
+        let src = lines("```\none\ntwo\n```\n# Head\nlast");
+        let out = render(&src, 80, 2, 2);
+        let got: Vec<(usize, String)> = out.iter().map(|(i, l)| (*i, text_of(l))).collect();
+        assert_eq!(got, [(2, "  two".to_string()), (4, "Head".to_string())]);
+    }
+
+    #[test]
+    fn very_long_lines_are_shown_as_written() {
+        let line = format!("**{}**", "[".repeat(MAX_INLINE_BYTES));
+        let out = render_all(std::slice::from_ref(&line), 80);
+        assert_eq!(text_of(&out[0].1), line);
     }
 
     #[test]
