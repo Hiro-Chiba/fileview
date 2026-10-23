@@ -405,6 +405,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn rapid_existing_path_is_a_drop() {
         let dir = tempfile::tempdir().unwrap();
         let mut buf = PathBuffer::new();
