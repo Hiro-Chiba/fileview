@@ -214,12 +214,13 @@ fn test_sequence_search_workflow() {
     )
     .unwrap();
 
-    // Mode should stay Search with query
-    assert!(matches!(state.mode, ViewMode::Search { ref query } if query == "ap"));
+    // Enter leaves search mode and focuses the first match
+    assert!(matches!(state.mode, ViewMode::Browse));
+    assert_eq!(state.last_search.as_deref(), Some("ap"));
+    let first = state.focus_index;
+    assert!(entries[first].name.contains("ap"));
 
-    // Step 3: Search next (n) - should find next match
-    // Need to update entries to have current search query in state
-    let initial_focus = state.focus_index;
+    // Step 3: Search next (n) - now a navigation key in browse mode
     call_handle_action!(
         KeyAction::SearchNext,
         &mut state,
@@ -233,18 +234,10 @@ fn test_sequence_search_workflow() {
     )
     .unwrap();
 
-    // Focus should have moved to a matching entry
-    // (depends on sort order, but should find apple or apricot)
-    let new_focus = state.focus_index;
-    let focused_name = &entries.get(new_focus).map(|e| e.name.clone());
-    assert!(
-        focused_name
-            .as_ref()
-            .map(|n| n.to_lowercase().contains("ap"))
-            .unwrap_or(false)
-            || new_focus != initial_focus,
-        "SearchNext should find a matching entry"
-    );
+    let second = state.focus_index;
+    assert_ne!(second, first, "SearchNext should move to the other match");
+    assert!(entries[second].name.contains("ap"));
+    assert_eq!(state.search_matches.map(|(_, total)| total), Some(2));
 }
 
 /// Sequence: Mark files -> Copy -> Navigate -> Paste

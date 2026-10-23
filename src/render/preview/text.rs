@@ -325,6 +325,27 @@ fn render_markdown_preview(
     frame.render_widget(widget, area);
 }
 
+/// Check if a file holds text by sniffing its first 8 KiB.
+///
+/// Used for extensions missing from [`is_text_file`], such as CSV or SVG.
+pub fn looks_like_text(path: &std::path::Path) -> bool {
+    use std::io::Read;
+
+    let Ok(file) = std::fs::File::open(path) else {
+        return false;
+    };
+    let mut head = Vec::with_capacity(8192);
+    if file.take(8192).read_to_end(&mut head).is_err() {
+        return false;
+    }
+    !head.contains(&0)
+        && match std::str::from_utf8(&head) {
+            Ok(_) => true,
+            // The read may stop in the middle of a multi-byte character.
+            Err(e) => e.error_len().is_none(),
+        }
+}
+
 /// Check if a file is likely a text file
 pub fn is_text_file(path: &std::path::Path) -> bool {
     let ext = path
@@ -444,6 +465,22 @@ mod window_tests {
         (0..width)
             .map(|x| terminal.backend().buffer()[(x, y)].symbol())
             .collect()
+    }
+
+    #[test]
+    fn sniffing_accepts_utf8_text_and_rejects_binary() {
+        let dir = tempfile::tempdir().unwrap();
+        let text = dir.path().join("icon.svg");
+        let binary = dir.path().join("model.dat");
+        let cut = dir.path().join("cut.csv");
+        std::fs::write(&text, "<svg>日本語</svg>").unwrap();
+        std::fs::write(&binary, b"NEBULA\x00\x04").unwrap();
+        // 日 is three bytes, so the 8 KiB window ends inside it.
+        std::fs::write(&cut, format!("{}日", "a".repeat(8191))).unwrap();
+
+        assert!(looks_like_text(&text));
+        assert!(!looks_like_text(&binary));
+        assert!(looks_like_text(&cut));
     }
 
     #[test]

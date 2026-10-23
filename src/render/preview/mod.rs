@@ -52,8 +52,8 @@ pub use pdf::{find_pdftoppm, is_pdf_file, render_pdf_preview, PdfPreview};
 
 // Re-export text preview and detection
 pub use text::{
-    is_text_file, render_text_preview, warmup as warmup_syntax, StyledLine, StyledSegment,
-    TextPreview,
+    is_text_file, looks_like_text, render_text_preview, warmup as warmup_syntax, StyledLine,
+    StyledSegment, TextPreview,
 };
 
 // Re-export video preview

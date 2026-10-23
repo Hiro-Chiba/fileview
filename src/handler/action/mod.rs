@@ -177,6 +177,10 @@ pub fn handle_action(
         }
 
         // Input confirmation
+        KeyAction::ConfirmInput { .. } if matches!(state.mode, ViewMode::Search { .. }) => {
+            search::handle(action, state, entries);
+            Ok(ActionResult::Continue)
+        }
         KeyAction::ConfirmInput { value } => {
             input::handle_confirm(value, state, navigator, focused_path)?;
             Ok(ActionResult::Continue)

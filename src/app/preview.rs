@@ -16,9 +16,22 @@ use crate::handler::key::KeyAction;
 use crate::render::preview::window::TextAnchor;
 use crate::render::{
     find_pdftoppm, is_archive_file, is_binary_file, is_image_file, is_pdf_file, is_tar_gz_file,
-    is_text_file, ArchivePreview, CustomPreview, DiffPreview, DirectoryInfo, HexPreview,
-    ImagePreview, PdfPreview, Picker, TextPreview, VideoPreview,
+    is_text_file, looks_like_text, ArchivePreview, CustomPreview, DiffPreview, DirectoryInfo,
+    HexPreview, ImagePreview, PdfPreview, Picker, TextPreview, VideoPreview,
 };
+
+/// Text in a file whose extension is not in the known text list.
+///
+/// Media, archives, and PDFs are excluded before sniffing, because some of
+/// them, such as hand written PDFs, are plain ASCII yet need their own preview.
+fn is_unlisted_text_file(path: &std::path::Path) -> bool {
+    !(is_image_file(path)
+        || is_video_file(path)
+        || is_archive_file(path)
+        || is_tar_gz_file(path)
+        || is_pdf_file(path))
+        && looks_like_text(path)
+}
 
 enum TextPagePosition {
     Offset(usize),
@@ -181,7 +194,7 @@ impl PreviewState {
             self.pending_serial =
                 self.preview_worker
                     .request(path.to_path_buf(), PreviewKind::Directory, None, None);
-        } else if is_text_file(path) {
+        } else if is_text_file(path) || (is_file && is_unlisted_text_file(path)) {
             // Check if file has git changes - if so, show diff instead
             let git_status = state
                 .git_status
@@ -799,6 +812,34 @@ mod tests {
         preview.update(Some(&text), &mut picker, &mut state);
         assert!(preview.loading_image_path.is_none());
         assert_eq!(preview.last_path.as_ref(), Some(&text));
+    }
+
+    #[test]
+    fn text_with_an_unlisted_extension_gets_a_text_preview() {
+        let temp = tempdir().unwrap();
+        let csv = temp.path().join("jobs.csv");
+        fs::write(&csv, "id,name\n1,build\n").unwrap();
+
+        let mut preview = PreviewState::new();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        preview.update(Some(&csv), &mut None, &mut state);
+        wait_for_text(&mut preview, &mut state);
+
+        assert_eq!(preview.text.as_ref().unwrap().lines, ["id,name", "1,build"]);
+        assert!(preview.hex.is_none());
+    }
+
+    #[test]
+    fn ascii_pdf_is_not_mistaken_for_text() {
+        let temp = tempdir().unwrap();
+        let pdf = temp.path().join("doc.pdf");
+        fs::write(&pdf, "%PDF-1.4\n").unwrap();
+
+        let mut preview = PreviewState::new();
+        let mut state = AppState::new(temp.path().to_path_buf());
+        preview.update(Some(&pdf), &mut None, &mut state);
+
+        assert!(preview.text.is_none());
     }
 
     #[test]
