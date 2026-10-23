@@ -1,0 +1,35 @@
+name: Lint
+
+# Formatting, clippy with and without default features, and rustdoc on a
+# single runner for fast feedback. Called from ci.yml only.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+      - name: clippy
+        # Note: --all-features is not used because 'chafa' requires a system library
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: clippy (no default features)
+        run: cargo clippy --locked --all-targets --no-default-features -- -D warnings
+      - name: rustdoc
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --locked --no-deps

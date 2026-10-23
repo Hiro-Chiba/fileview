@@ -1,0 +1,52 @@
+name: Post-merge
+
+# Slower checks that do not gate pull requests: the RustSec audit and code
+# coverage. They run on every push to main, as they did inside ci.yml.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    # rustsec/audit-check needs to create check-runs and open issues on advisories
+    permissions:
+      contents: read
+      checks: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin --locked
+      - name: Generate coverage report
+        run: cargo tarpaulin --out xml --skip-clean
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: cobertura.xml
+          fail_ci_if_error: false
+          verbose: true

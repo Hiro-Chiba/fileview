@@ -1,5 +1,9 @@
 name: CI
 
+# Orchestrator for the required "CI Success" check. It classifies the
+# changed files, calls only the checks whose inputs changed, and the gate
+# job turns their results into the single status the ruleset requires.
+# Pushes to main skip classification and run every check.
 on:
   push:
     branches: [main]
@@ -10,132 +14,74 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
+permissions:
+  contents: read
 
 jobs:
-  # Fast feedback: fmt + clippy + doc in a single runner
-  lint:
-    name: Lint
+  classify:
+    name: Classify Changes
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-      - name: rustfmt
-        run: cargo fmt --all -- --check
-      - name: clippy
-        # Note: --all-features is not used because 'chafa' requires a system library
-        run: cargo clippy --locked --all-targets -- -D warnings
-      - name: clippy (no default features)
-        run: cargo clippy --locked --all-targets --no-default-features -- -D warnings
-      - name: rustdoc
-        env:
-          RUSTDOCFLAGS: -D warnings
-        run: cargo doc --locked --no-deps
-
-  # Tests across supported OSes on stable
-  test:
-    name: Test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.os }}
-      - name: Ensure content search runtime is available
-        shell: bash
-        run: |
-          if ! command -v rg >/dev/null 2>&1; then
-            cargo install ripgrep --locked
-          fi
-          rg --version
-      - run: cargo test --locked
-      - name: Terminal search and preview (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          python3 scripts/workspace_pty_smoke.py --binary target/debug/fv
-          python3 scripts/content_pty_smoke.py target/debug/fv
-      - name: Test without default features
-        run: cargo test --locked --no-default-features
-      - name: Minimal terminal search and preview (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          python3 scripts/workspace_pty_smoke.py --binary target/debug/fv
-          python3 scripts/content_pty_smoke.py target/debug/fv
-
-  # MSRV: compile only (tests are covered by stable)
-  msrv:
-    name: MSRV (1.90.0)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.90.0"
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: msrv
-      - run: cargo check --all-targets --locked
-
-  # Security audit: scheduled + main push (not on every PR)
-  audit:
-    name: Security Audit
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    # rustsec/audit-check needs to create check-runs and open issues on advisories
     permissions:
       contents: read
-      checks: write
-      issues: write
+      pull-requests: read
+    outputs:
+      rust: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rust == 'true' }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: rustsec/audit-check@v2
+      - name: Detect changes that affect the build
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Everything the crate, its tests, or the PTY smoke scripts read.
+          # A change to any CI workflow fires every check as a canary.
+          filters: |
+            rust:
+              - 'src/**'
+              - 'tests/**'
+              - 'examples/**'
+              - 'scripts/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rustfmt.toml'
+              - 'clippy.toml'
+              - '.cargo/**'
+              - '.github/workflows/ci*.yml'
 
-  # Code coverage: scheduled + main push (not on every PR)
-  coverage:
-    name: Code Coverage
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin --locked
-      - name: Generate coverage report
-        run: cargo tarpaulin --out xml --skip-clean
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: cobertura.xml
-          fail_ci_if_error: false
-          verbose: true
+  lint:
+    needs: classify
+    if: needs.classify.outputs.rust == 'true'
+    uses: ./.github/workflows/ci-lint.yml
 
-  # Required status check — gates merges on required jobs only
+  test:
+    needs: classify
+    if: needs.classify.outputs.rust == 'true'
+    uses: ./.github/workflows/ci-test.yml
+
+  msrv:
+    needs: classify
+    if: needs.classify.outputs.rust == 'true'
+    uses: ./.github/workflows/ci-msrv.yml
+
+  # The single required status check. Skipped checks pass, so a PR that
+  # only touches docs or demos goes green without building. Any check that
+  # fails or is cancelled, or a failed classification, blocks the merge.
   ci-success:
     name: CI Success
-    needs: [lint, test, msrv]
+    needs: [classify, lint, test, msrv]
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Check required jobs
+      - name: Verify every fired check succeeded
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
-          if [[ "${{ needs.lint.result }}" != "success" ]] || \
-             [[ "${{ needs.test.result }}" != "success" ]] || \
-             [[ "${{ needs.msrv.result }}" != "success" ]]; then
-            echo "One or more required jobs failed"
+          echo "$NEEDS_JSON"
+          FAILED=$(echo "$NEEDS_JSON" | jq -r 'to_entries[]
+            | select(.value.result == "failure" or .value.result == "cancelled"
+                     or (.key == "classify" and .value.result != "success"))
+            | .key')
+          if [ -n "$FAILED" ]; then
+            echo "::error::Checks did not pass: $(echo "$FAILED" | tr '\n' ' ')"
             exit 1
           fi
-          echo "All required CI checks passed!"
+          echo "All fired checks are green."

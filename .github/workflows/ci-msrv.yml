@@ -1,0 +1,27 @@
+name: MSRV
+
+# Compile check on the minimum supported Rust version. Tests run on stable
+# in ci-test.yml. Called from ci.yml only.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  msrv:
+    name: MSRV (1.90.0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.90.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: msrv
+      - run: cargo check --all-targets --locked
