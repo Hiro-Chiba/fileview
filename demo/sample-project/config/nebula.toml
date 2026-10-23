@@ -1,0 +1,11 @@
+[server]
+port = 8080
+workers = 64
+
+[storage]
+backend = "postgres"
+url = "postgres://nebula@localhost/nebula"
+
+[retry]
+max_attempts = 3
+plugin = "scripts/retry.lua"

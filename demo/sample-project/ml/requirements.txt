@@ -1,0 +1,3 @@
+polars>=1.0
+scikit-learn>=1.5
+numpy>=2.0

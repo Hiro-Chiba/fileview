@@ -10,6 +10,9 @@ repository = "https://github.com/Hiro-Chiba/fileview"
 readme = "README.md"
 keywords = ["tui", "file-browser", "terminal", "cli"]
 categories = ["command-line-utilities"]
+# The demo GIFs alone are close to the crates.io size limit. The README links
+# to them in the repository, so the package does not need them.
+exclude = ["assets/*.gif", "demo/"]
 
 [[bin]]
 name = "fv"

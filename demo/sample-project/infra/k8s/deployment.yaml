@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nebula
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: nebula }
+  template:
+    metadata:
+      labels: { app: nebula }
+    spec:
+      containers:
+        - name: scheduler
+          image: ghcr.io/nebula/nebula:0.4.0
+          ports: [{ containerPort: 8080 }]
+          resources:
+            limits: { cpu: "2", memory: 1Gi }

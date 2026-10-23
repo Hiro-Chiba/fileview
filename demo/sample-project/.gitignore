@@ -1,4 +1,5 @@
-/target
-*.swp
-*.swo
-.DS_Store
+target/
+node_modules/
+__pycache__/
+*.log
+!data/app.log

@@ -1,0 +1,17 @@
+:root {
+  --bg: #0f1020;
+  --fg: #e4e4f0;
+  --accent: #8b5cf6;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 56px 1fr;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.dot.online { background: #22c55e; }
+.dot.offline { background: #ef4444; }

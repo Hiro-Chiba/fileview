@@ -1,0 +1,12 @@
+[package]
+name = "nebula-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "nebula"
+path = "src/main.rs"
+
+[dependencies]
+nebula-core = { path = "../core" }
+tokio.workspace = true
