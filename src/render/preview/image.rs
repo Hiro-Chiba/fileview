@@ -39,11 +39,15 @@ impl ImagePreview {
 #[cfg(feature = "svg")]
 const SVG_RASTER_SIZE: f32 = 1024.0;
 
+/// SVGs are parsed in memory, so larger files are refused instead of read.
+#[cfg(feature = "svg")]
+const MAX_SVG_BYTES: u64 = 8 * 1024 * 1024;
+
 /// Open an image file, rasterizing SVG when the `svg` feature is enabled.
 pub fn open_image(path: &std::path::Path) -> anyhow::Result<DynamicImage> {
     #[cfg(feature = "svg")]
     if is_svg_file(path) {
-        return rasterize_svg(&std::fs::read(path)?);
+        return rasterize_svg(&read_svg(path)?);
     }
     Ok(image::open(path)?)
 }
@@ -53,6 +57,23 @@ fn is_svg_file(path: &std::path::Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| e.eq_ignore_ascii_case("svg"))
+}
+
+#[cfg(feature = "svg")]
+fn read_svg(path: &std::path::Path) -> anyhow::Result<Vec<u8>> {
+    use std::io::Read;
+
+    // Reading through `take` also bounds a file that grows after the check.
+    let mut data = Vec::new();
+    std::fs::File::open(path)?
+        .take(MAX_SVG_BYTES + 1)
+        .read_to_end(&mut data)?;
+    anyhow::ensure!(
+        data.len() as u64 <= MAX_SVG_BYTES,
+        "SVG is larger than {} MiB",
+        MAX_SVG_BYTES / 1024 / 1024
+    );
+    Ok(data)
 }
 
 #[cfg(feature = "svg")]
@@ -196,6 +217,21 @@ mod svg_tests {
         let image = rasterize_svg(svg).unwrap();
         assert_eq!(image.get_pixel(0, 0).0[3], 0);
         assert_eq!(image.get_pixel(512, 512).0, [0, 255, 0, 255]);
+    }
+
+    #[test]
+    fn oversized_svg_is_refused_without_parsing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("huge.svg");
+        let file = std::fs::File::create(&path).unwrap();
+        file.set_len(MAX_SVG_BYTES + 1).unwrap();
+        let err = open_image(&path).unwrap_err().to_string();
+        assert!(err.contains("larger than"), "{err}");
+    }
+
+    #[test]
+    fn gzip_svg_is_rejected_because_svgz_support_is_off() {
+        assert!(rasterize_svg(&[0x1f, 0x8b, 0x08, 0x00]).is_err());
     }
 
     #[test]
