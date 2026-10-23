@@ -63,7 +63,7 @@ impl ImageLoader {
             while let Ok(latest) = request_rx.try_recv() {
                 request = latest;
             }
-            let result = match image::open(&request.path) {
+            let result = match crate::render::open_image(&request.path) {
                 Ok(img) => Ok(img),
                 Err(e) => Err(format!("Failed to load image: {}", e)),
             };

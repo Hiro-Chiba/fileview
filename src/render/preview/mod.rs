@@ -45,7 +45,9 @@ pub use directory::{render_directory_info, DirectoryInfo};
 pub use hex::{is_binary_file, render_hex_preview, HexPreview};
 
 // Re-export image preview
-pub use image::{calculate_centered_image_area, is_image_file, render_image_preview, ImagePreview};
+pub use image::{
+    calculate_centered_image_area, is_image_file, open_image, render_image_preview, ImagePreview,
+};
 
 // Re-export PDF preview
 pub use pdf::{find_pdftoppm, is_pdf_file, render_pdf_preview, PdfPreview};

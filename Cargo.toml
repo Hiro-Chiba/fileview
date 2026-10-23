@@ -20,7 +20,7 @@ path = "src/main.rs"
 
 [features]
 # Default keeps the full feature set so existing users see no behavior change.
-default = ["ai", "archive", "clipboard", "lua"]
+default = ["ai", "archive", "clipboard", "lua", "svg"]
 # AI helpers backed by `tiktoken-rs` (BPE token estimates) and `petgraph`
 # (dependency graph analysis). Disabling drops both crates and switches
 # `estimate_tokens` to a coarse `chars / 4` heuristic so the budget bar,
@@ -45,6 +45,10 @@ clipboard = ["dep:arboard"]
 # rest of the TUI works as before because `PluginManager::new()` simply
 # fails and the optional plugin manager stays `None`.
 lua = ["dep:mlua"]
+# SVG preview rasterized with `resvg`, without its text and font support, so
+# text inside an SVG is not drawn. Disabling saves about 400 KB and shows SVG
+# files as XML source instead.
+svg = ["dep:resvg"]
 # Enable Chafa fallback for better image quality on terminals without native protocol support
 # Requires libchafa (>= 1.8.0) to be installed: brew install chafa (macOS) or apt install libchafa-dev (Linux)
 chafa = ["ratatui-image/chafa-dyn"]
@@ -59,6 +63,7 @@ dirs = "7.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 arboard = { version = "3.4", default-features = false, optional = true }
+resvg = { version = "0.48", default-features = false, optional = true }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
 ratatui-image = { version = "11.0.2", default-features = false, features = ["crossterm"] }
 nucleo-matcher = "0.3"
