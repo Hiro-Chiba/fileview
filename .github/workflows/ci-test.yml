@@ -1,0 +1,48 @@
+name: Test
+
+# Tests and PTY smoke checks on every supported OS with stable Rust, with
+# and without default features. Called from ci.yml only.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}
+      - name: Ensure content search runtime is available
+        shell: bash
+        run: |
+          if ! command -v rg >/dev/null 2>&1; then
+            cargo install ripgrep --locked
+          fi
+          rg --version
+      - run: cargo test --locked
+      - name: Terminal search and preview (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          python3 scripts/workspace_pty_smoke.py --binary target/debug/fv
+          python3 scripts/content_pty_smoke.py target/debug/fv
+      - name: Test without default features
+        run: cargo test --locked --no-default-features
+      - name: Minimal terminal search and preview (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          python3 scripts/workspace_pty_smoke.py --binary target/debug/fv
+          python3 scripts/content_pty_smoke.py target/debug/fv
