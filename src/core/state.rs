@@ -195,6 +195,8 @@ pub struct AppState {
     pub sort_mode: SortMode,
     /// Search match info (current_index, total_count)
     pub search_matches: Option<(usize, usize)>,
+    /// Query confirmed with Enter, reused by `n` and `N` after search closes
+    pub last_search: Option<String>,
     /// Threshold width below which preview auto-hides (default: 50)
     pub auto_hide_preview_threshold: u16,
     /// Preview display mode (Normal or Peek)
@@ -263,6 +265,7 @@ impl AppState {
             filter_pattern: None,
             sort_mode: SortMode::default(),
             search_matches: None,
+            last_search: None,
             auto_hide_preview_threshold: 50,
             preview_display_mode: PreviewDisplayMode::default(),
             ai_focus: false,

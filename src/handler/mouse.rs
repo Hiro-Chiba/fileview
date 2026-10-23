@@ -52,6 +52,15 @@ impl ClickDetector {
     }
 }
 
+/// Buffered input once it has been classified
+#[derive(Debug, PartialEq)]
+pub enum BufferedInput {
+    /// Paths dropped onto the terminal
+    Drop(Vec<PathBuf>),
+    /// Characters the user typed
+    Keys(String),
+}
+
 /// Buffers rapid keyboard input to detect file paths from drag-and-drop
 ///
 /// Some terminals (e.g., Ghostty) send dropped file paths as rapid key events
@@ -101,10 +110,34 @@ impl PathBuffer {
                 .unwrap_or(false)
     }
 
+    /// Whether the next key would arrive too slowly to belong to the same drop
+    pub fn is_stale(&self) -> bool {
+        self.last_input
+            .is_some_and(|t| t.elapsed() >= Duration::from_millis(RAPID_INPUT_THRESHOLD_MS))
+    }
+
     /// Extract valid file paths from buffer, consuming the content
     pub fn take_paths(&mut self) -> Vec<PathBuf> {
         let content = self.take_raw();
         parse_paths(&content)
+    }
+
+    /// Consume the buffer and decide whether it was a drop or typed keys.
+    ///
+    /// A lone character is always a key press. Otherwise pressing `/` to
+    /// search would be read as dropping the filesystem root.
+    pub fn take_input(&mut self) -> BufferedInput {
+        let raw = self.take_raw();
+        let paths = if raw.chars().count() > 1 {
+            parse_paths(&raw)
+        } else {
+            Vec::new()
+        };
+        if paths.is_empty() {
+            BufferedInput::Keys(raw)
+        } else {
+            BufferedInput::Drop(paths)
+        }
     }
 
     /// Take raw buffer content for fallback processing
@@ -354,6 +387,44 @@ mod tests {
         let b2 = PathBuffer::new();
         assert!(b1.is_empty());
         assert!(b2.is_empty());
+    }
+
+    #[test]
+    fn lone_slash_is_a_key_press_not_a_root_drop() {
+        let mut buf = PathBuffer::new();
+        buf.push('/');
+        assert_eq!(buf.take_input(), BufferedInput::Keys("/".into()));
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn lone_quote_is_a_key_press() {
+        let mut buf = PathBuffer::new();
+        buf.push('\'');
+        assert_eq!(buf.take_input(), BufferedInput::Keys("'".into()));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn rapid_existing_path_is_a_drop() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut buf = PathBuffer::new();
+        for c in dir.path().display().to_string().chars() {
+            buf.push(c);
+        }
+        assert_eq!(
+            buf.take_input(),
+            BufferedInput::Drop(vec![dir.path().to_path_buf()])
+        );
+    }
+
+    #[test]
+    fn buffer_goes_stale_after_the_rapid_input_window() {
+        let mut buf = PathBuffer::new();
+        buf.push('/');
+        assert!(!buf.is_stale());
+        std::thread::sleep(Duration::from_millis(RAPID_INPUT_THRESHOLD_MS + 10));
+        assert!(buf.is_stale());
     }
 
     #[test]

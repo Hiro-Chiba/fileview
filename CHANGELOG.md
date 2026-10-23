@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Markdown files are previewed rendered when the preview pane is at least 80 columns wide, such as in fullscreen preview or on a large terminal. Narrower panes keep the raw source view.
 
+### Fixed
+
+- Pressing `/` opens the tree search again. A lone `/` was read as dropping the filesystem root onto the window, so search never started.
+- Bookmark jumps with `'` followed by a digit work again. The `'` was swallowed by the same drop detection.
+- Pressing Enter in the tree search now jumps to the first match and returns to browsing, so `n` and `N` move between matches instead of being typed into the query.
+- Text files with extensions that FileView does not know, such as `.csv`, `.svg`, and `.tf`, are previewed as text instead of a hex dump.
+- The selected row in the fuzzy finder uses the theme's selection color, so it stays readable on themes with a light blue such as Catppuccin.
+
 ## [3.0.0] - 2026-10-05
 
 FileView 3.0 focuses on finding files, searching their contents, and reading large text files. Most of the work is under the hood, so you can keep using the controls you already know.

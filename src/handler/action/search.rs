@@ -18,6 +18,13 @@ pub fn handle(action: KeyAction, state: &mut AppState, entries: &[EntrySnapshot]
             };
             state.search_matches = None;
         }
+        KeyAction::ConfirmInput { value } => {
+            // Leave search mode so that `n` and `N` act as navigation keys
+            // instead of being typed into the query.
+            state.mode = ViewMode::Browse;
+            state.last_search = (!value.is_empty()).then_some(value);
+            search_direction(state, entries, SearchDirection::Forward);
+        }
         KeyAction::SearchNext => {
             search_direction(state, entries, SearchDirection::Forward);
         }
@@ -36,7 +43,11 @@ enum SearchDirection {
 
 /// Search in specified direction and update match info
 fn search_direction(state: &mut AppState, entries: &[EntrySnapshot], direction: SearchDirection) {
-    if let ViewMode::Search { query } = &state.mode {
+    let query = match &state.mode {
+        ViewMode::Search { query } => Some(query.clone()),
+        _ => state.last_search.clone(),
+    };
+    if let Some(query) = query {
         if query.is_empty() {
             state.search_matches = None;
             return;

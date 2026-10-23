@@ -19,7 +19,7 @@ use crate::handler::{
         update_bulk_rename_buffer, ActionContext, ActionResult, EntrySnapshot,
     },
     key::{handle_key_event, update_input_buffer, KeyAction},
-    mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer},
+    mouse::{handle_mouse_event, BufferedInput, ClickDetector, MouseAction, PathBuffer},
 };
 use crate::plugin::{PluginAction, PluginEvent, PluginManager};
 use crate::render::{fuzzy_match_incremental, visible_height, FuzzyMatch, FuzzyState, Picker};
@@ -32,6 +32,31 @@ use super::render::{render_frame, RenderContext};
 pub struct AppResult {
     pub exit_code: i32,
     pub choosedir_path: Option<PathBuf>,
+}
+
+/// Act on buffered input as either a file drop or the keys it started with.
+fn flush_path_buffer(
+    path_buffer: &mut PathBuffer,
+    focused_path: Option<&PathBuf>,
+    navigator: &mut TreeNavigator,
+    state: &mut AppState,
+) -> anyhow::Result<()> {
+    match path_buffer.take_input() {
+        BufferedInput::Drop(paths) => {
+            let root = state.root.clone();
+            handle_file_drop(&paths, focused_path, &root, navigator, state)?;
+        }
+        BufferedInput::Keys(keys) => {
+            if let Some(rest) = keys.strip_prefix('/') {
+                state.mode = ViewMode::Search {
+                    query: rest.to_string(),
+                };
+            } else if keys == "'" {
+                state.mode = ViewMode::BookmarkJump;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Handle file drop operation - copy files to target directory.
@@ -611,25 +636,12 @@ pub fn run_app(
         // Check drop buffer timeout (for file drop detection via rapid key input)
         if path_buffer.is_ready() {
             needs_redraw = true;
-            let paths = path_buffer.take_paths();
-            if !paths.is_empty() {
-                let root = state.root.clone();
-                handle_file_drop(
-                    &paths,
-                    focused_path.as_ref(),
-                    &root,
-                    &mut navigator,
-                    &mut state,
-                )?;
-            } else {
-                // Not valid paths - check if it starts with '/' for search
-                let buffer = path_buffer.take_raw();
-                if let Some(rest) = buffer.strip_prefix('/') {
-                    state.mode = ViewMode::Search {
-                        query: rest.to_string(),
-                    };
-                }
-            }
+            flush_path_buffer(
+                &mut path_buffer,
+                focused_path.as_ref(),
+                &mut navigator,
+                &mut state,
+            )?;
         }
 
         // Handle events (60ms timeout balances responsiveness and CPU usage)
@@ -642,6 +654,17 @@ pub fn run_app(
             needs_redraw = true;
             match event::read()? {
                 Event::Key(key) => {
+                    // A slow key means the buffered characters were typed, so
+                    // apply them before this key, which may then start a search.
+                    if !path_buffer.is_empty() && path_buffer.is_stale() {
+                        flush_path_buffer(
+                            &mut path_buffer,
+                            focused_path.as_ref(),
+                            &mut navigator,
+                            &mut state,
+                        )?;
+                    }
+
                     // Handle input buffer updates first
                     if let ViewMode::Input {
                         purpose,

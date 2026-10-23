@@ -16,4 +16,4 @@ pub use key::{
     KeyAction,
 };
 pub use keymap::{KeyBindingRegistry, KeymapFile};
-pub use mouse::{handle_mouse_event, ClickDetector, MouseAction, PathBuffer};
+pub use mouse::{handle_mouse_event, BufferedInput, ClickDetector, MouseAction, PathBuffer};
