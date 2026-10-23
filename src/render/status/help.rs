@@ -13,7 +13,6 @@ use ratatui::{
 use crate::core::{AppState, ViewMode};
 use crate::render::theme::theme;
 
-// Help overlay constants
 const HELP_OVERLAY_BG_COLOR: Color = Color::Rgb(30, 30, 40);
 const HELP_OVERLAY_MARGIN: u16 = 1;
 const HELP_MIN_WIDTH: u16 = 24;
@@ -40,7 +39,6 @@ fn help_key_style() -> HelpKeyStyle {
     })
 }
 
-/// Create a styled key span with background highlight
 fn help_key(key: &str) -> Span<'_> {
     let t = theme();
     let style = match help_key_style() {
@@ -57,12 +55,10 @@ fn help_key(key: &str) -> Span<'_> {
     Span::styled(key, style)
 }
 
-/// Create a description span
 fn help_desc(desc: &str) -> Span<'_> {
     Span::styled(desc, Style::default().fg(Color::White))
 }
 
-/// Create a section header
 fn help_section(title: &str) -> Line<'_> {
     Line::from(Span::styled(
         title,
@@ -399,7 +395,6 @@ fn build_wide_help() -> Vec<Line<'static>> {
     ]
 }
 
-/// Render help popup overlay with all keybindings (responsive)
 pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
     if !matches!(state.mode, ViewMode::Help) {
         return;
@@ -407,7 +402,6 @@ pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
 
     let area = frame.area();
 
-    // Calculate overlay size - fit to screen with margins
     let overlay_width = area
         .width
         .saturating_sub(HELP_OVERLAY_MARGIN * 2)
@@ -418,7 +412,6 @@ pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
 
     let overlay_area = Rect::new(overlay_x, overlay_y, overlay_width, overlay_height);
 
-    // Choose layout based on available width
     let inner_width = overlay_width.saturating_sub(2);
     let content = if inner_width < 45 {
         build_narrow_help()
@@ -426,7 +419,6 @@ pub fn render_help_popup(frame: &mut Frame, state: &AppState) {
         build_wide_help()
     };
 
-    // Clear background and render
     frame.render_widget(Clear, overlay_area);
 
     let paragraph = Paragraph::new(content).block(

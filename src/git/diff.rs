@@ -1,59 +1,38 @@
-//! Git diff functionality
-//!
-//! This module provides functions to get diff output for files in a Git repository.
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::operations::find_git_executable;
 
-/// A line in a diff output
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiffLine {
-    /// Added line (prefixed with +)
     Added(String),
-    /// Removed line (prefixed with -)
     Removed(String),
-    /// Context line (prefixed with space)
     Context(String),
-    /// Hunk header (@@...@@)
     HunkHeader(String),
     /// Other line (file header, etc.)
     Other(String),
 }
 
-/// A diff hunk (section of changes)
 #[derive(Debug, Clone)]
 pub struct DiffHunk {
-    /// Starting line number in old file
     pub old_start: usize,
-    /// Number of lines in old file
     pub old_count: usize,
-    /// Starting line number in new file
     pub new_start: usize,
-    /// Number of lines in new file
     pub new_count: usize,
-    /// Lines in this hunk
     pub lines: Vec<DiffLine>,
 }
 
-/// Complete diff output for a file
 #[derive(Debug, Clone)]
 pub struct FileDiff {
-    /// Path to the file
     pub path: PathBuf,
-    /// All hunks in the diff
     pub hunks: Vec<DiffHunk>,
     /// Raw lines for display
     pub lines: Vec<DiffLine>,
-    /// Total lines added
     pub additions: usize,
-    /// Total lines removed
     pub deletions: usize,
 }
 
 impl FileDiff {
-    /// Check if the diff is empty
     pub fn is_empty(&self) -> bool {
         self.lines.is_empty()
     }
@@ -72,7 +51,6 @@ impl FileDiff {
 pub fn get_diff(repo_root: &Path, file: &Path, staged: bool) -> Option<FileDiff> {
     let git = find_git_executable()?;
 
-    // Get relative path from repo root
     let relative = file.strip_prefix(repo_root).unwrap_or(file);
 
     let mut cmd = Command::new(git);
@@ -98,7 +76,6 @@ pub fn get_diff(repo_root: &Path, file: &Path, staged: bool) -> Option<FileDiff>
     Some(parse_diff(&stdout, file.to_path_buf()))
 }
 
-/// Parse diff output into a FileDiff structure
 fn parse_diff(diff_output: &str, path: PathBuf) -> FileDiff {
     let mut lines = Vec::new();
     let mut hunks = Vec::new();
@@ -135,7 +112,6 @@ fn parse_diff(diff_output: &str, path: PathBuf) -> FileDiff {
             DiffLine::Other(line.to_string())
         };
 
-        // Add to current hunk if we have one
         if let Some(ref mut hunk) = current_hunk {
             hunk.lines.push(diff_line.clone());
         }
@@ -143,7 +119,6 @@ fn parse_diff(diff_output: &str, path: PathBuf) -> FileDiff {
         lines.push(diff_line);
     }
 
-    // Don't forget the last hunk
     if let Some(hunk) = current_hunk {
         hunks.push(hunk);
     }
@@ -157,7 +132,6 @@ fn parse_diff(diff_output: &str, path: PathBuf) -> FileDiff {
     }
 }
 
-/// Parse a hunk header to extract line numbers
 fn parse_hunk_header(header: &str) -> (usize, usize, usize, usize) {
     // Format: @@ -old_start,old_count +new_start,new_count @@ optional context
     let parts: Vec<&str> = header.split_whitespace().collect();
@@ -313,7 +287,6 @@ index 1234567..abcdefg 100644
 
     #[test]
     fn test_parse_hunk_header_malformed() {
-        // Too few parts
         let (old_start, old_count, new_start, new_count) = parse_hunk_header("@@");
         assert_eq!(old_start, 1);
         assert_eq!(old_count, 0);
@@ -353,7 +326,6 @@ index 1234567..abcdefg 100644
 "#;
         let file_diff = parse_diff(diff, PathBuf::from("test.txt"));
 
-        // Check the content of lines
         if let DiffLine::Removed(content) = &file_diff.lines[1] {
             assert_eq!(content, "hello world");
         } else {

@@ -21,18 +21,14 @@ use super::window::{TextAnchor, TextWindow};
 #[path = "text_syntax.rs"]
 mod file_syntax;
 
-/// Lazy-initialized syntax set (100+ languages)
 static SYNTAX_SET: OnceLock<SyntaxSet> = OnceLock::new();
 
-/// Lazy-initialized theme (base16-ocean.dark)
 static THEME: OnceLock<Theme> = OnceLock::new();
 
-/// Get the shared syntax set (lazy-initialized)
 fn get_syntax_set() -> &'static SyntaxSet {
     SYNTAX_SET.get_or_init(SyntaxSet::load_defaults_newlines)
 }
 
-/// Get the shared theme (lazy-initialized)
 fn get_theme() -> &'static Theme {
     THEME.get_or_init(|| {
         let ts = ThemeSet::load_defaults();
@@ -52,20 +48,17 @@ pub fn warmup() {
     let _ = get_theme();
 }
 
-/// A segment of styled text (text with color)
 #[derive(Debug, Clone)]
 pub struct StyledSegment {
     pub text: String,
     pub color: Color,
 }
 
-/// A line with syntax highlighting
 #[derive(Debug, Clone)]
 pub struct StyledLine {
     pub segments: Vec<StyledSegment>,
 }
 
-/// Text preview content
 #[derive(Clone)]
 pub struct TextPreview {
     pub lines: Vec<String>,
@@ -145,7 +138,6 @@ impl TextPreview {
         Ok(())
     }
 
-    /// Create a new text preview without syntax highlighting
     pub fn new(content: &str) -> Self {
         let lines: Vec<String> = content.lines().map(String::from).collect();
         Self {
@@ -162,7 +154,6 @@ impl TextPreview {
         }
     }
 
-    /// Create a new text preview with syntax highlighting based on file extension
     pub fn with_highlighting(content: &str, path: &Path) -> Self {
         let lines: Vec<String> = content.lines().map(String::from).collect();
         let styled_lines = highlight_content(content, path);
@@ -181,7 +172,6 @@ impl TextPreview {
     }
 }
 
-/// Perform syntax highlighting on content based on file extension
 fn highlight_content(content: &str, path: &Path) -> Option<Vec<StyledLine>> {
     highlight_content_cancelled(content, path, &|| false)
 }
@@ -225,7 +215,6 @@ fn highlight_content_cancelled(
     Some(styled_lines)
 }
 
-/// Render text preview
 pub fn render_text_preview(
     frame: &mut Frame,
     preview: &TextPreview,
@@ -243,7 +232,6 @@ pub fn render_text_preview(
     let end = (start + visible_height).min(preview.lines.len());
 
     let lines: Vec<Line> = if let Some(ref styled_lines) = preview.styled_lines {
-        // Render with syntax highlighting
         styled_lines[start..end]
             .iter()
             .enumerate()
@@ -266,7 +254,6 @@ pub fn render_text_preview(
             })
             .collect()
     } else {
-        // Render plain text (fallback)
         preview.lines[start..end]
             .iter()
             .enumerate()
@@ -346,7 +333,6 @@ pub fn looks_like_text(path: &std::path::Path) -> bool {
         }
 }
 
-/// Check if a file is likely a text file
 pub fn is_text_file(path: &std::path::Path) -> bool {
     let ext = path
         .extension()

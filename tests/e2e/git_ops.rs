@@ -1,7 +1,3 @@
-//! E2E tests for Git operations
-//!
-//! Tests for git stage/unstage functionality.
-
 use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -13,7 +9,6 @@ fn fv() -> Command {
     cargo_bin_cmd!("fv")
 }
 
-/// Initialize a git repository in the given directory
 fn init_git_repo(dir: &TempDir) -> bool {
     StdCommand::new("git")
         .args(["init"])
@@ -23,7 +18,6 @@ fn init_git_repo(dir: &TempDir) -> bool {
         .unwrap_or(false)
 }
 
-/// Configure git user for commits
 fn configure_git_user(dir: &TempDir) -> bool {
     let config_name = StdCommand::new("git")
         .args(["config", "user.name", "Test User"])
@@ -42,7 +36,6 @@ fn configure_git_user(dir: &TempDir) -> bool {
     config_name && config_email
 }
 
-/// Create an initial commit
 fn create_initial_commit(dir: &TempDir) -> bool {
     let file_path = dir.path().join("initial.txt");
     fs::write(&file_path, "initial content").ok();
@@ -89,7 +82,6 @@ fn fv_accepts_directory_with_modified_files() {
         return;
     }
 
-    // Modify a file
     let file_path = temp_dir.path().join("initial.txt");
     fs::write(&file_path, "modified content").unwrap();
 
@@ -103,7 +95,6 @@ fn fv_accepts_directory_with_untracked_files() {
         return;
     }
 
-    // Create untracked file
     let file_path = temp_dir.path().join("untracked.txt");
     fs::write(&file_path, "untracked content").unwrap();
 

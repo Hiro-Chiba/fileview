@@ -12,7 +12,6 @@ use std::time::{Duration, Instant};
 
 use regex::Regex;
 
-/// One marker found in source.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TodoItem {
     pub path: PathBuf,
@@ -21,7 +20,6 @@ pub struct TodoItem {
     pub message: String,
 }
 
-/// Recognized marker tags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TodoTag {
     Todo,
@@ -100,7 +98,6 @@ fn should_skip_dir(name: &str) -> bool {
     SKIP_DIRS.contains(&name)
 }
 
-/// Outcome of a scan.
 #[derive(Debug, Clone)]
 pub struct ScanOutcome {
     pub items: Vec<TodoItem>,

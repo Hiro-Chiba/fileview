@@ -1,5 +1,3 @@
-//! Keymap configuration and registry
-//!
 //! Loads key bindings from `~/.config/fileview/keymap.toml`
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -11,33 +9,23 @@ use std::path::PathBuf;
 use super::key::KeyAction;
 use crate::app::ConfigFile;
 
-/// Keymap configuration file structure
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct KeymapFile {
-    /// Key bindings for browse mode
     pub browse: HashMap<String, String>,
-    /// Key bindings for preview mode
     pub preview: HashMap<String, String>,
-    /// Key bindings for search mode
     pub search: HashMap<String, String>,
-    /// Key bindings for confirm mode
     pub confirm: HashMap<String, String>,
-    /// Key bindings for fuzzy finder mode
     pub fuzzy: HashMap<String, String>,
-    /// Key bindings for help mode
     pub help: HashMap<String, String>,
-    /// Key bindings for filter mode
     pub filter: HashMap<String, String>,
 }
 
 impl KeymapFile {
-    /// Get the keymap file path (~/.config/fileview/keymap.toml)
     pub fn keymap_path() -> Option<PathBuf> {
         ConfigFile::config_dir().map(|p| p.join("keymap.toml"))
     }
 
-    /// Load keymap from file
     pub fn load() -> Self {
         Self::keymap_path()
             .and_then(|path| {
@@ -52,21 +40,14 @@ impl KeymapFile {
     }
 }
 
-/// Key binding registry for dynamic key dispatch
 pub struct KeyBindingRegistry {
     /// Browse mode bindings: key_str -> action_name
     browse: HashMap<String, String>,
-    /// Preview mode bindings
     preview: HashMap<String, String>,
-    /// Search mode bindings
     search: HashMap<String, String>,
-    /// Confirm mode bindings
     confirm: HashMap<String, String>,
-    /// Fuzzy finder mode bindings
     fuzzy: HashMap<String, String>,
-    /// Help mode bindings
     help: HashMap<String, String>,
-    /// Filter mode bindings
     filter: HashMap<String, String>,
 }
 
@@ -97,7 +78,6 @@ impl KeyBindingRegistry {
         let mut registry = Self::new();
         let keymap = KeymapFile::load();
 
-        // Merge user bindings (override defaults)
         for (key, action) in keymap.browse {
             registry.browse.insert(key, action);
         }
@@ -123,9 +103,7 @@ impl KeyBindingRegistry {
         registry
     }
 
-    /// Load default key bindings
     fn load_defaults(&mut self) {
-        // Browse mode defaults
         let browse = &mut self.browse;
         browse.insert("q".to_string(), "quit".to_string());
         browse.insert("Q".to_string(), "quit_and_cd".to_string());
@@ -187,7 +165,6 @@ impl KeyBindingRegistry {
         browse.insert("ctrl+g".to_string(), "select_git_changed".to_string());
         browse.insert("ctrl+T".to_string(), "select_test_pair".to_string());
 
-        // Preview mode defaults
         let preview = &mut self.preview;
         preview.insert("esc".to_string(), "cancel".to_string());
         preview.insert("q".to_string(), "cancel".to_string());
@@ -207,13 +184,11 @@ impl KeyBindingRegistry {
         preview.insert("[".to_string(), "pdf_prev_page".to_string());
         preview.insert("]".to_string(), "pdf_next_page".to_string());
 
-        // Search mode defaults
         let search = &mut self.search;
         search.insert("enter".to_string(), "confirm".to_string());
         search.insert("/".to_string(), "cancel".to_string());
         search.insert("esc".to_string(), "cancel".to_string());
 
-        // Confirm mode defaults
         let confirm = &mut self.confirm;
         confirm.insert("y".to_string(), "execute".to_string());
         confirm.insert("Y".to_string(), "execute".to_string());
@@ -222,7 +197,6 @@ impl KeyBindingRegistry {
         confirm.insert("N".to_string(), "cancel".to_string());
         confirm.insert("esc".to_string(), "cancel".to_string());
 
-        // Fuzzy finder defaults
         let fuzzy = &mut self.fuzzy;
         fuzzy.insert("esc".to_string(), "cancel".to_string());
         fuzzy.insert("ctrl+p".to_string(), "cancel".to_string());
@@ -232,21 +206,18 @@ impl KeyBindingRegistry {
         fuzzy.insert("ctrl+j".to_string(), "down".to_string());
         fuzzy.insert("enter".to_string(), "confirm".to_string());
 
-        // Help mode defaults
         let help = &mut self.help;
         help.insert("esc".to_string(), "cancel".to_string());
         help.insert("enter".to_string(), "cancel".to_string());
         help.insert("q".to_string(), "cancel".to_string());
         help.insert("?".to_string(), "cancel".to_string());
 
-        // Filter mode defaults
         let filter = &mut self.filter;
         filter.insert("enter".to_string(), "apply".to_string());
         filter.insert("F".to_string(), "cancel".to_string());
         filter.insert("esc".to_string(), "cancel".to_string());
     }
 
-    /// Look up action for a key event in browse mode
     pub fn lookup_browse(&self, key: &KeyEvent) -> Option<KeyAction> {
         let key_str = key_event_to_string(key);
         self.browse
@@ -254,7 +225,6 @@ impl KeyBindingRegistry {
             .and_then(|action| parse_browse_action(action))
     }
 
-    /// Look up action for a key event in preview mode
     pub fn lookup_preview(&self, key: &KeyEvent) -> Option<KeyAction> {
         let key_str = key_event_to_string(key);
         self.preview
@@ -262,7 +232,6 @@ impl KeyBindingRegistry {
             .and_then(|action| parse_preview_action(action))
     }
 
-    /// Look up action for a key event in search mode
     pub fn lookup_search(&self, key: &KeyEvent) -> Option<KeyAction> {
         let key_str = key_event_to_string(key);
         self.search
@@ -276,7 +245,6 @@ impl KeyBindingRegistry {
             })
     }
 
-    /// Look up action for a key event in confirm mode
     pub fn lookup_confirm(&self, key: &KeyEvent) -> Option<KeyAction> {
         let key_str = key_event_to_string(key);
         self.confirm
@@ -288,7 +256,6 @@ impl KeyBindingRegistry {
             })
     }
 
-    /// Look up action for a key event in fuzzy finder mode
     pub fn lookup_fuzzy(&self, key: &KeyEvent) -> Option<KeyAction> {
         let key_str = key_event_to_string(key);
         self.fuzzy
@@ -304,7 +271,6 @@ impl KeyBindingRegistry {
             })
     }
 
-    /// Look up action for a key event in help mode
     pub fn lookup_help(&self, key: &KeyEvent) -> Option<KeyAction> {
         let key_str = key_event_to_string(key);
         self.help
@@ -315,7 +281,6 @@ impl KeyBindingRegistry {
             })
     }
 
-    /// Look up action for a key event in filter mode
     pub fn lookup_filter(&self, key: &KeyEvent) -> Option<KeyAction> {
         let key_str = key_event_to_string(key);
         self.filter
@@ -330,7 +295,6 @@ impl KeyBindingRegistry {
     }
 }
 
-/// Convert a KeyEvent to a string representation
 fn key_event_to_string(key: &KeyEvent) -> String {
     let mut parts = Vec::new();
 
@@ -375,7 +339,6 @@ fn key_event_to_string(key: &KeyEvent) -> String {
     }
 }
 
-/// Parse browse mode action string to KeyAction
 fn parse_browse_action(action: &str) -> Option<KeyAction> {
     match action {
         "quit" => Some(KeyAction::Quit),
@@ -449,18 +412,14 @@ fn parse_browse_action(action: &str) -> Option<KeyAction> {
         "select_error_context" => Some(KeyAction::SelectErrorContext),
         "select_all" => Some(KeyAction::SelectAll),
         "invert_selection" => Some(KeyAction::InvertSelection),
-        _ => {
-            // Check for command:name pattern
-            action
-                .strip_prefix("command:")
-                .map(|name| KeyAction::RunCommand {
-                    name: name.to_string(),
-                })
-        }
+        _ => action
+            .strip_prefix("command:")
+            .map(|name| KeyAction::RunCommand {
+                name: name.to_string(),
+            }),
     }
 }
 
-/// Parse preview mode action string to KeyAction
 fn parse_preview_action(action: &str) -> Option<KeyAction> {
     match action {
         "cancel" => Some(KeyAction::Cancel),
@@ -556,7 +515,7 @@ mod tests {
     fn test_registry_merge() {
         // Test that user bindings override defaults
         let mut registry = KeyBindingRegistry::new();
-        registry.browse.insert("j".to_string(), "quit".to_string()); // Override default
+        registry.browse.insert("j".to_string(), "quit".to_string());
 
         let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty());
         let action = registry.lookup_browse(&key);

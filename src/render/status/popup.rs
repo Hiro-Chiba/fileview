@@ -11,7 +11,6 @@ use ratatui::{
 use crate::core::{AppState, InputPurpose, PendingAction, ViewMode};
 use crate::render::theme::theme;
 
-/// Render input popup based on current mode
 pub fn render_input_popup(frame: &mut Frame, state: &AppState) {
     match &state.mode {
         ViewMode::Input {
@@ -45,7 +44,6 @@ pub fn render_input_popup(frame: &mut Frame, state: &AppState) {
     }
 }
 
-/// Draw a simple input popup
 fn draw_input_popup(frame: &mut Frame, title: &str, content: &str) {
     let t = theme();
     let area = centered_rect(60, 3, frame.area());
@@ -72,7 +70,6 @@ fn draw_mini_popup(frame: &mut Frame, message: &str) {
     frame.render_widget(popup, area);
 }
 
-/// Draw confirmation popup
 fn draw_confirm_popup(frame: &mut Frame, action: &PendingAction) {
     match action {
         PendingAction::Delete { targets } => {
@@ -81,7 +78,6 @@ fn draw_confirm_popup(frame: &mut Frame, action: &PendingAction) {
     }
 }
 
-/// Draw delete confirmation popup
 fn draw_delete_confirm_popup(frame: &mut Frame, paths: &[std::path::PathBuf]) {
     let max_items_to_show = 8;
     let items_count = paths.len().min(max_items_to_show);
@@ -178,7 +174,6 @@ fn draw_delete_confirm_popup(frame: &mut Frame, paths: &[std::path::PathBuf]) {
     frame.render_widget(popup, area);
 }
 
-/// Create a centered rectangle
 pub(super) fn centered_rect(percent_x: u16, height: u16, area: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)

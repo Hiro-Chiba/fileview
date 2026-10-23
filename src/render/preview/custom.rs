@@ -10,19 +10,14 @@ use ratatui::{
 
 use super::common::get_border_style;
 
-/// Custom preview content from external command
 pub struct CustomPreview {
-    /// Output lines from the command
     pub lines: Vec<String>,
     /// The command that was executed
     pub command: String,
-    /// Scroll position
     pub scroll: usize,
 }
 
 impl CustomPreview {
-    /// Execute a custom preview command and capture output
-    ///
     /// The command template can use $f as a placeholder for the file path.
     /// Security: File path is shell-escaped to prevent command injection.
     pub fn execute(command_template: &str, file_path: &std::path::Path) -> anyhow::Result<Self> {
@@ -31,10 +26,8 @@ impl CustomPreview {
         // Security: Shell-escape the file path to prevent command injection
         let escaped_path = Self::shell_escape(&file_path.display().to_string());
 
-        // Expand $f placeholder with escaped path
         let cmd = command_template.replace("$f", &escaped_path);
 
-        // Execute command via shell
         let output = if cfg!(target_os = "windows") {
             Command::new("cmd").args(["/C", &cmd]).output()
         } else {
@@ -51,18 +44,14 @@ impl CustomPreview {
         })
     }
 
-    /// Get the total number of lines
     pub fn line_count(&self) -> usize {
         self.lines.len()
     }
 
-    /// Shell-escape a string to prevent command injection
-    ///
     /// On Unix: wraps in single quotes and escapes embedded single quotes
     /// On Windows: wraps in double quotes and escapes embedded double quotes
     fn shell_escape(s: &str) -> String {
         if cfg!(target_os = "windows") {
-            // Windows: use double quotes and escape embedded quotes
             format!("\"{}\"", s.replace('"', "\\\""))
         } else {
             // Unix: use single quotes (safest) and handle embedded single quotes
@@ -73,7 +62,6 @@ impl CustomPreview {
     }
 }
 
-/// Render custom preview output
 pub fn render_custom_preview(
     frame: &mut Frame,
     preview: &CustomPreview,

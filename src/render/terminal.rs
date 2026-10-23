@@ -1,9 +1,5 @@
-//! Terminal detection module - Detects terminal brands and recommends image protocols
-//!
-//! This module provides terminal brand detection based on environment variables,
-//! and maps each terminal to its recommended image protocol.
+//! Detects terminal brands and recommends image protocols
 
-/// Terminal brands that can be detected via environment variables
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TerminalBrand {
     /// Kitty terminal (KITTY_WINDOW_ID)
@@ -28,11 +24,9 @@ pub enum TerminalBrand {
     WindowsTerminal,
     /// Running inside tmux (TMUX)
     Tmux,
-    /// Unknown terminal
     Unknown,
 }
 
-/// Recommended image protocol for a terminal
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecommendedProtocol {
     /// Kitty Graphics Protocol - highest quality, supported by Kitty, Ghostty, Konsole
@@ -48,8 +42,6 @@ pub enum RecommendedProtocol {
 }
 
 impl TerminalBrand {
-    /// Detect the terminal brand from environment variables
-    ///
     /// Detection priority:
     /// 1. Terminal-specific environment variables (most reliable)
     /// 2. TERM_PROGRAM environment variable
@@ -62,34 +54,26 @@ impl TerminalBrand {
 
     /// Internal detection with injectable environment reader (for testing)
     fn detect_from_env(env: &dyn EnvReaderTrait) -> Self {
-        // 1. Terminal-specific environment variables (most reliable)
-
-        // Kitty sets KITTY_WINDOW_ID
         if env.var("KITTY_WINDOW_ID").is_ok() {
             return Self::Kitty;
         }
 
-        // Ghostty sets GHOSTTY_RESOURCES_DIR
         if env.var("GHOSTTY_RESOURCES_DIR").is_ok() {
             return Self::Ghostty;
         }
 
-        // WezTerm sets WEZTERM_EXECUTABLE
         if env.var("WEZTERM_EXECUTABLE").is_ok() {
             return Self::WezTerm;
         }
 
-        // Windows Terminal sets WT_SESSION
         if env.var("WT_SESSION").is_ok() {
             return Self::WindowsTerminal;
         }
 
-        // Tmux sets TMUX
         if env.var("TMUX").is_ok() {
             return Self::Tmux;
         }
 
-        // 2. TERM_PROGRAM based detection
         if let Ok(term_program) = env.var("TERM_PROGRAM") {
             let term_lower = term_program.to_lowercase();
 
@@ -114,19 +98,18 @@ impl TerminalBrand {
             }
         }
 
-        // 3. KONSOLE_VERSION (Konsole sets this)
         if env.var("KONSOLE_VERSION").is_ok() {
             return Self::Konsole;
         }
 
-        // 4. TERMINAL environment variable (used by some Linux distros)
+        // TERMINAL is only set by some Linux distros.
         if let Ok(terminal) = env.var("TERMINAL") {
             if terminal.to_lowercase().contains("konsole") {
                 return Self::Konsole;
             }
         }
 
-        // 5. TERM environment variable (least specific)
+        // TERM is the least specific signal, so it is checked last.
         if let Ok(term) = env.var("TERM") {
             let term_lower = term.to_lowercase();
 
@@ -139,7 +122,6 @@ impl TerminalBrand {
         Self::Unknown
     }
 
-    /// Get the recommended protocol for this terminal
     pub fn recommended_protocol(&self) -> RecommendedProtocol {
         match self {
             // Kitty protocol terminals (True color, highest quality)
@@ -160,13 +142,11 @@ impl TerminalBrand {
             Self::VSCode => RecommendedProtocol::Chafa,
             Self::Alacritty => RecommendedProtocol::Chafa,
 
-            // Query terminal or fallback
             Self::Tmux => RecommendedProtocol::Query,
             Self::Unknown => RecommendedProtocol::Query,
         }
     }
 
-    /// Get the terminal brand name as a string
     pub fn name(&self) -> &'static str {
         match self {
             Self::Kitty => "Kitty",
@@ -186,7 +166,6 @@ impl TerminalBrand {
 }
 
 impl RecommendedProtocol {
-    /// Get the protocol name as a string
     pub fn name(&self) -> &'static str {
         match self {
             Self::Kitty => "Kitty Graphics Protocol",
@@ -198,16 +177,11 @@ impl RecommendedProtocol {
     }
 }
 
-// =============================================================================
-// Environment Reader Trait (for testability)
-// =============================================================================
-
 /// Trait for reading environment variables (allows mocking in tests)
 trait EnvReaderTrait {
     fn var(&self, key: &str) -> Result<String, std::env::VarError>;
 }
 
-/// Real environment reader
 enum EnvReader {
     Real,
 }
@@ -218,7 +192,6 @@ impl EnvReaderTrait for EnvReader {
     }
 }
 
-/// Mock environment reader for testing
 #[cfg(test)]
 struct MockEnvReader {
     vars: std::collections::HashMap<String, String>,
@@ -248,17 +221,9 @@ impl EnvReaderTrait for MockEnvReader {
     }
 }
 
-// =============================================================================
-// Tests
-// =============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // =========================================================================
-    // TerminalBrand Detection Tests
-    // =========================================================================
 
     mod detection {
         use super::*;
@@ -405,10 +370,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Detection Priority Tests
-    // =========================================================================
-
     mod priority {
         use super::*;
 
@@ -416,8 +377,7 @@ mod tests {
         fn kitty_takes_priority_over_term_program() {
             let mut env = MockEnvReader::new();
             env.set("KITTY_WINDOW_ID", "1");
-            env.set("TERM_PROGRAM", "vscode"); // Should be ignored
-
+            env.set("TERM_PROGRAM", "vscode");
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Kitty);
         }
 
@@ -425,8 +385,7 @@ mod tests {
         fn ghostty_takes_priority_over_term_program() {
             let mut env = MockEnvReader::new();
             env.set("GHOSTTY_RESOURCES_DIR", "/path");
-            env.set("TERM_PROGRAM", "Alacritty"); // Should be ignored
-
+            env.set("TERM_PROGRAM", "Alacritty");
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Ghostty);
         }
 
@@ -434,8 +393,7 @@ mod tests {
         fn wezterm_takes_priority_over_term_program() {
             let mut env = MockEnvReader::new();
             env.set("WEZTERM_EXECUTABLE", "/path");
-            env.set("TERM_PROGRAM", "iTerm.app"); // Should be ignored
-
+            env.set("TERM_PROGRAM", "iTerm.app");
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::WezTerm);
         }
 
@@ -443,8 +401,7 @@ mod tests {
         fn windows_terminal_takes_priority_over_term() {
             let mut env = MockEnvReader::new();
             env.set("WT_SESSION", "guid");
-            env.set("TERM", "foot"); // Should be ignored
-
+            env.set("TERM", "foot");
             assert_eq!(
                 TerminalBrand::detect_from_env(&env),
                 TerminalBrand::WindowsTerminal
@@ -455,8 +412,7 @@ mod tests {
         fn tmux_takes_priority_over_term_program() {
             let mut env = MockEnvReader::new();
             env.set("TMUX", "/tmp/tmux");
-            env.set("TERM_PROGRAM", "iTerm.app"); // Should be ignored
-
+            env.set("TERM_PROGRAM", "iTerm.app");
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Tmux);
         }
 
@@ -464,8 +420,7 @@ mod tests {
         fn term_program_takes_priority_over_konsole_version() {
             let mut env = MockEnvReader::new();
             env.set("TERM_PROGRAM", "vscode");
-            env.set("KONSOLE_VERSION", "211201"); // Should be ignored
-
+            env.set("KONSOLE_VERSION", "211201");
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::VSCode);
         }
 
@@ -473,8 +428,7 @@ mod tests {
         fn konsole_version_takes_priority_over_terminal() {
             let mut env = MockEnvReader::new();
             env.set("KONSOLE_VERSION", "211201");
-            env.set("TERMINAL", "other-terminal"); // Should be ignored
-
+            env.set("TERMINAL", "other-terminal");
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Konsole);
         }
 
@@ -482,8 +436,7 @@ mod tests {
         fn konsole_version_takes_priority_over_term() {
             let mut env = MockEnvReader::new();
             env.set("KONSOLE_VERSION", "211201");
-            env.set("TERM", "foot"); // Should be ignored
-
+            env.set("TERM", "foot");
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Konsole);
         }
 
@@ -491,15 +444,13 @@ mod tests {
         fn terminal_takes_priority_over_term() {
             let mut env = MockEnvReader::new();
             env.set("TERMINAL", "konsole");
-            env.set("TERM", "foot"); // Should be ignored
-
+            env.set("TERM", "foot");
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Konsole);
         }
 
         #[test]
         fn kitty_inside_tmux_detects_kitty() {
             // When running tmux inside Kitty, both vars are set
-            // Kitty-specific var should take priority
             let mut env = MockEnvReader::new();
             env.set("KITTY_WINDOW_ID", "1");
             env.set("TMUX", "/tmp/tmux");
@@ -509,8 +460,6 @@ mod tests {
 
         #[test]
         fn kitty_and_ghostty_both_set_kitty_wins() {
-            // Edge case: both Kitty and Ghostty vars set
-            // Kitty is checked first, so it wins
             let mut env = MockEnvReader::new();
             env.set("KITTY_WINDOW_ID", "1");
             env.set("GHOSTTY_RESOURCES_DIR", "/path");
@@ -538,7 +487,6 @@ mod tests {
 
         #[test]
         fn all_terminal_specific_vars_set_kitty_wins() {
-            // Extreme edge case: all vars set
             let mut env = MockEnvReader::new();
             env.set("KITTY_WINDOW_ID", "1");
             env.set("GHOSTTY_RESOURCES_DIR", "/path");
@@ -549,7 +497,6 @@ mod tests {
             env.set("TERMINAL", "konsole");
             env.set("TERM", "foot");
 
-            // First check wins
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Kitty);
         }
 
@@ -571,10 +518,6 @@ mod tests {
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::WezTerm);
         }
     }
-
-    // =========================================================================
-    // Protocol Recommendation Tests
-    // =========================================================================
 
     mod protocol {
         use super::*;
@@ -676,10 +619,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Name Tests
-    // =========================================================================
-
     mod names {
         use super::*;
 
@@ -709,17 +648,13 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Edge Case Tests
-    // =========================================================================
-
     mod edge_cases {
         use super::*;
 
         #[test]
         fn empty_env_var_values_are_still_detected() {
             let mut env = MockEnvReader::new();
-            env.set("KITTY_WINDOW_ID", ""); // Empty but present
+            env.set("KITTY_WINDOW_ID", "");
 
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Kitty);
         }
@@ -770,7 +705,6 @@ mod tests {
             let mut env = MockEnvReader::new();
             env.set("TERM", "xterm-256color");
 
-            // xterm should not match foot
             assert_eq!(TerminalBrand::detect_from_env(&env), TerminalBrand::Unknown);
         }
 
@@ -845,10 +779,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Integration-style Tests
-    // =========================================================================
-
     mod integration {
         use super::*;
 
@@ -893,16 +823,11 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Exhaustiveness Tests
-    // =========================================================================
-
     mod exhaustiveness {
         use super::*;
 
         #[test]
         fn all_terminal_brands_have_protocol() {
-            // Ensure every TerminalBrand variant has a defined protocol
             let brands = [
                 TerminalBrand::Kitty,
                 TerminalBrand::Ghostty,
@@ -919,7 +844,6 @@ mod tests {
             ];
 
             for brand in brands {
-                // This should not panic
                 let _ = brand.recommended_protocol();
                 let _ = brand.name();
             }
@@ -942,7 +866,6 @@ mod tests {
 
         #[test]
         fn terminal_brand_count() {
-            // Verify we have the expected number of terminal brands
             // This helps catch if someone adds a new variant without tests
             let brands = [
                 TerminalBrand::Kitty,

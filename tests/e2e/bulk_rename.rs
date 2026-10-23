@@ -1,7 +1,3 @@
-//! E2E tests for bulk rename functionality
-//!
-//! Tests for the bulk rename feature via CLI.
-
 use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -20,7 +16,6 @@ fn fv() -> Command {
 fn directory_with_multiple_txt_files() {
     let temp_dir = TempDir::new().unwrap();
 
-    // Create multiple files
     for i in 1..=5 {
         let path = temp_dir.path().join(format!("file{}.txt", i));
         fs::write(&path, format!("content {}", i)).unwrap();
@@ -45,7 +40,6 @@ fn directory_with_mixed_extensions() {
 fn directory_with_prefixed_files() {
     let temp_dir = TempDir::new().unwrap();
 
-    // Create files with common prefix
     for i in 1..=3 {
         let path = temp_dir.path().join(format!("backup_{}.txt", i));
         fs::write(&path, format!("backup {}", i)).unwrap();
@@ -62,7 +56,6 @@ fn directory_with_prefixed_files() {
 fn nested_directories_with_files() {
     let temp_dir = TempDir::new().unwrap();
 
-    // Create nested structure
     let level1 = temp_dir.path().join("level1");
     let level2 = level1.join("level2");
     fs::create_dir_all(&level2).unwrap();
@@ -88,7 +81,7 @@ fn empty_directory_accepted() {
 fn directory_with_special_characters_in_filenames() {
     let temp_dir = TempDir::new().unwrap();
 
-    // Create files with special characters (safe ones for cross-platform)
+    // Only characters that are valid in file names on every platform.
     fs::write(temp_dir.path().join("file-with-dash.txt"), "dash").unwrap();
     fs::write(
         temp_dir.path().join("file_with_underscore.txt"),

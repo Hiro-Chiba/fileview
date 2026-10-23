@@ -6,60 +6,35 @@ use std::path::PathBuf;
 use super::keymap::KeyBindingRegistry;
 use crate::core::{AppState, FocusTarget, ViewMode};
 
-/// Actions that can result from key handling
 #[derive(Debug, Clone)]
 pub enum KeyAction {
-    /// No action needed
     None,
-    /// Quit the application
     Quit,
     /// Quit and change directory (shell integration)
     QuitAndCd,
-    /// Move focus up
     MoveUp,
-    /// Move focus down
     MoveDown,
-    /// Move to top
     MoveToTop,
-    /// Move to bottom
     MoveToBottom,
-    /// Expand current entry
     Expand,
-    /// Collapse current entry
     Collapse,
-    /// Toggle expand/collapse
     ToggleExpand,
-    /// Collapse all entries
     CollapseAll,
-    /// Expand all entries
     ExpandAll,
-    /// Toggle selection mark
     ToggleMark,
-    /// Clear all marks
     ClearMarks,
-    /// Copy selected to clipboard
     Copy,
-    /// Cut selected to clipboard
     Cut,
-    /// Paste from clipboard
     Paste,
     /// Start delete confirmation
     ConfirmDelete,
-    /// Execute confirmed delete
     ExecuteDelete,
-    /// Start rename input
     StartRename,
-    /// Start new file input
     StartNewFile,
-    /// Start new directory input
     StartNewDir,
-    /// Start search input
     StartSearch,
-    /// Search for next match
     SearchNext,
-    /// Refresh tree
     Refresh,
-    /// Toggle hidden files
     ToggleHidden,
     /// Copy path to system clipboard
     CopyPath,
@@ -73,31 +48,23 @@ pub enum KeyAction {
     CopyContextPack,
     /// Copy review-oriented AI context pack to clipboard
     CopyContextPackReview,
-    /// Open preview
     OpenPreview,
     /// Toggle quick preview panel
     ToggleQuickPreview,
-    /// Confirm current input
-    ConfirmInput { value: String },
-    /// Cancel current input/mode
+    ConfirmInput {
+        value: String,
+    },
     Cancel,
-    /// Scroll preview up
     PreviewScrollUp,
-    /// Scroll preview down
     PreviewScrollDown,
-    /// Preview page up
     PreviewPageUp,
-    /// Preview page down
     PreviewPageDown,
-    /// Preview scroll to top
     PreviewToTop,
-    /// Preview scroll to bottom
     PreviewToBottom,
     /// Select and quit (pick mode)
     PickSelect,
     /// Select and quit (select mode)
     SelectConfirm,
-    /// Show help message
     ShowHelp,
     /// Toggle focus between tree and preview (side preview mode)
     ToggleFocus,
@@ -105,102 +72,76 @@ pub enum KeyAction {
     FocusTree,
     /// Focus on preview panel (right)
     FocusPreview,
-    /// Open fuzzy finder
     OpenFuzzyFinder,
-    /// Move up in fuzzy finder results
     FuzzyUp,
-    /// Move down in fuzzy finder results
     FuzzyDown,
-    /// Confirm fuzzy finder selection
-    FuzzyConfirm { path: std::path::PathBuf },
-    /// Enter bookmark set mode
+    FuzzyConfirm {
+        path: std::path::PathBuf,
+    },
     StartBookmarkSet,
-    /// Enter bookmark jump mode
     StartBookmarkJump,
     /// Set bookmark at slot (1-9)
-    SetBookmark { slot: u8 },
+    SetBookmark {
+        slot: u8,
+    },
     /// Jump to bookmark at slot (1-9)
-    JumpToBookmark { slot: u8 },
-    /// Start file filter input
+    JumpToBookmark {
+        slot: u8,
+    },
     StartFilter,
-    /// Apply filter pattern
-    ApplyFilter { pattern: String },
-    /// Clear filter
+    ApplyFilter {
+        pattern: String,
+    },
     ClearFilter,
     /// Cycle sort mode (Name -> Size -> Date -> Name)
     CycleSort,
-    /// Search for previous match
     SearchPrev,
-    /// Go to previous PDF page
     PdfPrevPage,
-    /// Go to next PDF page
     PdfNextPage,
-    /// Stage file(s) for git commit
     GitStage,
-    /// Unstage file(s) from git commit
     GitUnstage,
-    /// Start bulk rename mode
     StartBulkRename,
-    /// Switch to next field in bulk rename
     BulkRenameNextField,
-    /// Execute bulk rename
     ExecuteBulkRename {
         from_pattern: String,
         to_pattern: String,
     },
-    /// Open a new tab
     NewTab,
-    /// Close the current tab
     CloseTab,
-    /// Switch to the next tab
     NextTab,
-    /// Switch to the previous tab
     PrevTab,
     /// Run a custom command
-    RunCommand { name: String },
-    /// Open subshell in current directory
+    RunCommand {
+        name: String,
+    },
     OpenSubshell,
-    /// Start visual selection mode
     StartVisualSelect,
-    /// Select all items
     SelectAll,
-    /// Invert selection
     InvertSelection,
-    /// Select all git changed files
     SelectGitChanged,
-    /// Select test pair for current file
     SelectTestPair,
     /// Toggle peek mode (mini preview in status bar)
     TogglePeekMode,
     /// Toggle AI focus mode (ultra-compact UI)
     ToggleAiFocus,
     /// Select files by extension (Ctrl+1..9)
-    SelectByExtension { index: u8 },
-    /// Select files from recent git commit
+    SelectByExtension {
+        index: u8,
+    },
     SelectRecentCommit,
-    /// Select git staged files only
     SelectGitStaged,
-    /// Select related files for current focus
     SelectRelated,
-    /// Select error context files in view
     SelectErrorContext,
     /// Copy content in compact format (for small AI contexts)
     CopyCompact,
-    /// Open AI history popup
     OpenAiHistory,
-    /// Move up in AI history list
     AiHistoryUp,
-    /// Move down in AI history list
     AiHistoryDown,
-    /// Select AI history entry
     AiHistorySelect,
     /// Toggle AI follow mode (auto-focus on AI's most recent path)
     ToggleAiFollow,
-    /// Open the live AI activity log view
     OpenAiActivityLog,
-    /// Move up in the AI activity log
     AiActivityLogUp,
-    /// Move down in the AI activity log
     AiActivityLogDown,
     /// Jump to the path under the AI activity log cursor
     AiActivityLogSelect,
@@ -208,15 +149,12 @@ pub enum KeyAction {
     CycleBudgetModel,
     /// Open the repository-wide TODO/FIXME aggregator popup
     OpenTodos,
-    /// Move up in the TODO popup
     TodosUp,
-    /// Move down in the TODO popup
     TodosDown,
     /// Jump to the file under the TODO popup cursor
     TodosSelect,
 }
 
-/// Handle key event and return the resulting action
 pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
     match &state.mode {
         ViewMode::Browse => handle_browse_mode(state, key),
@@ -241,7 +179,6 @@ pub fn handle_key_event(state: &AppState, key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Handle key event with custom registry
 pub fn handle_key_event_with_registry(
     state: &AppState,
     key: KeyEvent,
@@ -249,9 +186,7 @@ pub fn handle_key_event_with_registry(
 ) -> KeyAction {
     match &state.mode {
         ViewMode::Browse => {
-            // Try registry first, fall back to built-in
             if let Some(action) = registry.lookup_browse(&key) {
-                // Handle special cases that need state context
                 apply_browse_context(state, action)
             } else {
                 handle_browse_mode(state, key)
@@ -310,7 +245,6 @@ pub fn handle_key_event_with_registry(
     }
 }
 
-/// Apply browse mode context to action
 fn apply_browse_context(state: &AppState, action: KeyAction) -> KeyAction {
     match action {
         KeyAction::Quit => {
@@ -410,10 +344,8 @@ fn apply_browse_context(state: &AppState, action: KeyAction) -> KeyAction {
     }
 }
 
-/// Handle keys in browse mode
 fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
     match key.code {
-        // AI focus mode (Ctrl+A)
         KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::ToggleAiFocus
         }
@@ -425,13 +357,10 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         KeyCode::Char('l') | KeyCode::Char('L') if key.modifiers == KeyModifiers::ALT => {
             KeyAction::OpenAiActivityLog
         }
-        // Context budget bar: cycle target model (Alt+M).
         KeyCode::Char('m') | KeyCode::Char('M') if key.modifiers == KeyModifiers::ALT => {
             KeyAction::CycleBudgetModel
         }
-        // TODO/FIXME aggregator popup (\)
         KeyCode::Char('\\') => KeyAction::OpenTodos,
-        // Quit
         KeyCode::Char('q') => {
             if state.pick_mode {
                 KeyAction::Cancel
@@ -439,11 +368,9 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
                 KeyAction::Quit
             }
         }
-        // Quit and cd (shell integration)
         KeyCode::Char('Q') => KeyAction::QuitAndCd,
         KeyCode::Esc => {
             if state.focus_target == FocusTarget::Preview {
-                // Esc returns focus to tree when on preview
                 KeyAction::ToggleFocus
             } else if !state.selected_paths.is_empty() {
                 KeyAction::ClearMarks
@@ -452,7 +379,6 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
 
-        // Navigation (focus-aware: Tree navigates files, Preview scrolls content)
         KeyCode::Up | KeyCode::Char('k') => {
             if state.focus_target == FocusTarget::Preview {
                 KeyAction::PreviewScrollUp
@@ -470,7 +396,6 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::SelectGitChanged
         }
-        // Select git staged files (Alt+g)
         KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::ALT) => {
             KeyAction::SelectGitStaged
         }
@@ -488,7 +413,6 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
                 KeyAction::MoveToBottom
             }
         }
-        // Page scroll (only when focus is on preview)
         KeyCode::PageUp => {
             if state.focus_target == FocusTarget::Preview {
                 KeyAction::PreviewPageUp
@@ -510,7 +434,6 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             KeyAction::PreviewPageDown
         }
 
-        // Expand/Collapse and Focus switching
         // Arrow keys switch focus when preview is visible, l/h always expand/collapse
         KeyCode::Right => {
             if state.preview_visible {
@@ -529,7 +452,6 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         }
         KeyCode::Char('h') | KeyCode::Backspace => KeyAction::Collapse,
         KeyCode::Tab => {
-            // Tab toggles focus when side preview is visible, otherwise toggles expand
             if state.preview_visible {
                 KeyAction::ToggleFocus
             } else {
@@ -539,7 +461,6 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         KeyCode::Char('H') => KeyAction::CollapseAll,
         KeyCode::Char('L') => KeyAction::ExpandAll,
 
-        // Selection
         KeyCode::Char(' ') => KeyAction::ToggleMark,
         KeyCode::Enter
             if key.modifiers.contains(KeyModifiers::CONTROL)
@@ -557,7 +478,7 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
 
-        // Clipboard (Ctrl+Shift+Y, Ctrl+Y and Alt+Y must come before plain 'y')
+        // Ctrl+Shift+Y, Ctrl+Y and Alt+Y must come before plain 'y'.
         KeyCode::Char('Y')
             if key.modifiers.contains(KeyModifiers::CONTROL)
                 && key.modifiers.contains(KeyModifiers::SHIFT) =>
@@ -583,7 +504,6 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
         KeyCode::Char('D') | KeyCode::Delete => KeyAction::ConfirmDelete,
-        // AI history (Ctrl+Shift+P)
         KeyCode::Char('P')
             if key.modifiers.contains(KeyModifiers::CONTROL)
                 && key.modifiers.contains(KeyModifiers::SHIFT) =>
@@ -596,7 +516,7 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         {
             KeyAction::OpenAiHistory
         }
-        // Fuzzy finder (Ctrl+P) and Peek mode (Alt+P) - must be checked before plain 'p'
+        // Ctrl+P and Alt+P must be checked before plain 'p'.
         KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::OpenFuzzyFinder
         }
@@ -605,35 +525,28 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         }
         KeyCode::Char('p') => KeyAction::Paste,
 
-        // Select recent commit files (Alt+R) - before plain 'r'
+        // Alt+R and Ctrl+R must come before plain 'r'.
         KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::ALT) => {
             KeyAction::SelectRecentCommit
         }
-        // Select related files (Ctrl+R)
         KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::SelectRelated
         }
-        // Select error context files (Ctrl+E)
         KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::SelectErrorContext
         }
 
-        // File operations
         KeyCode::Char('r') => KeyAction::StartRename,
         KeyCode::Char('a') => KeyAction::StartNewFile,
         KeyCode::Char('A') => KeyAction::StartNewDir,
 
-        // Search
         KeyCode::Char('/') => KeyAction::StartSearch,
         KeyCode::Char('n') => KeyAction::SearchNext,
         KeyCode::Char('N') => KeyAction::SearchPrev,
 
-        // Sort
         KeyCode::Char('S') => KeyAction::CycleSort,
 
-        // Refresh, bulk rename, and toggle
         KeyCode::Char('R') => {
-            // R for bulk rename when files are selected, F5 for refresh
             if !state.selected_paths.is_empty() {
                 KeyAction::StartBulkRename
             } else {
@@ -643,35 +556,27 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
         KeyCode::F(5) => KeyAction::Refresh,
         KeyCode::Char('.') => KeyAction::ToggleHidden,
 
-        // Copy to system clipboard
         KeyCode::Char('c') => KeyAction::CopyPath,
         KeyCode::Char('C') => KeyAction::CopyFilename,
-        // Copy content to clipboard (Y for content)
         KeyCode::Char('Y') => KeyAction::CopyContent,
 
-        // Preview
         KeyCode::Char('o') => KeyAction::OpenPreview,
         KeyCode::Char('P') => KeyAction::ToggleQuickPreview,
 
-        // Help
         KeyCode::Char('?') => KeyAction::ShowHelp,
 
-        // Visual selection and batch operations
         KeyCode::Char('V') => KeyAction::StartVisualSelect,
         KeyCode::Char('*') => KeyAction::SelectAll,
         KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::ALT) => {
             KeyAction::InvertSelection
         }
 
-        // PDF navigation
         KeyCode::Char('[') => KeyAction::PdfPrevPage,
         KeyCode::Char(']') => KeyAction::PdfNextPage,
 
-        // Bookmarks
         KeyCode::Char('m') => KeyAction::StartBookmarkSet,
         KeyCode::Char('\'') => KeyAction::StartBookmarkJump,
 
-        // Filter
         KeyCode::Char('F') => {
             if state.filter_pattern.is_some() {
                 KeyAction::ClearFilter
@@ -680,14 +585,12 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
 
-        // Shell integration - Alt+S for subshell (before Git operations)
+        // Alt+S must come before plain 's'.
         KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::OpenSubshell,
 
-        // Git operations
         KeyCode::Char('s') => KeyAction::GitStage,
         KeyCode::Char('u') => KeyAction::GitUnstage,
 
-        // Tab operations
         KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => KeyAction::NewTab,
         KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => KeyAction::CloseTab,
         // Note: gt/gT (vim-style) requires two keystrokes, simplified to Tab for demo
@@ -699,7 +602,6 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             KeyAction::SelectTestPair
         }
 
-        // Select by extension (Ctrl+1..9 for common extensions)
         KeyCode::Char(c @ '1'..='9') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             KeyAction::SelectByExtension {
                 index: c as u8 - b'0',
@@ -710,7 +612,6 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Handle keys in search mode
 fn handle_search_mode(key: KeyEvent, current_query: &str) -> KeyAction {
     match key.code {
         KeyCode::Enter => KeyAction::ConfirmInput {
@@ -722,7 +623,6 @@ fn handle_search_mode(key: KeyEvent, current_query: &str) -> KeyAction {
     }
 }
 
-/// Handle keys in input mode (rename, new file/dir)
 fn handle_input_mode(key: KeyEvent, current_buffer: &str) -> KeyAction {
     match key.code {
         KeyCode::Enter => KeyAction::ConfirmInput {
@@ -733,7 +633,6 @@ fn handle_input_mode(key: KeyEvent, current_buffer: &str) -> KeyAction {
     }
 }
 
-/// Handle keys in confirm mode
 fn handle_confirm_mode(key: KeyEvent) -> KeyAction {
     match key.code {
         KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Enter => KeyAction::ExecuteDelete,
@@ -742,7 +641,6 @@ fn handle_confirm_mode(key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Handle keys in preview mode
 fn handle_preview_mode(key: KeyEvent) -> KeyAction {
     match key.code {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('o') | KeyCode::Enter => {
@@ -754,14 +652,12 @@ fn handle_preview_mode(key: KeyEvent) -> KeyAction {
         KeyCode::PageDown | KeyCode::Char('f') | KeyCode::Char(' ') => KeyAction::PreviewPageDown,
         KeyCode::Char('g') => KeyAction::PreviewToTop,
         KeyCode::Char('G') => KeyAction::PreviewToBottom,
-        // PDF navigation
         KeyCode::Char('[') => KeyAction::PdfPrevPage,
         KeyCode::Char(']') => KeyAction::PdfNextPage,
         _ => KeyAction::None,
     }
 }
 
-/// Handle keys in fuzzy finder mode
 fn handle_fuzzy_finder_mode(key: KeyEvent) -> KeyAction {
     match key.code {
         KeyCode::Esc => KeyAction::Cancel,
@@ -785,7 +681,6 @@ fn handle_fuzzy_finder_mode(key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Handle keys in help mode
 fn handle_help_mode(key: KeyEvent) -> KeyAction {
     match key.code {
         KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') | KeyCode::Char('?') => {
@@ -795,24 +690,20 @@ fn handle_help_mode(key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Handle keys in visual select mode
 fn handle_visual_select_mode(state: &AppState, key: KeyEvent) -> KeyAction {
     match key.code {
-        // Cancel visual mode
         KeyCode::Esc | KeyCode::Char('V') => KeyAction::Cancel,
 
-        // Navigation (same as browse mode, but extends selection)
+        // Navigation extends the selection in visual mode.
         KeyCode::Up | KeyCode::Char('k') => KeyAction::MoveUp,
         KeyCode::Down | KeyCode::Char('j') => KeyAction::MoveDown,
         KeyCode::Char('g') => KeyAction::MoveToTop,
         KeyCode::Char('G') => KeyAction::MoveToBottom,
 
-        // Actions on selected items
         KeyCode::Char('y') => KeyAction::Copy,
         KeyCode::Char('d') => KeyAction::Cut,
         KeyCode::Char('D') | KeyCode::Delete => KeyAction::ConfirmDelete,
 
-        // Confirm selection and exit visual mode
         KeyCode::Enter => {
             // Just confirm (exit visual mode is handled in action handler)
             if state.pick_mode {
@@ -826,7 +717,6 @@ fn handle_visual_select_mode(state: &AppState, key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Update input buffer based on key event
 /// Returns the new buffer content, or None if no change
 pub fn update_input_buffer(key: KeyEvent, buffer: &str, cursor: usize) -> Option<(String, usize)> {
     let mut chars: Vec<char> = buffer.chars().collect();
@@ -887,7 +777,6 @@ pub fn update_input_buffer(key: KeyEvent, buffer: &str, cursor: usize) -> Option
     }
 }
 
-/// Create delete confirmation action from current state
 pub fn create_delete_targets(state: &AppState, focused_path: Option<&PathBuf>) -> Vec<PathBuf> {
     if state.selected_paths.is_empty() {
         focused_path.map(|p| vec![p.clone()]).unwrap_or_default()
@@ -896,7 +785,6 @@ pub fn create_delete_targets(state: &AppState, focused_path: Option<&PathBuf>) -
     }
 }
 
-/// Handle keys in bookmark set mode (waiting for slot number)
 fn handle_bookmark_set_mode(key: KeyEvent) -> KeyAction {
     match key.code {
         KeyCode::Char(c @ '1'..='9') => {
@@ -909,7 +797,6 @@ fn handle_bookmark_set_mode(key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Handle keys in bookmark jump mode (waiting for slot number)
 fn handle_bookmark_jump_mode(key: KeyEvent) -> KeyAction {
     match key.code {
         KeyCode::Char(c @ '1'..='9') => {
@@ -922,7 +809,6 @@ fn handle_bookmark_jump_mode(key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Handle keys in filter mode
 fn handle_filter_mode(key: KeyEvent, current_query: &str) -> KeyAction {
     match key.code {
         KeyCode::Enter => {
@@ -940,7 +826,6 @@ fn handle_filter_mode(key: KeyEvent, current_query: &str) -> KeyAction {
     }
 }
 
-/// Handle keys in bulk rename mode
 fn handle_bulk_rename_mode(key: KeyEvent, from_pattern: &str, to_pattern: &str) -> KeyAction {
     match key.code {
         KeyCode::Tab => KeyAction::BulkRenameNextField,
@@ -953,7 +838,6 @@ fn handle_bulk_rename_mode(key: KeyEvent, from_pattern: &str, to_pattern: &str) 
     }
 }
 
-/// Handle keys in AI history popup mode
 fn handle_ai_history_mode(key: KeyEvent) -> KeyAction {
     match key.code {
         KeyCode::Esc => KeyAction::Cancel,
@@ -964,7 +848,6 @@ fn handle_ai_history_mode(key: KeyEvent) -> KeyAction {
     }
 }
 
-/// Handle keys in AI activity log popup mode
 fn handle_ai_activity_log_mode(key: KeyEvent) -> KeyAction {
     match key.code {
         KeyCode::Esc | KeyCode::Char('q') => KeyAction::Cancel,
@@ -997,8 +880,6 @@ mod tests {
     fn key_event_with_modifiers(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
         KeyEvent::new(code, modifiers)
     }
-
-    // Tests for toggle behavior - same key can cancel the mode
 
     #[test]
     fn test_search_mode_slash_cancels() {
@@ -1117,8 +998,6 @@ mod tests {
     fn test_update_input_buffer_rejects_invalid_cursor() {
         assert!(update_input_buffer(key_event(KeyCode::Char('x')), "日", 2).is_none());
     }
-
-    // Tests for arrow key focus switching when preview is visible
 
     fn test_state() -> AppState {
         AppState::new(std::path::PathBuf::from("/tmp"))

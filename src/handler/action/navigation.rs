@@ -1,16 +1,10 @@
-//! Navigation action handlers
-//!
-//! Handles MoveUp, MoveDown, MoveToTop, MoveToBottom
-
 use crate::core::{AppState, ViewMode};
 use crate::handler::key::KeyAction;
 
 use super::selection::select_range;
 use super::EntrySnapshot;
 
-/// Handle navigation actions
 pub fn handle(action: KeyAction, state: &mut AppState, entries: &[EntrySnapshot]) {
-    // Get anchor if in visual select mode (before navigation)
     let visual_anchor = if let ViewMode::VisualSelect { anchor } = state.mode {
         Some(anchor)
     } else {
@@ -33,7 +27,6 @@ pub fn handle(action: KeyAction, state: &mut AppState, entries: &[EntrySnapshot]
         _ => {}
     }
 
-    // Update selection range in visual select mode
     if let Some(anchor) = visual_anchor {
         select_range(state, entries, anchor, state.focus_index);
     }

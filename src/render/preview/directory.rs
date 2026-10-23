@@ -1,5 +1,3 @@
-//! Directory info preview
-
 use std::path::Path;
 
 use ratatui::{
@@ -12,23 +10,17 @@ use ratatui::{
 
 use super::common::{calculate_dir_size, format_size, get_border_style};
 
-/// Directory information for preview
 #[derive(Debug, Clone)]
 pub struct DirectoryInfo {
-    /// Directory name
     pub name: String,
-    /// Number of files
     pub file_count: usize,
-    /// Number of subdirectories
     pub dir_count: usize,
-    /// Number of hidden items
     pub hidden_count: usize,
     /// Total size in bytes
     pub total_size: u64,
 }
 
 impl DirectoryInfo {
-    /// Compute directory info from path
     pub fn from_path(path: &Path) -> anyhow::Result<Self> {
         let name = path
             .file_name()
@@ -55,7 +47,7 @@ impl DirectoryInfo {
                         total_size += metadata.len();
                     } else if metadata.is_dir() {
                         dir_count += 1;
-                        // Optionally calculate subdirectory size (can be slow for large dirs)
+                        // Subdirectory size can be slow for large dirs
                         if let Ok(dir_size) = calculate_dir_size(&entry.path()) {
                             total_size += dir_size;
                         }
@@ -74,7 +66,6 @@ impl DirectoryInfo {
     }
 }
 
-/// Render directory info preview
 pub fn render_directory_info(frame: &mut Frame, info: &DirectoryInfo, area: Rect, focused: bool) {
     let separator = "─".repeat(area.width.saturating_sub(4) as usize);
 

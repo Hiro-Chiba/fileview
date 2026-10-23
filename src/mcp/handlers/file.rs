@@ -1,6 +1,4 @@
 //! File operation handlers
-//!
-//! Implements read_file, write_file, delete_file, read_files, list_directory, get_tree, search_code.
 
 use std::fs;
 use std::path::Path;
@@ -11,7 +9,6 @@ use crate::mcp::security::{
     is_sensitive_path, truncate_entry_name, validate_delete_path, validate_new_path, validate_path,
 };
 
-/// List directory contents
 pub fn list_directory(root: &Path, path: Option<&str>) -> ToolCallResult {
     let target = match path {
         Some(p) => match validate_path(root, p) {
@@ -46,7 +43,6 @@ pub fn list_directory(root: &Path, path: Option<&str>) -> ToolCallResult {
 /// Maximum tree depth (prevent DoS from unbounded recursion)
 const MAX_TREE_DEPTH: usize = 20;
 
-/// Get directory tree
 pub fn get_tree(root: &Path, path: Option<&str>, depth: Option<usize>) -> ToolCallResult {
     let target = match path {
         Some(p) => match validate_path(root, p) {
@@ -69,7 +65,6 @@ pub fn get_tree(root: &Path, path: Option<&str>, depth: Option<usize>) -> ToolCa
     success_result(String::from_utf8_lossy(&output).to_string())
 }
 
-/// Write tree to output
 fn write_tree<W: std::io::Write>(
     out: &mut W,
     path: &Path,
@@ -79,7 +74,6 @@ fn write_tree<W: std::io::Write>(
     crate::integrate::tree::print_tree_recursive_pub(out, path, "", depth, 0, false)
 }
 
-/// Read file content
 pub fn read_file(root: &Path, path: &str) -> ToolCallResult {
     let canonical = match validate_path(root, path) {
         Ok(p) => p,
@@ -96,7 +90,6 @@ pub fn read_file(root: &Path, path: &str) -> ToolCallResult {
     }
 }
 
-/// Read multiple files at once
 pub fn read_files(root: &Path, paths: &[&str]) -> ToolCallResult {
     let mut results = Vec::new();
     let mut success_count = 0;
@@ -148,7 +141,6 @@ pub fn read_files(root: &Path, paths: &[&str]) -> ToolCallResult {
     }
 }
 
-/// Write content to a file
 pub fn write_file(root: &Path, path: &str, content: &str, create_dirs: bool) -> ToolCallResult {
     let target = match validate_new_path(root, path) {
         Ok(p) => p,
@@ -161,7 +153,6 @@ pub fn write_file(root: &Path, path: &str, content: &str, create_dirs: bool) -> 
         return error_result(&format!("Refusing to write to sensitive path: {}", path));
     }
 
-    // Create parent directories if requested
     if create_dirs {
         if let Some(parent) = target.parent() {
             if let Err(e) = fs::create_dir_all(parent) {
@@ -170,7 +161,6 @@ pub fn write_file(root: &Path, path: &str, content: &str, create_dirs: bool) -> 
         }
     }
 
-    // Write the file
     match fs::write(&target, content) {
         Ok(_) => {
             let bytes = content.len();
@@ -180,14 +170,12 @@ pub fn write_file(root: &Path, path: &str, content: &str, create_dirs: bool) -> 
     }
 }
 
-/// Delete a file or directory
 pub fn delete_file(root: &Path, path: &str, recursive: bool, use_trash: bool) -> ToolCallResult {
     let canonical = match validate_delete_path(root, path) {
         Ok(p) => p,
         Err(e) => return error_result(&e.to_string()),
     };
 
-    // Don't allow deleting the root itself
     if let Ok(root_canonical) = root.canonicalize() {
         if canonical == root_canonical {
             return error_result("Cannot delete root directory");
@@ -202,7 +190,6 @@ pub fn delete_file(root: &Path, path: &str, recursive: bool, use_trash: bool) ->
     let is_dir = canonical.is_dir();
 
     if use_trash {
-        // Use trash crate for safe deletion
         match trash::delete(&canonical) {
             Ok(_) => success_result(format!("Moved to trash: {}", path)),
             Err(e) => error_result(&format!("Failed to move to trash: {}", e)),
@@ -230,7 +217,6 @@ pub fn delete_file(root: &Path, path: &str, recursive: bool, use_trash: bool) ->
 /// Maximum search pattern length (prevent ReDoS)
 const MAX_SEARCH_PATTERN_LEN: usize = 500;
 
-/// Search code in the repository
 pub fn search_code(root: &Path, pattern: &str, path: Option<&str>) -> ToolCallResult {
     // Security: Validate pattern length to prevent ReDoS
     if pattern.len() > MAX_SEARCH_PATTERN_LEN {
@@ -280,7 +266,6 @@ pub fn search_code(root: &Path, pattern: &str, path: Option<&str>) -> ToolCallRe
                 return success_result(format!("No matches found for pattern: {}", pattern));
             }
 
-            // Limit output to first 100 matches
             let lines: Vec<&str> = stdout.lines().take(100).collect();
             let total_matches = stdout.lines().count();
 

@@ -16,7 +16,6 @@ use crate::render::{
     is_archive_file, is_tar_gz_file, ArchivePreview, DiffPreview, DirectoryInfo, TextPreview,
 };
 
-/// What kind of preview to generate
 #[derive(Debug, Clone)]
 pub enum PreviewKind {
     Text,
@@ -32,7 +31,6 @@ pub enum PreviewKind {
     VideoMeta,
 }
 
-/// Request sent to the worker thread
 pub struct PreviewRequest {
     pub path: PathBuf,
     pub kind: PreviewKind,
@@ -43,7 +41,6 @@ pub struct PreviewRequest {
     pub git_file_status: Option<FileStatus>,
 }
 
-/// Payload returned by the worker
 pub enum PreviewPayload {
     Text(TextPreview),
     Diff(DiffPreview),
@@ -52,7 +49,6 @@ pub enum PreviewPayload {
     VideoMeta(VideoMetadata),
 }
 
-/// Response from the worker thread
 pub struct PreviewResponse {
     pub path: PathBuf,
     pub serial: u64,
@@ -315,10 +311,6 @@ impl Default for PreviewWorker {
     }
 }
 
-// ---------------------------------------------------------------------------
-// LRU Preview Cache
-// ---------------------------------------------------------------------------
-
 /// Cached preview data (only types that are Send + relatively cheap to store)
 pub enum CachedPreview {
     Text(TextPreview),
@@ -340,7 +332,6 @@ impl PreviewCache {
         }
     }
 
-    /// Look up a cached preview. Returns None on miss.
     pub fn get(&mut self, path: &Path) -> Option<&CachedPreview> {
         // Find the index, move to front for LRU
         let idx = self.entries.iter().position(|(p, _)| p == path)?;
@@ -355,7 +346,6 @@ impl PreviewCache {
         self.entries.front().map(|(_, c)| c)
     }
 
-    /// Insert a preview into the cache.
     pub fn insert(&mut self, path: PathBuf, mut preview: CachedPreview) {
         if let CachedPreview::Text(text) = &mut preview {
             if text
@@ -367,7 +357,6 @@ impl PreviewCache {
             }
             text.scroll = 0;
         }
-        // Remove existing entry for same path
         self.entries.retain(|(p, _)| p != &path);
         self.entries.push_front((path, preview));
         while self.entries.len() > self.max_size {
@@ -475,7 +464,6 @@ mod tests {
             };
             cache.insert(path, CachedPreview::Directory(info));
         }
-        // First entry should be evicted
         assert!(cache.get(Path::new("/tmp/test0.txt")).is_none());
         assert!(cache.get(Path::new("/tmp/test1.txt")).is_some());
         assert!(cache.get(Path::new("/tmp/test2.txt")).is_some());

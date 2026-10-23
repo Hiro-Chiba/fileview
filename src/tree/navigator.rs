@@ -1,5 +1,3 @@
-//! Tree navigator - handles tree traversal and flattening
-
 use std::path::{Path, PathBuf};
 
 use super::node::sort_entries;
@@ -9,46 +7,35 @@ use crate::core::SortMode;
 /// A cached visible entry with all fields needed for display and lookup
 #[derive(Debug, Clone)]
 pub struct VisibleEntry {
-    /// Full path to the entry
     pub path: PathBuf,
-    /// Display name
     pub name: String,
-    /// Whether this is a directory
     pub is_dir: bool,
     /// Depth in the tree (0 = root)
     pub depth: usize,
-    /// Whether directory is expanded
     expanded: bool,
 }
 
 impl VisibleEntry {
-    /// Check if this entry is expanded
     pub fn is_expanded(&self) -> bool {
         self.expanded
     }
 }
 
-/// Manages file tree navigation
 #[derive(Clone)]
 pub struct TreeNavigator {
-    /// Root entry
     root: TreeEntry,
-    /// Whether to show hidden files
     show_hidden: bool,
     /// Whether in stdin mode (read-only, no filesystem operations)
     stdin_mode: bool,
-    /// Current sort mode
     sort_mode: SortMode,
-    /// Cached flattened visible entries (rebuilt only when dirty)
+    /// Rebuilt only when `cache_dirty` is set.
     cached_visible: Vec<VisibleEntry>,
-    /// Whether the cache needs rebuilding
     cache_dirty: bool,
     /// Whether the watcher needs re-syncing with expanded paths
     watcher_dirty: bool,
 }
 
 impl TreeNavigator {
-    /// Create a new navigator for the given root path
     pub fn new(root_path: &Path, show_hidden: bool) -> anyhow::Result<Self> {
         let mut root = TreeEntry::new(root_path.to_path_buf(), 0);
         root.load_children(show_hidden)?;
@@ -67,8 +54,7 @@ impl TreeNavigator {
 
     /// Create navigator from stdin paths
     ///
-    /// Builds a tree structure from the given paths. Paths that don't exist
-    /// in the filesystem will still be shown in the tree.
+    /// Paths that don't exist in the filesystem will still be shown in the tree.
     pub fn from_paths(
         root_path: &Path,
         paths: Vec<PathBuf>,
@@ -77,12 +63,10 @@ impl TreeNavigator {
         let mut root = TreeEntry::new(root_path.to_path_buf(), 0);
         root.set_expanded(true);
 
-        // Insert each path into the tree
         for path in paths {
             insert_path_into_tree(&mut root, &path, root_path);
         }
 
-        // Sort children at all levels
         sort_tree_children(&mut root);
 
         Ok(Self {
@@ -96,19 +80,17 @@ impl TreeNavigator {
         })
     }
 
-    /// Check if in stdin mode
     pub fn is_stdin_mode(&self) -> bool {
         self.stdin_mode
     }
 
-    /// Collect all paths in the tree (for fuzzy finder in stdin mode)
+    /// Collects files only. Used by the fuzzy finder in stdin mode.
     pub fn collect_all_paths(&self) -> Vec<PathBuf> {
         let mut paths = Vec::new();
         collect_paths_recursive(&self.root, &mut paths);
         paths
     }
 
-    /// Get root entry
     pub fn root(&self) -> &TreeEntry {
         &self.root
     }
@@ -123,7 +105,6 @@ impl TreeNavigator {
         }
     }
 
-    /// Recursively collect visible entries into the cache
     fn collect_visible_cached(entry: &TreeEntry, out: &mut Vec<VisibleEntry>) {
         out.push(VisibleEntry {
             path: entry.path.clone(),
@@ -139,27 +120,24 @@ impl TreeNavigator {
         }
     }
 
-    /// Return cached visible entries (O(1) after ensure_cache)
+    /// Stale until `ensure_cache` is called.
     pub fn visible_entries(&self) -> &[VisibleEntry] {
         &self.cached_visible
     }
 
-    /// Get total count of visible entries (O(1) after ensure_cache)
+    /// Stale until `ensure_cache` is called.
     pub fn visible_count(&self) -> usize {
         self.cached_visible.len()
     }
 
-    /// Check if the watcher needs re-syncing with expanded paths
     pub fn is_watcher_dirty(&self) -> bool {
         self.watcher_dirty
     }
 
-    /// Clear the watcher dirty flag after syncing
     pub fn clear_watcher_dirty(&mut self) {
         self.watcher_dirty = false;
     }
 
-    /// Toggle expand/collapse for entry at path
     pub fn toggle_expand(&mut self, path: &Path) -> anyhow::Result<()> {
         let show_hidden = self.show_hidden;
         let sort_mode = self.sort_mode;
@@ -174,7 +152,6 @@ impl TreeNavigator {
         Ok(())
     }
 
-    /// Expand entry at path
     pub fn expand(&mut self, path: &Path) -> anyhow::Result<()> {
         let show_hidden = self.show_hidden;
         let sort_mode = self.sort_mode;
@@ -189,7 +166,6 @@ impl TreeNavigator {
         Ok(())
     }
 
-    /// Collapse entry at path
     pub fn collapse(&mut self, path: &Path) {
         if let Some(entry) = self.find_entry_mut(path) {
             entry.set_expanded(false);
@@ -198,7 +174,6 @@ impl TreeNavigator {
         }
     }
 
-    /// Reload tree from filesystem
     pub fn reload(&mut self) -> anyhow::Result<()> {
         let expanded_paths = self.expanded_paths();
         self.root
@@ -209,16 +184,13 @@ impl TreeNavigator {
         Ok(())
     }
 
-    /// Set show_hidden and reload
     pub fn set_show_hidden(&mut self, show: bool) -> anyhow::Result<()> {
         self.show_hidden = show;
         self.reload()
     }
 
-    /// Set sort mode and re-sort all loaded children
     pub fn set_sort_mode(&mut self, mode: SortMode) -> anyhow::Result<()> {
         self.sort_mode = mode;
-        // Re-sort all loaded children recursively
         resort_entry_children(&mut self.root, mode);
         self.cache_dirty = true;
         self.watcher_dirty = true;
@@ -226,27 +198,20 @@ impl TreeNavigator {
     }
 
     /// Reveal a path by expanding all parent directories
-    ///
-    /// This makes the target path visible in the tree by expanding
-    /// all ancestor directories from the root to the target.
     pub fn reveal_path(&mut self, target: &Path) -> anyhow::Result<()> {
-        // Collect ancestors from root to target
         let root_path = self.root.path.clone();
         let mut ancestors = Vec::new();
 
-        // Build list of ancestors that need to be expanded
         if let Ok(relative) = target.strip_prefix(&root_path) {
             let mut current = root_path.clone();
             for component in relative.components() {
                 current = current.join(component);
                 if current != *target {
-                    // Only expand directories, not the target itself
                     ancestors.push(current.clone());
                 }
             }
         }
 
-        // Expand each ancestor in order
         for ancestor in ancestors {
             self.expand(&ancestor)?;
         }
@@ -254,7 +219,6 @@ impl TreeNavigator {
         Ok(())
     }
 
-    /// Find entry by path (mutable)
     fn find_entry_mut(&mut self, path: &Path) -> Option<&mut TreeEntry> {
         Self::find_in_entry_mut(&mut self.root, path)
     }
@@ -271,8 +235,6 @@ impl TreeNavigator {
         None
     }
 
-    /// Get all currently expanded directory paths
-    ///
     /// Used for syncing file watcher with expanded directories.
     pub fn expanded_paths(&self) -> Vec<PathBuf> {
         let mut paths = Vec::new();
@@ -289,7 +251,6 @@ impl TreeNavigator {
         }
     }
 
-    /// Restore expanded state from paths
     fn restore_expanded(&mut self, paths: &[PathBuf]) -> anyhow::Result<()> {
         for path in paths {
             self.expand(path)?;
@@ -300,10 +261,9 @@ impl TreeNavigator {
 
 /// Insert a path into the tree, creating intermediate directories as needed
 fn insert_path_into_tree(root: &mut TreeEntry, path: &Path, root_path: &Path) {
-    // Get relative path from root
     let relative = match path.strip_prefix(root_path) {
         Ok(rel) => rel,
-        Err(_) => return, // Path is not under root
+        Err(_) => return,
     };
 
     let components: Vec<_> = relative.components().collect();
@@ -323,17 +283,14 @@ fn insert_path_into_tree(root: &mut TreeEntry, path: &Path, root_path: &Path) {
             true // Intermediate components are directories
         };
 
-        // Find or create child
         let child_name = component.as_os_str().to_string_lossy().to_string();
         let child_idx = current.children().iter().position(|c| c.name == child_name);
 
         match child_idx {
             Some(idx) => {
-                // Child exists, descend into it
                 current = &mut current.children_mut()[idx];
             }
             None => {
-                // Create new child
                 let depth = current.depth + 1;
                 let mut child = TreeEntry::new_with_type(current_path.clone(), depth, is_dir);
                 if is_dir {
@@ -347,7 +304,6 @@ fn insert_path_into_tree(root: &mut TreeEntry, path: &Path, root_path: &Path) {
     }
 }
 
-/// Recursively sort children in the tree (directories first, then alphabetically)
 fn sort_tree_children(entry: &mut TreeEntry) {
     sort_entries(entry.children_mut(), SortMode::Name);
 
@@ -356,7 +312,6 @@ fn sort_tree_children(entry: &mut TreeEntry) {
     }
 }
 
-/// Recursively re-sort children in an entry with the given sort mode
 fn resort_entry_children(entry: &mut TreeEntry, mode: SortMode) {
     sort_entries(entry.children_mut(), mode);
     for child in entry.children_mut() {
@@ -366,7 +321,6 @@ fn resort_entry_children(entry: &mut TreeEntry, mode: SortMode) {
     }
 }
 
-/// Recursively collect all file paths (not directories) in the tree
 fn collect_paths_recursive(entry: &TreeEntry, paths: &mut Vec<PathBuf>) {
     if !entry.is_dir {
         paths.push(entry.path.clone());
@@ -397,9 +351,7 @@ mod tests {
         let temp = setup_test_dir();
         let nav = TreeNavigator::new(temp.path(), false).unwrap();
 
-        // Root should be expanded
         assert!(nav.root().is_expanded());
-        // Should have 3 children (dir_a, dir_b, file.txt)
         assert_eq!(nav.root().children().len(), 3);
     }
 
@@ -421,19 +373,15 @@ mod tests {
 
         let dir_a_path = temp.path().join("dir_a");
 
-        // Initially collapsed
         nav.ensure_cache();
         let count_before = nav.visible_count();
 
-        // Expand dir_a
         nav.expand(&dir_a_path).unwrap();
         nav.ensure_cache();
         let count_after = nav.visible_count();
 
-        // Should have more visible entries now
         assert!(count_after > count_before);
 
-        // Collapse dir_a
         nav.collapse(&dir_a_path);
         nav.ensure_cache();
         assert_eq!(nav.visible_count(), count_before);
@@ -461,7 +409,6 @@ mod tests {
     #[test]
     fn test_set_show_hidden() {
         let temp = setup_test_dir();
-        // Create a hidden file
         fs::write(temp.path().join(".hidden"), "hidden").unwrap();
 
         let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
@@ -483,10 +430,8 @@ mod tests {
         nav.ensure_cache();
         let count_before = nav.visible_count();
 
-        // Add a new file
         fs::write(temp.path().join("new_file.txt"), "new").unwrap();
 
-        // Reload should pick up the new file
         nav.reload().unwrap();
         nav.ensure_cache();
         let count_after = nav.visible_count();
@@ -499,10 +444,8 @@ mod tests {
         let temp = setup_test_dir();
         let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
 
-        // nested.txt is in dir_a, which needs to be expanded
         let target = temp.path().join("dir_a/nested.txt");
 
-        // Initially, nested.txt should not be visible
         nav.ensure_cache();
         let before = nav.visible_entries();
         assert!(
@@ -510,10 +453,8 @@ mod tests {
             "Target should not be visible initially"
         );
 
-        // Reveal the path
         nav.reveal_path(&target).unwrap();
 
-        // Now it should be visible
         nav.ensure_cache();
         let after = nav.visible_entries();
         assert!(
@@ -546,7 +487,6 @@ mod tests {
         let temp = setup_test_dir();
         let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
 
-        // file.txt is at root level, already visible
         let target = temp.path().join("file.txt");
         nav.ensure_cache();
         let before_count = nav.visible_count();
@@ -555,7 +495,6 @@ mod tests {
 
         nav.ensure_cache();
         let after_count = nav.visible_count();
-        // Count should be the same since it's already visible
         assert_eq!(before_count, after_count);
     }
 
@@ -564,7 +503,6 @@ mod tests {
         let temp = setup_test_dir();
         let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
 
-        // Reveal a directory (subdir) inside dir_a
         let target = temp.path().join("dir_a/subdir");
 
         nav.reveal_path(&target).unwrap();
@@ -584,7 +522,6 @@ mod tests {
 
         let target = temp.path().join("nonexistent/path/file.txt");
 
-        // Should not panic, should complete successfully
         let result = nav.reveal_path(&target);
         assert!(result.is_ok());
     }
@@ -594,10 +531,8 @@ mod tests {
         let temp = setup_test_dir();
         let mut nav = TreeNavigator::new(temp.path(), false).unwrap();
 
-        // Try to reveal a path outside the root
         let outside = PathBuf::from("/some/other/path");
 
-        // Should not panic
         let result = nav.reveal_path(&outside);
         assert!(result.is_ok());
     }
@@ -609,7 +544,6 @@ mod tests {
 
         let target = temp.path().join("dir_a/nested.txt");
 
-        // Reveal twice
         nav.reveal_path(&target).unwrap();
         nav.ensure_cache();
         let count1 = nav.visible_count();
@@ -618,7 +552,6 @@ mod tests {
         nav.ensure_cache();
         let count2 = nav.visible_count();
 
-        // Should be the same
         assert_eq!(count1, count2);
     }
 }

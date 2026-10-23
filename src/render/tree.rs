@@ -1,5 +1,3 @@
-//! Tree rendering
-
 use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
@@ -53,7 +51,6 @@ fn diff_annotation_spans(
     ]
 }
 
-/// Render the file tree widget
 pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&VisibleEntry], area: Rect) {
     let visible_height = area.height.saturating_sub(2) as usize;
     let density = state.ui_density_for_width(area.width);
@@ -76,7 +73,6 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&VisibleEntry
         abbreviate_path(&state.root, area.width.saturating_sub(4) as usize)
     );
 
-    // Highlight border when tree has focus (and preview is visible)
     let t = theme();
     let border_style = if state.preview_visible && state.focus_target == FocusTarget::Tree {
         Style::default().fg(t.border_active)
@@ -94,7 +90,6 @@ pub fn render_tree(frame: &mut Frame, state: &AppState, entries: &[&VisibleEntry
     frame.render_widget(list, area);
 }
 
-/// Render a single tree entry as a ListItem
 fn render_entry(
     state: &AppState,
     entry: &VisibleEntry,
@@ -105,17 +100,14 @@ fn render_entry(
     let t = theme();
     let density = layout.density;
 
-    // Adjust indent based on density
     let indent_str = match density {
         UiDensity::Ultra | UiDensity::Narrow => " ".repeat(entry.depth),
         UiDensity::Compact | UiDensity::Full => "  ".repeat(entry.depth),
     };
 
-    // Icon selection based on density and settings
     let icon = if tree_cols.show_icons && state.icons_enabled {
         icons::get_icon(&entry.path, entry.is_dir, entry.is_expanded())
     } else if entry.is_dir {
-        // Use compact indicators in narrow modes
         if entry.is_expanded() {
             "▾"
         } else {
@@ -132,10 +124,8 @@ fn render_entry(
         .as_ref()
         .is_some_and(|c| c.is_cut() && c.paths().contains(&entry.path));
 
-    // Compact mark indicator for ultra mode
     let mark_indicator = if is_selected { "*" } else { " " };
 
-    // Get git status color and staging info
     let git_status = state
         .git_status
         .as_ref()
@@ -149,7 +139,6 @@ fn render_entry(
 
     let mut style = Style::default();
 
-    // Apply git status color first (using theme colors)
     style = match git_status {
         FileStatus::Modified => style.fg(t.git_modified),
         FileStatus::Added | FileStatus::Untracked => style.fg(t.git_untracked),
@@ -166,17 +155,14 @@ fn render_entry(
         }
     };
 
-    // Override with cut style if applicable
     if is_cut {
         style = style.fg(t.git_ignored);
     }
 
-    // Apply focus style
     if is_focused {
         style = style.bg(t.selection).add_modifier(Modifier::BOLD);
     }
 
-    // Stage indicator: compact in ultra mode
     let stage_indicator = match density {
         UiDensity::Ultra => {
             // In ultra mode, combine mark and stage into one char
@@ -199,7 +185,6 @@ fn render_entry(
         }
     };
 
-    // Truncate filename if needed for narrow modes
     let max_name_width = tree_cols.filename_width_at_depth(entry.depth) as usize;
     let display_name = if entry.name.len() > max_name_width && max_name_width > 3 {
         format!("{}…", utf8_prefix(&entry.name, max_name_width - 1))
@@ -207,10 +192,8 @@ fn render_entry(
         entry.name.clone()
     };
 
-    // Build the line based on density
     let line = match density {
         UiDensity::Ultra => {
-            // Ultra compact: mark + indent + icon + name + stage (at end)
             let entry_text = if icon.is_empty() {
                 format!("{}{}", indent_str, display_name)
             } else {
@@ -223,7 +206,6 @@ fn render_entry(
             ])
         }
         UiDensity::Narrow => {
-            // Narrow: mark + stage + indent + icon + name
             let entry_text = if icon.is_empty() {
                 format!("{}{}", indent_str, display_name)
             } else {
@@ -236,7 +218,6 @@ fn render_entry(
             ])
         }
         _ => {
-            // Full/Compact: standard layout with space after icon
             let icon_with_space = if icon.is_empty() {
                 String::new()
             } else {
@@ -258,7 +239,6 @@ fn render_entry(
     ListItem::new(line)
 }
 
-/// Abbreviate a path to fit within max_width
 /// Adaptive abbreviation based on available width:
 /// - max_width < 20: filename only, truncated if needed
 /// - max_width 20-30: last directory + filename
@@ -266,7 +246,6 @@ fn render_entry(
 fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
     let full_path = path.display().to_string();
 
-    // If it fits, return as-is
     if full_path.len() <= max_width {
         return full_path;
     }
@@ -278,16 +257,13 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
 
     let last = components.last().unwrap_or(&"");
 
-    // Ultra-narrow: filename only (< 20 chars)
     if max_width < 20 {
         if last.len() > max_width {
-            // Truncate filename with ellipsis
             return format!("…{}", utf8_suffix(last, max_width.saturating_sub(1)));
         }
         return (*last).to_string();
     }
 
-    // Very narrow (20-30): show last dir + filename
     if max_width < 30 {
         if components.len() >= 2 {
             let parent = components[components.len() - 2];
@@ -301,14 +277,12 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
                 return result;
             }
         }
-        // Fall back to just filename
         if last.len() > max_width {
             return format!("…{}", utf8_suffix(last, max_width.saturating_sub(1)));
         }
         return (*last).to_string();
     }
 
-    // Standard narrow: single-char abbreviation for all parent dirs
     let mut abbreviated: Vec<String> = components[..components.len() - 1]
         .iter()
         .map(|c| {
@@ -334,7 +308,6 @@ fn abbreviate_path(path: &std::path::Path, max_width: usize) -> String {
     }
 }
 
-/// Calculate visible height for the tree area
 pub fn visible_height(area: Rect) -> usize {
     area.height.saturating_sub(2) as usize
 }

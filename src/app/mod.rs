@@ -1,8 +1,3 @@
-//! Application module
-//!
-//! This module contains the main application logic, configuration,
-//! and event loop for FileView.
-
 mod config;
 mod config_file;
 mod event_loop;

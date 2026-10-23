@@ -1,7 +1,5 @@
-//! Pick mode (--pick option)
-//!
-//! Allows external tools to use fileview as a file picker.
-//! Selected path(s) are output to stdout when user confirms selection.
+//! Pick mode (`--pick`), which prints the selected paths to stdout when the
+//! user confirms the selection.
 
 use std::fs;
 use std::io::{self, Write};
@@ -16,25 +14,18 @@ use std::str::FromStr;
 /// - `ERROR` (2): Runtime error (I/O error, terminal error, etc.)
 /// - `INVALID` (3): Invalid command-line arguments or option values
 pub mod exit_code {
-    /// User selected file(s) successfully or normal exit
     pub const SUCCESS: i32 = 0;
-    /// User cancelled selection (pick mode only)
     pub const CANCELLED: i32 = 1;
-    /// Runtime error occurred
     pub const ERROR: i32 = 2;
-    /// Invalid arguments or options (e.g., unknown flag, invalid format)
     pub const INVALID: i32 = 3;
 }
 
-/// Output format for picked paths
 #[derive(Debug, Clone, Copy, Default)]
 pub enum OutputFormat {
-    /// One path per line (default)
     #[default]
     Lines,
     /// Null-separated paths (for xargs -0)
     NullSeparated,
-    /// JSON array
     Json,
 }
 
@@ -51,7 +42,6 @@ impl FromStr for OutputFormat {
     }
 }
 
-/// Output selected paths to stdout
 pub fn output_paths(paths: &[PathBuf], format: OutputFormat) -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
@@ -105,11 +95,9 @@ pub fn output_paths_with_content(paths: &[PathBuf]) -> io::Result<()> {
 
         writeln!(handle, "--- {} ---", path.display())?;
 
-        // Read and output file content
         match fs::read_to_string(path) {
             Ok(content) => {
                 write!(handle, "{}", content)?;
-                // Ensure trailing newline
                 if !content.ends_with('\n') {
                     writeln!(handle)?;
                 }
@@ -148,7 +136,6 @@ pub fn output_paths_claude_format(paths: &[PathBuf]) -> io::Result<()> {
 
         writeln!(handle, "```{}", ext)?;
 
-        // Read and output file content
         match fs::read_to_string(path) {
             Ok(content) => {
                 write!(handle, "{}", content)?;
@@ -187,17 +174,13 @@ fn serde_json_mini(paths: &[String]) -> String {
     format!("[{}]", escaped.join(","))
 }
 
-/// Pick mode result
 #[derive(Debug)]
 pub enum PickResult {
-    /// User selected paths
     Selected(Vec<PathBuf>),
-    /// User cancelled
     Cancelled,
 }
 
 impl PickResult {
-    /// Get exit code for this result
     pub fn exit_code(&self) -> i32 {
         match self {
             Self::Selected(_) => exit_code::SUCCESS,

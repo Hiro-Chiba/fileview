@@ -1,5 +1,3 @@
-//! MCP security utilities
-//!
 //! Path validation and security checks for MCP operations.
 
 use std::path::{Path, PathBuf};
@@ -10,21 +8,14 @@ use crate::util::utf8_prefix;
 /// Maximum length for entry names (prevent DoS from malicious input)
 pub const MAX_ENTRY_NAME_LEN: usize = 4096;
 
-/// Maximum depth for recursive operations
 pub const MAX_RECURSION_DEPTH: usize = 100;
 
-/// Maximum number of files to process in a single operation
 pub const MAX_BATCH_SIZE: usize = 1000;
 
 /// Validate and resolve a path, ensuring it's within the root directory.
 ///
-/// # Arguments
-/// * `root` - The root directory that all paths must be within
-/// * `path` - The path to validate (can be relative or absolute)
-///
-/// # Returns
-/// * `Ok(PathBuf)` - The canonicalized path if valid
-/// * `Err(FileviewError)` - If the path is invalid or outside root
+/// `path` may be relative or absolute. Returns the canonicalized path, or an
+/// error if the path is invalid or outside root.
 pub fn validate_path(root: &Path, path: &str) -> Result<PathBuf> {
     let (root_canonical, target) = contained_target(root, path)?;
 
@@ -75,13 +66,8 @@ pub fn reject_option_like(value: &str) -> Result<()> {
 
 /// Validate a path for a new file that doesn't exist yet.
 ///
-/// # Arguments
-/// * `root` - The root directory that all paths must be within
-/// * `path` - The path to validate (relative to root)
-///
-/// # Returns
-/// * `Ok(PathBuf)` - The target path if the parent directory is valid
-/// * `Err(FileviewError)` - If the parent is invalid or outside root
+/// `path` is relative to root. Returns the target path if the parent directory
+/// is valid, or an error if the parent is invalid or outside root.
 pub fn validate_new_path(root: &Path, path: &str) -> Result<PathBuf> {
     let (root_canonical, target) = contained_target(root, path)?;
 
@@ -197,7 +183,6 @@ fn normalize_path(path: &Path) -> PathBuf {
     normalized
 }
 
-/// Check if a path is the root directory itself.
 pub fn is_root(root: &Path, path: &Path) -> bool {
     match (root.canonicalize(), path.canonicalize()) {
         (Ok(r), Ok(p)) => r == p,
@@ -220,7 +205,6 @@ pub fn truncate_entry_name(name: String) -> String {
     truncate_string(name, MAX_ENTRY_NAME_LEN)
 }
 
-/// Validate batch operation size.
 pub fn validate_batch_size(count: usize) -> Result<()> {
     if count > MAX_BATCH_SIZE {
         return Err(FileviewError::mcp(format!(
@@ -235,7 +219,6 @@ pub fn validate_batch_size(count: usize) -> Result<()> {
 pub fn is_sensitive_path(path: &Path) -> bool {
     let path_str = path.to_string_lossy().replace('\\', "/").to_lowercase();
 
-    // Check for sensitive file patterns
     let sensitive_patterns = [
         ".git/config",
         ".git/hooks",

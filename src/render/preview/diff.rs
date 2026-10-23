@@ -10,28 +10,22 @@ use ratatui::{
 
 use super::common::get_border_style;
 
-/// Git diff preview content
 #[derive(Clone)]
 pub struct DiffPreview {
-    /// The diff data
     pub diff: crate::git::FileDiff,
-    /// Scroll position
     pub scroll: usize,
 }
 
 impl DiffPreview {
-    /// Create a new diff preview
     pub fn new(diff: crate::git::FileDiff) -> Self {
         Self { diff, scroll: 0 }
     }
 
-    /// Get the total number of lines
     pub fn line_count(&self) -> usize {
         self.diff.lines.len()
     }
 }
 
-/// Render git diff preview
 pub fn render_diff_preview(
     frame: &mut Frame,
     preview: &DiffPreview,
@@ -75,7 +69,6 @@ pub fn render_diff_preview(
         })
         .collect();
 
-    // Title with additions/deletions info
     let full_title = format!(
         " {} (+{} -{}) ",
         title, preview.diff.additions, preview.diff.deletions

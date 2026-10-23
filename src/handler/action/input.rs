@@ -1,6 +1,4 @@
 //! Input confirmation handler
-//!
-//! Handles ConfirmInput for file creation, directory creation, and rename operations
 
 use std::path::PathBuf;
 
@@ -10,7 +8,6 @@ use crate::tree::TreeNavigator;
 
 use super::{get_target_directory, reload_tree};
 
-/// Handle input confirmation
 pub fn handle_confirm(
     value: String,
     state: &mut AppState,

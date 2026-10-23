@@ -1,5 +1,3 @@
-//! Bulk rename dialog rendering
-
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -10,7 +8,6 @@ use ratatui::{
 
 use crate::core::{AppState, ViewMode};
 
-/// Render the bulk rename dialog
 pub fn render_bulk_rename_dialog(frame: &mut Frame, state: &AppState) {
     let ViewMode::BulkRename {
         from_pattern,
@@ -24,10 +21,8 @@ pub fn render_bulk_rename_dialog(frame: &mut Frame, state: &AppState) {
 
     let area = centered_rect(60, 12, frame.area());
 
-    // Clear the background
     frame.render_widget(Clear, area);
 
-    // Create the dialog block
     let block = Block::default()
         .title(" Bulk Rename ")
         .borders(Borders::ALL)
@@ -36,7 +31,6 @@ pub fn render_bulk_rename_dialog(frame: &mut Frame, state: &AppState) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    // Layout for the dialog content
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -53,14 +47,12 @@ pub fn render_bulk_rename_dialog(frame: &mut Frame, state: &AppState) {
         .margin(1)
         .split(inner);
 
-    // Info line
     let info = format!("{} file(s) selected", state.selected_paths.len());
     let info_widget = Paragraph::new(info)
         .style(Style::default().fg(Color::Yellow))
         .alignment(Alignment::Center);
     frame.render_widget(info_widget, chunks[0]);
 
-    // From pattern field
     let from_label = Paragraph::new("Match pattern:").style(if *selected_field == 0 {
         Style::default().fg(Color::White)
     } else {
@@ -71,7 +63,6 @@ pub fn render_bulk_rename_dialog(frame: &mut Frame, state: &AppState) {
     let from_value = render_input_field(from_pattern, *selected_field == 0, *cursor);
     frame.render_widget(from_value, chunks[3]);
 
-    // To pattern field
     let to_label = Paragraph::new("Replace with:").style(if *selected_field == 1 {
         Style::default().fg(Color::White)
     } else {
@@ -82,7 +73,6 @@ pub fn render_bulk_rename_dialog(frame: &mut Frame, state: &AppState) {
     let to_value = render_input_field(to_pattern, *selected_field == 1, *cursor);
     frame.render_widget(to_value, chunks[6]);
 
-    // Help line
     let help_spans = vec![
         Span::styled("Tab", Style::default().fg(Color::Cyan)),
         Span::raw(": switch field  "),
@@ -95,7 +85,6 @@ pub fn render_bulk_rename_dialog(frame: &mut Frame, state: &AppState) {
     frame.render_widget(help, chunks[8]);
 }
 
-/// Render an input field with cursor
 fn render_input_field(value: &str, is_active: bool, cursor: usize) -> Paragraph<'static> {
     let style = if is_active {
         Style::default().fg(Color::White).bg(Color::DarkGray)
@@ -104,7 +93,6 @@ fn render_input_field(value: &str, is_active: bool, cursor: usize) -> Paragraph<
     };
 
     let display = if is_active {
-        // Show cursor
         let before: String = value.chars().take(cursor).collect();
         let cursor_char = value.chars().nth(cursor).unwrap_or(' ');
         let after: String = value.chars().skip(cursor + 1).collect();
@@ -125,7 +113,6 @@ fn render_input_field(value: &str, is_active: bool, cursor: usize) -> Paragraph<
     Paragraph::new(display).style(style)
 }
 
-/// Create a centered rectangle
 fn centered_rect(percent_x: u16, height: u16, area: Rect) -> Rect {
     let popup_width = (area.width as u32 * percent_x as u32 / 100) as u16;
     let popup_width = popup_width.max(40).min(area.width);
@@ -177,7 +164,6 @@ mod tests {
         let area = Rect::new(0, 0, 100, 10);
         let result = centered_rect(60, 20, area);
 
-        // Height should be capped at area.height
         assert_eq!(result.height, 10);
         assert_eq!(result.y, 0);
     }
@@ -187,7 +173,6 @@ mod tests {
         let area = Rect::new(10, 5, 100, 50);
         let result = centered_rect(60, 12, area);
 
-        // Should account for area's x and y offset
         assert_eq!(result.x, 30); // 10 + 20
         assert_eq!(result.y, 24); // 5 + 19
     }

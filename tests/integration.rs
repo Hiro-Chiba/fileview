@@ -1,7 +1,3 @@
-//! Integration tests for FileView
-//!
-//! These tests simulate user interactions and verify the application behavior.
-
 use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -20,7 +16,6 @@ use fileview::render::{
 use ratatui::layout::Rect;
 use tempfile::TempDir;
 
-/// Helper to create a KeyEvent
 fn key_event(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
 }
@@ -54,11 +49,9 @@ mod state_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Simulate focus moving beyond visible area
         state.focus_index = 25;
         state.adjust_viewport(10); // visible_height = 10
 
-        // Viewport should scroll to keep focus visible
         assert!(state.viewport_top > 0);
         assert!(state.focus_index < state.viewport_top + 10);
     }
@@ -69,10 +62,9 @@ mod state_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
 
         state.viewport_top = 20;
-        state.focus_index = 5; // Focus above viewport
+        state.focus_index = 5;
         state.adjust_viewport(10);
 
-        // Viewport should scroll up
         assert_eq!(state.viewport_top, 5);
     }
 
@@ -95,13 +87,11 @@ mod state_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Browse -> Search
         state.mode = ViewMode::Search {
             query: "test".to_string(),
         };
         assert!(matches!(state.mode, ViewMode::Search { .. }));
 
-        // Browse -> Input
         state.mode = ViewMode::Input {
             purpose: InputPurpose::CreateFile,
             buffer: String::new(),
@@ -109,7 +99,6 @@ mod state_tests {
         };
         assert!(matches!(state.mode, ViewMode::Input { .. }));
 
-        // Browse -> Confirm
         state.mode = ViewMode::Confirm {
             action: PendingAction::Delete {
                 targets: vec![PathBuf::from("/tmp/test")],
@@ -117,7 +106,6 @@ mod state_tests {
         };
         assert!(matches!(state.mode, ViewMode::Confirm { .. }));
 
-        // Browse -> Preview
         state.mode = ViewMode::Preview { scroll: 0 };
         assert!(matches!(state.mode, ViewMode::Preview { .. }));
     }
@@ -129,18 +117,14 @@ mod state_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // preview_visible is false by default
         assert!(!state.preview_visible);
 
-        // focus_target should be Tree when preview is hidden
         assert_eq!(state.focus_target, FocusTarget::Tree);
 
         // Even if we set focus to Preview, it doesn't make sense when preview is hidden
-        // This test documents the expected behavior
         state.focus_target = FocusTarget::Preview;
         assert_eq!(state.focus_target, FocusTarget::Preview);
 
-        // But when preview is shown, focus can be toggled
         state.preview_visible = true;
         state.focus_target = FocusTarget::Tree;
         assert_eq!(state.focus_target, FocusTarget::Tree);
@@ -156,12 +140,9 @@ mod state_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Enable preview and set focus to preview
         state.preview_visible = true;
         state.focus_target = FocusTarget::Preview;
 
-        // When preview is closed, focus should go back to tree
-        // (This documents expected behavior - actual reset happens in action handler)
         state.preview_visible = false;
         // Focus target remains unchanged until explicitly reset
         // The action handler is responsible for resetting it
@@ -179,10 +160,8 @@ mod state_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // Default focus should be Tree
         assert_eq!(state.focus_target, FocusTarget::Tree);
 
-        // Default behavior - FocusTarget::default() is Tree
         assert_eq!(FocusTarget::default(), FocusTarget::Tree);
     }
 }
@@ -199,7 +178,6 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // j / Down -> MoveDown
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('j'))),
             KeyAction::MoveDown
@@ -209,7 +187,6 @@ mod key_handler_tests {
             KeyAction::MoveDown
         ));
 
-        // k / Up -> MoveUp
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('k'))),
             KeyAction::MoveUp
@@ -219,13 +196,11 @@ mod key_handler_tests {
             KeyAction::MoveUp
         ));
 
-        // g -> MoveToTop
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('g'))),
             KeyAction::MoveToTop
         ));
 
-        // G -> MoveToBottom
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('G'))),
             KeyAction::MoveToBottom
@@ -237,7 +212,6 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // l / Right -> Expand
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('l'))),
             KeyAction::Expand
@@ -247,7 +221,6 @@ mod key_handler_tests {
             KeyAction::Expand
         ));
 
-        // h / Left / Backspace -> Collapse
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('h'))),
             KeyAction::Collapse
@@ -261,19 +234,16 @@ mod key_handler_tests {
             KeyAction::Collapse
         ));
 
-        // H -> CollapseAll
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('H'))),
             KeyAction::CollapseAll
         ));
 
-        // L -> ExpandAll
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('L'))),
             KeyAction::ExpandAll
         ));
 
-        // Tab -> ToggleExpand
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Tab)),
             KeyAction::ToggleExpand
@@ -285,13 +255,11 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // Space -> ToggleMark
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char(' '))),
             KeyAction::ToggleMark
         ));
 
-        // Enter (non-pick mode) -> ToggleExpand
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Enter)),
             KeyAction::ToggleExpand
@@ -304,13 +272,11 @@ mod key_handler_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
         state.pick_mode = true;
 
-        // Enter in pick mode -> PickSelect
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Enter)),
             KeyAction::PickSelect
         ));
 
-        // q in pick mode -> Cancel (not Quit)
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('q'))),
             KeyAction::Cancel
@@ -322,31 +288,26 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // a -> StartNewFile
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('a'))),
             KeyAction::StartNewFile
         ));
 
-        // A -> StartNewDir
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('A'))),
             KeyAction::StartNewDir
         ));
 
-        // r -> StartRename
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('r'))),
             KeyAction::StartRename
         ));
 
-        // D -> ConfirmDelete
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('D'))),
             KeyAction::ConfirmDelete
         ));
 
-        // Delete key -> ConfirmDelete
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Delete)),
             KeyAction::ConfirmDelete
@@ -358,19 +319,16 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // y -> Copy
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('y'))),
             KeyAction::Copy
         ));
 
-        // d -> Cut
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('d'))),
             KeyAction::Cut
         ));
 
-        // p -> Paste
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('p'))),
             KeyAction::Paste
@@ -382,13 +340,11 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // o -> OpenPreview (fullscreen)
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('o'))),
             KeyAction::OpenPreview
         ));
 
-        // P -> ToggleQuickPreview (side panel)
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('P'))),
             KeyAction::ToggleQuickPreview
@@ -400,13 +356,11 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // / -> StartSearch
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('/'))),
             KeyAction::StartSearch
         ));
 
-        // n -> SearchNext
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('n'))),
             KeyAction::SearchNext
@@ -418,37 +372,31 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // . -> ToggleHidden
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('.'))),
             KeyAction::ToggleHidden
         ));
 
-        // R -> Refresh
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('R'))),
             KeyAction::Refresh
         ));
 
-        // F5 -> Refresh
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::F(5))),
             KeyAction::Refresh
         ));
 
-        // ? -> ShowHelp
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('?'))),
             KeyAction::ShowHelp
         ));
 
-        // c -> CopyPath
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('c'))),
             KeyAction::CopyPath
         ));
 
-        // C -> CopyFilename
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('C'))),
             KeyAction::CopyFilename
@@ -461,25 +409,21 @@ mod key_handler_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
         state.mode = ViewMode::Preview { scroll: 0 };
 
-        // o -> Cancel (close preview)
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('o'))),
             KeyAction::Cancel
         ));
 
-        // q -> Cancel
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('q'))),
             KeyAction::Cancel
         ));
 
-        // Esc -> Cancel
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Esc)),
             KeyAction::Cancel
         ));
 
-        // j / Down -> PreviewScrollDown
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('j'))),
             KeyAction::PreviewScrollDown
@@ -489,13 +433,11 @@ mod key_handler_tests {
             KeyAction::PreviewScrollDown
         ));
 
-        // k / Up -> PreviewScrollUp
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('k'))),
             KeyAction::PreviewScrollUp
         ));
 
-        // PageUp / b -> PreviewPageUp
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::PageUp)),
             KeyAction::PreviewPageUp
@@ -505,7 +447,6 @@ mod key_handler_tests {
             KeyAction::PreviewPageUp
         ));
 
-        // PageDown / f / Space -> PreviewPageDown
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::PageDown)),
             KeyAction::PreviewPageDown
@@ -515,13 +456,11 @@ mod key_handler_tests {
             KeyAction::PreviewPageDown
         ));
 
-        // g -> PreviewToTop
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('g'))),
             KeyAction::PreviewToTop
         ));
 
-        // G -> PreviewToBottom
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('G'))),
             KeyAction::PreviewToBottom
@@ -538,31 +477,26 @@ mod key_handler_tests {
             },
         };
 
-        // y -> ExecuteDelete
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('y'))),
             KeyAction::ExecuteDelete
         ));
 
-        // Y -> ExecuteDelete
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('Y'))),
             KeyAction::ExecuteDelete
         ));
 
-        // Enter -> ExecuteDelete
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Enter)),
             KeyAction::ExecuteDelete
         ));
 
-        // n -> Cancel
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('n'))),
             KeyAction::Cancel
         ));
 
-        // Esc -> Cancel
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Esc)),
             KeyAction::Cancel
@@ -579,14 +513,12 @@ mod key_handler_tests {
             cursor: 8,
         };
 
-        // Enter -> ConfirmInput with current buffer
         let action = handle_key_event(&state, key_event(KeyCode::Enter));
         match action {
             KeyAction::ConfirmInput { value } => assert_eq!(value, "test.txt"),
             _ => panic!("Expected ConfirmInput"),
         }
 
-        // Esc -> Cancel
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Esc)),
             KeyAction::Cancel
@@ -601,14 +533,12 @@ mod key_handler_tests {
             query: "search_term".to_string(),
         };
 
-        // Enter -> ConfirmInput with current query
         let action = handle_key_event(&state, key_event(KeyCode::Enter));
         match action {
             KeyAction::ConfirmInput { value } => assert_eq!(value, "search_term"),
             _ => panic!("Expected ConfirmInput"),
         }
 
-        // Esc -> Cancel
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Esc)),
             KeyAction::Cancel
@@ -623,7 +553,6 @@ mod key_handler_tests {
             .selected_paths
             .insert(PathBuf::from("/tmp/selected_file"));
 
-        // Esc with selections -> ClearMarks
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Esc)),
             KeyAction::ClearMarks
@@ -638,7 +567,6 @@ mod key_handler_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
         state.preview_visible = true;
 
-        // Tab should toggle focus when preview is visible
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Tab)),
             KeyAction::ToggleFocus
@@ -651,7 +579,6 @@ mod key_handler_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
         state.preview_visible = false;
 
-        // Tab should toggle expand when preview is not visible
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Tab)),
             KeyAction::ToggleExpand
@@ -667,25 +594,21 @@ mod key_handler_tests {
         state.preview_visible = true;
         state.focus_target = FocusTarget::Preview;
 
-        // j should scroll preview
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('j'))),
             KeyAction::PreviewScrollDown
         ));
 
-        // k should scroll preview
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('k'))),
             KeyAction::PreviewScrollUp
         ));
 
-        // Down arrow should scroll preview
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Down)),
             KeyAction::PreviewScrollDown
         ));
 
-        // Up arrow should scroll preview
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Up)),
             KeyAction::PreviewScrollUp
@@ -701,13 +624,11 @@ mod key_handler_tests {
         state.preview_visible = true;
         state.focus_target = FocusTarget::Tree;
 
-        // j should move down
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('j'))),
             KeyAction::MoveDown
         ));
 
-        // k should move up
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('k'))),
             KeyAction::MoveUp
@@ -723,7 +644,6 @@ mod key_handler_tests {
         state.preview_visible = true;
         state.focus_target = FocusTarget::Preview;
 
-        // Esc should toggle focus back to tree
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Esc)),
             KeyAction::ToggleFocus
@@ -739,25 +659,21 @@ mod key_handler_tests {
         state.preview_visible = true;
         state.focus_target = FocusTarget::Preview;
 
-        // PageDown should page scroll
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::PageDown)),
             KeyAction::PreviewPageDown
         ));
 
-        // PageUp should page scroll
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::PageUp)),
             KeyAction::PreviewPageUp
         ));
 
-        // b should page up
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('b'))),
             KeyAction::PreviewPageUp
         ));
 
-        // f should page down
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('f'))),
             KeyAction::PreviewPageDown
@@ -773,13 +689,11 @@ mod key_handler_tests {
         state.preview_visible = true;
         state.focus_target = FocusTarget::Preview;
 
-        // g should go to top
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('g'))),
             KeyAction::PreviewToTop
         ));
 
-        // G should go to bottom
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('G'))),
             KeyAction::PreviewToBottom
@@ -795,13 +709,11 @@ mod key_handler_tests {
         state.preview_visible = true;
         state.focus_target = FocusTarget::Tree;
 
-        // g should go to top of file list
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('g'))),
             KeyAction::MoveToTop
         ));
 
-        // G should go to bottom of file list
         assert!(matches!(
             handle_key_event(&state, key_event(KeyCode::Char('G'))),
             KeyAction::MoveToBottom
@@ -813,7 +725,6 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // Ctrl+P in Browse mode should open fuzzy finder
         let ctrl_p = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
         assert!(matches!(
             handle_key_event(&state, ctrl_p),
@@ -826,13 +737,11 @@ mod key_handler_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Enter fuzzy finder mode
         state.mode = ViewMode::FuzzyFinder {
             query: "test".to_string(),
             selected: 0,
         };
 
-        // Ctrl+P in FuzzyFinder mode should close it (Cancel)
         let ctrl_p = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
         assert!(matches!(
             handle_key_event(&state, ctrl_p),
@@ -852,7 +761,6 @@ mod preview_tests {
 
     #[test]
     fn test_text_file_detection() {
-        // Known text extensions
         assert!(is_text_file(&PathBuf::from("file.txt")));
         assert!(is_text_file(&PathBuf::from("file.md")));
         assert!(is_text_file(&PathBuf::from("file.rs")));
@@ -869,7 +777,6 @@ mod preview_tests {
         assert!(is_text_file(&PathBuf::from("FILE.TXT")));
         assert!(is_text_file(&PathBuf::from("File.Rs")));
 
-        // Not text files
         assert!(!is_text_file(&PathBuf::from("file.png")));
         assert!(!is_text_file(&PathBuf::from("file.exe")));
         assert!(!is_text_file(&PathBuf::from("file.unknown")));
@@ -877,7 +784,6 @@ mod preview_tests {
 
     #[test]
     fn test_image_file_detection() {
-        // Known image extensions
         assert!(is_image_file(&PathBuf::from("image.png")));
         assert!(is_image_file(&PathBuf::from("image.jpg")));
         assert!(is_image_file(&PathBuf::from("image.jpeg")));
@@ -890,14 +796,12 @@ mod preview_tests {
         assert!(is_image_file(&PathBuf::from("IMAGE.PNG")));
         assert!(is_image_file(&PathBuf::from("Image.Jpg")));
 
-        // Not image files
         assert!(!is_image_file(&PathBuf::from("file.txt")));
         assert!(!is_image_file(&PathBuf::from("file.rs")));
     }
 
     #[test]
     fn test_binary_file_detection() {
-        // Known binary extensions
         assert!(is_binary_file(&PathBuf::from("file.exe")));
         assert!(is_binary_file(&PathBuf::from("file.dll")));
         assert!(is_binary_file(&PathBuf::from("file.so")));
@@ -906,11 +810,9 @@ mod preview_tests {
         assert!(is_binary_file(&PathBuf::from("file.bin")));
         assert!(is_binary_file(&PathBuf::from("file.wasm")));
 
-        // Text files should not be detected as binary
         assert!(!is_binary_file(&PathBuf::from("file.txt")));
         assert!(!is_binary_file(&PathBuf::from("file.rs")));
 
-        // Image files should not be detected as binary
         assert!(!is_binary_file(&PathBuf::from("file.png")));
         assert!(!is_binary_file(&PathBuf::from("file.jpg")));
     }
@@ -937,7 +839,6 @@ mod preview_tests {
     fn test_directory_info_from_path() {
         let temp = TempDir::new().unwrap();
 
-        // Create some files and directories
         fs::write(temp.path().join("file1.txt"), "content").unwrap();
         fs::write(temp.path().join("file2.rs"), "fn main() {}").unwrap();
         fs::write(temp.path().join(".hidden"), "secret").unwrap();
@@ -956,7 +857,6 @@ mod preview_tests {
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("binary.bin");
 
-        // Create a binary file
         let mut file = fs::File::create(&file_path).unwrap();
         file.write_all(&[0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD])
             .unwrap();
@@ -975,14 +875,12 @@ mod preview_tests {
         let temp = TempDir::new().unwrap();
         let file_path = temp.path().join("test.bin");
 
-        // Create a file with 32 bytes (should be 2 lines)
         let data: Vec<u8> = (0..32).collect();
         fs::write(&file_path, &data).unwrap();
 
         let preview = HexPreview::load(&file_path).unwrap();
         assert_eq!(preview.line_count(), 2);
 
-        // Create a file with 17 bytes (should be 2 lines)
         let file_path2 = temp.path().join("test2.bin");
         let data2: Vec<u8> = (0..17).collect();
         fs::write(&file_path2, &data2).unwrap();
@@ -1008,18 +906,14 @@ mod fullscreen_preview_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Initial state: Browse mode, preview not visible
         assert_eq!(state.mode, ViewMode::Browse);
         assert!(!state.preview_visible);
 
-        // Press 'o' to enter fullscreen preview
         let action = handle_key_event(&state, key_event(KeyCode::Char('o')));
         assert!(matches!(action, KeyAction::OpenPreview));
 
-        // Simulate the action being applied
         state.mode = ViewMode::Preview { scroll: 0 };
 
-        // Verify mode changed but preview_visible is still false
         assert!(matches!(state.mode, ViewMode::Preview { .. }));
         assert!(!state.preview_visible);
 
@@ -1036,18 +930,14 @@ mod fullscreen_preview_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Press 'P' to toggle side panel
         let action = handle_key_event(&state, key_event(KeyCode::Char('P')));
         assert!(matches!(action, KeyAction::ToggleQuickPreview));
 
-        // Simulate the action being applied
         state.preview_visible = true;
 
-        // Verify preview_visible is now true
         assert!(state.preview_visible);
-        assert_eq!(state.mode, ViewMode::Browse); // Mode unchanged
+        assert_eq!(state.mode, ViewMode::Browse);
 
-        // Preview should load because preview_visible is true
         let needs_preview = state.preview_visible || matches!(state.mode, ViewMode::Preview { .. });
         assert!(needs_preview);
     }
@@ -1058,15 +948,12 @@ mod fullscreen_preview_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
         state.mode = ViewMode::Preview { scroll: 0 };
 
-        // Press 'o' again to close
         let action = handle_key_event(&state, key_event(KeyCode::Char('o')));
         assert!(matches!(action, KeyAction::Cancel));
 
-        // Press 'q' to close
         let action = handle_key_event(&state, key_event(KeyCode::Char('q')));
         assert!(matches!(action, KeyAction::Cancel));
 
-        // Press Esc to close
         let action = handle_key_event(&state, key_event(KeyCode::Esc));
         assert!(matches!(action, KeyAction::Cancel));
     }
@@ -1077,13 +964,11 @@ mod fullscreen_preview_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Case 1: Neither preview_visible nor Preview mode
         assert!(!state.preview_visible);
         assert!(matches!(state.mode, ViewMode::Browse));
         let needs_preview = state.preview_visible || matches!(state.mode, ViewMode::Preview { .. });
         assert!(!needs_preview, "Should not need preview in Browse mode");
 
-        // Case 2: preview_visible true, Browse mode
         state.preview_visible = true;
         let needs_preview = state.preview_visible || matches!(state.mode, ViewMode::Preview { .. });
         assert!(needs_preview, "Should need preview when preview_visible");
@@ -1120,7 +1005,6 @@ mod input_buffer_tests {
         let result = update_input_buffer(key_event(KeyCode::Backspace), "abc", 3);
         assert_eq!(result, Some(("ab".to_string(), 2)));
 
-        // Backspace at start does nothing
         let result = update_input_buffer(key_event(KeyCode::Backspace), "abc", 0);
         assert_eq!(result, None);
     }
@@ -1130,50 +1014,40 @@ mod input_buffer_tests {
         let result = update_input_buffer(key_event(KeyCode::Delete), "abc", 1);
         assert_eq!(result, Some(("ac".to_string(), 1)));
 
-        // Delete at end does nothing
         let result = update_input_buffer(key_event(KeyCode::Delete), "abc", 3);
         assert_eq!(result, None);
     }
 
     #[test]
     fn test_input_buffer_cursor_movement() {
-        // Left
         let result = update_input_buffer(key_event(KeyCode::Left), "abc", 2);
         assert_eq!(result, Some(("abc".to_string(), 1)));
 
-        // Left at start does nothing
         let result = update_input_buffer(key_event(KeyCode::Left), "abc", 0);
         assert_eq!(result, None);
 
-        // Right
         let result = update_input_buffer(key_event(KeyCode::Right), "abc", 1);
         assert_eq!(result, Some(("abc".to_string(), 2)));
 
-        // Right at end does nothing
         let result = update_input_buffer(key_event(KeyCode::Right), "abc", 3);
         assert_eq!(result, None);
 
-        // Home
         let result = update_input_buffer(key_event(KeyCode::Home), "abc", 2);
         assert_eq!(result, Some(("abc".to_string(), 0)));
 
-        // End
         let result = update_input_buffer(key_event(KeyCode::End), "abc", 1);
         assert_eq!(result, Some(("abc".to_string(), 3)));
     }
 
     #[test]
     fn test_input_buffer_unicode_char() {
-        // Insert Unicode character (Japanese hiragana 'あ')
         let result = update_input_buffer(key_event(KeyCode::Char('あ')), "", 0);
         assert_eq!(result, Some(("あ".to_string(), 1)));
 
-        // Insert Unicode character into existing ASCII string
         // Note: cursor is char-based (1 = after 'a')
         let result = update_input_buffer(key_event(KeyCode::Char('日')), "ab", 1);
         assert_eq!(result, Some(("a日b".to_string(), 2)));
 
-        // Insert emoji at end of ASCII string
         let result = update_input_buffer(key_event(KeyCode::Char('🎉')), "test", 4);
         assert_eq!(result, Some(("test🎉".to_string(), 5)));
     }
@@ -1181,11 +1055,9 @@ mod input_buffer_tests {
     #[test]
     fn test_input_buffer_backspace_unicode() {
         // Note: The current implementation uses char-based cursor (not byte-based)
-        // Backspace on pure ASCII works correctly
         let result = update_input_buffer(key_event(KeyCode::Backspace), "abc", 3);
         assert_eq!(result, Some(("ab".to_string(), 2)));
 
-        // Backspace in the middle of ASCII
         let result = update_input_buffer(key_event(KeyCode::Backspace), "abc", 2);
         assert_eq!(result, Some(("ac".to_string(), 1)));
 
@@ -1196,7 +1068,6 @@ mod input_buffer_tests {
 
     #[test]
     fn test_input_buffer_empty() {
-        // Operations on empty buffer - all navigation returns None
         let result = update_input_buffer(key_event(KeyCode::Backspace), "", 0);
         assert_eq!(result, None);
 
@@ -1231,7 +1102,6 @@ mod tree_navigator_tests {
     fn test_navigator_creation() {
         let temp = TempDir::new().unwrap();
 
-        // Create some files
         fs::write(temp.path().join("file1.txt"), "").unwrap();
         fs::write(temp.path().join("file2.txt"), "").unwrap();
         fs::create_dir(temp.path().join("dir1")).unwrap();
@@ -1252,17 +1122,14 @@ mod tree_navigator_tests {
         fs::write(temp.path().join("visible.txt"), "").unwrap();
         fs::write(temp.path().join(".hidden"), "").unwrap();
 
-        // Without hidden files - should only show visible.txt (+ root)
         let mut navigator_no_hidden = TreeNavigator::new(temp.path(), false).unwrap();
         navigator_no_hidden.ensure_cache();
         let count_no_hidden = navigator_no_hidden.visible_entries().len();
 
-        // With hidden files - should show both visible.txt and .hidden (+ root)
         let mut navigator_with_hidden = TreeNavigator::new(temp.path(), true).unwrap();
         navigator_with_hidden.ensure_cache();
         let count_with_hidden = navigator_with_hidden.visible_entries().len();
 
-        // With hidden files should have more entries
         assert!(
             count_with_hidden > count_no_hidden,
             "With hidden files ({}) should have more entries than without ({})",
@@ -1283,7 +1150,6 @@ mod tree_navigator_tests {
         navigator.ensure_cache();
         let initial_count = navigator.visible_entries().len();
 
-        // Expand dir1
         navigator.expand(&temp.path().join("dir1")).unwrap();
         navigator.ensure_cache();
         let expanded_count = navigator.visible_entries().len();
@@ -1292,7 +1158,6 @@ mod tree_navigator_tests {
             "Expanding should show more entries"
         );
 
-        // Collapse dir1
         navigator.collapse(&temp.path().join("dir1"));
         navigator.ensure_cache();
         let collapsed_count = navigator.visible_entries().len();
@@ -1315,13 +1180,11 @@ mod tree_navigator_tests {
         navigator.ensure_cache();
         let initial_count = navigator.visible_entries().len();
 
-        // Toggle to expand
         navigator.toggle_expand(&dir_path).unwrap();
         navigator.ensure_cache();
         let expanded_count = navigator.visible_entries().len();
         assert!(expanded_count > initial_count);
 
-        // Toggle to collapse
         navigator.toggle_expand(&dir_path).unwrap();
         navigator.ensure_cache();
         let collapsed_count = navigator.visible_entries().len();
@@ -1338,10 +1201,8 @@ mod tree_navigator_tests {
         navigator.ensure_cache();
         let initial_count = navigator.visible_entries().len();
 
-        // Add a file externally
         fs::write(temp.path().join("new_file.txt"), "").unwrap();
 
-        // Reload
         navigator.reload().unwrap();
         navigator.ensure_cache();
         let reloaded_count = navigator.visible_entries().len();
@@ -1450,12 +1311,10 @@ mod file_operations_tests {
     fn test_create_and_delete_file() {
         let temp = TempDir::new().unwrap();
 
-        // Create file
         let file_path = create_file(temp.path(), "test_file.txt").unwrap();
         assert!(file_path.exists());
         assert!(file_path.is_file());
 
-        // Delete file
         delete(&file_path).unwrap();
         assert!(!file_path.exists());
     }
@@ -1465,12 +1324,10 @@ mod file_operations_tests {
     fn test_create_and_delete_directory() {
         let temp = TempDir::new().unwrap();
 
-        // Create directory
         let dir_path = create_dir(temp.path(), "test_dir").unwrap();
         assert!(dir_path.exists());
         assert!(dir_path.is_dir());
 
-        // Delete directory
         delete(&dir_path).unwrap();
         assert!(!dir_path.exists());
     }
@@ -1500,9 +1357,7 @@ mod file_operations_tests {
 
         let copied = copy_to(&source, &dest_dir).unwrap();
 
-        // Original should still exist
         assert!(source.exists());
-        // Copy should exist in destination
         assert!(copied.exists());
         assert_eq!(fs::read_to_string(&copied).unwrap(), "content");
     }
@@ -1517,15 +1372,10 @@ mod file_operations_tests {
         fs::write(dir_path.join("file.txt"), "content").unwrap();
         fs::create_dir(dir_path.join("subdir")).unwrap();
 
-        // Should be able to delete non-empty directory
         delete(&dir_path).unwrap();
         assert!(!dir_path.exists());
     }
 }
-
-// =============================================================================
-// Drag and Drop Tests
-// =============================================================================
 
 // =============================================================================
 // Pick Output Format Tests
@@ -1611,7 +1461,6 @@ mod file_edge_case_tests {
     fn test_unique_name_single_conflict() {
         let temp = TempDir::new().unwrap();
 
-        // Create initial file
         fs::write(temp.path().join("file.txt"), "original").unwrap();
 
         // Copy to same directory - should create file_1.txt
@@ -1620,7 +1469,6 @@ mod file_edge_case_tests {
 
         assert!(copied.exists());
         assert_ne!(copied, source);
-        // Name should have suffix to avoid conflict
         let name = copied.file_name().unwrap().to_str().unwrap();
         assert!(name.contains("file") && name.ends_with(".txt"));
     }
@@ -1629,7 +1477,6 @@ mod file_edge_case_tests {
     fn test_unique_name_multiple_conflicts() {
         let temp = TempDir::new().unwrap();
 
-        // Create files that would conflict
         fs::write(temp.path().join("file.txt"), "original").unwrap();
         fs::write(temp.path().join("file_1.txt"), "copy1").unwrap();
 
@@ -1639,7 +1486,6 @@ mod file_edge_case_tests {
 
         assert!(copied.exists());
         let name = copied.file_name().unwrap().to_str().unwrap();
-        // Should have incremented suffix
         assert!(name != "file.txt" && name != "file_1.txt");
     }
 
@@ -1647,12 +1493,10 @@ mod file_edge_case_tests {
     fn test_filename_with_spaces() {
         let temp = TempDir::new().unwrap();
 
-        // Create file with spaces in name
         let file_path = create_file(temp.path(), "my file.txt").unwrap();
         assert!(file_path.exists());
         assert_eq!(file_path.file_name().unwrap(), "my file.txt");
 
-        // Rename with spaces
         let renamed = rename(&file_path, "new name.txt").unwrap();
         assert!(renamed.exists());
         assert_eq!(renamed.file_name().unwrap(), "new name.txt");
@@ -1664,12 +1508,10 @@ mod file_edge_case_tests {
     fn test_filename_with_unicode() {
         let temp = TempDir::new().unwrap();
 
-        // Create file with Unicode name
         let file_path = create_file(temp.path(), "日本語.txt").unwrap();
         assert!(file_path.exists());
         assert_eq!(file_path.file_name().unwrap(), "日本語.txt");
 
-        // Rename with Unicode
         let renamed = rename(&file_path, "中文.txt").unwrap();
         assert!(renamed.exists());
         assert_eq!(renamed.file_name().unwrap(), "中文.txt");
@@ -1682,7 +1524,6 @@ mod file_edge_case_tests {
         let file_path = create_file(temp.path(), "file.backup.txt").unwrap();
         assert!(file_path.exists());
 
-        // Copy should preserve the name pattern
         let copied = copy_to(&file_path, temp.path()).unwrap();
         let name = copied.file_name().unwrap().to_str().unwrap();
         assert!(name.ends_with(".txt"));
@@ -1693,7 +1534,6 @@ mod file_edge_case_tests {
         let temp = TempDir::new().unwrap();
         let nonexistent = temp.path().join("does_not_exist.txt");
 
-        // Deleting non-existent file should fail
         let result = delete(&nonexistent);
         assert!(result.is_err());
     }
@@ -1704,7 +1544,6 @@ mod file_edge_case_tests {
         let file_path = temp.path().join("test.txt");
         fs::write(&file_path, "content").unwrap();
 
-        // Renaming to the same name should succeed (no-op)
         let result = rename(&file_path, "test.txt");
         assert!(result.is_ok());
         assert!(file_path.exists());
@@ -1714,18 +1553,15 @@ mod file_edge_case_tests {
     fn test_copy_directory_recursive() {
         let temp = TempDir::new().unwrap();
 
-        // Create source directory with nested content
         let source_dir = temp.path().join("source");
         fs::create_dir(&source_dir).unwrap();
         fs::write(source_dir.join("file1.txt"), "content1").unwrap();
         fs::create_dir(source_dir.join("subdir")).unwrap();
         fs::write(source_dir.join("subdir").join("file2.txt"), "content2").unwrap();
 
-        // Create destination
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
 
-        // Copy directory
         let copied = copy_to(&source_dir, &dest_dir).unwrap();
 
         assert!(copied.is_dir());
@@ -1738,15 +1574,10 @@ mod file_edge_case_tests {
         let temp = TempDir::new().unwrap();
         let nonexistent_parent = temp.path().join("nonexistent").join("subdir");
 
-        // Creating file in non-existent directory should fail
         let result = create_file(&nonexistent_parent, "file.txt");
         assert!(result.is_err());
     }
 }
-
-// =============================================================================
-// Drag and Drop Tests
-// =============================================================================
 
 // =============================================================================
 // Git Status Tests
@@ -1802,7 +1633,6 @@ mod git_status_tests {
     #[test]
     fn test_non_git_directory() {
         let temp = TempDir::new().unwrap();
-        // Non-git directory should return None
         let status = GitStatus::detect(temp.path());
         assert!(status.is_none());
     }
@@ -1860,14 +1690,12 @@ mod git_status_tests {
         }
         git_config(temp.path());
 
-        // Create and commit a file
         fs::write(temp.path().join("committed.txt"), "content").unwrap();
         git_add(temp.path(), "committed.txt");
         git_commit(temp.path(), "Initial commit");
 
         let status = GitStatus::detect(temp.path()).unwrap();
 
-        // Committed file should be clean
         assert!(status.branch().is_some());
     }
 
@@ -1882,17 +1710,14 @@ mod git_status_tests {
 
         let mut status = GitStatus::detect(temp.path()).unwrap();
 
-        // Create file and refresh
         fs::write(temp.path().join("new.txt"), "content").unwrap();
         status.refresh();
 
-        // After refresh, should see the new file
         assert!(status.branch().is_some() || status.branch().is_none());
     }
 
     #[test]
     fn test_file_status_default() {
-        // FileStatus should default to Clean
         let default: FileStatus = Default::default();
         assert_eq!(default, FileStatus::Clean);
     }
@@ -2018,7 +1843,6 @@ mod callback_tests {
         let callback = Callback::new("cat {path}");
         let path = PathBuf::from("/home/user/my file.txt");
         let cmd = callback.expand(&path);
-        // Path should be properly escaped
         assert!(cmd.contains("my") && cmd.contains("file.txt"));
     }
 }
@@ -2040,7 +1864,7 @@ mod drag_and_drop_tests {
         fs::write(&file_path, "test content").unwrap();
 
         let mut detector = PathBuffer::new();
-        detector.push('/'); // Start path
+        detector.push('/');
 
         // Simulate rapid input of file path
         let path_str = file_path.display().to_string();
@@ -2077,7 +1901,6 @@ mod drag_and_drop_tests {
         fs::write(&file_path, "content").unwrap();
 
         let mut detector = PathBuffer::new();
-        // Simulate file:// URL format
         let url = format!("file://{}", file_path.display());
         for c in url.chars() {
             detector.push(c);
@@ -2095,7 +1918,6 @@ mod drag_and_drop_tests {
         fs::write(&file_path, "content").unwrap();
 
         let mut detector = PathBuffer::new();
-        // Simulate URL-encoded path with %20 for spaces
         let path_str = file_path.display().to_string().replace(' ', "%20");
         for c in path_str.chars() {
             detector.push(c);
@@ -2133,7 +1955,6 @@ mod drag_and_drop_tests {
         fs::write(&file2, "content2").unwrap();
 
         let mut detector = PathBuffer::new();
-        // Simulate multiple paths separated by newline
         let paths_str = format!("{}\n{}", file1.display(), file2.display());
         for c in paths_str.chars() {
             detector.push(c);
@@ -2148,7 +1969,6 @@ mod drag_and_drop_tests {
     #[test]
     fn test_path_buffer_nonexistent_path_filtered() {
         let mut detector = PathBuffer::new();
-        // Path that doesn't exist should be filtered out
         let fake_path = "/nonexistent/path/to/file.txt";
         for c in fake_path.chars() {
             detector.push(c);
@@ -2165,7 +1985,6 @@ mod drag_and_drop_tests {
         fs::write(&existing, "content").unwrap();
 
         let mut detector = PathBuffer::new();
-        // Mix of existing and non-existing paths
         let paths_str = format!("{}\n/nonexistent/path.txt", existing.display());
         for c in paths_str.chars() {
             detector.push(c);
@@ -2183,7 +2002,6 @@ mod drag_and_drop_tests {
         fs::write(&file_path, "content").unwrap();
 
         let mut detector = PathBuffer::new();
-        // Simulate quoted path
         let quoted = format!("\"{}\"", file_path.display());
         for c in quoted.chars() {
             detector.push(c);
@@ -2223,7 +2041,7 @@ mod image_preview_tests {
     // Test Helpers - Image Creation Functions
     // =========================================================================
 
-    /// Create a test image with specified dimensions and format
+    /// The image format is chosen from the extension of `path`.
     fn create_test_image(path: &std::path::Path, width: u32, height: u32) {
         use image::{ImageBuffer, Rgb};
         let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_fn(width, height, |x, y| {
@@ -2232,12 +2050,10 @@ mod image_preview_tests {
         img.save(path).unwrap();
     }
 
-    /// Create a 1x1 PNG
     fn create_test_png(path: &std::path::Path) {
         create_test_image(path, 1, 1);
     }
 
-    /// Create a 1x1 JPEG
     fn create_test_jpeg(path: &std::path::Path) {
         use image::{ImageBuffer, Rgb};
         let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
@@ -2245,7 +2061,6 @@ mod image_preview_tests {
         img.save(path).unwrap();
     }
 
-    /// Create a test GIF file
     fn create_test_gif(path: &std::path::Path) {
         use image::{ImageBuffer, Rgb};
         let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
@@ -2253,7 +2068,6 @@ mod image_preview_tests {
         img.save(path).unwrap();
     }
 
-    /// Create a test WebP file
     fn create_test_webp(path: &std::path::Path) {
         use image::{ImageBuffer, Rgb};
         let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
@@ -2261,7 +2075,6 @@ mod image_preview_tests {
         img.save(path).unwrap();
     }
 
-    /// Create a test BMP file
     fn create_test_bmp(path: &std::path::Path) {
         use image::{ImageBuffer, Rgb};
         let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
@@ -2269,11 +2082,10 @@ mod image_preview_tests {
         img.save(path).unwrap();
     }
 
-    /// Create a PNG with alpha channel (RGBA)
     fn create_test_png_rgba(path: &std::path::Path) {
         use image::{ImageBuffer, Rgba};
         let img: ImageBuffer<Rgba<u8>, Vec<u8>> =
-            ImageBuffer::from_fn(2, 2, |_, _| Rgba([255, 0, 0, 128])); // Semi-transparent red
+            ImageBuffer::from_fn(2, 2, |_, _| Rgba([255, 0, 0, 128]));
         img.save(path).unwrap();
     }
 
@@ -2305,7 +2117,6 @@ mod image_preview_tests {
 
     #[test]
     fn test_image_detection_case_insensitive() {
-        // Upper case
         assert!(is_image_file(&PathBuf::from("IMAGE.PNG")));
         assert!(is_image_file(&PathBuf::from("IMAGE.JPG")));
         assert!(is_image_file(&PathBuf::from("IMAGE.JPEG")));
@@ -2314,7 +2125,6 @@ mod image_preview_tests {
         assert!(is_image_file(&PathBuf::from("IMAGE.BMP")));
         assert!(is_image_file(&PathBuf::from("IMAGE.ICO")));
 
-        // Mixed case
         assert!(is_image_file(&PathBuf::from("Image.Png")));
         assert!(is_image_file(&PathBuf::from("iMaGe.JpG")));
         assert!(is_image_file(&PathBuf::from("FILE.GiF")));
@@ -2339,23 +2149,19 @@ mod image_preview_tests {
 
     #[test]
     fn test_image_detection_not_image_extensions() {
-        // Text files
         assert!(!is_image_file(&PathBuf::from("file.txt")));
         assert!(!is_image_file(&PathBuf::from("code.rs")));
         assert!(!is_image_file(&PathBuf::from("script.py")));
         assert!(!is_image_file(&PathBuf::from("document.md")));
 
-        // Binary files
         assert!(!is_image_file(&PathBuf::from("app.exe")));
         assert!(!is_image_file(&PathBuf::from("lib.dll")));
         assert!(!is_image_file(&PathBuf::from("binary.bin")));
 
-        // Config files
         assert!(!is_image_file(&PathBuf::from("config.json")));
         assert!(!is_image_file(&PathBuf::from("settings.toml")));
         assert!(!is_image_file(&PathBuf::from("data.yaml")));
 
-        // Unknown extensions
         assert!(!is_image_file(&PathBuf::from("file.xyz")));
         assert!(!is_image_file(&PathBuf::from("data.raw")));
     }
@@ -2378,13 +2184,13 @@ mod image_preview_tests {
 
     #[test]
     fn test_image_detection_similar_but_invalid_extensions() {
-        assert!(!is_image_file(&PathBuf::from("file.pn"))); // Not .png
-        assert!(!is_image_file(&PathBuf::from("file.jp"))); // Not .jpg
-        assert!(!is_image_file(&PathBuf::from("file.pngg"))); // Extra char
-        assert!(!is_image_file(&PathBuf::from("file.jpgg"))); // Extra char
-        assert!(!is_image_file(&PathBuf::from("file.gi"))); // Not .gif
-        assert!(!is_image_file(&PathBuf::from("file.web"))); // Not .webp
-        assert!(!is_image_file(&PathBuf::from("filepng"))); // No dot
+        assert!(!is_image_file(&PathBuf::from("file.pn")));
+        assert!(!is_image_file(&PathBuf::from("file.jp")));
+        assert!(!is_image_file(&PathBuf::from("file.pngg")));
+        assert!(!is_image_file(&PathBuf::from("file.jpgg")));
+        assert!(!is_image_file(&PathBuf::from("file.gi")));
+        assert!(!is_image_file(&PathBuf::from("file.web")));
+        assert!(!is_image_file(&PathBuf::from("filepng")));
     }
 
     #[test]
@@ -2511,7 +2317,6 @@ mod image_preview_tests {
         let img = result.unwrap();
         assert_eq!(img.width(), 2);
         assert_eq!(img.height(), 2);
-        // Verify it has alpha channel by checking color type
         assert!(img.color().has_alpha());
     }
 
@@ -2606,7 +2411,6 @@ mod image_preview_tests {
 
         let err = result.unwrap_err();
         let err_string = err.to_string();
-        // Verify error indicates file not found
         assert!(
             err_string.contains("No such file")
                 || err_string.contains("not found")
@@ -2668,7 +2472,6 @@ mod image_preview_tests {
         let png_path = temp.path().join("actual.png");
         create_test_png(&png_path);
 
-        // Copy to .txt
         let txt_path = temp.path().join("image.txt");
         fs::copy(&png_path, &txt_path).unwrap();
 
@@ -2706,7 +2509,6 @@ mod image_preview_tests {
         let picker1 = create_image_picker();
         let picker2 = create_image_picker();
 
-        // Both calls should return the same variant
         assert_eq!(
             picker1.is_some(),
             picker2.is_some(),
@@ -2716,7 +2518,6 @@ mod image_preview_tests {
 
     #[test]
     fn test_picker_none_is_valid_state() {
-        // When picker is None, the application should handle gracefully
         let picker: Option<Picker> = None;
         assert!(picker.is_none());
 
@@ -2870,7 +2671,6 @@ mod image_preview_tests {
 
         let mut preview = ImagePreview::load(&path, &mut picker).unwrap();
 
-        // Create a test terminal
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
@@ -2903,7 +2703,6 @@ mod image_preview_tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let font_size: FontSize = picker.font_size();
 
-        // Test focused state
         terminal
             .draw(|frame| {
                 let area = frame.area();
@@ -2911,7 +2710,6 @@ mod image_preview_tests {
             })
             .unwrap();
 
-        // Test unfocused state
         terminal
             .draw(|frame| {
                 let area = frame.area();
@@ -2981,10 +2779,8 @@ mod image_preview_tests {
         {
             std::os::unix::fs::symlink(&image_path, &link_path).unwrap();
 
-            // Symlink should be detected as image (follows link)
             assert!(is_image_file(&link_path));
 
-            // Should be able to open via symlink
             assert!(image::open(&link_path).is_ok());
         }
     }
@@ -2995,7 +2791,6 @@ mod image_preview_tests {
 
     #[test]
     fn test_render_module_exports() {
-        // Verify public API exports
         let _: fn(&std::path::Path, &mut Picker) -> anyhow::Result<ImagePreview> =
             ImagePreview::load;
         let _: fn() -> Option<Picker> = create_image_picker;
@@ -3025,7 +2820,6 @@ mod image_preview_tests {
     fn test_multiple_images_in_sequence() {
         let temp = TempDir::new().unwrap();
 
-        // Create and open multiple images in sequence
         for i in 0..10 {
             let path = temp.path().join(format!("image_{}.png", i));
             create_test_image(&path, 10 + i, 10 + i);
@@ -3041,13 +2835,13 @@ mod image_preview_tests {
         let temp = TempDir::new().unwrap();
 
         let ratios = [
-            (1, 1),   // Square
-            (16, 9),  // Widescreen
-            (9, 16),  // Portrait
-            (4, 3),   // Classic
-            (21, 9),  // Ultrawide
-            (1, 100), // Very tall
-            (100, 1), // Very wide
+            (1, 1),
+            (16, 9),
+            (9, 16),
+            (4, 3),
+            (21, 9),
+            (1, 100),
+            (100, 1),
         ];
 
         for (w, h) in ratios {
@@ -3064,7 +2858,6 @@ mod image_preview_tests {
     fn test_real_file_detection_consistency() {
         let temp = TempDir::new().unwrap();
 
-        // Create actual files and verify detection matches content
         let png_path = temp.path().join("real.png");
         let jpg_path = temp.path().join("real.jpg");
         let gif_path = temp.path().join("real.gif");
@@ -3075,7 +2868,6 @@ mod image_preview_tests {
         create_test_gif(&gif_path);
         fs::write(&txt_path, "text content").unwrap();
 
-        // Verify file type detection is consistent
         assert!(is_image_file(&png_path) && image::open(&png_path).is_ok());
         assert!(is_image_file(&jpg_path) && image::open(&jpg_path).is_ok());
         assert!(is_image_file(&gif_path) && image::open(&gif_path).is_ok());
@@ -3089,7 +2881,6 @@ mod image_preview_tests {
 
     #[test]
     fn test_centered_image_square_in_square_area() {
-        // Square image in square area should be perfectly centered with no padding
         let area = Rect::new(0, 0, 20, 20);
         let font_size: FontSize = FontSize::new(10, 10); // Square cells for simplicity
         let result = calculate_centered_image_area(area, 100, 100, font_size);
@@ -3103,7 +2894,6 @@ mod image_preview_tests {
 
     #[test]
     fn test_centered_image_wide_image_in_square_area() {
-        // Wide image (2:1) in square area should have vertical padding
         let area = Rect::new(0, 0, 20, 20);
         let font_size: FontSize = FontSize::new(10, 10);
         let result = calculate_centered_image_area(area, 200, 100, font_size);
@@ -3113,12 +2903,11 @@ mod image_preview_tests {
         assert_eq!(result.width, 20);
         assert_eq!(result.height, 10);
         assert_eq!(result.x, 0);
-        assert_eq!(result.y, 5); // Centered vertically
+        assert_eq!(result.y, 5);
     }
 
     #[test]
     fn test_centered_image_tall_image_in_square_area() {
-        // Tall image (1:2) in square area should have horizontal padding
         let area = Rect::new(0, 0, 20, 20);
         let font_size: FontSize = FontSize::new(10, 10);
         let result = calculate_centered_image_area(area, 100, 200, font_size);
@@ -3127,19 +2916,17 @@ mod image_preview_tests {
         // Horizontal padding should be (20 - 10) / 2 = 5
         assert_eq!(result.width, 10);
         assert_eq!(result.height, 20);
-        assert_eq!(result.x, 5); // Centered horizontally
+        assert_eq!(result.x, 5);
         assert_eq!(result.y, 0);
     }
 
     #[test]
     fn test_centered_image_with_offset_area() {
-        // Area with non-zero origin
         let area = Rect::new(10, 5, 20, 20);
         let font_size: FontSize = FontSize::new(10, 10);
         let result = calculate_centered_image_area(area, 200, 100, font_size);
 
-        // Wide image should be centered vertically within the offset area
-        assert_eq!(result.x, 10); // Original x
+        assert_eq!(result.x, 10);
         assert_eq!(result.y, 10); // Original y (5) + padding (5)
         assert_eq!(result.width, 20);
         assert_eq!(result.height, 10);
@@ -3149,9 +2936,8 @@ mod image_preview_tests {
     fn test_centered_image_typical_terminal_font() {
         // Typical terminal: cells are taller than wide (e.g., 10x20 pixels)
         let area = Rect::new(0, 0, 40, 20);
-        let font_size: FontSize = FontSize::new(10, 20); // Typical terminal font
+        let font_size: FontSize = FontSize::new(10, 20);
 
-        // Square image (100x100 pixels)
         let result = calculate_centered_image_area(area, 100, 100, font_size);
 
         // Area in pixels: 400x400
@@ -3165,11 +2951,9 @@ mod image_preview_tests {
 
     #[test]
     fn test_centered_image_small_image_scales_up() {
-        // Small image should be scaled up to fill the area
         let area = Rect::new(0, 0, 100, 50);
         let font_size: FontSize = FontSize::new(10, 20);
 
-        // Very small image (10x10 pixels)
         let result = calculate_centered_image_area(area, 10, 10, font_size);
 
         // Area in pixels: 1000x1000
@@ -3181,14 +2965,11 @@ mod image_preview_tests {
 
     #[test]
     fn test_centered_image_preserves_aspect_ratio() {
-        // Verify aspect ratio is preserved for various image sizes
         let area = Rect::new(0, 0, 80, 40);
         let font_size: FontSize = FontSize::new(10, 20);
 
-        // 4:3 image
         let result = calculate_centered_image_area(area, 400, 300, font_size);
 
-        // The image should maintain 4:3 ratio
         // Area pixels: 800x800
         // Scale to fit: min(800/400, 800/300) = min(2, 2.67) = 2
         // Scaled: 800x600 pixels = 80x30 cells
@@ -3226,10 +3007,8 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_terminal_brand_detect_returns_valid_variant() {
-        // TerminalBrand::detect() should always return a valid variant
         let brand = TerminalBrand::detect();
 
-        // Verify it's one of the known variants
         let valid_variants = [
             TerminalBrand::Kitty,
             TerminalBrand::Ghostty,
@@ -3250,7 +3029,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_terminal_brand_recommended_protocol_always_returns() {
-        // Every terminal brand should have a recommended protocol
         let brands = [
             TerminalBrand::Kitty,
             TerminalBrand::Ghostty,
@@ -3268,7 +3046,6 @@ mod terminal_detection_tests {
 
         for brand in brands {
             let protocol = brand.recommended_protocol();
-            // Should be one of the valid protocols
             let valid_protocols = [
                 RecommendedProtocol::Kitty,
                 RecommendedProtocol::Iterm2,
@@ -3331,7 +3108,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_kitty_protocol_terminals() {
-        // Terminals that should use Kitty protocol
         let kitty_terminals = [
             TerminalBrand::Kitty,
             TerminalBrand::Ghostty,
@@ -3350,7 +3126,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_iterm2_protocol_terminals() {
-        // Terminals that should use iTerm2 protocol
         let iterm2_terminals = [
             TerminalBrand::ITerm2,
             TerminalBrand::WezTerm,
@@ -3369,7 +3144,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_sixel_protocol_terminals() {
-        // Terminals that should use Sixel protocol
         let sixel_terminals = [TerminalBrand::Foot, TerminalBrand::WindowsTerminal];
 
         for terminal in sixel_terminals {
@@ -3384,7 +3158,7 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_chafa_preferred_terminals() {
-        // Terminals that should prefer Chafa (no native image protocol support)
+        // These terminals have no native image protocol support.
         let chafa_terminals = [TerminalBrand::VSCode, TerminalBrand::Alacritty];
 
         for terminal in chafa_terminals {
@@ -3399,7 +3173,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_query_fallback_terminals() {
-        // Terminals that should use query/fallback
         let query_terminals = [TerminalBrand::Tmux, TerminalBrand::Unknown];
 
         for terminal in query_terminals {
@@ -3447,14 +3220,14 @@ mod terminal_detection_tests {
     #[test]
     fn test_terminal_brand_copy() {
         let brand = TerminalBrand::Ghostty;
-        let copied: TerminalBrand = brand; // Copy
+        let copied: TerminalBrand = brand;
         assert_eq!(brand, copied); // Both should still be usable
     }
 
     #[test]
     fn test_recommended_protocol_copy() {
         let protocol = RecommendedProtocol::Iterm2;
-        let copied: RecommendedProtocol = protocol; // Copy
+        let copied: RecommendedProtocol = protocol;
         assert_eq!(protocol, copied);
     }
 
@@ -3476,7 +3249,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_terminal_brand_names_are_human_readable() {
-        // Names should be human-readable, not internal identifiers
         assert_eq!(TerminalBrand::Kitty.name(), "Kitty");
         assert_eq!(TerminalBrand::Ghostty.name(), "Ghostty");
         assert_eq!(TerminalBrand::WezTerm.name(), "WezTerm");
@@ -3506,7 +3278,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_detect_is_deterministic() {
-        // Multiple calls should return the same result
         let brand1 = TerminalBrand::detect();
         let brand2 = TerminalBrand::detect();
         let brand3 = TerminalBrand::detect();
@@ -3529,7 +3300,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_all_brands_have_consistent_protocol() {
-        // For each brand, the protocol should always be the same
         let brands = [
             TerminalBrand::Kitty,
             TerminalBrand::Ghostty,
@@ -3600,7 +3370,6 @@ mod terminal_detection_tests {
         // might fail in CI depending on terminal support, but it shouldn't panic
         use fileview::render::create_image_picker;
 
-        // Should not panic regardless of terminal
         let _result = std::panic::catch_unwind(|| {
             let _ = create_image_picker();
         });
@@ -3624,7 +3393,6 @@ mod terminal_detection_tests {
     fn test_create_image_picker_multiple_calls_consistent() {
         use fileview::render::create_image_picker;
 
-        // Multiple calls should be consistent (same env = same result type)
         let picker1 = create_image_picker();
         let picker2 = create_image_picker();
         let picker3 = create_image_picker();
@@ -3636,10 +3404,8 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_terminal_brand_detect_public_api() {
-        // Test the public detect() API directly
         let brand = TerminalBrand::detect();
 
-        // Should return a valid variant
         let _ = brand.name(); // Should not panic
         let protocol = brand.recommended_protocol();
         let _ = protocol.name(); // Should not panic
@@ -3647,7 +3413,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_terminal_brand_detect_multiple_calls_deterministic() {
-        // Calling detect() multiple times should return same result
         let brand1 = TerminalBrand::detect();
         let brand2 = TerminalBrand::detect();
         let brand3 = TerminalBrand::detect();
@@ -3658,7 +3423,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_terminal_detection_does_not_modify_environment() {
-        // Verify detect() doesn't modify environment
         let env_vars_before: Vec<_> = std::env::vars().collect();
 
         let _ = TerminalBrand::detect();
@@ -3688,7 +3452,6 @@ mod terminal_detection_tests {
             "iterm",
         ];
 
-        // All these should be valid protocol override values
         for value in &supported_values {
             assert!(!value.is_empty(), "Protocol value should not be empty");
         }
@@ -3700,7 +3463,6 @@ mod terminal_detection_tests {
 
     #[test]
     fn test_terminal_detect_rapid_succession() {
-        // Call detect() many times rapidly - should be stable
         for _ in 0..100 {
             let brand = TerminalBrand::detect();
             let _ = brand.recommended_protocol();
@@ -3733,7 +3495,6 @@ mod shell_integration_tests {
 
     #[test]
     fn test_quit_and_cd_action_exists() {
-        // Verify QuitAndCd action variant exists
         let action = KeyAction::QuitAndCd;
         assert!(matches!(action, KeyAction::QuitAndCd));
     }
@@ -3743,7 +3504,6 @@ mod shell_integration_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // Q (uppercase) should trigger QuitAndCd
         let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
         let action = handle_key_event(&state, key);
 
@@ -3759,7 +3519,6 @@ mod shell_integration_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // q (lowercase) should trigger regular Quit, not QuitAndCd
         let key = key_event(KeyCode::Char('q'));
         let action = handle_key_event(&state, key);
 
@@ -3822,7 +3581,6 @@ mod shell_integration_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
         state.pick_mode = true;
 
-        // Q should still trigger QuitAndCd even in pick mode
         let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
         let action = handle_key_event(&state, key);
 
@@ -3877,7 +3635,6 @@ mod shell_integration_tests {
         fs::write(&file_path, "test").unwrap();
 
         let mut state = AppState::new(temp.path().to_path_buf());
-        // Simulate storing the parent directory of a file
         let parent = file_path.parent().unwrap().to_path_buf();
         state.choosedir_path = Some(parent.clone());
 
@@ -3903,7 +3660,6 @@ mod shell_integration_tests {
         let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
         let action = handle_key_event(&state, key);
 
-        // In input mode, Q should not trigger QuitAndCd
         assert!(
             !matches!(action, KeyAction::QuitAndCd),
             "Q should not trigger QuitAndCd in input mode"
@@ -3923,7 +3679,6 @@ mod shell_integration_tests {
         let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
         let action = handle_key_event(&state, key);
 
-        // In confirm mode, Q should not trigger QuitAndCd
         assert!(
             !matches!(action, KeyAction::QuitAndCd),
             "Q should not trigger QuitAndCd in confirm mode"
@@ -3939,7 +3694,6 @@ mod shell_integration_tests {
         let temp = TempDir::new().unwrap();
         let state = AppState::new(temp.path().to_path_buf());
 
-        // Multiple calls should produce same result
         for _ in 0..10 {
             let key = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::NONE);
             let action = handle_key_event(&state, key);
@@ -4213,7 +3967,6 @@ mod fuzzy_finder_tests {
         ];
 
         let results = fuzzy_match("ab", &paths, &root);
-        // Higher scores should come first
         for i in 1..results.len() {
             assert!(
                 results[i - 1].score >= results[i].score,
@@ -4317,7 +4070,6 @@ mod fuzzy_finder_tests {
     #[test]
     fn test_collect_paths_respects_depth_limit() {
         let temp = TempDir::new().unwrap();
-        // Create deeply nested structure
         let mut current = temp.path().to_path_buf();
         for i in 0..15 {
             current = current.join(format!("level{}", i));
@@ -4328,7 +4080,6 @@ mod fuzzy_finder_tests {
         let root = temp.path().to_path_buf();
         let paths = collect_paths(&root, false);
 
-        // Should not collect files beyond depth 10
         let deep_file = paths.iter().any(|p| p.ends_with("deep.txt"));
         assert!(!deep_file, "Should not collect files beyond max depth (10)");
     }
@@ -4424,7 +4175,6 @@ mod fuzzy_finder_tests {
 
         navigator.reveal_path(&target).unwrap();
 
-        // After reveal, the file should be visible
         navigator.ensure_cache();
         let entries = navigator.visible_entries();
         let visible_paths: Vec<_> = entries.iter().map(|e| &e.path).collect();
@@ -4443,7 +4193,6 @@ mod fuzzy_finder_tests {
 
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
 
-        // Initially, nested file is not visible
         navigator.ensure_cache();
         let before = navigator.visible_entries();
         assert!(
@@ -4454,7 +4203,6 @@ mod fuzzy_finder_tests {
         let target = temp.path().join("a/b/file.txt");
         navigator.reveal_path(&target).unwrap();
 
-        // After reveal, the file should be visible
         navigator.ensure_cache();
         let after = navigator.visible_entries();
         assert!(
@@ -4471,7 +4219,6 @@ mod fuzzy_finder_tests {
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
         let target = temp.path().join("visible.txt");
 
-        // Already visible
         navigator.ensure_cache();
         let before_count = navigator.visible_count();
 
@@ -4510,10 +4257,8 @@ mod fuzzy_finder_tests {
 
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // 1. Start in Browse mode
         assert!(matches!(state.mode, ViewMode::Browse));
 
-        // 2. Open fuzzy finder with Ctrl+P
         let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
         let action = handle_key_event(&state, key);
         assert!(matches!(action, KeyAction::OpenFuzzyFinder));
@@ -4524,17 +4269,16 @@ mod fuzzy_finder_tests {
             selected: 0,
         };
 
-        // 3. Simulate typing a query
+        // Simulate typing a query
         if let ViewMode::FuzzyFinder { query, .. } = &mut state.mode {
             *query = "main".to_string();
         }
 
-        // 4. Press Enter to confirm
         let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
         let action = handle_key_event(&state, key);
         assert!(matches!(action, KeyAction::FuzzyConfirm { .. }));
 
-        // 5. Simulate returning to Browse mode
+        // Simulate returning to Browse mode
         state.mode = ViewMode::Browse;
         assert!(matches!(state.mode, ViewMode::Browse));
     }
@@ -4544,13 +4288,11 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Start fuzzy finder
         state.mode = ViewMode::FuzzyFinder {
             query: "test".to_string(),
             selected: 3,
         };
 
-        // Press Esc to cancel
         let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
         let action = handle_key_event(&state, key);
         assert!(matches!(action, KeyAction::Cancel));
@@ -4561,18 +4303,15 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Start fuzzy finder with some results
         state.mode = ViewMode::FuzzyFinder {
             query: "test".to_string(),
             selected: 0,
         };
 
-        // Navigate down
         let key = KeyEvent::new(KeyCode::Down, KeyModifiers::NONE);
         let action = handle_key_event(&state, key);
         assert!(matches!(action, KeyAction::FuzzyDown));
 
-        // Navigate up
         let key = KeyEvent::new(KeyCode::Up, KeyModifiers::NONE);
         let action = handle_key_event(&state, key);
         assert!(matches!(action, KeyAction::FuzzyUp));
@@ -4592,7 +4331,6 @@ mod fuzzy_finder_tests {
             temp.path().join("test(2).txt"),
         ];
 
-        // Should not panic with special characters
         let results = fuzzy_match("[1]", &paths, &root);
         // Results may or may not match depending on how special chars are handled
         // Just verify no panic occurs
@@ -4610,7 +4348,6 @@ mod fuzzy_finder_tests {
         ];
 
         let results = fuzzy_match("日本語", &paths, &root);
-        // Should match unicode filename
         if !results.is_empty() {
             assert!(results[0].display.contains("日本語"));
         }
@@ -4647,7 +4384,6 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // In Input mode
         state.mode = ViewMode::Input {
             purpose: InputPurpose::CreateFile,
             buffer: String::new(),
@@ -4657,7 +4393,6 @@ mod fuzzy_finder_tests {
         let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
         let action = handle_key_event(&state, key);
 
-        // Should not trigger fuzzy finder in input mode
         assert!(
             !matches!(action, KeyAction::OpenFuzzyFinder),
             "Ctrl+P should not trigger fuzzy finder in Input mode"
@@ -4674,11 +4409,9 @@ mod fuzzy_finder_tests {
             selected: 2,
         };
 
-        // Navigate down
         let key = KeyEvent::new(KeyCode::Down, KeyModifiers::NONE);
         let _ = handle_key_event(&state, key);
 
-        // Query should still be there
         if let ViewMode::FuzzyFinder { query, .. } = &state.mode {
             assert_eq!(query, "important query");
         }
@@ -4699,7 +4432,6 @@ mod fuzzy_finder_tests {
             temp.path().join("other.rs"),
         ];
 
-        // Multiple calls should produce same results
         let results1 = fuzzy_match("file", &paths, &root);
         let results2 = fuzzy_match("file", &paths, &root);
 
@@ -4742,7 +4474,6 @@ mod fuzzy_finder_tests {
         let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
         let action = handle_key_event(&state, key);
 
-        // FuzzyConfirm should have path field
         if let KeyAction::FuzzyConfirm { path } = action {
             // Path is initially empty, to be filled by main.rs
             assert!(path.as_os_str().is_empty());
@@ -4760,7 +4491,6 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Start at index 0
         state.mode = ViewMode::FuzzyFinder {
             query: "test".to_string(),
             selected: 0,
@@ -4778,7 +4508,6 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Start at a large index
         state.mode = ViewMode::FuzzyFinder {
             query: "test".to_string(),
             selected: 100,
@@ -4801,7 +4530,6 @@ mod fuzzy_finder_tests {
 
         assert!(results.is_empty());
 
-        // Bounding logic should handle empty results
         let bounded = if results.is_empty() {
             0
         } else {
@@ -4818,7 +4546,6 @@ mod fuzzy_finder_tests {
         let paths = vec![temp.path().join("a.txt"), temp.path().join("b.txt")];
         let results = fuzzy_match("txt", &paths, &root);
 
-        // If selected is larger than results, should be bounded
         let selected = 10usize;
         let bounded = if results.is_empty() {
             0
@@ -4892,7 +4619,6 @@ mod fuzzy_finder_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
         state.pick_mode = true;
 
-        // Ctrl+P should still work in pick mode
         let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
         let action = handle_key_event(&state, key);
 
@@ -4908,7 +4634,6 @@ mod fuzzy_finder_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
         state.preview_visible = true;
 
-        // Ctrl+P should still work with preview visible
         let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
         let action = handle_key_event(&state, key);
 
@@ -4926,7 +4651,6 @@ mod fuzzy_finder_tests {
     fn test_collect_paths_with_many_files() {
         let temp = TempDir::new().unwrap();
 
-        // Create 100 files
         for i in 0..100 {
             fs::write(temp.path().join(format!("file_{:03}.txt", i)), "").unwrap();
         }
@@ -4942,7 +4666,6 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let root = temp.path().to_path_buf();
 
-        // Create paths for 100 files
         let paths: Vec<PathBuf> = (0..100)
             .map(|i| temp.path().join(format!("file_{:03}.txt", i)))
             .collect();
@@ -4951,7 +4674,6 @@ mod fuzzy_finder_tests {
 
         // Should limit to MAX_RESULTS (15)
         assert!(results.len() <= 15);
-        // All results should match "file"
         assert!(results.iter().all(|r| r.display.contains("file")));
     }
 
@@ -4959,7 +4681,6 @@ mod fuzzy_finder_tests {
     fn test_collect_paths_wide_directory() {
         let temp = TempDir::new().unwrap();
 
-        // Create many subdirectories with files
         for i in 0..10 {
             let subdir = temp.path().join(format!("dir_{}", i));
             fs::create_dir(&subdir).unwrap();
@@ -4990,7 +4711,6 @@ mod fuzzy_finder_tests {
         let paths = vec![temp.path().join("src/render/mod.rs")];
         let results = fuzzy_match("src/ren", &paths, &root);
 
-        // Should match the path with separator
         assert!(!results.is_empty());
     }
 
@@ -5007,7 +4727,6 @@ mod fuzzy_finder_tests {
 
         let results = fuzzy_match("", &paths, &root);
 
-        // Empty query should return all
         assert_eq!(results.len(), 3);
     }
 
@@ -5085,7 +4804,6 @@ mod fuzzy_finder_tests {
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
         let target = temp.path().join("a/b/c/file.txt");
 
-        // Reveal multiple times
         navigator.reveal_path(&target).unwrap();
         navigator.ensure_cache();
         let count1 = navigator.visible_count();
@@ -5098,7 +4816,6 @@ mod fuzzy_finder_tests {
         navigator.ensure_cache();
         let count3 = navigator.visible_count();
 
-        // Should be stable
         assert_eq!(count1, count2);
         assert_eq!(count2, count3);
     }
@@ -5123,7 +4840,6 @@ mod fuzzy_finder_tests {
         let entries = navigator.visible_entries();
         let paths: Vec<_> = entries.iter().map(|e| &e.path).collect();
 
-        // Both targets should be visible
         assert!(paths.contains(&&target1));
         assert!(paths.contains(&&target2));
     }
@@ -5134,7 +4850,6 @@ mod fuzzy_finder_tests {
         fs::create_dir_all(temp.path().join(".hidden/sub")).unwrap();
         fs::write(temp.path().join(".hidden/sub/file.txt"), "").unwrap();
 
-        // Navigator without showing hidden
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
         let target = temp.path().join(".hidden/sub/file.txt");
 
@@ -5150,7 +4865,6 @@ mod fuzzy_finder_tests {
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
         let target = temp.path().to_path_buf();
 
-        // Revealing root itself should work
         let result = navigator.reveal_path(&target);
         assert!(result.is_ok());
     }
@@ -5170,7 +4884,6 @@ mod fuzzy_finder_tests {
         if !results.is_empty() {
             let result = &results[0];
 
-            // Check all fields are populated
             assert!(!result.path.as_os_str().is_empty());
             assert!(!result.display.is_empty());
             // Score and indices should exist (may be 0/empty for weak matches)
@@ -5186,7 +4899,6 @@ mod fuzzy_finder_tests {
         let results = fuzzy_match("", &paths, &root);
 
         assert!(!results.is_empty());
-        // Display should be relative path, not absolute
         assert_eq!(results[0].display, "file.txt");
         assert!(!results[0].display.starts_with('/'));
     }
@@ -5217,7 +4929,6 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Start at 0
         state.mode = ViewMode::FuzzyFinder {
             query: String::new(),
             selected: 0,
@@ -5228,7 +4939,6 @@ mod fuzzy_finder_tests {
             *selected = selected.saturating_sub(1);
         }
 
-        // Should still be 0
         if let ViewMode::FuzzyFinder { selected, .. } = &state.mode {
             assert_eq!(*selected, 0);
         }
@@ -5307,7 +5017,6 @@ mod fuzzy_finder_tests {
         }
         state.mode = ViewMode::Browse;
 
-        // Jump target should remain None
         assert!(state.fuzzy_jump_target.is_none());
     }
 
@@ -5324,21 +5033,18 @@ mod fuzzy_finder_tests {
         let mut state = AppState::new(temp.path().to_path_buf());
         let mut navigator = TreeNavigator::new(temp.path(), false).unwrap();
 
-        // 1. Open fuzzy finder
         state.mode = ViewMode::FuzzyFinder {
             query: String::new(),
             selected: 0,
         };
 
-        // 2. Simulate finding and selecting deep.txt
+        // Simulate finding and selecting deep.txt
         let target = temp.path().join("a/b/c/d/deep.txt");
         state.fuzzy_jump_target = Some(target.clone());
         state.mode = ViewMode::Browse;
 
-        // 3. Reveal the path
         navigator.reveal_path(&target).unwrap();
 
-        // 4. Find and focus the file
         navigator.ensure_cache();
         let entries = navigator.visible_entries();
         let idx = entries.iter().position(|e| e.path == target);
@@ -5351,7 +5057,6 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Rapidly open and close fuzzy finder
         for _ in 0..10 {
             state.mode = ViewMode::FuzzyFinder {
                 query: String::new(),
@@ -5369,7 +5074,6 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let mut state = AppState::new(temp.path().to_path_buf());
 
-        // Start with some selection
         state.mode = ViewMode::FuzzyFinder {
             query: "old".to_string(),
             selected: 5,
@@ -5378,7 +5082,7 @@ mod fuzzy_finder_tests {
         // Change query (simulating text input)
         state.mode = ViewMode::FuzzyFinder {
             query: "new".to_string(),
-            selected: 0, // Reset to 0
+            selected: 0,
         };
 
         if let ViewMode::FuzzyFinder { query, selected } = &state.mode {
@@ -5396,7 +5100,6 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let root = temp.path().to_path_buf();
 
-        // Create 1000 paths
         let paths: Vec<PathBuf> = (0..1000)
             .map(|i| temp.path().join(format!("file_{:04}.txt", i)))
             .collect();
@@ -5411,7 +5114,6 @@ mod fuzzy_finder_tests {
         let temp = TempDir::new().unwrap();
         let root = temp.path().to_path_buf();
 
-        // Very long filename
         let long_name = "a".repeat(200);
         let paths = vec![temp.path().join(format!("{}.txt", long_name))];
 
@@ -5434,7 +5136,6 @@ mod fuzzy_finder_tests {
         let root = temp.path().to_path_buf();
         let paths = collect_paths(&root, false);
 
-        // File at depth 10 should be included
         assert!(paths.iter().any(|p| p.ends_with("at_limit.txt")));
     }
 
@@ -5453,7 +5154,6 @@ mod fuzzy_finder_tests {
         let root = temp.path().to_path_buf();
         let paths = collect_paths(&root, false);
 
-        // File beyond depth 10 should NOT be included
         assert!(!paths.iter().any(|p| p.ends_with("beyond_limit.txt")));
     }
 }
@@ -5469,7 +5169,7 @@ mod archive_preview_tests {
     use std::io::Write;
     use zip::write::FileOptions;
 
-    /// Helper to create a test zip file with given entries
+    /// Entry names ending in `/` are added as directories.
     fn create_test_zip(path: &std::path::Path, files: &[(&str, &[u8])]) {
         let file = fs::File::create(path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
@@ -5478,10 +5178,8 @@ mod archive_preview_tests {
 
         for (name, content) in files {
             if name.ends_with('/') {
-                // Directory
                 zip.add_directory(*name, options).unwrap();
             } else {
-                // File
                 zip.start_file(*name, options).unwrap();
                 zip.write_all(content).unwrap();
             }
@@ -5492,7 +5190,6 @@ mod archive_preview_tests {
 
     #[test]
     fn test_is_archive_file_detection() {
-        // Supported archive formats (zip-based)
         assert!(is_archive_file(&PathBuf::from("test.zip")));
         assert!(is_archive_file(&PathBuf::from("test.jar")));
         assert!(is_archive_file(&PathBuf::from("test.apk")));
@@ -5500,7 +5197,6 @@ mod archive_preview_tests {
         assert!(is_archive_file(&PathBuf::from("test.xpi")));
         assert!(is_archive_file(&PathBuf::from("test.epub")));
 
-        // Supported archive formats (tar.gz)
         assert!(is_archive_file(&PathBuf::from("test.tar.gz")));
         assert!(is_archive_file(&PathBuf::from("test.tgz")));
 
@@ -5510,7 +5206,6 @@ mod archive_preview_tests {
         assert!(is_archive_file(&PathBuf::from("TEST.TAR.GZ")));
         assert!(is_archive_file(&PathBuf::from("TEST.TGZ")));
 
-        // Non-archive files
         assert!(!is_archive_file(&PathBuf::from("test.txt")));
         assert!(!is_archive_file(&PathBuf::from("test.7z")));
         assert!(!is_archive_file(&PathBuf::from("test.tar"))); // Plain tar not supported
@@ -5521,7 +5216,6 @@ mod archive_preview_tests {
         let temp = TempDir::new().unwrap();
         let zip_path = temp.path().join("test.zip");
 
-        // Create test zip with files
         create_test_zip(
             &zip_path,
             &[
@@ -5568,7 +5262,6 @@ mod archive_preview_tests {
         let temp = TempDir::new().unwrap();
         let zip_path = temp.path().join("corrupted.zip");
 
-        // Create a corrupted zip (random bytes)
         fs::write(&zip_path, b"not a valid zip file content").unwrap();
 
         let result = ArchivePreview::load_zip(&zip_path);
@@ -5580,7 +5273,6 @@ mod archive_preview_tests {
         let temp = TempDir::new().unwrap();
         let zip_path = temp.path().join("empty.zip");
 
-        // Create empty zip
         create_test_zip(&zip_path, &[]);
 
         let preview = ArchivePreview::load_zip(&zip_path).unwrap();
@@ -5595,7 +5287,6 @@ mod archive_preview_tests {
         let temp = TempDir::new().unwrap();
         let zip_path = temp.path().join("scroll_test.zip");
 
-        // Create zip with multiple files
         let files: Vec<(String, Vec<u8>)> = (0..50)
             .map(|i| {
                 (
@@ -5614,18 +5305,14 @@ mod archive_preview_tests {
 
         let mut preview = ArchivePreview::load_zip(&zip_path).unwrap();
 
-        // Initial scroll is 0
         assert_eq!(preview.scroll, 0);
 
-        // Scroll down
         preview.scroll = 10;
         assert_eq!(preview.scroll, 10);
 
-        // Scroll up (saturating)
         preview.scroll = preview.scroll.saturating_sub(15);
         assert_eq!(preview.scroll, 0);
 
-        // Scroll to bottom
         let max_scroll = preview.line_count().saturating_sub(20);
         preview.scroll = max_scroll;
         assert!(preview.scroll <= preview.line_count());
@@ -5652,7 +5339,6 @@ mod archive_preview_tests {
         // Entries should be sorted: directories first, then files, both alphabetically
         let names: Vec<&str> = preview.entries.iter().map(|e| e.name.as_str()).collect();
 
-        // First entries should be directories
         assert!(
             preview.entries[0].is_dir,
             "First entry should be a directory"
@@ -5662,10 +5348,8 @@ mod archive_preview_tests {
             "Second entry should be a directory"
         );
 
-        // Directories should be sorted
         assert!(names[0] < names[1], "Directories should be sorted");
 
-        // Files should come after directories and be sorted
         assert!(!preview.entries[2].is_dir, "Third entry should be a file");
         assert!(!preview.entries[3].is_dir, "Fourth entry should be a file");
     }
@@ -5675,7 +5359,6 @@ mod archive_preview_tests {
         let temp = TempDir::new().unwrap();
         let zip_path = temp.path().join("linecount.zip");
 
-        // Create zip with 5 files
         create_test_zip(
             &zip_path,
             &[
@@ -5703,7 +5386,7 @@ mod archive_preview_tests {
     // tar.gz archive tests (v1.10.0)
     // =========================================================================
 
-    /// Helper to create a test tar.gz file with given entries
+    /// Entry names ending in `/` are added as directories.
     fn create_test_tar_gz(path: &std::path::Path, files: &[(&str, &[u8])]) {
         let file = fs::File::create(path).unwrap();
         let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
@@ -5711,7 +5394,6 @@ mod archive_preview_tests {
 
         for (name, content) in files {
             if name.ends_with('/') {
-                // Directory - create a header for empty directory
                 let mut header = tar::Header::new_gnu();
                 header.set_entry_type(tar::EntryType::Directory);
                 header.set_path(*name).unwrap();
@@ -5721,7 +5403,6 @@ mod archive_preview_tests {
                 header.set_cksum();
                 archive.append(&header, std::io::empty()).unwrap();
             } else {
-                // File
                 let mut header = tar::Header::new_gnu();
                 header.set_size(content.len() as u64);
                 header.set_mode(0o644);
@@ -5741,7 +5422,6 @@ mod archive_preview_tests {
         let temp = TempDir::new().unwrap();
         let tar_gz_path = temp.path().join("test.tar.gz");
 
-        // Create test tar.gz with files
         create_test_tar_gz(
             &tar_gz_path,
             &[
@@ -5767,7 +5447,6 @@ mod archive_preview_tests {
         let temp = TempDir::new().unwrap();
         let tgz_path = temp.path().join("test.tgz");
 
-        // Create test .tgz with files
         create_test_tar_gz(
             &tgz_path,
             &[("file1.txt", b"content"), ("file2.txt", b"more content")],
@@ -5784,7 +5463,6 @@ mod archive_preview_tests {
         let temp = TempDir::new().unwrap();
         let tar_gz_path = temp.path().join("empty.tar.gz");
 
-        // Create empty tar.gz
         create_test_tar_gz(&tar_gz_path, &[]);
 
         let preview = ArchivePreview::load_tar_gz(&tar_gz_path).unwrap();
@@ -5799,7 +5477,6 @@ mod archive_preview_tests {
         let temp = TempDir::new().unwrap();
         let tar_gz_path = temp.path().join("corrupted.tar.gz");
 
-        // Create a corrupted tar.gz (random bytes)
         fs::write(&tar_gz_path, b"not a valid tar.gz file content").unwrap();
 
         let result = ArchivePreview::load_tar_gz(&tar_gz_path);
@@ -5825,7 +5502,6 @@ mod archive_preview_tests {
         let preview = ArchivePreview::load_tar_gz(&tar_gz_path).unwrap();
 
         // Entries should be sorted: directories first, then files, both alphabetically
-        // First entries should be directories
         assert!(
             preview.entries[0].is_dir,
             "First entry should be a directory"
@@ -5835,7 +5511,6 @@ mod archive_preview_tests {
             "Second entry should be a directory"
         );
 
-        // Files should come after directories
         assert!(!preview.entries[2].is_dir, "Third entry should be a file");
         assert!(!preview.entries[3].is_dir, "Fourth entry should be a file");
     }
@@ -5867,7 +5542,6 @@ mod pdf_preview_tests {
 
     #[test]
     fn test_pdftoppm_detection() {
-        // This test verifies the pdftoppm detection logic works
         let result = find_pdftoppm();
         // Result can be Some (if installed) or None (if not)
         // We just verify the function doesn't panic
@@ -5894,9 +5568,7 @@ mod pdf_rendering_tests {
     use std::process::Command;
     use tempfile::TempDir;
 
-    /// Create a minimal valid PDF file for testing
     fn create_test_pdf(path: &std::path::Path, pages: usize) -> std::io::Result<()> {
-        // Create a minimal PDF with specified number of pages
         let mut content = String::from("%PDF-1.4\n");
         content.push_str("1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n");
 
@@ -5927,7 +5599,6 @@ mod pdf_rendering_tests {
 
     #[test]
     fn test_pdfinfo_page_count() {
-        // Skip if pdftoppm not installed
         if find_pdftoppm().is_none() {
             eprintln!("Skipping test: pdftoppm not installed");
             return;
@@ -5937,7 +5608,6 @@ mod pdf_rendering_tests {
         let pdf_path = temp.path().join("test.pdf");
         create_test_pdf(&pdf_path, 3).unwrap();
 
-        // Run pdfinfo to get page count
         let output = Command::new("pdfinfo")
             .arg(&pdf_path)
             .output()
@@ -5950,7 +5620,6 @@ mod pdf_rendering_tests {
 
     #[test]
     fn test_pdftoppm_renders_page() {
-        // Skip if pdftoppm not installed
         let pdftoppm_path = match find_pdftoppm() {
             Some(p) => p.clone(),
             None => {
@@ -5963,7 +5632,6 @@ mod pdf_rendering_tests {
         let pdf_path = temp.path().join("test.pdf");
         create_test_pdf(&pdf_path, 2).unwrap();
 
-        // Render page 1
         let output_prefix = temp.path().join("page1");
         let status = Command::new(&pdftoppm_path)
             .args(["-png", "-f", "1", "-l", "1", "-singlefile", "-r", "72"])
@@ -5980,7 +5648,6 @@ mod pdf_rendering_tests {
 
     #[test]
     fn test_pdftoppm_handles_invalid_pdf() {
-        // Skip if pdftoppm not installed
         let pdftoppm_path = match find_pdftoppm() {
             Some(p) => p.clone(),
             None => {
@@ -6030,20 +5697,16 @@ mod config_integration_tests {
     fn test_config_file_default_values() {
         let config = ConfigFile::default();
 
-        // General defaults
         assert!(!config.general.show_hidden);
         assert!(config.general.enable_icons);
         assert!(config.general.mouse_enabled);
 
-        // Preview defaults
         assert_eq!(config.preview.hex_max_bytes, 4096);
         assert_eq!(config.preview.max_archive_entries, 500);
         assert_eq!(config.preview.image_protocol, "auto");
 
-        // Performance defaults
         assert_eq!(config.performance.git_poll_interval_secs, 5);
 
-        // UI defaults
         assert!(config.ui.show_size);
         assert!(!config.ui.show_permissions);
         assert_eq!(config.ui.date_format, "%Y-%m-%d %H:%M");
@@ -6156,7 +5819,6 @@ foo = "bar"
         )
         .unwrap();
 
-        // Should not error on unknown keys
         let config = ConfigFile::load_from(&config_path).unwrap();
         assert!(config.general.show_hidden);
     }
@@ -6182,17 +5844,14 @@ mod keymap_integration_tests {
         let registry = KeyBindingRegistry::new();
         let state = create_test_state();
 
-        // Test j -> MoveDown
         let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::MoveDown));
 
-        // Test k -> MoveUp
         let key = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::MoveUp));
 
-        // Test q -> Quit
         let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::Quit));
@@ -6203,7 +5862,6 @@ mod keymap_integration_tests {
         let registry = KeyBindingRegistry::new();
         let state = create_test_state();
 
-        // Test Ctrl+P -> OpenFuzzyFinder
         let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::OpenFuzzyFinder));
@@ -6213,7 +5871,6 @@ mod keymap_integration_tests {
     fn test_registry_context_aware_actions() {
         let registry = KeyBindingRegistry::new();
 
-        // Test quit in pick mode -> Cancel
         let mut state = create_test_state();
         state.pick_mode = true;
         let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
@@ -6225,7 +5882,6 @@ mod keymap_integration_tests {
     fn test_registry_preview_focus_navigation() {
         let registry = KeyBindingRegistry::new();
 
-        // With preview visible and focus on preview, j scrolls preview
         let mut state = create_test_state();
         state.preview_visible = true;
         state.focus_target = FocusTarget::Preview;
@@ -6234,7 +5890,6 @@ mod keymap_integration_tests {
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::PreviewScrollDown));
 
-        // With focus on tree, j moves down
         state.focus_target = FocusTarget::Tree;
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::MoveDown));
@@ -6248,12 +5903,10 @@ mod keymap_integration_tests {
             query: "test".to_string(),
         };
 
-        // Enter confirms search
         let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::ConfirmInput { value } if value == "test"));
 
-        // Esc cancels
         let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::Cancel));
@@ -6269,12 +5922,10 @@ mod keymap_integration_tests {
             },
         };
 
-        // y executes
         let key = KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::ExecuteDelete));
 
-        // n cancels
         let key = KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::Cancel));
@@ -6288,7 +5939,6 @@ mod keymap_integration_tests {
             query: "*.rs".to_string(),
         };
 
-        // Enter applies filter
         let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::ApplyFilter { pattern } if pattern == "*.rs"));
@@ -6302,7 +5952,6 @@ mod keymap_integration_tests {
             query: String::new(),
         };
 
-        // Enter with empty query clears filter
         let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
         let action = handle_key_event_with_registry(&state, key, &registry);
         assert!(matches!(action, KeyAction::ClearFilter));
@@ -6319,10 +5968,8 @@ mod theme_integration_tests {
 
     #[test]
     fn test_theme_singleton() {
-        // theme() returns the same instance
         let t1 = theme();
         let t2 = theme();
-        // Should be same reference (singleton)
         assert!(std::ptr::eq(t1, t2));
     }
 
@@ -6330,18 +5977,15 @@ mod theme_integration_tests {
     fn test_theme_default_colors() {
         let theme = Theme::default();
 
-        // Check base colors
         assert_eq!(theme.selection, Color::DarkGray);
         assert_eq!(theme.border_active, Color::Cyan);
 
-        // Check file colors
         assert_eq!(theme.directory, Color::Blue);
         assert_eq!(theme.executable, Color::Green);
         assert_eq!(theme.symlink, Color::Cyan);
         assert_eq!(theme.archive, Color::Red);
         assert_eq!(theme.image, Color::Magenta);
 
-        // Check git colors
         assert_eq!(theme.git_modified, Color::Yellow);
         assert_eq!(theme.git_staged, Color::Green);
         assert_eq!(theme.git_deleted, Color::Red);
@@ -6437,13 +6081,11 @@ mod theme_integration_tests {
 
     #[test]
     fn test_theme_purple_alias() {
-        // "purple" should be an alias for "magenta"
         assert_eq!(parse_color("purple"), Color::Magenta);
     }
 
     #[test]
     fn test_theme_grey_alias() {
-        // "grey" should be an alias for "gray"
         assert_eq!(parse_color("grey"), Color::Gray);
         assert_eq!(parse_color("darkgrey"), Color::DarkGray);
     }
@@ -6619,7 +6261,6 @@ mod custom_preview_tests {
         let file_path = temp.path().join("test.txt");
         fs::write(&file_path, "content").unwrap();
 
-        // Echo the file path
         let preview = CustomPreview::execute("echo $f", &file_path).unwrap();
         assert!(preview.lines[0].contains("test.txt"));
     }

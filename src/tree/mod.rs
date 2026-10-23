@@ -1,5 +1,3 @@
-//! Tree module - File tree data structure and navigation
-
 pub mod navigator;
 pub mod node;
 

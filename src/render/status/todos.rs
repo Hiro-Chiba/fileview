@@ -11,7 +11,6 @@ use ratatui::{
 use crate::core::{AppState, ViewMode};
 use crate::render::theme::theme;
 
-/// Render the TODO/FIXME aggregator popup.
 pub fn render_todos_popup(frame: &mut Frame, state: &AppState) {
     use crate::integrate::TodoTag;
 

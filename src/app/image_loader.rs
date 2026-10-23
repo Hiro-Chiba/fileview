@@ -1,7 +1,5 @@
 //! Background image loader using std::thread and mpsc channels
-//!
-//! This module provides asynchronous image loading to prevent UI blocking
-//! when loading large images.
+//! Loading runs off the UI thread so that large images do not block it.
 
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
@@ -9,37 +7,24 @@ use std::thread::{self, JoinHandle};
 
 use image::DynamicImage;
 
-/// Request to load an image
 pub struct ImageLoadRequest {
-    /// Path to the image file
     pub path: PathBuf,
 }
 
-/// Result of an image load operation
 pub struct ImageLoadResult {
-    /// Path that was loaded
     pub path: PathBuf,
-    /// The loaded image or error message
     pub result: Result<DynamicImage, String>,
 }
 
-/// Background image loader
-///
-/// Spawns a worker thread that loads images on demand.
-/// Uses mpsc channels for communication between the main thread and worker.
 pub struct ImageLoader {
-    /// Sender for load requests
     request_tx: Sender<ImageLoadRequest>,
-    /// Receiver for load results
     result_rx: Receiver<ImageLoadResult>,
-    /// Handle to the worker thread
     _worker: JoinHandle<()>,
     /// Path currently being loaded (for deduplication)
     loading_path: Option<PathBuf>,
 }
 
 impl ImageLoader {
-    /// Create a new image loader with a background worker thread
     pub fn new() -> Self {
         let (request_tx, request_rx) = mpsc::channel::<ImageLoadRequest>();
         let (result_tx, result_rx) = mpsc::channel::<ImageLoadResult>();
@@ -56,7 +41,6 @@ impl ImageLoader {
         }
     }
 
-    /// Worker thread main loop
     fn worker_loop(request_rx: Receiver<ImageLoadRequest>, result_tx: Sender<ImageLoadResult>) {
         while let Ok(mut request) = request_rx.recv() {
             // Only the newest queued selection can still be displayed.
@@ -80,12 +64,8 @@ impl ImageLoader {
         }
     }
 
-    /// Request loading an image at the given path
-    ///
-    /// If an image is already being loaded for this path, the request is ignored.
     /// Returns true if the request was sent, false if already loading this path.
     pub fn request(&mut self, path: PathBuf) -> bool {
-        // Skip if already loading this path
         if self.loading_path.as_ref() == Some(&path) {
             return false;
         }
@@ -97,13 +77,9 @@ impl ImageLoader {
         true
     }
 
-    /// Try to receive a completed image load result
-    ///
-    /// Returns the result if one is ready, or None if no result is available.
     pub fn try_recv(&mut self) -> Option<ImageLoadResult> {
         match self.result_rx.try_recv() {
             Ok(result) => {
-                // Clear loading state if this was the expected path
                 if self.loading_path.as_ref() == Some(&result.path) {
                     self.loading_path = None;
                 }
@@ -114,18 +90,14 @@ impl ImageLoader {
         }
     }
 
-    /// Check if currently loading an image
     pub fn is_loading(&self) -> bool {
         self.loading_path.is_some()
     }
 
-    /// Get the path currently being loaded
     pub fn loading_path(&self) -> Option<&PathBuf> {
         self.loading_path.as_ref()
     }
 
-    /// Cancel the current loading operation
-    ///
     /// Note: This doesn't actually stop the worker, but clears the loading state
     /// so the result will be ignored when it arrives.
     pub fn cancel(&mut self) {
@@ -167,7 +139,7 @@ mod tests {
         let path = PathBuf::from("/tmp/test.png");
 
         assert!(loader.request(path.clone()));
-        assert!(!loader.request(path)); // Should return false for duplicate
+        assert!(!loader.request(path));
     }
 
     #[test]

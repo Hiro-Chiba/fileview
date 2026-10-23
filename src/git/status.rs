@@ -1,12 +1,9 @@
-//! Git status detection and caching
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::operations::find_git_executable;
 
-/// Create a git Command using the validated executable path
 fn git_command() -> Option<Command> {
     find_git_executable().map(|executable| {
         let mut command = Command::new(executable);
@@ -15,46 +12,31 @@ fn git_command() -> Option<Command> {
     })
 }
 
-/// Git file status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum FileStatus {
-    /// File has been modified
     Modified,
-    /// File has been staged for addition
     Added,
-    /// File is not tracked by git
     Untracked,
-    /// File has been deleted
     Deleted,
-    /// File has been renamed
     Renamed,
-    /// File is ignored by .gitignore
     Ignored,
-    /// File has merge conflicts
     Conflict,
-    /// File is clean (no changes)
     #[default]
     Clean,
 }
 
-/// Git repository status information
 #[derive(Debug, PartialEq, Eq)]
 pub struct GitStatus {
-    /// Root directory of the git repository
     repo_root: PathBuf,
-    /// Cached file statuses
     statuses: HashMap<PathBuf, FileStatus>,
-    /// Directory statuses (propagated from children)
+    /// Propagated from children.
     dir_statuses: HashMap<PathBuf, FileStatus>,
-    /// Current branch name
     branch: Option<String>,
-    /// Files that are staged (have changes in the index)
     staged_files: std::collections::HashSet<PathBuf>,
     include_ignored: bool,
 }
 
 impl GitStatus {
-    /// Detect git repository and load status
     pub fn detect(path: &Path) -> Option<Self> {
         Self::detect_with_ignored(path, true)
     }
@@ -79,19 +61,15 @@ impl GitStatus {
         })
     }
 
-    /// Get the status of a specific file or directory
     pub fn get_status(&self, path: &Path) -> FileStatus {
-        // First check file statuses
         if let Some(status) = self.statuses.get(path) {
             return *status;
         }
 
-        // Then check directory statuses
         if let Some(status) = self.dir_statuses.get(path) {
             return *status;
         }
 
-        // Check if path is relative to repo root
         if let Ok(relative) = path.strip_prefix(&self.repo_root) {
             if let Some(status) = self.statuses.get(relative) {
                 return *status;
@@ -104,12 +82,10 @@ impl GitStatus {
         FileStatus::Clean
     }
 
-    /// Get the current branch name
     pub fn branch(&self) -> Option<&str> {
         self.branch.as_deref()
     }
 
-    /// Get the repository root path
     pub fn repo_root(&self) -> &Path {
         &self.repo_root
     }
@@ -130,14 +106,11 @@ impl GitStatus {
         changed
     }
 
-    /// Check if a file is staged (has changes in the index)
     pub fn is_staged(&self, path: &Path) -> bool {
-        // Check if the file is in the staged files set
         if self.staged_files.contains(path) {
             return true;
         }
 
-        // Also check relative path
         if let Ok(relative) = path.strip_prefix(&self.repo_root) {
             if self.staged_files.contains(relative) {
                 return true;
@@ -147,7 +120,6 @@ impl GitStatus {
         false
     }
 
-    /// Create a GitStatus with a specific repo root (for testing)
     #[cfg(test)]
     pub fn default_with_root(repo_root: PathBuf) -> Self {
         Self {
@@ -161,7 +133,6 @@ impl GitStatus {
     }
 }
 
-/// Find the root of the git repository containing the given path
 fn find_git_root(path: &Path) -> Option<PathBuf> {
     let output = git_command()?
         .args(["rev-parse", "--show-toplevel"])
@@ -177,7 +148,6 @@ fn find_git_root(path: &Path) -> Option<PathBuf> {
     }
 }
 
-/// Get the current branch name
 fn get_current_branch(repo_root: &Path) -> Option<String> {
     let output = git_command()?
         .args(["rev-parse", "--abbrev-ref", "HEAD"])
@@ -188,7 +158,7 @@ fn get_current_branch(repo_root: &Path) -> Option<String> {
     if output.status.success() {
         let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if branch == "HEAD" {
-            // Detached HEAD state - try to get commit hash
+            // Detached HEAD, so show the short commit hash instead.
             let hash_output = git_command()?
                 .args(["rev-parse", "--short", "HEAD"])
                 .current_dir(repo_root)
@@ -207,7 +177,6 @@ fn get_current_branch(repo_root: &Path) -> Option<String> {
     }
 }
 
-/// Load git status for all files in the repository
 fn load_git_status(
     repo_root: &Path,
     include_ignored: bool,
@@ -222,7 +191,6 @@ fn load_git_status(
     let mut dir_statuses: HashMap<PathBuf, FileStatus> = HashMap::new();
     let mut staged_files: HashSet<PathBuf> = HashSet::new();
 
-    // Get status with porcelain format for machine parsing
     // -uall shows all untracked files (required for per-file status display)
     let Some(mut cmd) = git_command() else {
         return (statuses, dir_statuses, staged_files);
@@ -254,7 +222,6 @@ fn load_git_status(
         }
         let status = parse_status(index_status, worktree_status);
 
-        // Track staged files (index has changes: M, A, D, R, C)
         if matches!(index_status, 'M' | 'A' | 'D' | 'R' | 'C') {
             staged_files.insert(path.clone());
         }
@@ -262,7 +229,6 @@ fn load_git_status(
         if status != FileStatus::Clean {
             statuses.insert(path.clone(), status);
 
-            // Propagate status to parent directories
             let mut parent = path.parent();
             while let Some(dir) = parent {
                 if dir.as_os_str().is_empty() {
@@ -293,9 +259,8 @@ fn status_path(bytes: &[u8]) -> Option<PathBuf> {
     }
 }
 
-/// Parse git status characters into FileStatus
 fn parse_status(index: char, worktree: char) -> FileStatus {
-    // Check for conflicts first
+    // Conflicts come first because AA and DD would otherwise match Added and Deleted.
     if index == 'U'
         || worktree == 'U'
         || (index == 'A' && worktree == 'A')
@@ -304,32 +269,26 @@ fn parse_status(index: char, worktree: char) -> FileStatus {
         return FileStatus::Conflict;
     }
 
-    // Check for ignored
     if index == '!' {
         return FileStatus::Ignored;
     }
 
-    // Check for untracked
     if index == '?' {
         return FileStatus::Untracked;
     }
 
-    // Check for renamed
     if index == 'R' || worktree == 'R' {
         return FileStatus::Renamed;
     }
 
-    // Check for added
     if index == 'A' {
         return FileStatus::Added;
     }
 
-    // Check for deleted
     if index == 'D' || worktree == 'D' {
         return FileStatus::Deleted;
     }
 
-    // Check for modified
     if index == 'M' || worktree == 'M' {
         return FileStatus::Modified;
     }
@@ -342,21 +301,14 @@ fn merge_status(a: FileStatus, b: FileStatus) -> FileStatus {
     use FileStatus::*;
 
     match (a, b) {
-        // Conflict is highest priority
         (Conflict, _) | (_, Conflict) => Conflict,
-        // Then Deleted
         (Deleted, _) | (_, Deleted) => Deleted,
-        // Then Modified
         (Modified, _) | (_, Modified) => Modified,
-        // Then Renamed
         (Renamed, _) | (_, Renamed) => Renamed,
-        // Then Added
         (Added, _) | (_, Added) => Added,
-        // Then Untracked
         (Untracked, _) | (_, Untracked) => Untracked,
         // Ignored doesn't propagate
         (Ignored, other) | (other, Ignored) => other,
-        // Default to Clean
         (Clean, Clean) => Clean,
     }
 }

@@ -1,5 +1,3 @@
-//! Theme configuration and color management
-//!
 //! Loads theme from `~/.config/fileview/theme.toml`
 
 use ratatui::style::Color;
@@ -10,37 +8,27 @@ use std::sync::OnceLock;
 
 use crate::app::ConfigFile;
 
-/// Global theme instance
 static THEME: OnceLock<Theme> = OnceLock::new();
 
-/// Get the global theme instance
 pub fn theme() -> &'static Theme {
     THEME.get_or_init(Theme::load)
 }
 
-/// Theme configuration file structure
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct ThemeFile {
-    /// Base colors
     pub colors: BaseColors,
-    /// File type colors
     pub file_colors: FileColors,
-    /// Git status colors
     pub git_colors: GitColors,
 }
 
-/// Base UI colors
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct BaseColors {
-    /// Background color
     pub background: String,
-    /// Foreground (text) color
     pub foreground: String,
     /// Selection/focus background color
     pub selection: String,
-    /// Border color
     pub border: String,
     /// Active border color (focused panel)
     pub border_active: String,
@@ -79,27 +67,17 @@ impl Default for BaseColors {
     }
 }
 
-/// File type colors
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct FileColors {
-    /// Directory color
     pub directory: String,
-    /// Executable file color
     pub executable: String,
-    /// Symbolic link color
     pub symlink: String,
-    /// Archive file color
     pub archive: String,
-    /// Image file color
     pub image: String,
-    /// Video file color
     pub video: String,
-    /// Audio file color
     pub audio: String,
-    /// Document file color
     pub document: String,
-    /// Source code file color
     pub source: String,
     /// Markup file color (md, html, etc.)
     pub markup: String,
@@ -122,23 +100,16 @@ impl Default for FileColors {
     }
 }
 
-/// Git status colors
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct GitColors {
-    /// Modified file color
     pub modified: String,
-    /// Staged file color
     pub staged: String,
     /// Added/untracked file color
     pub untracked: String,
-    /// Deleted file color
     pub deleted: String,
-    /// Renamed file color
     pub renamed: String,
-    /// Conflicted file color
     pub conflict: String,
-    /// Ignored file color
     pub ignored: String,
 }
 
@@ -162,7 +133,6 @@ impl ThemeFile {
         ConfigFile::config_dir().map(|p| p.join("theme.toml"))
     }
 
-    /// Load theme from file
     pub fn load() -> Self {
         Self::theme_path()
             .and_then(|path| {
@@ -180,7 +150,6 @@ impl ThemeFile {
 /// Parsed theme with ratatui Color values
 #[derive(Debug)]
 pub struct Theme {
-    // Base colors
     pub background: Color,
     pub foreground: Color,
     pub selection: Color,
@@ -194,7 +163,6 @@ pub struct Theme {
     pub help_key_fg: Color,
     pub help_key_bg: Color,
 
-    // File type colors
     pub directory: Color,
     pub executable: Color,
     pub symlink: Color,
@@ -206,7 +174,6 @@ pub struct Theme {
     pub source: Color,
     pub markup: Color,
 
-    // Git colors
     pub git_modified: Color,
     pub git_staged: Color,
     pub git_untracked: Color,
@@ -215,7 +182,6 @@ pub struct Theme {
     pub git_conflict: Color,
     pub git_ignored: Color,
 
-    // Cached mark color
     pub mark: Color,
 }
 
@@ -226,16 +192,13 @@ impl Default for Theme {
 }
 
 impl Theme {
-    /// Load theme from config file
     pub fn load() -> Self {
         let file = ThemeFile::load();
         Self::from_file(&file)
     }
 
-    /// Create theme from ThemeFile
     fn from_file(file: &ThemeFile) -> Self {
         Self {
-            // Base colors
             background: parse_color(&file.colors.background),
             foreground: parse_color(&file.colors.foreground),
             selection: parse_color(&file.colors.selection),
@@ -249,7 +212,6 @@ impl Theme {
             help_key_fg: parse_color(&file.colors.help_key_fg),
             help_key_bg: parse_color(&file.colors.help_key_bg),
 
-            // File type colors
             directory: parse_color(&file.file_colors.directory),
             executable: parse_color(&file.file_colors.executable),
             symlink: parse_color(&file.file_colors.symlink),
@@ -261,7 +223,6 @@ impl Theme {
             source: parse_color(&file.file_colors.source),
             markup: parse_color(&file.file_colors.markup),
 
-            // Git colors
             git_modified: parse_color(&file.git_colors.modified),
             git_staged: parse_color(&file.git_colors.staged),
             git_untracked: parse_color(&file.git_colors.untracked),
@@ -270,14 +231,11 @@ impl Theme {
             git_conflict: parse_color(&file.git_colors.conflict),
             git_ignored: parse_color(&file.git_colors.ignored),
 
-            // Cached colors
             mark: Color::Yellow,
         }
     }
 }
 
-/// Parse color string to ratatui Color
-///
 /// Supported formats:
 /// - Named colors: "red", "blue", "green", etc.
 /// - Hex colors: "#ff0000", "#f00"
@@ -286,22 +244,18 @@ impl Theme {
 pub fn parse_color(s: &str) -> Color {
     let s = s.trim().to_lowercase();
 
-    // Handle "default" or "reset"
     if s == "default" || s == "reset" || s.is_empty() {
         return Color::Reset;
     }
 
-    // Handle hex colors
     if let Some(hex) = s.strip_prefix('#') {
         return parse_hex_color(hex);
     }
 
-    // Handle rgb(r, g, b)
     if let Some(rgb) = s.strip_prefix("rgb(").and_then(|s| s.strip_suffix(')')) {
         return parse_rgb_color(rgb);
     }
 
-    // Handle "colorN" or just "N" for 256 colors
     if let Some(n) = s.strip_prefix("color") {
         if let Ok(n) = n.parse::<u8>() {
             return Color::Indexed(n);
@@ -311,7 +265,6 @@ pub fn parse_color(s: &str) -> Color {
         return Color::Indexed(n);
     }
 
-    // Named colors
     match s.as_str() {
         "black" => Color::Black,
         "red" => Color::Red,
@@ -355,7 +308,6 @@ fn parse_hex_color(hex: &str) -> Color {
     }
 }
 
-/// Parse rgb(r, g, b) color
 fn parse_rgb_color(rgb: &str) -> Color {
     let parts: Vec<&str> = rgb.split(',').map(|s| s.trim()).collect();
     if parts.len() == 3 {
