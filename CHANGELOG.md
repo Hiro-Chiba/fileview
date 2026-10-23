@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Markdown files are previewed rendered when the preview pane is at least 80 columns wide, such as in fullscreen preview or on a large terminal. Narrower panes keep the raw source view.
+
 ## [3.0.0] - 2026-10-05
 
 FileView 3.0 focuses on finding files, searching their contents, and reading large text files. Most of the work is under the hood, so you can keep using the controls you already know.
