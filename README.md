@@ -76,9 +76,9 @@ panes show the raw source.
 Each clip below was recorded with the tapes in [`demo/`](demo/README.md).
 
 <details>
-<summary>Previews for code, images, video, PDF, archives, and data files</summary>
+<summary>Previews for code, images, SVG, video, PDF, archives, and data files</summary>
 
-<img src="assets/demo-preview.gif" alt="Previewing images, a video, CSV, archives, a binary file, and a PDF">
+<img src="assets/demo-preview.gif" alt="Previewing images, an SVG icon, a video, CSV, archives, a binary file, and a PDF">
 </details>
 
 <details>

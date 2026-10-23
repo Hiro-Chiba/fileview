@@ -49,6 +49,13 @@ Sleep 2.5s
 
 Ctrl+P
 Sleep 500ms
+Type "icon.svg"
+Sleep 800ms
+Enter
+Sleep 2.5s
+
+Ctrl+P
+Sleep 500ms
 Type "intro"
 Sleep 800ms
 Enter
