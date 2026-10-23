@@ -67,6 +67,50 @@ Text previews load pages as you scroll. With the preview focused, use `g` for
 the beginning and `G` for the end. See the [3.0 release notes](CHANGELOG.md#300---2026-10-05)
 for the changes and upgrade notes.
 
+Markdown files are shown rendered, with headings, lists, emphasis, and code
+blocks formatted, when the preview pane is at least 80 columns wide. Narrower
+panes show the raw source.
+
+## A closer look
+
+Each clip below was recorded with the tapes in [`demo/`](demo/README.md).
+
+<details>
+<summary>Previews for code, images, video, PDF, archives, and data files</summary>
+
+<img src="assets/demo-preview.gif" alt="Previewing images, a video, CSV, archives, a binary file, and a PDF">
+</details>
+
+<details>
+<summary>Rendered Markdown in the side and fullscreen preview</summary>
+
+<img src="assets/demo-markdown.gif" alt="README and architecture notes rendered in the preview">
+</details>
+
+<details>
+<summary>Fuzzy finder, filters, tree search, and glob filters</summary>
+
+<img src="assets/demo-search.gif" alt="Fuzzy finding files, filtering by extension and Git status, and searching the tree">
+</details>
+
+<details>
+<summary>Git status, diffs, and staging</summary>
+
+<img src="assets/demo-git.gif" alt="Changed files with diffs in the preview, staged and unstaged">
+</details>
+
+<details>
+<summary>Create, rename, bulk rename, copy, and paste</summary>
+
+<img src="assets/demo-files.gif" alt="Creating and renaming files, renaming two archives at once, and copying a file">
+</details>
+
+<details>
+<summary>Expand all, hidden files, sorting, bookmarks, tabs, and help</summary>
+
+<img src="assets/demo-navigation.gif" alt="Expanding the tree, sorting, jumping to a bookmark, and opening a second tab">
+</details>
+
 ## More details
 
 - [Installation, optional tools, and image support](docs/INSTALLATION.md)

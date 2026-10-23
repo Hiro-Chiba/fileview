@@ -46,16 +46,22 @@ Complete keybinding reference for FileView (fv).
 | `d` | Cut to clipboard |
 | `p` | Paste |
 
+![Creating, renaming, bulk renaming, copying, and pasting files](../assets/demo-files.gif)
+
 ## Search
 
 | Key | Action |
 |-----|--------|
 | `/` | Start search (press again to cancel) |
+| `Enter` | Jump to the first match and return to browsing |
 | `n` | Next search result |
 | `N` | Previous search result |
 | `Ctrl+P` | Open fuzzy finder |
 
-Match count is displayed in status bar (e.g., `3/12 matches`).
+Match count is displayed in status bar (e.g., `3/12 matches`). The query stays
+active after Enter, so `n` and `N` keep moving between matches.
+
+![Fuzzy finder, tree search, and glob filters](../assets/demo-search.gif)
 
 ## Sorting
 
@@ -104,6 +110,15 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 | `[` | Previous PDF page |
 | `]` | Next PDF page |
 
+Markdown files are shown rendered when the preview pane is at least 80 columns
+wide, such as in fullscreen preview. Narrower panes show the raw source. Files
+with an extension FileView does not know are previewed as text when their
+content is UTF-8 text, and as a hex dump otherwise.
+
+![Previews for images, video, archives, data, and PDF files](../assets/demo-preview.gif)
+
+![Rendered Markdown in the side and fullscreen preview](../assets/demo-markdown.gif)
+
 ### Side Preview Focus Mode
 
 When the side preview panel is open:
@@ -150,6 +165,8 @@ PDF files are rendered as images using `pdftoppm` from poppler-utils:
 | `Ctrl+Shift+T` | Select test file pair |
 | `Alt+R` | Select files from recent commit |
 
+![Git status, diffs, and staging](../assets/demo-git.gif)
+
 ## AI / Claude Code
 
 | Key | Action |
@@ -189,6 +206,8 @@ Press `m` followed by a digit (1-9) to set a bookmark, and `'` followed by a dig
 - Bookmarks persist for the current session only
 - A status message shows the bookmarked path when set
 - Jumping to an unset bookmark shows "Bookmark N not set"
+
+![Expanding the tree, sorting, bookmarks, tabs, and help](../assets/demo-navigation.gif)
 
 ## File Filter
 

@@ -1,0 +1,75 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "aiko",
+      "role": "operator",
+      "jobs_submitted": 1610,
+      "active": true
+    },
+    {
+      "id": 2,
+      "name": "ben",
+      "role": "viewer",
+      "jobs_submitted": 2018,
+      "active": false
+    },
+    {
+      "id": 3,
+      "name": "chen",
+      "role": "operator",
+      "jobs_submitted": 205,
+      "active": true
+    },
+    {
+      "id": 4,
+      "name": "dara",
+      "role": "operator",
+      "jobs_submitted": 88,
+      "active": true
+    },
+    {
+      "id": 5,
+      "name": "emil",
+      "role": "admin",
+      "jobs_submitted": 3092,
+      "active": true
+    },
+    {
+      "id": 6,
+      "name": "fatima",
+      "role": "viewer",
+      "jobs_submitted": 2529,
+      "active": false
+    },
+    {
+      "id": 7,
+      "name": "goro",
+      "role": "viewer",
+      "jobs_submitted": 1961,
+      "active": true
+    },
+    {
+      "id": 8,
+      "name": "hana",
+      "role": "admin",
+      "jobs_submitted": 1176,
+      "active": true
+    },
+    {
+      "id": 9,
+      "name": "ivan",
+      "role": "admin",
+      "jobs_submitted": 369,
+      "active": true
+    },
+    {
+      "id": 10,
+      "name": "jun",
+      "role": "viewer",
+      "jobs_submitted": 3393,
+      "active": true
+    }
+  ],
+  "generated_at": "2026-10-20T09:00:00Z"
+}

@@ -10,6 +10,9 @@ repository = "https://github.com/Hiro-Chiba/fileview"
 readme = "README.md"
 keywords = ["tui", "file-browser", "terminal", "cli"]
 categories = ["command-line-utilities"]
+# Ship only what building and testing the crate needs, so downloads stay
+# small. Docs, demos, and their GIFs are read in the repository instead.
+include = ["/src/**/*", "/tests/**/*", "/Cargo.toml", "/Cargo.lock", "/README.md", "/LICENSE"]
 
 [[bin]]
 name = "fv"

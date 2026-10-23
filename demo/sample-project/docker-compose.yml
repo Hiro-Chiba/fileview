@@ -1,0 +1,11 @@
+services:
+  scheduler:
+    build: .
+    ports: ["8080:8080"]
+    environment:
+      NEBULA_STORAGE: postgres
+    depends_on: [db]
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: nebula

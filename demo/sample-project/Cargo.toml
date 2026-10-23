@@ -1,12 +1,13 @@
-[package]
-name = "sample-project"
-version = "0.1.0"
+[workspace]
+members = ["crates/core", "crates/cli"]
+resolver = "2"
+
+[workspace.package]
+version = "0.4.0"
 edition = "2021"
-description = "A sample project for demonstration"
+license = "MIT"
 
-[dependencies]
-serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.0", features = ["full"] }
-
-[dev-dependencies]
-assert_cmd = "2.0"
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+tracing = "0.1"
