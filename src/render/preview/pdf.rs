@@ -10,10 +10,8 @@ use tempfile::NamedTempFile;
 use super::common::get_border_style;
 use super::image::{calculate_centered_image_area, ImagePreview};
 
-/// Cached pdftoppm path detection
 static PDFTOPPM_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
-/// Cached pdfinfo path detection
 static PDFINFO_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 /// Find pdftoppm executable path (lazy detection with caching)
@@ -30,7 +28,6 @@ fn find_pdfinfo() -> Option<&'static PathBuf> {
         .as_ref()
 }
 
-/// Get total page count from PDF using pdfinfo
 fn get_pdf_page_count(path: &Path) -> anyhow::Result<usize> {
     let pdfinfo = find_pdfinfo().ok_or_else(|| anyhow::anyhow!("pdfinfo not found"))?;
 
@@ -53,40 +50,31 @@ fn get_pdf_page_count(path: &Path) -> anyhow::Result<usize> {
     anyhow::bail!("Pages not found in pdfinfo output")
 }
 
-/// PDF preview content
 pub struct PdfPreview {
-    /// Original PDF file path
     pub path: PathBuf,
     /// Current page number (1-indexed)
     pub current_page: usize,
-    /// Total number of pages
     pub total_pages: usize,
-    /// Rendered image preview
     pub image: ImagePreview,
     /// Temporary file holding the rendered page image (auto-cleanup on drop)
     _temp_file: NamedTempFile,
 }
 
 impl PdfPreview {
-    /// Load PDF preview for a specific page
     pub fn load(path: &Path, page: usize, picker: &mut Picker) -> anyhow::Result<Self> {
         let pdftoppm = find_pdftoppm()
             .ok_or_else(|| anyhow::anyhow!("PDF preview requires pdftoppm (poppler-utils)"))?;
 
-        // Get total page count
         let total_pages = get_pdf_page_count(path)?;
 
-        // Clamp page to valid range
         let page = page.clamp(1, total_pages);
 
-        // Create temporary file for the rendered image
         let temp_file = NamedTempFile::new()?;
         let temp_path = temp_file.path();
 
         // Get the base path without extension for pdftoppm output
         let temp_base = temp_path.with_extension("");
 
-        // Run pdftoppm to render the page
         // pdftoppm -png -f <page> -l <page> -singlefile -r 150 input.pdf output_prefix
         let status = std::process::Command::new(pdftoppm)
             .arg("-png")
@@ -112,11 +100,9 @@ impl PdfPreview {
             anyhow::bail!("pdftoppm did not create output image");
         }
 
-        // Load the rendered image
         let image = ImagePreview::load(&output_path, picker)?;
 
-        // Clean up the output file (we'll store it in the temp_file for auto-cleanup)
-        // Actually, we need to keep the output file, so let's rename it to temp_path
+        // Move the output onto temp_path so NamedTempFile deletes it on drop.
         std::fs::rename(&output_path, temp_path)?;
 
         Ok(Self {
@@ -128,7 +114,6 @@ impl PdfPreview {
         })
     }
 
-    /// Navigate to a different page
     pub fn go_to_page(&mut self, page: usize, picker: &mut Picker) -> anyhow::Result<()> {
         let page = page.clamp(1, self.total_pages);
 
@@ -136,14 +121,12 @@ impl PdfPreview {
             return Ok(());
         }
 
-        // Create a new PdfPreview for the target page and update self
         let new_preview = PdfPreview::load(&self.path, page, picker)?;
         *self = new_preview;
 
         Ok(())
     }
 
-    /// Go to the previous page
     pub fn prev_page(&mut self, picker: &mut Picker) -> anyhow::Result<()> {
         if self.current_page > 1 {
             self.go_to_page(self.current_page - 1, picker)
@@ -152,7 +135,6 @@ impl PdfPreview {
         }
     }
 
-    /// Go to the next page
     pub fn next_page(&mut self, picker: &mut Picker) -> anyhow::Result<()> {
         if self.current_page < self.total_pages {
             self.go_to_page(self.current_page + 1, picker)
@@ -162,7 +144,6 @@ impl PdfPreview {
     }
 }
 
-/// Render PDF preview
 pub fn render_pdf_preview(
     frame: &mut Frame,
     pdf: &mut PdfPreview,
@@ -171,7 +152,6 @@ pub fn render_pdf_preview(
     focused: bool,
     font_size: FontSize,
 ) {
-    // Title with page info and navigation hint
     let full_title = format!(
         " {} ({}/{}) [/] prev/next ",
         title, pdf.current_page, pdf.total_pages
@@ -185,16 +165,13 @@ pub fn render_pdf_preview(
     let inner_area = block.inner(area);
     frame.render_widget(block, area);
 
-    // Calculate centered area for the image
     let centered_area =
         calculate_centered_image_area(inner_area, pdf.image.width, pdf.image.height, font_size);
 
-    // Render image using ratatui-image's StatefulImage widget
     let image_widget = StatefulImage::default().resize(Resize::Scale(None));
     frame.render_stateful_widget(image_widget, centered_area, &mut pdf.image.protocol);
 }
 
-/// Check if a file is a PDF
 pub fn is_pdf_file(path: &std::path::Path) -> bool {
     let ext = path
         .extension()

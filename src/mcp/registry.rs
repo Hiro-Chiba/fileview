@@ -1,41 +1,28 @@
 //! MCP tool registry for automatic tool registration
-//!
-//! Provides a centralized registry for all MCP tools with their schemas.
 
 use serde_json::{json, Value};
 
-/// Tool definition for MCP protocol
 #[derive(Debug, Clone)]
 pub struct ToolDefinition {
     /// Tool name (must be unique)
     pub name: &'static str,
-    /// Human-readable description
     pub description: &'static str,
     /// JSON Schema for input parameters
     pub input_schema: Value,
-    /// Category for organization
     pub category: ToolCategory,
 }
 
-/// Tool categories for organization
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolCategory {
-    /// File operations (read, write, delete)
     File,
-    /// Git operations (status, diff, commit)
     Git,
-    /// Code analysis (symbols, definitions, references)
     Analysis,
-    /// Dependency management (graph, imports)
     Dependency,
-    /// Context optimization (smart context, tokens)
     Context,
-    /// Project management (build, test, lint)
     Project,
 }
 
 impl ToolCategory {
-    /// Get display name for the category
     pub fn display_name(&self) -> &'static str {
         match self {
             Self::File => "File Operations",
@@ -48,7 +35,6 @@ impl ToolCategory {
     }
 }
 
-/// Get all registered tools
 pub fn get_all_tools() -> Vec<ToolDefinition> {
     let mut tools = Vec::new();
 
@@ -68,28 +54,21 @@ pub fn get_all_tools() -> Vec<ToolDefinition> {
         category: ToolCategory::File,
     });
 
-    // File operations
     tools.extend(file_tools());
 
-    // Git operations
     tools.extend(git_tools());
 
-    // Analysis tools
     tools.extend(analysis_tools());
 
-    // Dependency tools
     tools.extend(dependency_tools());
 
-    // Context tools
     tools.extend(context_tools());
 
-    // Project tools
     tools.extend(project_tools());
 
     tools
 }
 
-/// Get tools by category
 pub fn get_tools_by_category(category: ToolCategory) -> Vec<ToolDefinition> {
     get_all_tools()
         .into_iter()
@@ -97,7 +76,6 @@ pub fn get_tools_by_category(category: ToolCategory) -> Vec<ToolDefinition> {
         .collect()
 }
 
-/// File operation tools
 fn file_tools() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
@@ -231,7 +209,6 @@ fn file_tools() -> Vec<ToolDefinition> {
     ]
 }
 
-/// Git operation tools
 fn git_tools() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
@@ -313,7 +290,6 @@ fn git_tools() -> Vec<ToolDefinition> {
     ]
 }
 
-/// Code analysis tools
 fn analysis_tools() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
@@ -391,7 +367,6 @@ fn analysis_tools() -> Vec<ToolDefinition> {
     ]
 }
 
-/// Dependency analysis tools
 fn dependency_tools() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
@@ -445,7 +420,6 @@ fn dependency_tools() -> Vec<ToolDefinition> {
     ]
 }
 
-/// Context optimization tools
 fn context_tools() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
@@ -514,7 +488,6 @@ fn context_tools() -> Vec<ToolDefinition> {
     ]
 }
 
-/// Project management tools
 fn project_tools() -> Vec<ToolDefinition> {
     vec![
         ToolDefinition {
@@ -584,7 +557,6 @@ fn project_tools() -> Vec<ToolDefinition> {
     ]
 }
 
-/// Convert tool definitions to MCP Tool format
 pub fn to_mcp_tools() -> Vec<super::types::Tool> {
     get_all_tools()
         .into_iter()
@@ -605,7 +577,6 @@ mod tests {
         let tools = get_all_tools();
         assert!(!tools.is_empty());
 
-        // Check for some expected tools
         let tool_names: Vec<_> = tools.iter().map(|t| t.name).collect();
         assert!(tool_names.contains(&"read_file"));
         assert!(tool_names.contains(&"get_git_status"));
@@ -625,9 +596,7 @@ mod tests {
     fn test_tool_schemas_valid() {
         let tools = get_all_tools();
         for tool in tools {
-            // Verify schema is a valid object
             assert!(tool.input_schema.is_object());
-            // Verify it has a type field
             assert!(tool.input_schema.get("type").is_some());
         }
     }

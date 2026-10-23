@@ -1,6 +1,4 @@
 //! Display and preview action handlers
-//!
-//! Handles TogglePreview, OpenPreview, Refresh, ToggleHidden, ShowHelp, etc.
 
 use std::fs;
 use std::path::PathBuf;
@@ -17,7 +15,6 @@ use crate::tree::TreeNavigator;
 use super::get_filename_str;
 use super::{reload_tree, ActionContext, ActionResult};
 
-/// Handle app control actions (Quit, QuitAndCd, Cancel)
 pub fn handle_app_control(
     action: KeyAction,
     state: &mut AppState,
@@ -43,7 +40,6 @@ pub fn handle_app_control(
         KeyAction::Cancel => match &state.mode {
             ViewMode::Browse => {
                 if state.pick_mode {
-                    // Cancel in pick mode = exit with cancelled code
                     Ok(ActionResult::Quit(exit_code::CANCELLED))
                 } else {
                     state.should_quit = true;
@@ -60,7 +56,6 @@ pub fn handle_app_control(
     }
 }
 
-/// Handle display actions
 pub fn handle(
     action: KeyAction,
     state: &mut AppState,
@@ -159,7 +154,6 @@ pub fn handle(
         }
         KeyAction::ToggleQuickPreview => {
             state.preview_visible = !state.preview_visible;
-            // Reset focus to tree when closing preview
             if !state.preview_visible {
                 state.reset_focus();
             }
@@ -408,8 +402,7 @@ pub fn handle(
     Ok(())
 }
 
-/// Expand ancestors of `target` and move focus onto it. Shared helper for AI
-/// follow-mode auto-navigation and manual jump actions.
+/// Expand ancestors of `target` and move focus onto it.
 pub fn reveal_path_in_tree(
     navigator: &mut TreeNavigator,
     state: &mut AppState,
@@ -424,7 +417,6 @@ pub fn reveal_path_in_tree(
     Ok(())
 }
 
-/// Handle preview scroll actions for text, hex, archive, diff, and custom previews
 pub fn handle_preview_scroll(
     action: KeyAction,
     state: &mut AppState,
@@ -562,7 +554,6 @@ pub fn handle_preview_scroll(
                 cp.scroll = cp.line_count().saturating_sub(1);
             }
             if let ViewMode::Preview { scroll } = &mut state.mode {
-                // Set to max for ViewMode as well
                 if let Some(ref tp) = text_preview {
                     *scroll = tp.lines.len().saturating_sub(1);
                 } else if let Some(ref hp) = hex_preview {
@@ -580,7 +571,6 @@ pub fn handle_preview_scroll(
     }
 }
 
-/// Handle PDF page navigation actions
 pub fn handle_pdf_navigation(
     action: KeyAction,
     state: &mut AppState,
@@ -609,7 +599,6 @@ pub fn handle_pdf_navigation(
     }
 }
 
-/// Get paths to copy (selected paths or focused path)
 fn get_copy_target_paths(state: &AppState, focused_path: &Option<PathBuf>) -> Vec<PathBuf> {
     if state.selected_paths.is_empty() {
         focused_path
@@ -628,7 +617,6 @@ fn get_copy_target_paths(state: &AppState, focused_path: &Option<PathBuf>) -> Ve
     }
 }
 
-/// Copy file contents to clipboard (plain text)
 fn copy_file_contents_to_clipboard(paths: &[PathBuf]) -> anyhow::Result<usize> {
     let mut contents = Vec::new();
     let mut count = 0;
@@ -654,7 +642,6 @@ fn copy_file_contents_to_clipboard(paths: &[PathBuf]) -> anyhow::Result<usize> {
     Ok(count)
 }
 
-/// Copy file contents to clipboard in Claude-friendly markdown format
 fn copy_file_contents_claude_format(paths: &[PathBuf]) -> anyhow::Result<(String, usize)> {
     let mut contents = Vec::new();
     let mut count = 0;
@@ -665,7 +652,7 @@ fn copy_file_contents_claude_format(paths: &[PathBuf]) -> anyhow::Result<(String
                 contents.push(String::new());
             }
 
-            // Detect file extension for syntax highlighting
+            // The extension doubles as the code fence language for syntax highlighting.
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
             contents.push(format!("### File: {}", path.display()));
@@ -686,15 +673,13 @@ fn copy_file_contents_claude_format(paths: &[PathBuf]) -> anyhow::Result<(String
     Ok((text, count))
 }
 
-/// Copy file contents to clipboard in compact format (for small AI contexts)
-/// Uses minimal formatting: just filename and content, no markdown headers
+/// Meant for small AI contexts, so it skips markdown headers.
 fn copy_file_contents_compact(paths: &[PathBuf]) -> anyhow::Result<(String, usize)> {
     let mut contents = Vec::new();
     let mut count = 0;
 
     for path in paths.iter() {
         if let Ok(content) = fs::read_to_string(path) {
-            // Use just filename for compact format
             let filename = path
                 .file_name()
                 .and_then(|n| n.to_str())
@@ -702,7 +687,7 @@ fn copy_file_contents_compact(paths: &[PathBuf]) -> anyhow::Result<(String, usiz
 
             contents.push(format!("// {}", filename));
             contents.push(content.trim_end().to_string());
-            contents.push(String::new()); // Empty line separator
+            contents.push(String::new());
             count += 1;
         }
     }
@@ -732,7 +717,6 @@ fn copy_text_to_clipboard(text: &str) -> anyhow::Result<()> {
     }
 }
 
-/// Handle pick mode selection
 pub fn handle_pick_select(
     state: &AppState,
     focused_path: &Option<PathBuf>,
@@ -746,14 +730,12 @@ pub fn handle_pick_select(
         };
 
         if !paths.is_empty() {
-            // Execute callback if configured
             if let Some(ref callback) = context.callback {
                 for path in &paths {
                     let _ = callback.execute(path);
                 }
             }
 
-            // Output paths
             let result = PickResult::Selected(paths);
             return Ok(ActionResult::Quit(result.output(context.output_format)?));
         }
@@ -761,8 +743,6 @@ pub fn handle_pick_select(
     Ok(ActionResult::Continue)
 }
 
-/// Handle select mode confirmation
-///
 /// In select mode:
 /// - Single select: Enter outputs focused path immediately
 /// - Multi select: Enter outputs all selected paths (or focused if none selected)
@@ -773,22 +753,18 @@ pub fn handle_select_confirm(
 ) -> anyhow::Result<ActionResult> {
     if state.select_mode {
         let paths: Vec<PathBuf> = if state.multi_select && !state.selected_paths.is_empty() {
-            // Multi-select: output all selected paths
             state.selected_paths.iter().cloned().collect()
         } else {
-            // Single select or no selections: output focused path
             focused_path.clone().into_iter().collect()
         };
 
         if !paths.is_empty() {
-            // Execute callback if configured
             if let Some(ref callback) = context.callback {
                 for path in &paths {
                     let _ = callback.execute(path);
                 }
             }
 
-            // Output paths
             let result = PickResult::Selected(paths);
             return Ok(ActionResult::Quit(result.output(context.output_format)?));
         }

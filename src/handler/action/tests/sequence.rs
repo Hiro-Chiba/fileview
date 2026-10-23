@@ -4,7 +4,6 @@ use tempfile::TempDir;
 
 use super::*;
 
-/// Sequence: Navigation -> Open Preview -> Navigate -> Close Preview
 /// Simulates: j -> j -> o -> j -> j -> q (or Cancel)
 #[test]
 fn test_sequence_navigation_with_preview() {
@@ -22,11 +21,9 @@ fn test_sequence_navigation_with_preview() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    // Initial state
     state.focus_index = 0;
     assert!(matches!(state.mode, ViewMode::Browse));
 
-    // Step 1: Move down (j)
     call_handle_action!(
         KeyAction::MoveDown,
         &mut state,
@@ -41,7 +38,6 @@ fn test_sequence_navigation_with_preview() {
     .unwrap();
     assert_eq!(state.focus_index, 1);
 
-    // Step 2: Move down again (j)
     call_handle_action!(
         KeyAction::MoveDown,
         &mut state,
@@ -56,7 +52,6 @@ fn test_sequence_navigation_with_preview() {
     .unwrap();
     assert_eq!(state.focus_index, 2);
 
-    // Step 3: Open preview (o)
     call_handle_action!(
         KeyAction::OpenPreview,
         &mut state,
@@ -71,7 +66,6 @@ fn test_sequence_navigation_with_preview() {
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Preview { .. }));
 
-    // Step 4: Scroll in preview (j in preview = scroll down)
     call_handle_action!(
         KeyAction::PreviewScrollDown,
         &mut state,
@@ -85,7 +79,6 @@ fn test_sequence_navigation_with_preview() {
     )
     .unwrap();
 
-    // Step 5: Close preview (Cancel)
     call_handle_action!(
         KeyAction::Cancel,
         &mut state,
@@ -100,7 +93,6 @@ fn test_sequence_navigation_with_preview() {
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Browse));
 
-    // Focus should be preserved after closing preview
     assert_eq!(state.focus_index, 2);
 }
 
@@ -121,11 +113,9 @@ fn test_sequence_side_preview_toggle_enter() {
     let mut archive_preview: Option<ArchivePreview> = None;
     let focused = Some(file_path);
 
-    // Initial state: Browse mode, no preview
     assert!(!state.preview_visible);
     assert!(matches!(state.mode, ViewMode::Browse));
 
-    // Step 1: Toggle quick preview (P)
     call_handle_action!(
         KeyAction::ToggleQuickPreview,
         &mut state,
@@ -140,7 +130,6 @@ fn test_sequence_side_preview_toggle_enter() {
     .unwrap();
     assert!(state.preview_visible, "Side preview should be visible");
 
-    // Step 2: ToggleExpand (Enter) should close side preview
     call_handle_action!(
         KeyAction::ToggleExpand,
         &mut state,
@@ -163,7 +152,6 @@ fn test_sequence_side_preview_toggle_enter() {
     );
 }
 
-/// Sequence: Search -> Enter -> SearchNext
 /// Simulates: / -> (type query) -> Enter -> n
 #[test]
 fn test_sequence_search_workflow() {
@@ -182,7 +170,6 @@ fn test_sequence_search_workflow() {
 
     state.focus_index = 0;
 
-    // Step 1: Start search (/)
     call_handle_action!(
         KeyAction::StartSearch,
         &mut state,
@@ -197,7 +184,6 @@ fn test_sequence_search_workflow() {
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Search { .. }));
 
-    // Step 2: Simulate typing "ap" and confirm (Enter)
     // In real app, buffer is updated by update_input_buffer
     call_handle_action!(
         KeyAction::ConfirmInput {
@@ -214,13 +200,11 @@ fn test_sequence_search_workflow() {
     )
     .unwrap();
 
-    // Enter leaves search mode and focuses the first match
     assert!(matches!(state.mode, ViewMode::Browse));
     assert_eq!(state.last_search.as_deref(), Some("ap"));
     let first = state.focus_index;
     assert!(entries[first].name.contains("ap"));
 
-    // Step 3: Search next (n) - now a navigation key in browse mode
     call_handle_action!(
         KeyAction::SearchNext,
         &mut state,
@@ -240,7 +224,6 @@ fn test_sequence_search_workflow() {
     assert_eq!(state.search_matches.map(|(_, total)| total), Some(2));
 }
 
-/// Sequence: Mark files -> Copy -> Navigate -> Paste
 /// Simulates: Space -> j -> Space -> y -> G -> p
 #[test]
 fn test_sequence_copy_paste_workflow() {
@@ -259,7 +242,6 @@ fn test_sequence_copy_paste_workflow() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    // Find file1.txt in entries
     let file1_idx = entries
         .iter()
         .position(|e| e.name == "file1.txt")
@@ -267,7 +249,6 @@ fn test_sequence_copy_paste_workflow() {
     state.focus_index = file1_idx;
     let file1_path = entries[file1_idx].path.clone();
 
-    // Step 1: Mark file1 (Space)
     call_handle_action!(
         KeyAction::ToggleMark,
         &mut state,
@@ -282,7 +263,6 @@ fn test_sequence_copy_paste_workflow() {
     .unwrap();
     assert!(state.selected_paths.contains(&file1_path));
 
-    // Step 2: Copy marked files (y)
     call_handle_action!(
         KeyAction::Copy,
         &mut state,
@@ -298,11 +278,9 @@ fn test_sequence_copy_paste_workflow() {
     assert!(state.clipboard.is_some());
     assert!(state.message.as_ref().unwrap().contains("Copied"));
 
-    // Step 3: Navigate to dest directory
     let dest_idx = entries.iter().position(|e| e.name == "dest").unwrap_or(0);
     state.focus_index = dest_idx;
 
-    // Step 4: Paste (p)
     let dest_path = Some(dest_dir.clone());
     call_handle_action!(
         KeyAction::Paste,
@@ -317,19 +295,16 @@ fn test_sequence_copy_paste_workflow() {
     )
     .unwrap();
 
-    // Verify file was copied
     assert!(
         dest_dir.join("file1.txt").exists(),
         "File should be copied to destination"
     );
     assert!(state.message.as_ref().unwrap().contains("Pasted"));
 
-    // Refresh entries after paste
     entries = create_test_entries(&mut navigator);
     assert!(!entries.is_empty());
 }
 
-/// Sequence: Start rename -> Cancel -> Start rename again -> Confirm
 #[test]
 fn test_sequence_rename_cancel_rename_confirm() {
     let temp = TempDir::new().unwrap();
@@ -345,7 +320,6 @@ fn test_sequence_rename_cancel_rename_confirm() {
     let mut archive_preview: Option<ArchivePreview> = None;
     let focused = Some(file_path.clone());
 
-    // Step 1: Start rename (r)
     call_handle_action!(
         KeyAction::StartRename,
         &mut state,
@@ -366,7 +340,6 @@ fn test_sequence_rename_cancel_rename_confirm() {
         }
     ));
 
-    // Step 2: Cancel (Esc)
     call_handle_action!(
         KeyAction::Cancel,
         &mut state,
@@ -382,7 +355,6 @@ fn test_sequence_rename_cancel_rename_confirm() {
     assert!(matches!(state.mode, ViewMode::Browse));
     assert!(file_path.exists(), "File should not be renamed on cancel");
 
-    // Step 3: Start rename again (r)
     call_handle_action!(
         KeyAction::StartRename,
         &mut state,
@@ -397,7 +369,6 @@ fn test_sequence_rename_cancel_rename_confirm() {
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Input { .. }));
 
-    // Step 4: Confirm with new name (Enter)
     call_handle_action!(
         KeyAction::ConfirmInput {
             value: "renamed.txt".to_string(),
@@ -421,7 +392,6 @@ fn test_sequence_rename_cancel_rename_confirm() {
     assert!(!file_path.exists(), "Original file should not exist");
 }
 
-/// Sequence: Expand directory -> Navigate into -> Collapse all
 #[test]
 fn test_sequence_expand_navigate_collapse_all() {
     let temp = TempDir::new().unwrap();
@@ -441,11 +411,9 @@ fn test_sequence_expand_navigate_collapse_all() {
     navigator.ensure_cache();
     let initial_count = navigator.visible_count();
 
-    // Find subdir
     let subdir_idx = entries.iter().position(|e| e.name == "subdir").unwrap_or(0);
     let subdir_path = Some(subdir.clone());
 
-    // Step 1: Expand directory (l or Enter on dir)
     call_handle_action!(
         KeyAction::Expand,
         &mut state,
@@ -465,13 +433,10 @@ fn test_sequence_expand_navigate_collapse_all() {
         "Should see nested files after expand"
     );
 
-    // Update entries after expand
     let entries = create_test_entries(&mut navigator);
 
-    // Step 2: Move focus into expanded directory
-    state.focus_index = subdir_idx + 1; // Move to first child
+    state.focus_index = subdir_idx + 1;
 
-    // Step 3: Collapse all (H)
     call_handle_action!(
         KeyAction::CollapseAll,
         &mut state,
@@ -493,7 +458,6 @@ fn test_sequence_expand_navigate_collapse_all() {
     );
 }
 
-/// Sequence: Create file -> Verify exists -> Delete -> Confirm
 #[test]
 #[ignore] // Requires Finder/trash permissions; run manually
 fn test_sequence_create_delete_workflow() {
@@ -508,7 +472,6 @@ fn test_sequence_create_delete_workflow() {
     let mut archive_preview: Option<ArchivePreview> = None;
     let focused = Some(temp.path().to_path_buf());
 
-    // Step 1: Start new file (a)
     call_handle_action!(
         KeyAction::StartNewFile,
         &mut state,
@@ -523,7 +486,6 @@ fn test_sequence_create_delete_workflow() {
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Input { .. }));
 
-    // Step 2: Confirm file creation
     call_handle_action!(
         KeyAction::ConfirmInput {
             value: "newfile.txt".to_string(),
@@ -542,11 +504,9 @@ fn test_sequence_create_delete_workflow() {
     let new_file = temp.path().join("newfile.txt");
     assert!(new_file.exists(), "New file should be created");
 
-    // Refresh entries
     let entries = create_test_entries(&mut navigator);
     let new_file_focused = Some(new_file.clone());
 
-    // Step 3: Delete (D) - starts confirmation
     call_handle_action!(
         KeyAction::ConfirmDelete,
         &mut state,
@@ -561,7 +521,6 @@ fn test_sequence_create_delete_workflow() {
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Confirm { .. }));
 
-    // Step 4: Execute delete (y)
     call_handle_action!(
         KeyAction::ExecuteDelete,
         &mut state,
@@ -579,7 +538,6 @@ fn test_sequence_create_delete_workflow() {
     assert!(matches!(state.mode, ViewMode::Browse));
 }
 
-/// Sequence: Multiple marks -> Cut -> Paste (move operation)
 #[test]
 fn test_sequence_cut_paste_multiple() {
     let temp = TempDir::new().unwrap();
@@ -598,11 +556,9 @@ fn test_sequence_cut_paste_multiple() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    // Mark both files
     state.selected_paths.insert(file1.clone());
     state.selected_paths.insert(file2.clone());
 
-    // Step 1: Cut (d)
     call_handle_action!(
         KeyAction::Cut,
         &mut state,
@@ -618,11 +574,9 @@ fn test_sequence_cut_paste_multiple() {
     assert!(state.clipboard.is_some());
     assert!(state.message.as_ref().unwrap().contains("Cut"));
 
-    // Files should still exist (not moved yet)
     assert!(file1.exists());
     assert!(file2.exists());
 
-    // Step 2: Navigate to dest and paste
     call_handle_action!(
         KeyAction::Paste,
         &mut state,
@@ -636,7 +590,6 @@ fn test_sequence_cut_paste_multiple() {
     )
     .unwrap();
 
-    // Files should be moved
     assert!(
         dest_dir.join("move1.txt").exists(),
         "File1 should be moved to dest"

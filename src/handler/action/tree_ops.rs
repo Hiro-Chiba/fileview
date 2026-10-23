@@ -1,7 +1,3 @@
-//! Tree operation action handlers
-//!
-//! Handles Expand, Collapse, ToggleExpand, CollapseAll, ExpandAll
-
 use std::path::PathBuf;
 
 use crate::core::{AppState, ViewMode};
@@ -10,7 +6,6 @@ use crate::tree::TreeNavigator;
 
 use super::EntrySnapshot;
 
-/// Handle tree operations
 pub fn handle(
     action: KeyAction,
     state: &mut AppState,
@@ -31,19 +26,16 @@ pub fn handle(
         }
         KeyAction::ToggleExpand => {
             if state.preview_visible {
-                // Close side preview panel
                 state.preview_visible = false;
             } else if let Some(ref path) = focused_path {
                 if path.is_dir() {
                     navigator.toggle_expand(path)?;
                 } else {
-                    // File: open fullscreen preview
                     state.mode = ViewMode::Preview { scroll: 0 };
                 }
             }
         }
         KeyAction::CollapseAll => {
-            // Collapse all except root
             let entries_to_collapse: Vec<_> = entries
                 .iter()
                 .filter(|e| e.is_dir && e.depth > 0)
@@ -54,7 +46,8 @@ pub fn handle(
             }
         }
         KeyAction::ExpandAll => {
-            // Expand all directories (limited depth to avoid huge trees)
+            // Depth is capped to avoid expanding huge trees.
+            // The depth limit keeps expand all from building a huge tree.
             let entries_to_expand: Vec<_> = entries
                 .iter()
                 .filter(|e| e.is_dir && e.depth < 5)

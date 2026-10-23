@@ -1,12 +1,8 @@
 //! Callback execution (--on-select option)
-//!
-//! Allows running external commands when files are selected.
-//! Supports placeholder expansion for paths.
 
 use std::path::Path;
 use std::process::Command;
 
-/// Placeholders for callback command expansion
 pub mod placeholder {
     /// Full path: /path/to/file.txt
     pub const PATH: &str = "{path}";
@@ -20,7 +16,6 @@ pub mod placeholder {
     pub const EXT: &str = "{ext}";
 }
 
-/// Callback configuration
 #[derive(Debug, Clone)]
 pub struct Callback {
     /// Command template with placeholders
@@ -32,7 +27,6 @@ pub struct Callback {
 }
 
 impl Callback {
-    /// Create a new callback with the given command template
     pub fn new(command: impl Into<String>) -> Self {
         Self {
             command: command.into(),
@@ -41,19 +35,16 @@ impl Callback {
         }
     }
 
-    /// Set whether to run in background
     pub fn background(mut self, bg: bool) -> Self {
         self.background = bg;
         self
     }
 
-    /// Set custom shell
     pub fn shell(mut self, shell: impl Into<String>) -> Self {
         self.shell = Some(shell.into());
         self
     }
 
-    /// Expand placeholders in command template
     pub fn expand(&self, path: &Path) -> String {
         let path_str = path.display().to_string();
         let dir_str = path
@@ -81,7 +72,6 @@ impl Callback {
             .replace(placeholder::EXT, &shell_escape(&ext_str))
     }
 
-    /// Execute callback for the given path
     pub fn execute(&self, path: &Path) -> anyhow::Result<CallbackResult> {
         let expanded = self.expand(path);
 
@@ -90,14 +80,12 @@ impl Callback {
         cmd.arg("-c").arg(&expanded);
 
         if self.background {
-            // Spawn and don't wait
             let child = cmd.spawn()?;
             Ok(CallbackResult::Spawned {
                 pid: child.id(),
                 command: expanded,
             })
         } else {
-            // Run and wait for result
             let output = cmd.output()?;
             Ok(CallbackResult::Completed {
                 success: output.status.success(),
@@ -108,18 +96,17 @@ impl Callback {
         }
     }
 
-    /// Execute callback for multiple paths
     pub fn execute_many(&self, paths: &[&Path]) -> Vec<anyhow::Result<CallbackResult>> {
         paths.iter().map(|p| self.execute(p)).collect()
     }
 }
 
-/// Result of callback execution
 #[derive(Debug)]
 pub enum CallbackResult {
-    /// Command was spawned in background
-    Spawned { pid: u32, command: String },
-    /// Command completed
+    Spawned {
+        pid: u32,
+        command: String,
+    },
     Completed {
         success: bool,
         exit_code: Option<i32>,
@@ -129,7 +116,6 @@ pub enum CallbackResult {
 }
 
 impl CallbackResult {
-    /// Check if execution was successful
     pub fn is_success(&self) -> bool {
         match self {
             Self::Spawned { .. } => true,
@@ -138,7 +124,6 @@ impl CallbackResult {
     }
 }
 
-/// Escape a string for shell use
 fn shell_escape(s: &str) -> String {
     // Simple escaping: wrap in single quotes, escape existing single quotes
     if s.contains('\'') {

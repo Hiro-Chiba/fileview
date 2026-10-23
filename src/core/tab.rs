@@ -1,8 +1,3 @@
-//! Tab state management
-//!
-//! Each tab maintains its own file tree state, including the current directory,
-//! focus position, selection, and scroll position.
-
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -11,36 +6,23 @@ use crate::util::utf8_prefix;
 
 use super::{FocusTarget, SortMode, ViewMode, BOOKMARK_SLOTS};
 
-/// Represents a single tab in the application
 pub struct Tab {
-    /// Root directory for this tab
     pub root: PathBuf,
-    /// Display name (usually the directory name)
+    /// Usually the directory name.
     pub name: String,
-    /// Tree navigator for this tab
     pub navigator: TreeNavigator,
-    /// Current focus index
     pub focus_index: usize,
-    /// Viewport top (scroll position)
     pub viewport_top: usize,
-    /// Selected paths (multi-select)
     pub selected_paths: HashSet<PathBuf>,
-    /// Current view mode
     pub mode: ViewMode,
-    /// Focus target (Tree or Preview)
     pub focus_target: FocusTarget,
-    /// Show hidden files
     pub show_hidden: bool,
-    /// Bookmarks for this tab
     pub bookmarks: [Option<PathBuf>; BOOKMARK_SLOTS],
-    /// Filter pattern
     pub filter_pattern: Option<String>,
-    /// Sort mode
     pub sort_mode: SortMode,
 }
 
 impl Tab {
-    /// Create a new tab for the given directory
     pub fn new(root: PathBuf, show_hidden: bool) -> anyhow::Result<Self> {
         let navigator = TreeNavigator::new(&root, show_hidden)?;
         Ok(Self::with_navigator(root, show_hidden, navigator))
@@ -68,7 +50,6 @@ impl Tab {
         }
     }
 
-    /// Get a short display name for the tab bar
     pub fn short_name(&self, max_len: usize) -> String {
         if self.name.len() <= max_len {
             self.name.clone()
@@ -78,16 +59,12 @@ impl Tab {
     }
 }
 
-/// Manager for multiple tabs
 pub struct TabManager {
-    /// All open tabs
     pub tabs: Vec<Tab>,
-    /// Index of the currently active tab
     pub active_index: usize,
 }
 
 impl TabManager {
-    /// Create a new tab manager with an initial tab
     pub fn new(root: PathBuf, show_hidden: bool) -> anyhow::Result<Self> {
         let initial_tab = Tab::new(root, show_hidden)?;
         Ok(Self {
@@ -107,17 +84,14 @@ impl TabManager {
         }
     }
 
-    /// Get the currently active tab
     pub fn active(&self) -> &Tab {
         &self.tabs[self.active_index]
     }
 
-    /// Get mutable reference to the currently active tab
     pub fn active_mut(&mut self) -> &mut Tab {
         &mut self.tabs[self.active_index]
     }
 
-    /// Open a new tab for the given directory
     pub fn new_tab(&mut self, root: PathBuf, show_hidden: bool) -> anyhow::Result<()> {
         let tab = Tab::new(root, show_hidden)?;
         self.tabs.push(tab);
@@ -125,8 +99,6 @@ impl TabManager {
         Ok(())
     }
 
-    /// Close the currently active tab
-    ///
     /// Returns true if a tab was closed, false if this is the last tab
     pub fn close_tab(&mut self) -> bool {
         if self.tabs.len() <= 1 {
@@ -135,7 +107,6 @@ impl TabManager {
 
         self.tabs.remove(self.active_index);
 
-        // Adjust active index if needed
         if self.active_index >= self.tabs.len() {
             self.active_index = self.tabs.len() - 1;
         }
@@ -143,14 +114,12 @@ impl TabManager {
         true
     }
 
-    /// Switch to the next tab
     pub fn next_tab(&mut self) {
         if !self.tabs.is_empty() {
             self.active_index = (self.active_index + 1) % self.tabs.len();
         }
     }
 
-    /// Switch to the previous tab
     pub fn prev_tab(&mut self) {
         if !self.tabs.is_empty() {
             self.active_index = if self.active_index == 0 {
@@ -161,14 +130,12 @@ impl TabManager {
         }
     }
 
-    /// Switch to a specific tab by index
     pub fn switch_to(&mut self, index: usize) {
         if index < self.tabs.len() {
             self.active_index = index;
         }
     }
 
-    /// Get the number of tabs
     pub fn len(&self) -> usize {
         self.tabs.len()
     }
@@ -239,10 +206,8 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let mut manager = TabManager::new(temp.path().to_path_buf(), false).unwrap();
 
-        // Can't close last tab
         assert!(!manager.close_tab());
 
-        // Add and close a tab
         let temp2 = TempDir::new().unwrap();
         manager.new_tab(temp2.path().to_path_buf(), false).unwrap();
         assert_eq!(manager.len(), 2);
@@ -311,8 +276,8 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let mut manager = TabManager::new(temp.path().to_path_buf(), false).unwrap();
 
-        manager.switch_to(100); // Invalid index
-        assert_eq!(manager.active_index, 0); // Should not change
+        manager.switch_to(100);
+        assert_eq!(manager.active_index, 0);
     }
 
     #[test]
@@ -325,7 +290,6 @@ mod tests {
         manager.new_tab(temp2.path().to_path_buf(), false).unwrap();
         manager.new_tab(temp3.path().to_path_buf(), false).unwrap();
 
-        // Switch to middle tab and close
         manager.switch_to(1);
         assert!(manager.close_tab());
         assert_eq!(manager.len(), 2);
@@ -340,9 +304,8 @@ mod tests {
         let mut manager = TabManager::new(temp1.path().to_path_buf(), false).unwrap();
         manager.new_tab(temp2.path().to_path_buf(), false).unwrap();
 
-        // Close tab at last position (index 1)
         assert!(manager.close_tab());
-        assert_eq!(manager.active_index, 0); // Should adjust to 0
+        assert_eq!(manager.active_index, 0);
     }
 
     #[test]

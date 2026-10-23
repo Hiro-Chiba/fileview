@@ -4,7 +4,6 @@ use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-/// Get file size and modification time as a formatted string (full display)
 /// Cached file metadata to avoid repeated stat() calls on the same path.
 struct FileInfoCache {
     path: PathBuf,
@@ -54,7 +53,6 @@ pub(super) fn get_file_info(path: &Path) -> Option<String> {
     })
 }
 
-/// Get file size and abbreviated modification time (narrow display)
 pub(super) fn get_file_info_narrow(path: &Path) -> Option<String> {
     with_cached_metadata(path, |c| {
         let size_str = if c.is_dir {
@@ -70,7 +68,6 @@ pub(super) fn get_file_info_narrow(path: &Path) -> Option<String> {
     })
 }
 
-/// Get file size only (compact display)
 pub(super) fn get_file_size_only(path: &Path) -> Option<String> {
     with_cached_metadata(path, |c| {
         if c.is_dir {
@@ -81,7 +78,6 @@ pub(super) fn get_file_size_only(path: &Path) -> Option<String> {
     })
 }
 
-/// Format file size in human-readable format
 fn format_size(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -122,7 +118,6 @@ fn format_relative_time(time: SystemTime) -> String {
     } else if days < 7 {
         format!("{}d ago", days)
     } else {
-        // Use date format for older files
         use std::time::UNIX_EPOCH;
         let timestamp = time
             .duration_since(UNIX_EPOCH)
@@ -154,7 +149,6 @@ fn format_relative_time_short(time: SystemTime) -> String {
     } else if days < 30 {
         format!("{}d", days)
     } else {
-        // Use abbreviated date for older files
         use std::time::UNIX_EPOCH;
         let timestamp = time
             .duration_since(UNIX_EPOCH)
@@ -217,7 +211,6 @@ fn format_date_from_timestamp(timestamp: u64) -> String {
     let secs_per_day: u64 = 86400;
     let days_since_epoch = timestamp / secs_per_day;
 
-    // Calculate year, month, day (simplified)
     let mut year = 1970u32;
     let mut remaining_days = days_since_epoch as u32;
 
@@ -257,7 +250,6 @@ fn format_date_from_timestamp(timestamp: u64) -> String {
         remaining_days -= days;
     }
 
-    // Get current year for comparison
     let now_timestamp = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

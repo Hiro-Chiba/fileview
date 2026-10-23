@@ -1,5 +1,3 @@
-//! Configuration file loading and parsing
-//!
 //! Loads configuration from `~/.config/fileview/config.toml`
 
 use serde::Deserialize;
@@ -9,23 +7,15 @@ use std::path::PathBuf;
 
 pub use crate::handler::HooksConfig;
 
-/// Main configuration file structure
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct ConfigFile {
-    /// General settings
     pub general: GeneralConfig,
-    /// Preview settings
     pub preview: PreviewConfig,
-    /// Performance settings
     pub performance: PerformanceConfig,
-    /// UI display settings
     pub ui: UiConfig,
-    /// Custom commands
     pub commands: CommandsConfig,
-    /// Event hooks
     pub hooks: HooksConfig,
-    /// Context budget bar settings
     pub budget: BudgetConfig,
 }
 
@@ -38,15 +28,12 @@ pub struct BudgetConfig {
     pub default_model: String,
 }
 
-/// General application settings
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct GeneralConfig {
-    /// Show hidden files by default
     pub show_hidden: bool,
     /// Enable Nerd Font icons
     pub enable_icons: bool,
-    /// Enable mouse support
     pub mouse_enabled: bool,
 }
 
@@ -60,13 +47,10 @@ impl Default for GeneralConfig {
     }
 }
 
-/// Preview-related settings
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct PreviewConfig {
-    /// Maximum bytes to show in hex preview
     pub hex_max_bytes: usize,
-    /// Maximum entries to show in archive preview
     pub max_archive_entries: usize,
     /// Image protocol: "auto", "sixel", "kitty", "iterm2", "halfblocks"
     pub image_protocol: String,
@@ -86,11 +70,9 @@ impl Default for PreviewConfig {
     }
 }
 
-/// Performance-related settings
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct PerformanceConfig {
-    /// Git status polling interval in seconds
     pub git_poll_interval_secs: u64,
 }
 
@@ -102,13 +84,10 @@ impl Default for PerformanceConfig {
     }
 }
 
-/// UI display settings
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct UiConfig {
-    /// Show file sizes in tree view
     pub show_size: bool,
-    /// Show file permissions in tree view
     pub show_permissions: bool,
     /// Date format string (strftime-style)
     pub date_format: String,
@@ -124,7 +103,6 @@ impl Default for UiConfig {
     }
 }
 
-/// Custom commands configuration
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct CommandsConfig {
@@ -135,12 +113,10 @@ pub struct CommandsConfig {
 }
 
 impl CommandsConfig {
-    /// Get a command by name
     pub fn get(&self, name: &str) -> Option<&String> {
         self.commands.get(name)
     }
 
-    /// Expand placeholders in a command template
     pub fn expand(template: &str, file_path: &std::path::Path) -> String {
         let path_str = file_path.display().to_string();
         let dir = file_path
@@ -221,8 +197,6 @@ impl ConfigFile {
         Self::config_dir().map(|p| p.join("config.toml"))
     }
 
-    /// Load configuration from file
-    ///
     /// Returns default config if file doesn't exist or can't be parsed
     pub fn load() -> Self {
         Self::config_path()

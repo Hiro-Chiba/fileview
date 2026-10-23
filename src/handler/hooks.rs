@@ -1,5 +1,3 @@
-//! Event hooks system
-//!
 //! Executes user-defined scripts in response to file operations and events.
 
 use std::collections::HashMap;
@@ -8,7 +6,6 @@ use std::process::Command;
 
 use serde::Deserialize;
 
-/// Hook event types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HookEvent {
     /// Triggered after a file is created
@@ -17,16 +14,12 @@ pub enum HookEvent {
     OnDelete,
     /// Triggered after a file is renamed
     OnRename,
-    /// Triggered when changing directory
     OnCd,
-    /// Triggered when the application starts
     OnStart,
-    /// Triggered when the application exits
     OnExit,
 }
 
 impl HookEvent {
-    /// Get the config key for this hook event
     pub fn config_key(&self) -> &'static str {
         match self {
             HookEvent::OnCreate => "on_create",
@@ -39,21 +32,14 @@ impl HookEvent {
     }
 }
 
-/// Hook configuration from config file
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct HooksConfig {
-    /// Script to run after file creation
     pub on_create: Option<String>,
-    /// Script to run after file deletion
     pub on_delete: Option<String>,
-    /// Script to run after file rename
     pub on_rename: Option<String>,
-    /// Script to run on directory change
     pub on_cd: Option<String>,
-    /// Script to run on application start
     pub on_start: Option<String>,
-    /// Script to run on application exit
     pub on_exit: Option<String>,
 }
 
@@ -71,32 +57,25 @@ impl HooksConfig {
     }
 }
 
-/// Context for hook execution
 #[derive(Debug, Clone, Default)]
 pub struct HookContext {
-    /// Target file path
     pub path: Option<PathBuf>,
     /// Old path (for rename operations)
     pub old_path: Option<PathBuf>,
-    /// Current directory
     pub dir: Option<PathBuf>,
     /// Selected files (for multi-select operations)
     pub selected: Vec<PathBuf>,
 }
 
-/// Hook executor
 pub struct HookExecutor {
     config: HooksConfig,
 }
 
 impl HookExecutor {
-    /// Create a new hook executor with the given configuration
     pub fn new(config: HooksConfig) -> Self {
         Self { config }
     }
 
-    /// Execute a hook if configured
-    ///
     /// This runs asynchronously (non-blocking) so it doesn't slow down the UI.
     pub fn execute(&self, event: HookEvent, context: &HookContext) {
         if let Some(script) = self.config.get(event) {
@@ -126,16 +105,13 @@ impl HookExecutor {
         script.to_string()
     }
 
-    /// Build environment variables for hook execution
     fn build_env(context: &HookContext) -> HashMap<String, String> {
         let mut env = HashMap::new();
 
-        // FILEVIEW_PATH: target file path
         if let Some(ref path) = context.path {
             env.insert("FILEVIEW_PATH".to_string(), path.display().to_string());
         }
 
-        // FILEVIEW_OLD_PATH: old path (for rename)
         if let Some(ref old_path) = context.old_path {
             env.insert(
                 "FILEVIEW_OLD_PATH".to_string(),
@@ -143,12 +119,10 @@ impl HookExecutor {
             );
         }
 
-        // FILEVIEW_DIR: current directory
         if let Some(ref dir) = context.dir {
             env.insert("FILEVIEW_DIR".to_string(), dir.display().to_string());
         }
 
-        // FILEVIEW_SELECTED: newline-separated list of selected files
         if !context.selected.is_empty() {
             let selected: Vec<String> = context
                 .selected
@@ -161,7 +135,6 @@ impl HookExecutor {
         env
     }
 
-    /// Run a script asynchronously
     fn run_script_async(script: &str, context: &HookContext) {
         let script = script.to_string();
         let env = Self::build_env(context);
@@ -171,19 +144,16 @@ impl HookExecutor {
         });
     }
 
-    /// Run a script synchronously
     fn run_script_sync(script: &str, context: &HookContext) -> anyhow::Result<()> {
         let env = Self::build_env(context);
         Self::execute_script(script, &env)
     }
 
-    /// Execute a script with environment variables
     fn execute_script(script: &str, env: &HashMap<String, String>) -> anyhow::Result<()> {
         let path = Path::new(script);
 
-        // Check if script exists and is executable
         if !path.exists() {
-            return Ok(()); // Silently skip non-existent scripts
+            return Ok(());
         }
 
         let mut cmd = if cfg!(target_os = "windows") {
@@ -196,12 +166,10 @@ impl HookExecutor {
             c
         };
 
-        // Set environment variables
         for (key, value) in env {
             cmd.env(key, value);
         }
 
-        // Run and ignore output
         let _ = cmd
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
@@ -210,7 +178,6 @@ impl HookExecutor {
         Ok(())
     }
 
-    /// Create a context for a file operation
     pub fn context_for_file(path: &Path, dir: &Path) -> HookContext {
         HookContext {
             path: Some(path.to_path_buf()),
@@ -220,7 +187,6 @@ impl HookExecutor {
         }
     }
 
-    /// Create a context for a rename operation
     pub fn context_for_rename(old_path: &Path, new_path: &Path, dir: &Path) -> HookContext {
         HookContext {
             path: Some(new_path.to_path_buf()),
@@ -230,7 +196,6 @@ impl HookExecutor {
         }
     }
 
-    /// Create a context for a directory change
     pub fn context_for_cd(dir: &Path) -> HookContext {
         HookContext {
             path: None,
@@ -240,7 +205,6 @@ impl HookExecutor {
         }
     }
 
-    /// Create a context for multi-file operations
     pub fn context_for_selected(selected: &[PathBuf], dir: &Path) -> HookContext {
         HookContext {
             path: selected.first().cloned(),
@@ -345,7 +309,6 @@ mod tests {
         let context = HookContext::default();
         let expanded = HookExecutor::expand_script(script, &context);
 
-        // Should not start with ~ anymore (unless home dir lookup failed)
         if dirs::home_dir().is_some() {
             assert!(!expanded.starts_with('~'));
         }

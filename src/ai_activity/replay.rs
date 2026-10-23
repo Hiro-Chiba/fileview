@@ -1,9 +1,4 @@
 //! Read past `activity.jsonl` files for the replay UI.
-//!
-//! Activity logs are append-only JSON-Lines written by the MCP server. The
-//! reader is forgiving: a partial trailing line, a corrupt JSON object, or
-//! an unreadable file degrades to "skip and continue" rather than failing
-//! the whole replay.
 
 use std::path::Path;
 

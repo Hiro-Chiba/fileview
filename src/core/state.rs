@@ -1,5 +1,3 @@
-//! Application state management
-
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
@@ -12,7 +10,6 @@ use crate::integrate::{BudgetModel, BudgetWorker, TodoItem};
 /// Number of bookmark slots (1-9)
 pub const BOOKMARK_SLOTS: usize = 9;
 
-/// Sort mode for file entries
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum SortMode {
     /// Sort by name (alphabetically, case-insensitive)
@@ -25,7 +22,6 @@ pub enum SortMode {
 }
 
 impl SortMode {
-    /// Cycle to the next sort mode
     pub fn next(self) -> Self {
         match self {
             SortMode::Name => SortMode::Size,
@@ -56,7 +52,6 @@ impl SortMode {
 /// Preview display mode for narrow terminals
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum PreviewDisplayMode {
-    /// Normal preview panel (default)
     #[default]
     Normal,
     /// Peek mode - show file preview in status bar area
@@ -75,9 +70,6 @@ pub struct AiHistoryEntry {
 }
 
 /// UI density mode based on terminal width
-///
-/// Automatically selected based on terminal width to provide optimal display
-/// for AI pair programming workflows where screen space is limited.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum UiDensity {
     /// Full features (80+ chars) - all icons, full status bar, complete info
@@ -92,7 +84,6 @@ pub enum UiDensity {
 }
 
 impl UiDensity {
-    /// Determine UI density from terminal width
     pub fn from_width(width: u16) -> Self {
         match width {
             0..=24 => Self::Ultra,
@@ -102,17 +93,14 @@ impl UiDensity {
         }
     }
 
-    /// Check if icons should be shown
     pub fn show_icons(&self) -> bool {
         matches!(self, Self::Full | Self::Compact | Self::Narrow)
     }
 
-    /// Check if full status bar should be shown
     pub fn show_full_status(&self) -> bool {
         matches!(self, Self::Full)
     }
 
-    /// Get maximum lines for peek preview
     pub fn peek_preview_lines(&self) -> usize {
         match self {
             Self::Ultra => 2,
@@ -122,7 +110,6 @@ impl UiDensity {
         }
     }
 
-    /// Get tree indent width
     pub fn tree_indent_width(&self) -> usize {
         match self {
             Self::Ultra => 1,
@@ -143,27 +130,16 @@ impl UiDensity {
     }
 }
 
-/// Main application state
 pub struct AppState {
-    /// Root directory path
     pub root: PathBuf,
-    /// Current focus index in visible entries
     pub focus_index: usize,
-    /// Top of viewport (scroll position)
     pub viewport_top: usize,
-    /// Selected paths (multi-select)
     pub selected_paths: HashSet<PathBuf>,
-    /// Current view mode
     pub mode: ViewMode,
-    /// Status message
     pub message: Option<String>,
-    /// Preview panel visibility
     pub preview_visible: bool,
-    /// Focus target for split view (Tree or Preview)
     pub focus_target: FocusTarget,
-    /// Whether to show hidden files
     pub show_hidden: bool,
-    /// Exit flag
     pub should_quit: bool,
     /// Pick mode (--pick option)
     pub pick_mode: bool,
@@ -171,9 +147,7 @@ pub struct AppState {
     pub select_mode: bool,
     /// Multi-select enabled in select mode
     pub multi_select: bool,
-    /// Clipboard for copy/cut/paste
     pub clipboard: Option<Clipboard>,
-    /// Git repository status
     pub git_status: Option<GitStatus>,
     /// Whether the initial Git repository detection has already run
     git_detection_attempted: bool,
@@ -185,13 +159,11 @@ pub struct AppState {
     pub fuzzy_jump_target: Option<PathBuf>,
     /// Whether in stdin mode (file operations disabled)
     pub stdin_mode: bool,
-    /// Whether file watching is enabled
     pub watch_enabled: bool,
     /// Bookmarks (slots 0-8 for keys 1-9)
     pub bookmarks: [Option<PathBuf>; BOOKMARK_SLOTS],
     /// File filter pattern (glob-like, e.g., "*.rs", "test*")
     pub filter_pattern: Option<String>,
-    /// Current sort mode
     pub sort_mode: SortMode,
     /// Search match info (current_index, total_count)
     pub search_matches: Option<(usize, usize)>,
@@ -199,7 +171,6 @@ pub struct AppState {
     pub last_search: Option<String>,
     /// Threshold width below which preview auto-hides (default: 50)
     pub auto_hide_preview_threshold: u16,
-    /// Preview display mode (Normal or Peek)
     pub preview_display_mode: PreviewDisplayMode,
     /// AI focus mode (forces ultra-compact UI + peek preview)
     pub ai_focus: bool,
@@ -229,8 +200,6 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// Create new application state
-    ///
     /// Note: Git status is NOT initialized at startup for performance.
     /// Call `init_git_status()` after the first frame is rendered.
     pub fn new(root: PathBuf) -> Self {
@@ -408,7 +377,6 @@ impl AppState {
         }
     }
 
-    /// Adjust viewport to keep focus visible
     pub fn adjust_viewport(&mut self, visible_height: usize) {
         if self.focus_index < self.viewport_top {
             self.viewport_top = self.focus_index;
@@ -417,12 +385,10 @@ impl AppState {
         }
     }
 
-    /// Set status message
     pub fn set_message(&mut self, msg: impl Into<String>) {
         self.message = Some(msg.into());
     }
 
-    /// Clear status message
     pub fn clear_message(&mut self) {
         self.message = None;
     }
@@ -482,7 +448,6 @@ impl AppState {
         }
     }
 
-    /// Determine UI density for current state
     pub fn ui_density_for_width(&self, width: u16) -> UiDensity {
         if self.ai_focus {
             UiDensity::Ultra

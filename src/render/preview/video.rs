@@ -14,20 +14,15 @@ use ratatui_image::{FontSize, Resize, StatefulImage};
 use super::common::get_border_style;
 use super::image::{calculate_centered_image_area, ImagePreview};
 
-/// Video preview content
 pub struct VideoPreview {
-    /// Video metadata
     pub metadata: crate::app::VideoMetadata,
-    /// Thumbnail image preview (if available)
     pub thumbnail: Option<ImagePreview>,
     /// Error message if thumbnail generation failed
     pub thumbnail_error: Option<String>,
-    /// Path to the video file
     pub path: PathBuf,
 }
 
 impl VideoPreview {
-    /// Create a new video preview without thumbnail (metadata only)
     pub fn new(path: &std::path::Path, metadata: crate::app::VideoMetadata) -> Self {
         Self {
             metadata,
@@ -37,13 +32,11 @@ impl VideoPreview {
         }
     }
 
-    /// Check if thumbnail is ready
     pub fn has_thumbnail(&self) -> bool {
         self.thumbnail.is_some()
     }
 }
 
-/// Render video preview with thumbnail and metadata
 pub fn render_video_preview(
     frame: &mut Frame,
     preview: &mut VideoPreview,
@@ -54,7 +47,6 @@ pub fn render_video_preview(
 ) {
     let meta = &preview.metadata;
 
-    // Build title with duration
     let full_title = format!(" {} [{}] ", title, meta.format_duration());
 
     let block = Block::default()
@@ -65,12 +57,10 @@ pub fn render_video_preview(
     let inner_area = block.inner(area);
     frame.render_widget(block, area);
 
-    // Split area: top for thumbnail, bottom for metadata
     let has_thumbnail = preview.thumbnail.is_some();
     let metadata_height = 8u16; // Lines needed for metadata
 
     if has_thumbnail && inner_area.height > metadata_height + 4 {
-        // Layout with thumbnail and metadata
         let thumbnail_height = inner_area.height.saturating_sub(metadata_height);
         let thumbnail_area = Rect::new(
             inner_area.x,
@@ -85,7 +75,6 @@ pub fn render_video_preview(
             metadata_height,
         );
 
-        // Render thumbnail
         if let Some(ref mut thumb) = preview.thumbnail {
             let centered_area =
                 calculate_centered_image_area(thumbnail_area, thumb.width, thumb.height, font_size);
@@ -93,7 +82,6 @@ pub fn render_video_preview(
             frame.render_stateful_widget(image_widget, centered_area, &mut thumb.protocol);
         }
 
-        // Render metadata below
         render_video_metadata(
             frame,
             meta,
@@ -101,12 +89,10 @@ pub fn render_video_preview(
             preview.thumbnail_error.as_deref(),
         );
     } else {
-        // Metadata only (no thumbnail or not enough space)
         render_video_metadata(frame, meta, inner_area, preview.thumbnail_error.as_deref());
     }
 }
 
-/// Render video metadata information
 fn render_video_metadata(
     frame: &mut Frame,
     meta: &crate::app::VideoMetadata,
@@ -121,7 +107,6 @@ fn render_video_metadata(
             Style::default().fg(Color::DarkGray),
         )]),
         Line::from(""),
-        // Duration
         Line::from(vec![
             Span::styled(
                 "  \u{f144} Duration:   ",
@@ -134,7 +119,6 @@ fn render_video_metadata(
                     .add_modifier(Modifier::BOLD),
             ),
         ]),
-        // Resolution
         Line::from(vec![
             Span::styled(
                 "  \u{f03e} Resolution: ",
@@ -150,7 +134,6 @@ fn render_video_metadata(
                 Span::raw("")
             },
         ]),
-        // Codec
         Line::from(vec![
             Span::styled(
                 "  \u{f1c8} Codec:      ",
@@ -163,7 +146,6 @@ fn render_video_metadata(
                 Span::raw("")
             },
         ]),
-        // File size
         Line::from(vec![
             Span::styled(
                 "  \u{f0c7} Size:       ",
@@ -181,7 +163,6 @@ fn render_video_metadata(
         ]),
     ];
 
-    // Show thumbnail error if present
     if let Some(err) = thumbnail_error {
         lines.push(Line::from(""));
         lines.push(Line::from(vec![

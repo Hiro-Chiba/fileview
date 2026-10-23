@@ -42,7 +42,6 @@ fn main() -> ExitCode {
         }
     };
 
-    // Handle non-interactive modes first
     if config.tree_mode {
         return run_tree_mode(&config);
     }
@@ -91,7 +90,6 @@ fn main() -> ExitCode {
         return run_resume_ai_session(&config, name);
     }
 
-    // Handle session actions (non-interactive)
     if let Some(action) = config.session_action {
         return run_session_action(&config, action);
     }
@@ -113,7 +111,6 @@ fn main() -> ExitCode {
     }
 }
 
-/// Run in tree output mode (non-interactive)
 fn run_tree_mode(config: &Config) -> ExitCode {
     match output_tree(&config.root, config.tree_depth, config.show_hidden) {
         Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
@@ -124,7 +121,6 @@ fn run_tree_mode(config: &Config) -> ExitCode {
     }
 }
 
-/// Run in context output mode (non-interactive)
 fn run_context_mode(config: &Config) -> ExitCode {
     match output_context(&config.root) {
         Ok(_) => ExitCode::from(exit_code::SUCCESS as u8),
@@ -135,7 +131,6 @@ fn run_context_mode(config: &Config) -> ExitCode {
     }
 }
 
-/// Run AI benchmark mode (non-interactive)
 fn run_benchmark_ai_mode(config: &Config) -> ExitCode {
     match run_ai_benchmark(
         &config.root,
@@ -150,7 +145,6 @@ fn run_benchmark_ai_mode(config: &Config) -> ExitCode {
     }
 }
 
-/// Run in context-pack output mode (non-interactive)
 fn run_context_pack_mode(
     config: &Config,
     preset: fileview::integrate::ContextPackPreset,
@@ -164,7 +158,6 @@ fn run_context_pack_mode(
     }
 }
 
-/// Run in related-file output mode (non-interactive)
 fn run_tokens_mode(path: &std::path::Path) -> ExitCode {
     match fileview::mcp::token::estimate_file_tokens(path) {
         Ok(n) => {
@@ -285,7 +278,6 @@ fn run_mcp_server(config: &Config) -> ExitCode {
     }
 }
 
-/// Run the replay UI for past AI sessions.
 fn run_replay_mode(session_id: Option<&str>) -> ExitCode {
     match run_replay_app(session_id) {
         Ok(outcome) => {
@@ -299,7 +291,6 @@ fn run_replay_mode(session_id: Option<&str>) -> ExitCode {
     }
 }
 
-/// Run session action (save/restore/clear)
 fn run_session_action(config: &Config, action: SessionAction) -> ExitCode {
     match action {
         SessionAction::Save => {
@@ -359,7 +350,6 @@ fn run_resume_ai_session(config: &Config, name: &str) -> ExitCode {
     }
 }
 
-/// Run init action.
 fn run_init_action(config: &Config, action: InitAction) -> ExitCode {
     match action {
         InitAction::Claude => {
@@ -421,7 +411,6 @@ fn run_init_aiignore(config: &Config) -> ExitCode {
     }
 }
 
-/// Run plugin command action (non-interactive)
 fn run_plugin_action(config: &Config, action: PluginAction) -> ExitCode {
     match action {
         PluginAction::Init => match plugin_init(config.plugin_path.as_deref()) {
@@ -464,7 +453,6 @@ fn run_with_config(config: Config) -> anyhow::Result<i32> {
     // (terminal capability detection requires normal screen mode)
     let mut image_picker = create_image_picker();
 
-    // Initialize terminal
     terminal::enable_raw_mode()?;
     let mut stdout = stdout();
     execute!(
@@ -477,11 +465,9 @@ fn run_with_config(config: Config) -> anyhow::Result<i32> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Run the app
     let choosedir_mode = config.choosedir_mode;
     let result = run_app(&mut terminal, config, &mut image_picker);
 
-    // Restore terminal
     terminal::disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),
@@ -491,7 +477,6 @@ fn run_with_config(config: Config) -> anyhow::Result<i32> {
         cursor::Show
     )?;
 
-    // Handle result and output choosedir path if requested
     match result {
         Ok(app_result) => {
             if choosedir_mode {

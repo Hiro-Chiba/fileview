@@ -1,5 +1,3 @@
-//! Render module - UI rendering
-
 pub mod ai_activity;
 pub mod bulk_rename;
 pub mod fuzzy;
@@ -39,8 +37,6 @@ pub use terminal::{RecommendedProtocol, TerminalBrand};
 pub use theme::{parse_color, theme, Theme, ThemeFile};
 pub use tree::{render_tree, visible_height};
 
-/// Create an image picker for protocol detection
-///
 /// This should be called BEFORE entering alternate screen mode.
 ///
 /// Detection priority:
@@ -57,7 +53,6 @@ pub use tree::{render_tree, visible_height};
 pub fn create_image_picker() -> Option<Picker> {
     use ratatui_image::picker::ProtocolType;
 
-    // 1. Check for environment variable override (highest priority)
     if let Ok(protocol) = std::env::var("FILEVIEW_IMAGE_PROTOCOL") {
         match protocol.to_lowercase().as_str() {
             "halfblocks" | "half" => return Some(Picker::halfblocks()),
@@ -77,7 +72,6 @@ pub fn create_image_picker() -> Option<Picker> {
         }
     }
 
-    // 2. Terminal brand detection
     let terminal = TerminalBrand::detect();
     match terminal.recommended_protocol() {
         RecommendedProtocol::Kitty => {
@@ -94,7 +88,6 @@ pub fn create_image_picker() -> Option<Picker> {
             if let Some(picker) = try_chafa_picker() {
                 return Some(picker);
             }
-            // Fallback to halfblocks if Chafa not available
             return Some(Picker::halfblocks());
         }
         RecommendedProtocol::Query => {
@@ -102,31 +95,25 @@ pub fn create_image_picker() -> Option<Picker> {
         }
     }
 
-    // 3. Query terminal capabilities (for unknown terminals or if brand-specific failed)
     if let Ok(picker) = Picker::from_query_stdio() {
         return Some(picker);
     }
 
-    // 4. Fallback chain: Chafa → Halfblocks
     try_chafa_picker().or_else(|| Some(Picker::halfblocks()))
 }
 
-/// Create a picker with a specific protocol type
 fn picker_with_protocol(protocol_type: ratatui_image::picker::ProtocolType) -> Picker {
     let mut picker = Picker::halfblocks();
     picker.set_protocol_type(protocol_type);
     picker
 }
 
-/// Try to create a Chafa picker
-///
 /// Returns None if Chafa feature is not enabled or libchafa is not available
 #[cfg(feature = "chafa")]
 fn try_chafa_picker() -> Option<Picker> {
     Picker::from_chafa().ok()
 }
 
-/// Fallback when Chafa feature is not enabled
 #[cfg(not(feature = "chafa"))]
 fn try_chafa_picker() -> Option<Picker> {
     None

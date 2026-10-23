@@ -1,8 +1,3 @@
-//! Basic CLI tests for fv
-//!
-//! Tests for command-line argument parsing, help output, version display,
-//! and error handling for invalid inputs.
-
 use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -102,7 +97,6 @@ fn on_select_without_command_returns_exit_code_3() {
 
 #[test]
 fn current_directory_is_accepted() {
-    // Just check that it doesn't fail immediately with help or version
     // We can't actually run the TUI in tests
     fv().arg("--help").arg(".").assert().success();
 }

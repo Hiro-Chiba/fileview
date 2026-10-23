@@ -39,7 +39,6 @@ enum TextPagePosition {
     Bottom,
 }
 
-/// Preview state container
 #[derive(Default)]
 pub struct PreviewState {
     pub text: Option<TextPreview>,
@@ -52,17 +51,12 @@ pub struct PreviewState {
     pub custom: Option<CustomPreview>,
     pub video: Option<VideoPreview>,
     pub last_path: Option<PathBuf>,
-    /// Background image loader
     image_loader: ImageLoader,
-    /// Path currently being loaded asynchronously
     pub loading_image_path: Option<PathBuf>,
-    /// Video path currently loading thumbnail
     pub loading_video_thumbnail: Option<PathBuf>,
-    /// Background preview worker
     preview_worker: PreviewWorker,
     /// LRU preview cache
     preview_cache: PreviewCache,
-    /// Whether a preview is currently being generated in the background
     pub is_loading: bool,
     /// Serial number of the latest preview request
     pending_serial: u64,
@@ -74,7 +68,6 @@ impl PreviewState {
         Self::default()
     }
 
-    /// Clear all preview data
     pub fn clear_all(&mut self) {
         self.pending_serial = self.preview_worker.cancel();
         self.pending_text_position = None;
@@ -114,8 +107,6 @@ impl PreviewState {
         self.update_with_custom(path, image_picker, state, &HashMap::new());
     }
 
-    /// Update preview with custom preview support
-    ///
     /// `custom_previews` maps file extensions to command templates.
     /// The command template can use `$f` as a placeholder for the file path.
     pub fn update_with_custom(
@@ -125,7 +116,6 @@ impl PreviewState {
         state: &mut AppState,
         custom_previews: &HashMap<String, String>,
     ) {
-        // Only reload preview if the path changed
         if path == self.last_path.as_ref() {
             return;
         }
@@ -144,7 +134,6 @@ impl PreviewState {
             return;
         };
 
-        // Check for custom preview first (if configured for a non-directory)
         if let Some(cmd) = path
             .extension()
             .and_then(|extension| extension.to_str())
@@ -176,7 +165,6 @@ impl PreviewState {
         let is_file = metadata.as_ref().is_some_and(|metadata| metadata.is_file());
 
         if is_dir {
-            // Check cache first
             if let Some(CachedPreview::Directory(ref info)) = self.preview_cache.get(path) {
                 self.dir_info = Some(info.clone());
                 self.text = None;
@@ -188,14 +176,12 @@ impl PreviewState {
                 self.custom = None;
                 return;
             }
-            // Dispatch to worker
             self.clear_all();
             self.is_loading = true;
             self.pending_serial =
                 self.preview_worker
                     .request(path.to_path_buf(), PreviewKind::Directory, None, None);
         } else if is_text_file(path) || (is_file && is_unlisted_text_file(path)) {
-            // Check if file has git changes - if so, show diff instead
             let git_status = state
                 .git_status
                 .as_ref()
@@ -208,7 +194,6 @@ impl PreviewState {
             );
 
             if has_changes {
-                // Check cache for diff
                 if let Some(CachedPreview::Diff(ref dp)) = self.preview_cache.get(path) {
                     self.diff = Some(dp.clone());
                     self.text = None;
@@ -220,7 +205,6 @@ impl PreviewState {
                     self.custom = None;
                     return;
                 }
-                // Dispatch diff to worker
                 if let Some(ref git) = state.git_status {
                     let repo_root = git.repo_root().to_path_buf();
                     self.clear_all();
@@ -235,7 +219,6 @@ impl PreviewState {
                 }
             }
 
-            // Check cache for text
             if let Some(CachedPreview::Text(ref tp)) = self.preview_cache.get(path) {
                 self.text = Some(tp.clone());
                 self.image = None;
@@ -247,14 +230,12 @@ impl PreviewState {
                 self.custom = None;
                 return;
             }
-            // Dispatch text to worker
             self.clear_all();
             self.is_loading = true;
             self.pending_serial =
                 self.preview_worker
                     .request(path.to_path_buf(), PreviewKind::Text, None, None);
         } else if is_image_file(path) {
-            // Start async image loading (non-blocking) — existing ImageLoader
             if self.image_loader.request(path.to_path_buf()) {
                 self.image = None;
                 self.text = None;
@@ -268,14 +249,12 @@ impl PreviewState {
                 self.loading_image_path = Some(path.to_path_buf());
             }
         } else if is_video_file(path) {
-            // Dispatch video metadata to worker
             self.clear_all();
             self.is_loading = true;
             self.pending_serial =
                 self.preview_worker
                     .request(path.to_path_buf(), PreviewKind::VideoMeta, None, None);
         } else if is_tar_gz_file(path) || is_archive_file(path) {
-            // Check cache for archive
             if let Some(CachedPreview::Archive(ref ap)) = self.preview_cache.get(path) {
                 self.archive = Some(ap.clone());
                 self.text = None;
@@ -287,14 +266,13 @@ impl PreviewState {
                 self.custom = None;
                 return;
             }
-            // Dispatch archive to worker
             self.clear_all();
             self.is_loading = true;
             self.pending_serial =
                 self.preview_worker
                     .request(path.to_path_buf(), PreviewKind::Archive, None, None);
         } else if is_pdf_file(path) {
-            // PDF preview — stays synchronous (Picker is not Send)
+            // PDF preview stays synchronous because Picker is not Send.
             if find_pdftoppm().is_some() {
                 if let Some(ref mut picker) = image_picker {
                     match PdfPreview::load(path, 1, picker) {
@@ -321,7 +299,7 @@ impl PreviewState {
                 self.load_hex_fallback(path, state);
             }
         } else if is_binary_file(path) || is_file {
-            // Hex preview — stays synchronous (only 4KB, fast enough)
+            // Hex preview stays synchronous because it reads only 4KB.
             match HexPreview::load(path) {
                 Ok(hex) => {
                     self.hex = Some(hex);
@@ -518,7 +496,6 @@ impl PreviewState {
         }
     }
 
-    /// Check if any preview content is available
     pub fn has_content(&self) -> bool {
         self.text.is_some()
             || self.image.is_some()
@@ -531,8 +508,6 @@ impl PreviewState {
             || self.video.is_some()
     }
 
-    /// Poll for completed preview results (both preview worker and image loader).
-    ///
     /// This should be called every iteration of the main event loop.
     /// Returns true if any preview was updated (caller should set needs_redraw).
     pub fn poll_preview_result(
@@ -542,7 +517,6 @@ impl PreviewState {
     ) -> bool {
         let mut changed = false;
 
-        // --- Poll preview worker ---
         if let Some(response) = self.preview_worker.try_recv() {
             // Last-request-wins: ignore stale results
             if response.serial == self.pending_serial
@@ -579,7 +553,6 @@ impl PreviewState {
                                 let path = self.last_path.clone().unwrap();
                                 let mut video_preview = VideoPreview::new(&path, metadata);
 
-                                // Try to extract thumbnail and load via ImageLoader
                                 match extract_thumbnail(&path) {
                                     Ok(thumb_path) => {
                                         if self.image_loader.request(thumb_path.clone()) {
@@ -600,7 +573,6 @@ impl PreviewState {
                     Err(msg) => {
                         // Diff failure falls back to text
                         if msg == "No diff available" {
-                            // Re-request as text preview
                             self.is_loading = true;
                             self.pending_serial = self.preview_worker.request(
                                 self.last_path.as_ref().unwrap().clone(),
@@ -629,7 +601,6 @@ impl PreviewState {
             }
         }
 
-        // --- Poll image loader (same as old poll_image_result) ---
         if let Some(result) = self.image_loader.try_recv() {
             if self.loading_image_path.as_ref() == Some(&result.path) {
                 self.loading_image_path = None;
@@ -679,7 +650,6 @@ impl PreviewState {
         changed
     }
 
-    /// Check if an image is currently being loaded
     pub fn is_loading_image(&self) -> bool {
         self.loading_image_path.is_some() || self.loading_video_thumbnail.is_some()
     }

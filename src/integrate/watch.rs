@@ -14,7 +14,6 @@ use std::time::Duration;
 
 use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode};
 
-/// Outcome of a watch call.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WatchOutcome {
     /// At least one watched path changed before the timeout.

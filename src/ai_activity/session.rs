@@ -38,7 +38,6 @@ pub struct SessionInfo {
     pub activity_log: PathBuf,
 }
 
-/// Registry of interactive fileview sessions.
 pub struct SessionRegistry {
     base_dir: PathBuf,
 }

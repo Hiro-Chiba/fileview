@@ -4,11 +4,9 @@ use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-/// Timing constants for input detection
 const RAPID_INPUT_THRESHOLD_MS: u64 = 50;
 const INPUT_TIMEOUT_MS: u64 = 100;
 
-/// Actions triggered by mouse events
 #[derive(Debug, Clone)]
 pub enum MouseAction {
     None,
@@ -19,7 +17,6 @@ pub enum MouseAction {
     FileDrop { paths: Vec<PathBuf> },
 }
 
-/// Detects double-clicks by tracking click timing
 pub struct ClickDetector {
     last_click: Option<(Instant, u16)>,
     threshold: Duration,
@@ -146,18 +143,15 @@ impl PathBuffer {
         std::mem::take(&mut self.data)
     }
 
-    /// Clear the buffer
     pub fn clear(&mut self) {
         self.data.clear();
         self.last_input = None;
     }
 
-    /// Check if buffer is empty
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
-    /// View current buffer content
     pub fn content(&self) -> &str {
         &self.data
     }
@@ -167,13 +161,11 @@ impl PathBuffer {
 fn normalize_shell_path(input: &str) -> String {
     let s = input.trim();
 
-    // Strip surrounding quotes
     let s = match (s.chars().next(), s.chars().last()) {
         (Some(q @ ('"' | '\'')), Some(end)) if q == end && s.len() > 1 => &s[1..s.len() - 1],
         _ => s,
     };
 
-    // Process escape sequences and URL encoding
     let mut result = String::with_capacity(s.len());
     let mut chars = s.chars().peekable();
 
@@ -189,7 +181,6 @@ fn normalize_shell_path(input: &str) -> String {
         result.push(c);
     }
 
-    // URL decode common sequences
     result
         .replace("%20", " ")
         .replace("%23", "#")
@@ -205,12 +196,10 @@ fn parse_paths(content: &str) -> Vec<PathBuf> {
         return Vec::new();
     }
 
-    // Handle newline-separated paths (multiple files)
     if content.contains('\n') {
         return content.lines().filter_map(to_path).collect();
     }
 
-    // Handle single path or space-separated paths with quote awareness
     let mut paths = Vec::new();
     let mut current = String::new();
     let mut in_quote = false;
@@ -255,7 +244,6 @@ fn to_path(s: &str) -> Option<PathBuf> {
         return None;
     }
 
-    // Handle file:// URLs
     let path_str = normalized
         .strip_prefix("file://")
         .map(|s| {
@@ -272,7 +260,6 @@ fn to_path(s: &str) -> Option<PathBuf> {
     (path.is_absolute() && path.exists()).then_some(path)
 }
 
-/// Process a mouse event and return the resulting action
 pub fn handle_mouse_event(
     event: MouseEvent,
     click_detector: &mut ClickDetector,
@@ -304,10 +291,6 @@ pub fn handle_mouse_event(
 mod tests {
     use super::*;
 
-    // ========================================
-    // ClickDetector tests
-    // ========================================
-
     #[test]
     fn click_detector_single() {
         let mut d = ClickDetector::new();
@@ -331,16 +314,15 @@ mod tests {
     #[test]
     fn click_detector_resets_after_double_click() {
         let mut d = ClickDetector::new();
-        assert!(!d.click(5)); // First click
-        assert!(d.click(5)); // Double click
-        assert!(!d.click(5)); // Should be single click again (reset)
+        assert!(!d.click(5));
+        assert!(d.click(5));
+        assert!(!d.click(5));
     }
 
     #[test]
     fn click_detector_default_creates_new() {
         let d1 = ClickDetector::default();
         let d2 = ClickDetector::new();
-        // Both should have no last click recorded
         assert!(d1.last_click.is_none());
         assert!(d2.last_click.is_none());
     }
@@ -353,10 +335,6 @@ mod tests {
         let (_, row) = d.last_click.unwrap();
         assert_eq!(row, 10);
     }
-
-    // ========================================
-    // PathBuffer tests
-    // ========================================
 
     #[test]
     fn path_buffer_empty() {
@@ -378,7 +356,7 @@ mod tests {
         let mut buf = PathBuffer::new();
         buf.push('/');
         buf.push('t');
-        assert!(!buf.is_ready()); // Needs timeout
+        assert!(!buf.is_ready());
     }
 
     #[test]
@@ -483,10 +461,6 @@ mod tests {
         assert_eq!(buf.content(), "abc");
     }
 
-    // ========================================
-    // normalize_shell_path tests
-    // ========================================
-
     #[test]
     fn normalize_quoted_path() {
         assert_eq!(normalize_shell_path("\"hello\""), "hello");
@@ -511,7 +485,6 @@ mod tests {
 
     #[test]
     fn normalize_mismatched_quotes_unchanged() {
-        // Mismatched quotes should not be stripped
         assert_eq!(normalize_shell_path("\"hello'"), "\"hello'");
     }
 
@@ -531,10 +504,6 @@ mod tests {
     fn normalize_url_encoded_brackets() {
         assert_eq!(normalize_shell_path("file%5Bname%5D"), "file[name]");
     }
-
-    // ========================================
-    // parse_paths tests
-    // ========================================
 
     #[test]
     #[cfg(unix)]
@@ -590,10 +559,6 @@ mod tests {
         assert_eq!(paths[0], cwd);
     }
 
-    // ========================================
-    // handle_mouse_event tests
-    // ========================================
-
     #[test]
     fn handle_mouse_event_click_in_tree_area() {
         let mut detector = ClickDetector::new();
@@ -622,9 +587,7 @@ mod tests {
             row: 5,
             modifiers: crossterm::event::KeyModifiers::NONE,
         };
-        // First click
         handle_mouse_event(event, &mut detector, 2);
-        // Second click (same position)
         let action = handle_mouse_event(event, &mut detector, 2);
         match action {
             MouseAction::DoubleClick { row, col } => {
@@ -737,10 +700,6 @@ mod tests {
         let action = handle_mouse_event(event, &mut detector, 2);
         assert!(matches!(action, MouseAction::None));
     }
-
-    // ========================================
-    // MouseAction tests
-    // ========================================
 
     #[test]
     fn mouse_action_debug_format() {

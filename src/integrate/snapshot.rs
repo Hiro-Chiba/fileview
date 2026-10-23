@@ -29,7 +29,6 @@ pub struct FileEntry {
     pub mtime_nanos: u32,
 }
 
-/// Stored snapshot manifest.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Snapshot {
     pub name: String,

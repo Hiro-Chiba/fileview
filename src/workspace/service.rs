@@ -29,7 +29,6 @@ pub struct WorkspaceStatus {
     pub revision: u64,
     /// Whether native recursive notifications are available.
     pub watching: bool,
-    /// Most recent indexing error, if any.
     pub error: Option<String>,
 }
 
@@ -38,7 +37,6 @@ pub struct WorkspaceStatus {
 pub struct SearchResponse {
     /// Identifier returned by `request_search`.
     pub request_id: u64,
-    /// Query that produced these results.
     pub query: String,
     /// Ranked matches, limited to the requested count.
     pub matches: Vec<WorkspaceMatch>,

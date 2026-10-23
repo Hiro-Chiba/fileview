@@ -13,14 +13,6 @@
 //! each matching session's log. The interactive TUI uses `notify` to watch
 //! its own log and surface events in the status bar, optionally following
 //! the AI by auto-focusing its last accessed file.
-//!
-//! ## Key components
-//!
-//! - [`ActivityEvent`] — wire format for a single event.
-//! - [`SessionRegistry`] / [`SessionInfo`] — discover and manage sessions.
-//! - [`ActivityEmitter`] — MCP-server side; writes events.
-//! - [`ActivityWatcher`] — TUI side; watches, parses, and delivers events.
-//! - [`AiActivityState`] — in-memory UI state attached to `AppState`.
 
 pub mod emitter;
 pub mod event;

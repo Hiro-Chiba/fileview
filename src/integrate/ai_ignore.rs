@@ -59,7 +59,6 @@ impl FromStr for AiIgnoreAgent {
     }
 }
 
-/// Result of synthesizing one ignore file.
 #[derive(Debug, Clone)]
 pub struct SynthesisOutcome {
     pub path: PathBuf,

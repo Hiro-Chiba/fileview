@@ -7,14 +7,10 @@ use mlua::{Function, Lua};
 
 use super::api::{PluginAction, PluginContext, PluginEvent};
 
-/// Plugin system error
 #[derive(Debug)]
 pub enum PluginError {
-    /// Failed to create Lua runtime
     RuntimeError(String),
-    /// Failed to load plugin file
     LoadError(String),
-    /// Plugin execution error
     ExecutionError(String),
 }
 
@@ -36,27 +32,19 @@ impl From<mlua::Error> for PluginError {
     }
 }
 
-/// Manages the Lua plugin runtime
 pub struct PluginManager {
-    /// Lua runtime instance
     lua: Lua,
-    /// Shared plugin context
     context: Arc<Mutex<PluginContext>>,
-    /// Whether plugins are loaded
     loaded: bool,
-    /// Notifications to display (queued from plugins)
     pending_notifications: Vec<String>,
-    /// Actions to execute (queued from plugins)
     pending_actions: Vec<PluginAction>,
 }
 
 impl PluginManager {
-    /// Create a new plugin manager
     pub fn new() -> Result<Self, PluginError> {
         let lua = Lua::new();
         let context = Arc::new(Mutex::new(PluginContext::new()));
 
-        // Set up the 'fv' global table with API functions
         Self::setup_api(&lua, Arc::clone(&context))?;
 
         Ok(Self {
@@ -72,7 +60,6 @@ impl PluginManager {
     fn setup_api(lua: &Lua, context: Arc<Mutex<PluginContext>>) -> Result<(), PluginError> {
         let globals = lua.globals();
 
-        // Create 'fv' table
         let fv = lua.create_table().map_err(PluginError::from)?;
 
         // fv.current_file() -> string or nil
@@ -297,7 +284,6 @@ impl PluginManager {
                     let fv: mlua::Table = globals.get("fv")?;
                     let events: mlua::Table = fv.get("_events")?;
 
-                    // Get or create the handler list for this event
                     let handlers: mlua::Table = match events.get::<mlua::Table>(event.clone()) {
                         Ok(t) => t,
                         Err(_) => {
@@ -307,7 +293,6 @@ impl PluginManager {
                         }
                     };
 
-                    // Append the handler
                     let len = handlers.len()?;
                     handlers.set(len + 1, func)?;
 
@@ -333,23 +318,19 @@ impl PluginManager {
                 .map_err(PluginError::from)?;
         }
 
-        // Set the fv table as a global
         globals.set("fv", fv).map_err(PluginError::from)?;
 
         Ok(())
     }
 
-    /// Get the plugin directory path
     pub fn plugin_dir() -> Option<PathBuf> {
         dirs::config_dir().map(|p| p.join("fileview").join("plugins"))
     }
 
-    /// Get the init.lua path
     pub fn init_lua_path() -> Option<PathBuf> {
         Self::plugin_dir().map(|p| p.join("init.lua"))
     }
 
-    /// Load plugins from the plugin directory
     pub fn load_plugins(&mut self) -> Result<(), PluginError> {
         if self.loaded {
             return Ok(());
@@ -364,7 +345,6 @@ impl PluginManager {
             }
         };
 
-        // Read and execute init.lua
         let code = std::fs::read_to_string(&init_path).map_err(|e| {
             PluginError::LoadError(format!("Failed to read {}: {}", init_path.display(), e))
         })?;
@@ -377,14 +357,12 @@ impl PluginManager {
                 PluginError::ExecutionError(format!("Error in {}: {}", init_path.display(), e))
             })?;
 
-        // Collect notifications
         self.collect_notifications();
 
         self.loaded = true;
         Ok(())
     }
 
-    /// Update the plugin context with current state
     pub fn update_context(
         &mut self,
         current_file: Option<PathBuf>,
@@ -397,25 +375,21 @@ impl PluginManager {
         ctx.set_selected_files(selected_files);
     }
 
-    /// Collect pending notifications from the context
     fn collect_notifications(&mut self) {
         let mut ctx = self.context.lock().unwrap();
         self.pending_notifications.extend(ctx.take_notifications());
     }
 
-    /// Take pending notifications
     pub fn take_notifications(&mut self) -> Vec<String> {
         self.collect_notifications();
         std::mem::take(&mut self.pending_notifications)
     }
 
-    /// Collect pending actions from the context
     fn collect_actions(&mut self) {
         let mut ctx = self.context.lock().unwrap();
         self.pending_actions.extend(ctx.take_actions());
     }
 
-    /// Take pending actions
     pub fn take_actions(&mut self) -> Vec<PluginAction> {
         self.collect_actions();
         std::mem::take(&mut self.pending_actions)
@@ -437,7 +411,6 @@ impl PluginManager {
 
     // === Phase 12c: Registration API methods ===
 
-    /// Check if a command is registered
     pub fn has_command(&self, name: &str) -> bool {
         let Ok(globals) = self.lua.globals().get::<mlua::Table>("fv") else {
             return false;
@@ -448,7 +421,6 @@ impl PluginManager {
         commands.contains_key(name).unwrap_or(false)
     }
 
-    /// Get list of registered command names
     pub fn list_commands(&self) -> Vec<String> {
         let mut names = Vec::new();
         let Ok(globals) = self.lua.globals().get::<mlua::Table>("fv") else {
@@ -463,7 +435,6 @@ impl PluginManager {
         names
     }
 
-    /// Invoke a registered command by name
     pub fn invoke_command(&mut self, name: &str) -> Result<(), PluginError> {
         let globals = self.lua.globals();
         let fv: mlua::Table = globals.get("fv").map_err(PluginError::from)?;
@@ -482,7 +453,6 @@ impl PluginManager {
         Ok(())
     }
 
-    /// Fire an event and call all registered handlers
     pub fn fire_event(&mut self, event: PluginEvent, arg: Option<&str>) -> Result<(), PluginError> {
         let globals = self.lua.globals();
         let fv: mlua::Table = globals.get("fv").map_err(PluginError::from)?;
@@ -494,7 +464,6 @@ impl PluginManager {
             Err(_) => return Ok(()), // No handlers registered
         };
 
-        // Call each handler
         for (_, func) in handlers.pairs::<i64, Function>().flatten() {
             if let Some(arg_str) = arg {
                 let _ = func.call::<()>(arg_str);
@@ -508,7 +477,6 @@ impl PluginManager {
         Ok(())
     }
 
-    /// Check if a previewer is registered for a pattern
     pub fn has_previewer(&self, pattern: &str) -> bool {
         let Ok(globals) = self.lua.globals().get::<mlua::Table>("fv") else {
             return false;
@@ -519,7 +487,6 @@ impl PluginManager {
         previewers.contains_key(pattern).unwrap_or(false)
     }
 
-    /// Get list of registered previewer patterns
     pub fn list_previewers(&self) -> Vec<String> {
         let mut patterns = Vec::new();
         let Ok(globals) = self.lua.globals().get::<mlua::Table>("fv") else {
@@ -534,7 +501,6 @@ impl PluginManager {
         patterns
     }
 
-    /// Find a previewer that matches the given filename
     /// Returns the pattern that matched
     pub fn find_previewer(&self, filename: &str) -> Option<String> {
         self.list_previewers()
@@ -542,7 +508,6 @@ impl PluginManager {
             .find(|pattern| matches_glob(pattern, filename))
     }
 
-    /// Invoke a previewer and get the result
     /// Returns the preview content as a string
     pub fn invoke_previewer(&mut self, pattern: &str, path: &str) -> Result<String, PluginError> {
         let globals = self.lua.globals();
@@ -577,7 +542,6 @@ fn matches_glob_recursive(pattern: &[char], text: &[char], pi: usize, ti: usize)
 
     match pattern[pi] {
         '*' => {
-            // Match zero or more characters
             for i in ti..=text.len() {
                 if matches_glob_recursive(pattern, text, pi + 1, i) {
                     return true;
@@ -586,7 +550,6 @@ fn matches_glob_recursive(pattern: &[char], text: &[char], pi: usize, ti: usize)
             false
         }
         '?' => {
-            // Match exactly one character
             if ti < text.len() {
                 matches_glob_recursive(pattern, text, pi + 1, ti + 1)
             } else {
@@ -594,7 +557,6 @@ fn matches_glob_recursive(pattern: &[char], text: &[char], pi: usize, ti: usize)
             }
         }
         c => {
-            // Match exact character
             if ti < text.len() && text[ti] == c {
                 matches_glob_recursive(pattern, text, pi + 1, ti + 1)
             } else {
@@ -610,7 +572,6 @@ impl Default for PluginManager {
     }
 }
 
-/// Format a Lua value as a string for display
 fn format_lua_value(value: &mlua::Value) -> String {
     match value {
         mlua::Value::Nil => "nil".to_string(),
@@ -646,7 +607,7 @@ mod tests {
         let manager = PluginManager::new().unwrap();
         let result = manager.eval("fv.version()");
         assert!(result.is_ok());
-        assert!(result.unwrap().contains(".")); // Should contain version like "2.0.0-alpha"
+        assert!(result.unwrap().contains("."));
     }
 
     #[test]
@@ -711,12 +672,10 @@ mod tests {
     fn test_fv_is_dir() {
         let manager = PluginManager::new().unwrap();
 
-        // Test with a directory that definitely exists
         let result = manager.eval("fv.is_dir('/')");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "true");
 
-        // Test with a file that doesn't exist
         let result = manager.eval("fv.is_dir('/nonexistent/path')");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "false");
@@ -726,12 +685,10 @@ mod tests {
     fn test_fv_file_exists() {
         let manager = PluginManager::new().unwrap();
 
-        // Test with root directory
         let result = manager.eval("fv.file_exists('/')");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "true");
 
-        // Test with nonexistent path
         let result = manager.eval("fv.file_exists('/definitely/does/not/exist/xyz123')");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "false");
@@ -925,7 +882,6 @@ mod tests {
     fn test_register_command() {
         let mut manager = PluginManager::new().unwrap();
 
-        // Register a command
         manager
             .exec(
                 r#"
@@ -936,7 +892,6 @@ mod tests {
             )
             .unwrap();
 
-        // Check it's registered
         assert!(manager.has_command("test-cmd"));
         assert!(!manager.has_command("nonexistent"));
     }
@@ -945,7 +900,6 @@ mod tests {
     fn test_invoke_command() {
         let mut manager = PluginManager::new().unwrap();
 
-        // Register a command that sets a notification
         manager
             .exec(
                 r#"
@@ -956,7 +910,6 @@ mod tests {
             )
             .unwrap();
 
-        // Invoke it
         manager.invoke_command("hello").unwrap();
 
         let notifications = manager.take_notifications();
@@ -995,7 +948,6 @@ mod tests {
     fn test_on_event() {
         let mut manager = PluginManager::new().unwrap();
 
-        // Register an event handler
         manager
             .exec(
                 r#"
@@ -1006,7 +958,6 @@ mod tests {
             )
             .unwrap();
 
-        // Fire the event
         manager
             .fire_event(PluginEvent::FileSelected, Some("/test/file.txt"))
             .unwrap();
@@ -1020,7 +971,6 @@ mod tests {
     fn test_multiple_event_handlers() {
         let mut manager = PluginManager::new().unwrap();
 
-        // Register multiple handlers for the same event
         manager
             .exec(
                 r#"
@@ -1034,7 +984,6 @@ mod tests {
             )
             .unwrap();
 
-        // Fire the event
         manager.fire_event(PluginEvent::Start, None).unwrap();
 
         let notifications = manager.take_notifications();
@@ -1047,7 +996,6 @@ mod tests {
     fn test_fire_event_no_handlers() {
         let mut manager = PluginManager::new().unwrap();
 
-        // Should not error when no handlers registered
         let result = manager.fire_event(PluginEvent::BeforeQuit, None);
         assert!(result.is_ok());
     }

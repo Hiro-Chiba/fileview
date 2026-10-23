@@ -13,9 +13,6 @@ pub struct RelatedCandidate {
     pub reasons: Vec<&'static str>,
 }
 
-/// Collect related paths for a target file.
-///
-/// This is a convenience wrapper around [`collect_related_candidates`].
 pub fn collect_related_paths(target: &Path) -> Vec<PathBuf> {
     collect_related_candidates(target)
         .into_iter()
@@ -23,7 +20,6 @@ pub fn collect_related_paths(target: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Collect scored related file candidates for a target file.
 pub fn collect_related_candidates(target: &Path) -> Vec<RelatedCandidate> {
     if !target.exists() || !target.is_file() {
         return Vec::new();
@@ -93,7 +89,6 @@ pub fn collect_related_candidates(target: &Path) -> Vec<RelatedCandidate> {
             }
         }
 
-        // Common test pairs.
         for candidate in test_pair_paths(parent, &stem, ext) {
             let mut score = 50;
             let mut reasons = vec!["test_pair"];

@@ -1,6 +1,4 @@
 //! Context optimization handlers
-//!
-//! Implements get_smart_context, estimate_tokens, compress_context.
 
 use std::fs;
 use std::path::Path;
@@ -39,7 +37,6 @@ pub fn get_smart_context(
     let mut context_parts = Vec::new();
     let mut total_tokens = 0;
 
-    // 1. Read main file
     let main_content = match fs::read_to_string(&canonical) {
         Ok(c) => c,
         Err(e) => return error_result(&format!("Failed to read focus file: {}", e)),
@@ -59,14 +56,12 @@ pub fn get_smart_context(
         focus_file, main_tokens, main_content
     ));
 
-    // 2. Find and include dependencies if requested
     if include_deps && budget.remaining(total_tokens) > 100 {
         let deps = find_file_dependencies(root, &canonical);
         let mut dep_content = String::new();
         let mut dep_tokens = 0;
 
         for dep_path in deps.iter().take(5) {
-            // Limit to 5 deps
             if let Ok(content) = fs::read_to_string(dep_path) {
                 let tokens = estimate_tokens(&content);
                 if dep_tokens + tokens < budget.imports_reserve {
@@ -85,7 +80,6 @@ pub fn get_smart_context(
         }
     }
 
-    // 3. Find and include related tests if requested
     if include_tests && budget.remaining(total_tokens) > 100 {
         if let Some(test_path) = find_related_test(root, &canonical) {
             if let Ok(test_content) = fs::read_to_string(&test_path) {
@@ -111,7 +105,6 @@ pub fn get_smart_context(
         }
     }
 
-    // Build final output
     let mut output = String::new();
     output.push_str(&format!(
         "Smart Context for {} (Total: {} tokens)\n",
@@ -126,7 +119,6 @@ pub fn get_smart_context(
     success_result(output)
 }
 
-/// Estimate token counts for files
 pub fn estimate_tokens_handler(root: &Path, paths: &[&str]) -> ToolCallResult {
     let mut results = Vec::new();
     let mut total = 0;
@@ -166,7 +158,6 @@ pub fn estimate_tokens_handler(root: &Path, paths: &[&str]) -> ToolCallResult {
     success_result(output)
 }
 
-/// Compress file content by removing comments and whitespace
 pub fn compress_context_handler(
     root: &Path,
     path: &str,
@@ -188,11 +179,9 @@ pub fn compress_context_handler(
 
     let original_tokens = estimate_tokens(&content);
 
-    // Compress content
     let compressed = compress_content(&content);
     let compressed_tokens = estimate_tokens(&compressed);
 
-    // Optionally truncate to max tokens
     let final_content = match max_tokens {
         Some(max) if compressed_tokens > max => truncate_to_tokens(&compressed, max),
         _ => compressed,
@@ -216,7 +205,6 @@ pub fn compress_context_handler(
     success_result(output)
 }
 
-/// Find file dependencies by parsing imports/use statements
 fn find_file_dependencies(root: &Path, file: &Path) -> Vec<std::path::PathBuf> {
     let mut deps = Vec::new();
 
@@ -229,11 +217,9 @@ fn find_file_dependencies(root: &Path, file: &Path) -> Vec<std::path::PathBuf> {
 
     match ext {
         "rs" => {
-            // Rust: parse use/mod statements
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("use ") || trimmed.starts_with("mod ") {
-                    // Extract module path and try to find the file
                     if let Some(module) = extract_rust_module(trimmed) {
                         if let Some(dep_path) = resolve_rust_module(root, file, &module) {
                             deps.push(dep_path);
@@ -243,7 +229,6 @@ fn find_file_dependencies(root: &Path, file: &Path) -> Vec<std::path::PathBuf> {
             }
         }
         "ts" | "tsx" | "js" | "jsx" => {
-            // TypeScript/JavaScript: parse import statements
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("import ") {
@@ -256,7 +241,6 @@ fn find_file_dependencies(root: &Path, file: &Path) -> Vec<std::path::PathBuf> {
             }
         }
         "py" => {
-            // Python: parse import/from statements
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("import ") || trimmed.starts_with("from ") {
@@ -274,12 +258,10 @@ fn find_file_dependencies(root: &Path, file: &Path) -> Vec<std::path::PathBuf> {
     deps
 }
 
-/// Find related test file for a source file
 fn find_related_test(root: &Path, file: &Path) -> Option<std::path::PathBuf> {
     let file_name = file.file_stem()?.to_str()?;
     let ext = file.extension()?.to_str()?;
 
-    // Common test file patterns
     let test_patterns = [
         format!("{}_test.{}", file_name, ext),
         format!("test_{}.{}", file_name, ext),
@@ -287,7 +269,6 @@ fn find_related_test(root: &Path, file: &Path) -> Option<std::path::PathBuf> {
         format!("{}.spec.{}", file_name, ext),
     ];
 
-    // Check in same directory
     if let Some(parent) = file.parent() {
         for pattern in &test_patterns {
             let test_path = parent.join(pattern);
@@ -297,7 +278,6 @@ fn find_related_test(root: &Path, file: &Path) -> Option<std::path::PathBuf> {
         }
     }
 
-    // Check in tests/ directory at root
     let tests_dir = root.join("tests");
     if tests_dir.exists() {
         for pattern in &test_patterns {
@@ -344,7 +324,6 @@ fn extract_rust_module(line: &str) -> Option<String> {
 }
 
 fn resolve_rust_module(root: &Path, _file: &Path, module: &str) -> Option<std::path::PathBuf> {
-    // Try to find module file
     let candidates = [
         root.join("src").join(format!("{}.rs", module)),
         root.join("src").join(module).join("mod.rs"),
@@ -380,7 +359,6 @@ fn resolve_js_import(root: &Path, file: &Path, import_path: &str) -> Option<std:
     let base_dir = file.parent()?;
     let resolved = base_dir.join(import_path);
 
-    // Try various extensions
     let extensions = ["", ".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.js"];
     for ext in &extensions {
         let candidate = std::path::PathBuf::from(format!("{}{}", resolved.display(), ext));
@@ -410,7 +388,6 @@ fn extract_python_import(line: &str) -> Option<String> {
 }
 
 fn resolve_python_import(root: &Path, _file: &Path, module: &str) -> Option<std::path::PathBuf> {
-    // Convert module path to file path
     let path_str = module.replace('.', "/");
 
     let candidates = [

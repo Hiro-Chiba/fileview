@@ -1,7 +1,5 @@
 //! Token estimation for AI context optimization
 //!
-//! Provides token counting and estimation for optimizing context sent to AI models.
-//!
 //! With the `ai` feature enabled, `estimate_tokens` uses `tiktoken-rs`'s
 //! `cl100k_base` BPE which is accurate for GPT-4 and a reasonable
 //! approximation for Claude (within roughly 5 to 10 percent). Without it,
@@ -18,11 +16,9 @@ use tiktoken_rs::{cl100k_base, CoreBPE};
 
 use crate::error::{FileviewError, Result};
 
-/// Lazy-initialized tokenizer (cl100k_base - used by GPT-4 and Claude)
 #[cfg(feature = "ai")]
 static TOKENIZER: OnceLock<CoreBPE> = OnceLock::new();
 
-/// Get the shared tokenizer instance
 #[cfg(feature = "ai")]
 fn get_tokenizer() -> &'static CoreBPE {
     TOKENIZER.get_or_init(|| cl100k_base().expect("Failed to initialize tokenizer"))
@@ -48,7 +44,6 @@ pub fn estimate_tokens(text: &str) -> usize {
     text.chars().count() / 4 + 1
 }
 
-/// Estimate tokens for a file by reading its content.
 pub fn estimate_file_tokens(path: &Path) -> Result<usize> {
     let content = std::fs::read_to_string(path).map_err(|e| {
         FileviewError::token(format!("failed to read file {}: {}", path.display(), e))
@@ -56,8 +51,6 @@ pub fn estimate_file_tokens(path: &Path) -> Result<usize> {
     Ok(estimate_tokens(&content))
 }
 
-/// Estimate tokens for multiple files.
-///
 /// Returns a vector of (path, token_count) pairs and the total.
 pub fn estimate_files_tokens(paths: &[&Path]) -> Result<(Vec<(String, usize)>, usize)> {
     let mut results = Vec::with_capacity(paths.len());
@@ -82,15 +75,10 @@ pub fn estimate_files_tokens(paths: &[&Path]) -> Result<(Vec<(String, usize)>, u
 /// Token budget configuration for context generation.
 #[derive(Debug, Clone)]
 pub struct TokenBudget {
-    /// Maximum total tokens
     pub max_tokens: usize,
-    /// Reserved tokens for the main file
     pub main_file_reserve: usize,
-    /// Reserved tokens for imports/dependencies
     pub imports_reserve: usize,
-    /// Reserved tokens for related tests
     pub tests_reserve: usize,
-    /// Reserved tokens for other context
     pub other_reserve: usize,
 }
 
@@ -107,9 +95,7 @@ impl Default for TokenBudget {
 }
 
 impl TokenBudget {
-    /// Create a new token budget with custom max tokens.
     pub fn new(max_tokens: usize) -> Self {
-        // Distribute tokens proportionally
         let main_file_reserve = max_tokens / 2;
         let imports_reserve = max_tokens / 4;
         let tests_reserve = max_tokens / 8;
@@ -124,12 +110,10 @@ impl TokenBudget {
         }
     }
 
-    /// Check if content fits within the budget.
     pub fn fits(&self, current: usize) -> bool {
         current <= self.max_tokens
     }
 
-    /// Get remaining tokens.
     pub fn remaining(&self, used: usize) -> usize {
         self.max_tokens.saturating_sub(used)
     }
@@ -164,7 +148,7 @@ pub fn truncate_to_tokens(content: &str, max_tokens: usize) -> String {
         let chars: Vec<char> = content.chars().collect();
         let mut end = chars.len();
         while end > 0 && estimate_tokens(&chars[..end].iter().collect::<String>()) > max_tokens {
-            end = end * 3 / 4; // Reduce by 25% each iteration
+            end = end * 3 / 4;
         }
         format!("{}...", chars[..end].iter().collect::<String>())
     } else {
@@ -182,12 +166,10 @@ pub fn compress_content(content: &str) -> String {
     for line in content.lines() {
         let trimmed = line.trim();
 
-        // Skip empty lines
         if trimmed.is_empty() {
             continue;
         }
 
-        // Handle multiline comments (/* ... */)
         if in_multiline_comment {
             if trimmed.contains("*/") {
                 in_multiline_comment = false;
@@ -200,17 +182,14 @@ pub fn compress_content(content: &str) -> String {
             continue;
         }
 
-        // Skip single-line comments
         if trimmed.starts_with("//") || trimmed.starts_with('#') {
             continue;
         }
 
-        // Skip doc comments but keep code
         if trimmed.starts_with("///") || trimmed.starts_with("//!") {
             continue;
         }
 
-        // Compress multiple spaces to single space
         let compressed: String = trimmed.split_whitespace().collect::<Vec<_>>().join(" ");
 
         if !compressed.is_empty() {
@@ -221,7 +200,6 @@ pub fn compress_content(content: &str) -> String {
     result.join("\n")
 }
 
-/// Format file content with path header for AI context.
 pub fn format_file_context(path: &Path, content: &str) -> String {
     format!("--- {} ---\n{}\n", path.display(), content)
 }
@@ -232,13 +210,11 @@ mod tests {
 
     #[test]
     fn test_estimate_tokens() {
-        // Simple text should have predictable token count
         let text = "Hello, world!";
         let tokens = estimate_tokens(text);
         assert!(tokens > 0);
         assert!(tokens < 10);
 
-        // Longer text should have more tokens
         let long_text = "Hello, world! ".repeat(100);
         let long_tokens = estimate_tokens(&long_text);
         assert!(long_tokens > tokens);
@@ -269,11 +245,9 @@ mod tests {
         let content = "line1\nline2\nline3\nline4\nline5";
         let tokens = estimate_tokens(content);
 
-        // Truncating to more than current should return same content
         let truncated = truncate_to_tokens(content, tokens + 100);
         assert_eq!(truncated, content);
 
-        // Truncating to less should result in shorter content
         let truncated = truncate_to_tokens(content, 3);
         assert!(truncated.len() < content.len());
     }

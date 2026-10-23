@@ -1,9 +1,7 @@
 //! Activity emitter used by `fv --mcp-server`.
 //!
-//! Appends an event line to each interactive session whose configured root
-//! contains the event's path. Errors are swallowed on purpose: the MCP server
-//! must never fail a tool call just because the UI side could not receive a
-//! notification.
+//! Errors are swallowed on purpose because the MCP server must never fail a
+//! tool call just because the UI side could not receive a notification.
 
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -14,7 +12,6 @@ use std::process;
 
 use super::{ActivityEvent, SessionInfo, SessionRegistry};
 
-/// Emits activity events to matching interactive sessions.
 pub struct ActivityEmitter {
     registry: Option<SessionRegistry>,
     source: String,

@@ -1,6 +1,4 @@
 //! Custom command execution
-//!
-//! Executes user-defined shell commands with placeholder expansion.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -8,24 +6,15 @@ use std::process::Command;
 use crate::app::CommandsConfig;
 use crate::core::AppState;
 
-/// Result of command execution
 #[derive(Debug)]
 pub enum CommandResult {
-    /// Command executed successfully
     Success(String),
-    /// Command failed
     Error(String),
     /// Command not found in config
     NotFound,
 }
 
-/// Execute a custom command by name
-///
-/// # Arguments
-/// * `name` - The command name as defined in config
-/// * `config` - The commands configuration
-/// * `file_path` - The current file path for placeholder expansion
-/// * `selected_paths` - Selected file paths (for $S placeholder)
+/// `file_path` drives placeholder expansion, and `selected_paths` fills the `$S` placeholder.
 pub fn execute_command(
     name: &str,
     config: &CommandsConfig,
@@ -37,11 +26,9 @@ pub fn execute_command(
         None => return CommandResult::NotFound,
     };
 
-    // Expand placeholders
     let cmd = if let Some(path) = file_path {
         let mut expanded = CommandsConfig::expand_shell_escaped(template, path);
 
-        // Handle $S (selected files) - join paths with spaces, quoted
         if expanded.contains("$S") {
             let selected: Vec<String> = selected_paths
                 .iter()
@@ -55,7 +42,6 @@ pub fn execute_command(
         template.clone()
     };
 
-    // Execute command via shell
     let output = if cfg!(target_os = "windows") {
         Command::new("cmd").args(["/C", &cmd]).output()
     } else {
@@ -100,7 +86,7 @@ pub fn execute_interactive(
         template.clone()
     };
 
-    // For interactive commands, we need to spawn and wait
+    // status() instead of output() so the command inherits the terminal.
     let status = if cfg!(target_os = "windows") {
         Command::new("cmd").args(["/C", &cmd]).status()
     } else {
@@ -124,7 +110,6 @@ pub fn execute_interactive(
 /// This spawns the user's default shell in the current directory.
 /// The fileview UI will be suspended until the subshell exits.
 pub fn open_subshell(state: &mut AppState, focused_path: Option<&PathBuf>) {
-    // Determine the target directory
     let dir = focused_path
         .and_then(|p| {
             if p.is_dir() {
@@ -135,7 +120,6 @@ pub fn open_subshell(state: &mut AppState, focused_path: Option<&PathBuf>) {
         })
         .unwrap_or_else(|| state.root.clone());
 
-    // Get the user's shell
     let shell = std::env::var("SHELL").unwrap_or_else(|_| {
         if cfg!(target_os = "windows") {
             "cmd".to_string()
@@ -144,7 +128,6 @@ pub fn open_subshell(state: &mut AppState, focused_path: Option<&PathBuf>) {
         }
     });
 
-    // Message for the user
     state.set_message(format!("Opening subshell in {}...", dir.display()));
 
     // Note: Actually spawning an interactive shell requires terminal handling

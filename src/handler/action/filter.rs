@@ -1,11 +1,6 @@
-//! Filter action handlers
-//!
-//! Handles file filter operations
-
 use crate::core::{AppState, ViewMode};
 use crate::handler::key::KeyAction;
 
-/// Handle filter-related actions
 pub fn handle(action: KeyAction, state: &mut AppState) {
     match action {
         KeyAction::StartFilter => {
@@ -34,13 +29,11 @@ pub fn handle(action: KeyAction, state: &mut AppState) {
     }
 }
 
-/// Check if a filename matches the filter pattern
 /// Supports simple glob patterns: * (any chars), ? (single char)
 pub fn matches_filter(filename: &str, pattern: &str) -> bool {
     glob_match(pattern, filename)
 }
 
-/// Simple glob matching implementation
 fn glob_match(pattern: &str, text: &str) -> bool {
     let pattern: Vec<char> = pattern.chars().collect();
     let text: Vec<char> = text.chars().collect();
@@ -55,11 +48,9 @@ fn glob_match_impl(pattern: &[char], text: &[char]) -> bool {
 
     while t_idx < text.len() {
         if p_idx < pattern.len() && (pattern[p_idx] == '?' || pattern[p_idx] == text[t_idx]) {
-            // Characters match or pattern has ?
             p_idx += 1;
             t_idx += 1;
         } else if p_idx < pattern.len() && pattern[p_idx] == '*' {
-            // Star found, remember position
             star_idx = Some(p_idx);
             match_idx = t_idx;
             p_idx += 1;
@@ -69,12 +60,10 @@ fn glob_match_impl(pattern: &[char], text: &[char]) -> bool {
             match_idx += 1;
             t_idx = match_idx;
         } else {
-            // No match
             return false;
         }
     }
 
-    // Check remaining pattern characters (should all be stars)
     while p_idx < pattern.len() && pattern[p_idx] == '*' {
         p_idx += 1;
     }
