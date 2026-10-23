@@ -7,7 +7,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
 };
 use syntect::easy::HighlightLines;
@@ -78,6 +78,8 @@ pub struct TextPreview {
     pub prefix_clipped: bool,
     /// Visible reason when resource limits prevent accurate syntax replay.
     pub syntax_note: Option<&'static str>,
+    /// Source is Markdown and may be shown rendered on wide panes.
+    pub markdown: bool,
     syntax_complete: bool,
 }
 
@@ -102,6 +104,7 @@ impl TextPreview {
         Ok(Self {
             syntax_complete: styled_lines.is_some(),
             syntax_note: None,
+            markdown: super::markdown::is_markdown_file(path),
             lines: window.text.lines().map(String::from).collect(),
             styled_lines,
             scroll: 0,
@@ -154,6 +157,7 @@ impl TextPreview {
             next: None,
             prefix_clipped: false,
             syntax_note: None,
+            markdown: false,
             syntax_complete: true,
         }
     }
@@ -171,6 +175,7 @@ impl TextPreview {
             next: None,
             prefix_clipped: false,
             syntax_note: None,
+            markdown: super::markdown::is_markdown_file(path),
             syntax_complete: true,
         }
     }
@@ -228,6 +233,11 @@ pub fn render_text_preview(
     title: &str,
     focused: bool,
 ) {
+    if preview.markdown && area.width >= super::markdown::MIN_RENDER_WIDTH {
+        render_markdown_preview(frame, preview, area, title, focused);
+        return;
+    }
+
     let visible_height = area.height.saturating_sub(2) as usize;
     let start = preview.scroll.min(preview.lines.len());
     let end = (start + visible_height).min(preview.lines.len());
@@ -283,6 +293,29 @@ pub fn render_text_preview(
         None => title.to_owned(),
     };
     let widget = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(format!(" {} ", title))
+            .border_style(get_border_style(focused)),
+    );
+
+    frame.render_widget(widget, area);
+}
+
+fn render_markdown_preview(
+    frame: &mut Frame,
+    preview: &TextPreview,
+    area: Rect,
+    title: &str,
+    focused: bool,
+) {
+    let visible_height = area.height.saturating_sub(2) as usize;
+    let lines: Vec<Line> =
+        super::markdown::render(&preview.lines, area.width, preview.scroll, visible_height)
+            .into_iter()
+            .map(|(_, line)| line)
+            .collect();
+    let widget = Paragraph::new(lines).wrap(Wrap { trim: false }).block(
         Block::default()
             .borders(Borders::ALL)
             .title(format!(" {} ", title))
@@ -400,6 +433,44 @@ mod window_tests {
         assert_eq!(terminal.backend().buffer()[(8, 1)].symbol(), "日");
         assert_eq!(terminal.backend().buffer()[(10, 1)].symbol(), "本");
         assert_eq!(terminal.backend().buffer()[(12, 1)].symbol(), "語");
+    }
+
+    fn draw_row(preview: &TextPreview, width: u16, y: u16) -> String {
+        let mut terminal =
+            ratatui::Terminal::new(ratatui::backend::TestBackend::new(width, 5)).unwrap();
+        terminal
+            .draw(|frame| render_text_preview(frame, preview, frame.area(), "doc", true))
+            .unwrap();
+        (0..width)
+            .map(|x| terminal.backend().buffer()[(x, y)].symbol())
+            .collect()
+    }
+
+    #[test]
+    fn markdown_is_rendered_only_on_wide_panes() {
+        let path = Path::new("README.md");
+        let preview = TextPreview::with_highlighting("# Title\n\n- item\n", path);
+        let wide = super::super::markdown::MIN_RENDER_WIDTH;
+
+        assert!(draw_row(&preview, wide - 1, 1).contains("   1 # Title"));
+        let row = draw_row(&preview, wide, 1);
+        assert!(row.starts_with("│Title "), "{row}");
+        assert!(draw_row(&preview, wide, 3).starts_with("│• item"));
+    }
+
+    #[test]
+    fn rendered_markdown_starts_at_the_scrolled_source_line() {
+        let path = Path::new("README.md");
+        let mut preview = TextPreview::with_highlighting("```\ncode\n```\nafter\nlast\n", path);
+        preview.scroll = 2;
+        let row = draw_row(&preview, 80, 1);
+        assert!(row.starts_with("│after "), "{row}");
+    }
+
+    #[test]
+    fn non_markdown_files_keep_raw_view_on_wide_panes() {
+        let preview = TextPreview::with_highlighting("# comment\n", Path::new("run.sh"));
+        assert!(draw_row(&preview, 120, 1).contains("   1 # comment"));
     }
 
     #[test]

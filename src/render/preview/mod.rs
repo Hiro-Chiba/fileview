@@ -18,6 +18,7 @@ pub mod diff;
 pub mod directory;
 pub mod hex;
 pub mod image;
+pub mod markdown;
 pub mod pdf;
 pub mod text;
 pub mod video;
