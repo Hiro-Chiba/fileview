@@ -110,8 +110,9 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 | `[` | Previous PDF page |
 | `]` | Next PDF page |
 
-Markdown files are shown rendered when the preview pane is at least 80 columns
-wide, such as in fullscreen preview. Narrower panes show the raw source. Files
+SVG files are shown as images, without any text they contain. Markdown files
+are shown rendered when the preview pane is at least 80 columns wide, such as in
+fullscreen preview. Narrower panes show the raw source. Files
 with an extension FileView does not know are previewed as text when their
 content is UTF-8 text, and as a hex dump otherwise.
 

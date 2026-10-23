@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Markdown files are previewed rendered when the preview pane is at least 80 columns wide, such as in fullscreen preview or on a large terminal. Narrower panes keep the raw source view.
+- SVG files are previewed as images. They are rasterized with `resvg` without text support, so text inside an SVG is not drawn. The new `svg` feature is on by default, and building without it previews SVG files as XML source and makes the binary about 400 KB smaller.
 
 ### Fixed
 

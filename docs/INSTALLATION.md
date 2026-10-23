@@ -59,8 +59,8 @@ fv
 
 ## Build options
 
-The default build includes clipboard support, Lua plugins, archive previews, and
-AI helpers. To build without those optional features:
+The default build includes clipboard support, Lua plugins, archive previews, SVG
+previews, and AI helpers. To build without those optional features:
 
 ```sh
 cargo install fileview --locked --no-default-features
@@ -69,8 +69,11 @@ cargo install fileview --locked --no-default-features
 You can also choose individual features:
 
 ```sh
-cargo install fileview --locked --no-default-features --features ai,clipboard,lua,archive
+cargo install fileview --locked --no-default-features --features ai,clipboard,lua,archive,svg
 ```
+
+Without `svg`, SVG files are previewed as XML source instead of an image, and the
+binary is about 400 KB smaller.
 
 For a build that favors speed over binary size, use
 `cargo install fileview --locked --profile release-fast`.

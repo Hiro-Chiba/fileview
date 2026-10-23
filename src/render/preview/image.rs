@@ -1,6 +1,6 @@
 //! Image preview with ratatui-image protocol support
 
-use image::GenericImageView;
+use image::{DynamicImage, GenericImageView};
 use ratatui::{
     layout::Rect,
     widgets::{Block, Borders},
@@ -21,7 +21,7 @@ pub struct ImagePreview {
 impl ImagePreview {
     /// Load image from file path using ratatui-image picker
     pub fn load(path: &std::path::Path, picker: &mut Picker) -> anyhow::Result<Self> {
-        let dyn_img = image::open(path)?;
+        let dyn_img = open_image(path)?;
         let (width, height) = dyn_img.dimensions();
         let protocol = picker.new_resize_protocol(dyn_img);
 
@@ -31,6 +31,59 @@ impl ImagePreview {
             protocol,
         })
     }
+}
+
+/// Longest side, in pixels, that an SVG is rasterized to. The terminal
+/// protocol scales the result to the pane, so this only bounds sharpness and
+/// memory, whatever size the SVG declares.
+#[cfg(feature = "svg")]
+const SVG_RASTER_SIZE: f32 = 1024.0;
+
+/// Open an image file, rasterizing SVG when the `svg` feature is enabled.
+pub fn open_image(path: &std::path::Path) -> anyhow::Result<DynamicImage> {
+    #[cfg(feature = "svg")]
+    if is_svg_file(path) {
+        return rasterize_svg(&std::fs::read(path)?);
+    }
+    Ok(image::open(path)?)
+}
+
+#[cfg(feature = "svg")]
+fn is_svg_file(path: &std::path::Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("svg"))
+}
+
+#[cfg(feature = "svg")]
+fn rasterize_svg(data: &[u8]) -> anyhow::Result<DynamicImage> {
+    use resvg::{tiny_skia, usvg};
+
+    let tree = usvg::Tree::from_data(data, &usvg::Options::default())?;
+    let size = tree.size();
+    let scale = SVG_RASTER_SIZE / size.width().max(size.height());
+    let width = (size.width() * scale).round().max(1.0) as u32;
+    let height = (size.height() * scale).round().max(1.0) as u32;
+    let mut pixmap = tiny_skia::Pixmap::new(width, height)
+        .ok_or_else(|| anyhow::anyhow!("invalid SVG size {width}x{height}"))?;
+    resvg::render(
+        &tree,
+        tiny_skia::Transform::from_scale(scale, scale),
+        &mut pixmap.as_mut(),
+    );
+
+    // tiny-skia stores premultiplied alpha, while `image` expects straight alpha.
+    let rgba = pixmap
+        .pixels()
+        .iter()
+        .flat_map(|p| {
+            let c = p.demultiply();
+            [c.red(), c.green(), c.blue(), c.alpha()]
+        })
+        .collect();
+    let image = image::RgbaImage::from_raw(width, height, rgba)
+        .ok_or_else(|| anyhow::anyhow!("SVG raster buffer size mismatch"))?;
+    Ok(DynamicImage::ImageRgba8(image))
 }
 
 /// Calculate centered area for an image within a given area
@@ -120,5 +173,46 @@ pub fn is_image_file(path: &std::path::Path) -> bool {
     matches!(
         ext.as_deref(),
         Some("png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp" | "ico")
-    )
+    ) || (cfg!(feature = "svg") && ext.as_deref() == Some("svg"))
+}
+
+#[cfg(all(test, feature = "svg"))]
+mod svg_tests {
+    use super::*;
+
+    #[test]
+    fn svg_is_rasterized_to_the_fixed_longest_side_keeping_aspect() {
+        let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32">
+            <rect width="64" height="32" fill="#ff0000"/></svg>"##;
+        let image = rasterize_svg(svg).unwrap();
+        assert_eq!(image.dimensions(), (1024, 512));
+        assert_eq!(image.get_pixel(512, 256).0, [255, 0, 0, 255]);
+    }
+
+    #[test]
+    fn transparent_areas_stay_transparent() {
+        let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">
+            <circle cx="5" cy="5" r="2" fill="#00ff00"/></svg>"##;
+        let image = rasterize_svg(svg).unwrap();
+        assert_eq!(image.get_pixel(0, 0).0[3], 0);
+        assert_eq!(image.get_pixel(512, 512).0, [0, 255, 0, 255]);
+    }
+
+    #[test]
+    fn invalid_svg_is_an_error() {
+        assert!(rasterize_svg(b"<svg").is_err());
+    }
+
+    #[test]
+    fn svg_files_are_images_and_open_through_open_image() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("Icon.SVG");
+        std::fs::write(
+            &path,
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8"/></svg>"#,
+        )
+        .unwrap();
+        assert!(is_image_file(&path));
+        assert_eq!(open_image(&path).unwrap().dimensions(), (1024, 1024));
+    }
 }
