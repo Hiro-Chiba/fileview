@@ -17,33 +17,26 @@ pub fn handle_confirm(
     navigator: &mut TreeNavigator,
     focused_path: &Option<PathBuf>,
 ) -> anyhow::Result<()> {
-    match &state.mode {
-        ViewMode::Input { purpose, .. } => {
-            let parent = get_target_directory(focused_path.as_ref(), &state.root);
-            match purpose {
-                InputPurpose::CreateFile => {
-                    file_ops::create_file(&parent, &value)?;
-                    reload_tree(navigator, state)?;
-                    state.set_message(format!("Created: {}", value));
-                }
-                InputPurpose::CreateDir => {
-                    file_ops::create_dir(&parent, &value)?;
-                    reload_tree(navigator, state)?;
-                    state.set_message(format!("Created: {}", value));
-                }
-                InputPurpose::Rename { original } => {
-                    file_ops::rename(original, &value)?;
-                    reload_tree(navigator, state)?;
-                    state.set_message(format!("Renamed: {}", value));
-                }
+    if let ViewMode::Input { purpose, .. } = &state.mode {
+        let parent = get_target_directory(focused_path.as_ref(), &state.root);
+        match purpose {
+            InputPurpose::CreateFile => {
+                file_ops::create_file(&parent, &value)?;
+                reload_tree(navigator, state)?;
+                state.set_message(format!("Created: {}", value));
             }
-            state.mode = ViewMode::Browse;
+            InputPurpose::CreateDir => {
+                file_ops::create_dir(&parent, &value)?;
+                reload_tree(navigator, state)?;
+                state.set_message(format!("Created: {}", value));
+            }
+            InputPurpose::Rename { original } => {
+                file_ops::rename(original, &value)?;
+                reload_tree(navigator, state)?;
+                state.set_message(format!("Renamed: {}", value));
+            }
         }
-        ViewMode::Search { .. } => {
-            // Keep search mode active, just update
-            state.mode = ViewMode::Search { query: value };
-        }
-        _ => {}
+        state.mode = ViewMode::Browse;
     }
     Ok(())
 }

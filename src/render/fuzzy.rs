@@ -14,6 +14,8 @@ use ratatui::{
     Frame,
 };
 
+use super::theme::theme;
+
 /// Maximum number of results to display
 const MAX_RESULTS: usize = 15;
 
@@ -265,10 +267,11 @@ pub fn render_fuzzy_finder(
             .enumerate()
             .map(|(i, m)| {
                 let is_selected = i == selected;
+                // Same selection style as the tree. A fixed blue background
+                // with white text was unreadable on themes with a light blue.
                 let style = if is_selected {
                     Style::default()
-                        .bg(Color::Blue)
-                        .fg(Color::White)
+                        .bg(theme().selection)
                         .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default()
