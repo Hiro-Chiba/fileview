@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-25
+
+FileView 3.1 renders Markdown and SVG files in the preview, and fixes tree search, bookmark jumps, and text detection that did not work from the keyboard.
+
 ### Added
 
 - Markdown files are previewed rendered when the preview pane is at least 80 columns wide, such as in fullscreen preview or on a large terminal. Narrower panes keep the raw source view.
@@ -19,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pressing Enter in the tree search now jumps to the first match and returns to browsing, so `n` and `N` move between matches instead of being typed into the query.
 - Text files with extensions that FileView does not know, such as `.csv`, `.svg`, and `.tf`, are previewed as text instead of a hex dump.
 - The selected row in the fuzzy finder uses the theme's selection color, so it stays readable on themes with a light blue such as Catppuccin.
+
+### Changed
+
+- The published crate contains only the sources, tests, README, license, and manifest. Docs, demos, and their GIFs stay in the repository, so the crate that `cargo install` downloads is about 330 KB instead of about 1 MB for 3.0.0.
+- Dependencies are refreshed. This includes the fix for RUSTSEC-2026-0385 in `ctutils`, which `zip` pulls in, and replaces the yanked `clipboard-win` 5.4.1 used on Windows.
+- Release binaries are built with Rust 1.99.1. The minimum supported Rust version stays at 1.90.0.
 
 ## [3.0.0] - 2026-10-05
 

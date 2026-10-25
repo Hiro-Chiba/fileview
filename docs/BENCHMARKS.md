@@ -30,6 +30,25 @@ same time. nnn remained substantially smaller, as expected from its intentionall
 minimal core. Among the compared tools with a richer built-in, preview-oriented
 experience, FileView had the lowest ready time and memory use in this test.
 
+## FileView 3.1.0 compared with 2.8.0
+
+FileView 3.1.0 adds rendered Markdown, SVG previews, and a larger feature set,
+so its executable is 0.71 MiB larger than 2.8.0. To check that startup did not
+slow down, both versions were measured again on 2026-10-25 with the same method,
+the same machine, and macOS 27.0.1. Each version was measured three times in
+alternating order, and the table shows the median of those three runs.
+
+| Product | 1 file ready | RSS | 10,000 files ready | RSS | Executable |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FileView 2.8.0 | 16.94 ms | 10.71 MiB | 29.17 ms | 23.24 MiB | 5.83 MiB |
+| FileView 3.1.0 | 17.65 ms | 11.05 MiB | 26.57 ms | 22.89 MiB | 6.54 MiB |
+
+Which version was faster changed from run to run, so the ready times are within
+measurement noise. Memory use is within 0.4 MiB. These numbers are lower than in
+the table above because they come from a newer macOS and a later run, so they
+should only be compared with each other. FileView 3.1.0 was built locally with
+the release profile, and 2.8.0 is the official ARM64 release executable.
+
 ## Method
 
 - Measured on 2026-08-31 with an Apple M4, 16 GiB RAM, macOS 26.6.2, and an
