@@ -30,8 +30,13 @@ intended for a local AI client.
 
 - File read/write/delete and listing tools confine paths to `<root>` by
   canonicalizing and rejecting anything that resolves outside it.
-- `write_file` and `delete_file` additionally refuse sensitive paths such as
-  `.git/hooks`, `.git/config`, `.env`, and credential files.
+- `write_file` and `delete_file` additionally refuse sensitive paths. This
+  covers everything inside a `.git` directory, including the directory itself,
+  as well as `.env` and credential files such as `.ssh` keys. The check uses the
+  normalized path relative to `<root>` after resolving symlinked parent
+  directories, so spellings such as `.git//hooks` or a symlink into `.git` are
+  refused too. Versions before 3.1.1 checked the raw argument and could be
+  bypassed this way.
 - `run_build`, `run_test`, `run_lint`, and `get_diagnostics` execute the
   project's own toolchain (build scripts, test code, lint plugins). Exposing
   these to an AI client is equivalent to allowing local code execution within
