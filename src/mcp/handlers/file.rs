@@ -6,7 +6,8 @@ use std::process::Command;
 
 use super::{error_result, success_result, ToolCallResult, ToolContent};
 use crate::mcp::security::{
-    is_sensitive_path, truncate_entry_name, validate_delete_path, validate_new_path, validate_path,
+    is_sensitive_path, is_sensitive_target, truncate_entry_name, validate_delete_path,
+    validate_new_path, validate_path,
 };
 
 pub fn list_directory(root: &Path, path: Option<&str>) -> ToolCallResult {
@@ -148,8 +149,9 @@ pub fn write_file(root: &Path, path: &str, content: &str, create_dirs: bool) -> 
     };
 
     // Refuse sensitive files (a planted git hook would run on the next git
-    // command). Check the relative path to avoid false positives on the root.
-    if is_sensitive_path(Path::new(path)) {
+    // command). The raw argument and the resolved target are both checked, and
+    // both relative to the root to avoid false positives on the root itself.
+    if is_sensitive_path(Path::new(path)) || is_sensitive_target(root, &target) {
         return error_result(&format!("Refusing to write to sensitive path: {}", path));
     }
 
@@ -183,7 +185,7 @@ pub fn delete_file(root: &Path, path: &str, recursive: bool, use_trash: bool) ->
     }
 
     // Refuse sensitive files. Check the relative path to avoid false positives.
-    if is_sensitive_path(Path::new(path)) {
+    if is_sensitive_path(Path::new(path)) || is_sensitive_target(root, &canonical) {
         return error_result(&format!("Refusing to delete sensitive path: {}", path));
     }
 
@@ -319,6 +321,55 @@ mod tests {
         let result = write_file(&root, ".git/hooks/pre-commit", "#!/bin/sh\nevil", true);
         assert_eq!(result.is_error, Some(true));
         assert!(!root.join(".git/hooks/pre-commit").exists());
+    }
+
+    #[test]
+    fn write_file_refuses_git_paths_however_they_are_spelled() {
+        let temp = tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        fs::create_dir_all(root.join(".git/hooks")).unwrap();
+
+        for path in [
+            ".git//hooks/pre-commit",
+            ".git/./hooks/pre-commit",
+            "./.git/hooks/pre-commit",
+            "src/../.git/hooks/pre-commit",
+            ".GIT/hooks/pre-commit",
+            ".git/./config",
+            ".git/info/attributes",
+        ] {
+            let result = write_file(&root, path, "#!/bin/sh\nevil", true);
+            assert_eq!(result.is_error, Some(true), "{path} was written");
+        }
+        assert!(!root.join(".git/hooks/pre-commit").exists());
+        assert!(!root.join(".git/config").exists());
+        assert!(!root.join(".git/info").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_file_refuses_a_symlinked_directory_that_points_into_git() {
+        let temp = tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        fs::create_dir_all(root.join(".git/hooks")).unwrap();
+        std::os::unix::fs::symlink(root.join(".git/hooks"), root.join("tools")).unwrap();
+
+        let result = write_file(&root, "tools/pre-commit", "#!/bin/sh\nevil", false);
+        assert_eq!(result.is_error, Some(true));
+        assert!(!root.join(".git/hooks/pre-commit").exists());
+    }
+
+    #[test]
+    fn delete_file_refuses_the_git_directory_itself() {
+        let temp = tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        fs::create_dir_all(root.join(".git/hooks")).unwrap();
+
+        for path in [".git", ".git/", "./.git", ".git//hooks"] {
+            let result = delete_file(&root, path, true, false);
+            assert_eq!(result.is_error, Some(true), "{path} was deleted");
+        }
+        assert!(root.join(".git/hooks").exists());
     }
 
     #[test]

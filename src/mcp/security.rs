@@ -215,9 +215,85 @@ pub fn validate_batch_size(count: usize) -> Result<()> {
     Ok(())
 }
 
+/// Check a validated target the way [`is_sensitive_path`] checks a relative
+/// path, after resolving symlinks in its existing ancestors.
+///
+/// A raw argument can look harmless while a symlinked parent points into
+/// `.git`, so this looks at where the write or delete would really land. The
+/// last component is not resolved, because deleting an in-root symlink removes
+/// only the link. A target that cannot be placed under the root is treated as
+/// sensitive.
+pub fn is_sensitive_target(root: &Path, target: &Path) -> bool {
+    let Ok(root_canonical) = root.canonicalize() else {
+        return true;
+    };
+    let (Some(parent), Some(name)) = (target.parent(), target.file_name()) else {
+        return true;
+    };
+    let mut existing = parent;
+    let mut rest = vec![name.to_owned()];
+    while !existing.exists() {
+        match (existing.parent(), existing.file_name()) {
+            (Some(parent), Some(name)) => {
+                rest.push(name.to_owned());
+                existing = parent;
+            }
+            _ => return true,
+        }
+    }
+    let Ok(mut resolved) = existing.canonicalize() else {
+        return true;
+    };
+    resolved.extend(rest.iter().rev());
+    match resolved.strip_prefix(&root_canonical) {
+        Ok(relative) => is_sensitive_path(relative),
+        Err(_) => true,
+    }
+}
+
 /// Check if a path is a sensitive file that shouldn't be modified.
+///
+/// Anything inside a `.git` directory counts, because a planted hook, config,
+/// or attributes file runs code on the next git command. The path is rebuilt
+/// from its components first, so spellings such as `.git//hooks` or
+/// `.git/./config` match like the plain form.
+///
+/// Each component is also reduced the way Windows resolves names. Windows drops
+/// trailing dots and spaces and treats `name:stream` as `name`, so `.git.` and
+/// `.git::$INDEX_ALLOCATION` open `.git`, and `GIT~1` is its 8.3 short name.
 pub fn is_sensitive_path(path: &Path) -> bool {
-    let path_str = path.to_string_lossy().replace('\\', "/").to_lowercase();
+    let raw: Vec<String> = path
+        .components()
+        .filter_map(|c| match c {
+            std::path::Component::Normal(s) => Some(s.to_string_lossy().to_lowercase()),
+            _ => None,
+        })
+        .flat_map(|s| s.split('\\').map(str::to_owned).collect::<Vec<_>>())
+        .filter(|s| !s.is_empty() && s != ".")
+        .collect();
+    // Both forms are checked, because `:` is an ordinary character on Unix
+    // and cutting at it there would hide a name such as `notes:.env`.
+    let reduced: Vec<String> = raw
+        .iter()
+        .map(|s| {
+            let name = s.split(':').next().unwrap_or_default();
+            name.trim_end_matches(['.', ' ']).to_owned()
+        })
+        .filter(|s| !s.is_empty())
+        .collect();
+    [raw, reduced]
+        .iter()
+        .any(|components| matches_sensitive(components))
+}
+
+fn matches_sensitive(components: &[String]) -> bool {
+    if components
+        .iter()
+        .any(|c| c == ".git" || is_git_short_name(c))
+    {
+        return true;
+    }
+    let path_str = components.join("/");
 
     let sensitive_patterns = [
         ".git/config",
@@ -234,13 +310,14 @@ pub fn is_sensitive_path(path: &Path) -> bool {
         ".aws/credentials",
     ];
 
-    for pattern in &sensitive_patterns {
-        if path_str.contains(pattern) {
-            return true;
-        }
-    }
+    sensitive_patterns
+        .iter()
+        .any(|pattern| path_str.contains(pattern))
+}
 
-    false
+fn is_git_short_name(name: &str) -> bool {
+    name.strip_prefix("git~")
+        .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
 }
 
 /// Sanitize a filename to remove potentially dangerous characters.
@@ -339,6 +416,50 @@ mod tests {
         assert!(is_sensitive_path(Path::new(
             r"project\.git\hooks\pre-commit"
         )));
+    }
+
+    #[test]
+    fn sensitive_path_ignores_spelling_tricks() {
+        for path in [
+            ".git//hooks/pre-commit",
+            ".git/./config",
+            "a/../.git/config",
+            ".Git/HOOKS/x",
+            ".git",
+            ".git/objects/ab/cd",
+            "./.env",
+        ] {
+            assert!(is_sensitive_path(Path::new(path)), "{path}");
+        }
+        for path in [
+            ".git./hooks/pre-commit",
+            ".git /config",
+            ".git. . ./hooks/x",
+            ".git::$INDEX_ALLOCATION/hooks/x",
+            "GIT~1/hooks/pre-commit",
+            ".env.",
+        ] {
+            assert!(is_sensitive_path(Path::new(path)), "{path}");
+        }
+        assert!(is_sensitive_path(Path::new("notes:.env")));
+        assert!(is_sensitive_path(Path::new("keys/backup:id_rsa")));
+        assert!(!is_sensitive_path(Path::new("notes/git~backup.md")));
+        assert!(!is_sensitive_path(Path::new("docs/git-guide.md")));
+        assert!(!is_sensitive_path(Path::new(".github/workflows/ci.yml")));
+    }
+
+    #[test]
+    fn sensitive_target_uses_the_path_inside_the_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("credentials-app");
+        fs::create_dir_all(root.join(".git")).unwrap();
+
+        assert!(!is_sensitive_target(&root, &root.join("src/main.rs")));
+        assert!(is_sensitive_target(&root, &root.join(".git/new/file")));
+        assert!(is_sensitive_target(
+            &root,
+            &temp.path().join("elsewhere.txt")
+        ));
     }
 
     #[test]

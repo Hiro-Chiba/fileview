@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- The MCP `write_file` and `delete_file` tools refused sensitive paths such as `.git/hooks` by matching the raw argument, so a client could bypass the check with spellings such as `.git//hooks/pre-commit` or `.git/./config` and plant a Git hook that runs on the next Git command. The check now uses the normalized path relative to the root after resolving symlinked parent directories, and it refuses everything inside `.git`, including deleting `.git` itself. On Windows, names that resolve to `.git`, such as `.git.`, `.git::$INDEX_ALLOCATION`, or the short name `GIT~1`, are refused as well.
+
 ## [3.1.0] - 2026-10-25
 
 FileView 3.1 renders Markdown and SVG files in the preview, and fixes tree search, bookmark jumps, and text detection that did not work from the keyboard.
