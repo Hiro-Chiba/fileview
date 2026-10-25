@@ -53,23 +53,22 @@ pub use tree::{render_tree, visible_height};
 pub fn create_image_picker() -> Option<Picker> {
     use ratatui_image::picker::ProtocolType;
 
-    if let Ok(protocol) = std::env::var("FILEVIEW_IMAGE_PROTOCOL") {
-        match protocol.to_lowercase().as_str() {
-            "halfblocks" | "half" => return Some(Picker::halfblocks()),
-            "chafa" => {
-                return try_chafa_picker().or_else(|| Some(Picker::halfblocks()));
-            }
-            "sixel" => {
-                return Some(picker_with_protocol(ProtocolType::Sixel));
-            }
-            "kitty" => {
-                return Some(picker_with_protocol(ProtocolType::Kitty));
-            }
-            "iterm2" | "iterm" => {
-                return Some(picker_with_protocol(ProtocolType::Iterm2));
-            }
-            _ => {} // "auto" or unknown, continue with auto-detection
+    let protocol = std::env::var("FILEVIEW_IMAGE_PROTOCOL").unwrap_or_default();
+    match protocol.to_lowercase().as_str() {
+        "halfblocks" | "half" => return Some(Picker::halfblocks()),
+        "chafa" => {
+            return try_chafa_picker().or_else(|| Some(Picker::halfblocks()));
         }
+        "sixel" => {
+            return Some(picker_with_protocol(ProtocolType::Sixel));
+        }
+        "kitty" => {
+            return Some(picker_with_protocol(ProtocolType::Kitty));
+        }
+        "iterm2" | "iterm" => {
+            return Some(picker_with_protocol(ProtocolType::Iterm2));
+        }
+        _ => {} // "auto" or unknown, continue with auto-detection
     }
 
     let terminal = TerminalBrand::detect();

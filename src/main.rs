@@ -455,12 +455,10 @@ fn run_with_config(config: Config) -> anyhow::Result<i32> {
 
     terminal::enable_raw_mode()?;
     let mut stdout = stdout();
-    execute!(
-        stdout,
-        EnterAlternateScreen,
-        EnableMouseCapture,
-        EnableBracketedPaste
-    )?;
+    execute!(stdout, EnterAlternateScreen, EnableBracketedPaste)?;
+    if config.mouse_enabled {
+        execute!(stdout, EnableMouseCapture)?;
+    }
 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;

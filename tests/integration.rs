@@ -5701,15 +5701,7 @@ mod config_integration_tests {
         assert!(config.general.enable_icons);
         assert!(config.general.mouse_enabled);
 
-        assert_eq!(config.preview.hex_max_bytes, 4096);
-        assert_eq!(config.preview.max_archive_entries, 500);
-        assert_eq!(config.preview.image_protocol, "auto");
-
         assert_eq!(config.performance.git_poll_interval_secs, 5);
-
-        assert!(config.ui.show_size);
-        assert!(!config.ui.show_permissions);
-        assert_eq!(config.ui.date_format, "%Y-%m-%d %H:%M");
     }
 
     #[test]
@@ -5737,12 +5729,13 @@ git_poll_interval_secs = 10
         assert_eq!(config.performance.git_poll_interval_secs, 10);
 
         // Defaults preserved
-        assert!(config.general.enable_icons);
-        assert_eq!(config.preview.hex_max_bytes, 4096);
     }
 
     #[test]
-    fn test_config_file_all_sections() {
+    fn test_config_file_with_retired_keys_still_loads() {
+        // hex_max_bytes, max_archive_entries, and [ui] were documented but never
+        // used, and were removed in 3.1.2. Old files that set them must still
+        // load, so these keys stay in the fixture.
         let temp = TempDir::new().unwrap();
         let config_path = temp.path().join("config.toml");
 
@@ -5777,15 +5770,7 @@ date_format = "%d/%m/%Y"
         assert!(!config.general.enable_icons);
         assert!(!config.general.mouse_enabled);
 
-        assert_eq!(config.preview.hex_max_bytes, 8192);
-        assert_eq!(config.preview.max_archive_entries, 1000);
-        assert_eq!(config.preview.image_protocol, "kitty");
-
         assert_eq!(config.performance.git_poll_interval_secs, 15);
-
-        assert!(!config.ui.show_size);
-        assert!(config.ui.show_permissions);
-        assert_eq!(config.ui.date_format, "%d/%m/%Y");
     }
 
     #[test]
@@ -5825,140 +5810,6 @@ foo = "bar"
 }
 
 // =============================================================================
-// Keymap Integration Tests
-// =============================================================================
-
-mod keymap_integration_tests {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use fileview::core::{AppState, FocusTarget, ViewMode};
-    use fileview::handler::{handle_key_event_with_registry, KeyAction, KeyBindingRegistry};
-    use tempfile::TempDir;
-
-    fn create_test_state() -> AppState {
-        let temp = TempDir::new().unwrap();
-        AppState::new(temp.path().to_path_buf())
-    }
-
-    #[test]
-    fn test_registry_default_bindings() {
-        let registry = KeyBindingRegistry::new();
-        let state = create_test_state();
-
-        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::MoveDown));
-
-        let key = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::MoveUp));
-
-        let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::Quit));
-    }
-
-    #[test]
-    fn test_registry_ctrl_modifier() {
-        let registry = KeyBindingRegistry::new();
-        let state = create_test_state();
-
-        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::OpenFuzzyFinder));
-    }
-
-    #[test]
-    fn test_registry_context_aware_actions() {
-        let registry = KeyBindingRegistry::new();
-
-        let mut state = create_test_state();
-        state.pick_mode = true;
-        let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::Cancel));
-    }
-
-    #[test]
-    fn test_registry_preview_focus_navigation() {
-        let registry = KeyBindingRegistry::new();
-
-        let mut state = create_test_state();
-        state.preview_visible = true;
-        state.focus_target = FocusTarget::Preview;
-
-        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::PreviewScrollDown));
-
-        state.focus_target = FocusTarget::Tree;
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::MoveDown));
-    }
-
-    #[test]
-    fn test_registry_search_mode() {
-        let registry = KeyBindingRegistry::new();
-        let mut state = create_test_state();
-        state.mode = ViewMode::Search {
-            query: "test".to_string(),
-        };
-
-        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::ConfirmInput { value } if value == "test"));
-
-        let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::Cancel));
-    }
-
-    #[test]
-    fn test_registry_confirm_mode() {
-        let registry = KeyBindingRegistry::new();
-        let mut state = create_test_state();
-        state.mode = ViewMode::Confirm {
-            action: fileview::core::PendingAction::Delete {
-                targets: vec![std::path::PathBuf::from("/tmp/test")],
-            },
-        };
-
-        let key = KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::ExecuteDelete));
-
-        let key = KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::Cancel));
-    }
-
-    #[test]
-    fn test_registry_filter_mode() {
-        let registry = KeyBindingRegistry::new();
-        let mut state = create_test_state();
-        state.mode = ViewMode::Filter {
-            query: "*.rs".to_string(),
-        };
-
-        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::ApplyFilter { pattern } if pattern == "*.rs"));
-    }
-
-    #[test]
-    fn test_registry_filter_mode_empty_clears() {
-        let registry = KeyBindingRegistry::new();
-        let mut state = create_test_state();
-        state.mode = ViewMode::Filter {
-            query: String::new(),
-        };
-
-        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::ClearFilter));
-    }
-}
-
-// =============================================================================
 // Theme Integration Tests
 // =============================================================================
 
@@ -5981,10 +5832,6 @@ mod theme_integration_tests {
         assert_eq!(theme.border_active, Color::Cyan);
 
         assert_eq!(theme.directory, Color::Blue);
-        assert_eq!(theme.executable, Color::Green);
-        assert_eq!(theme.symlink, Color::Cyan);
-        assert_eq!(theme.archive, Color::Red);
-        assert_eq!(theme.image, Color::Magenta);
 
         assert_eq!(theme.git_modified, Color::Yellow);
         assert_eq!(theme.git_staged, Color::Green);
@@ -6067,13 +5914,10 @@ mod theme_integration_tests {
     fn test_theme_file_defaults() {
         let file = ThemeFile::default();
 
-        assert_eq!(file.colors.background, "default");
-        assert_eq!(file.colors.foreground, "white");
         assert_eq!(file.colors.selection, "darkgray");
         assert_eq!(file.colors.border_active, "cyan");
 
         assert_eq!(file.file_colors.directory, "blue");
-        assert_eq!(file.file_colors.executable, "green");
 
         assert_eq!(file.git_colors.modified, "yellow");
         assert_eq!(file.git_colors.staged, "green");

@@ -5,17 +5,13 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-pub use crate::handler::HooksConfig;
-
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct ConfigFile {
     pub general: GeneralConfig,
     pub preview: PreviewConfig,
     pub performance: PerformanceConfig,
-    pub ui: UiConfig,
     pub commands: CommandsConfig,
-    pub hooks: HooksConfig,
     pub budget: BudgetConfig,
 }
 
@@ -32,7 +28,6 @@ pub struct BudgetConfig {
 #[serde(default)]
 pub struct GeneralConfig {
     pub show_hidden: bool,
-    /// Enable Nerd Font icons
     pub enable_icons: bool,
     pub mouse_enabled: bool,
 }
@@ -47,27 +42,12 @@ impl Default for GeneralConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct PreviewConfig {
-    pub hex_max_bytes: usize,
-    pub max_archive_entries: usize,
-    /// Image protocol: "auto", "sixel", "kitty", "iterm2", "halfblocks"
-    pub image_protocol: String,
     /// Custom preview scripts: extension -> command
     /// The command can use $f for the file path
     pub custom: HashMap<String, String>,
-}
-
-impl Default for PreviewConfig {
-    fn default() -> Self {
-        Self {
-            hex_max_bytes: 4096,
-            max_archive_entries: 500,
-            image_protocol: "auto".to_string(),
-            custom: HashMap::new(),
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -80,25 +60,6 @@ impl Default for PerformanceConfig {
     fn default() -> Self {
         Self {
             git_poll_interval_secs: 5,
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(default)]
-pub struct UiConfig {
-    pub show_size: bool,
-    pub show_permissions: bool,
-    /// Date format string (strftime-style)
-    pub date_format: String,
-}
-
-impl Default for UiConfig {
-    fn default() -> Self {
-        Self {
-            show_size: true,
-            show_permissions: false,
-            date_format: "%Y-%m-%d %H:%M".to_string(),
         }
     }
 }
@@ -117,63 +78,84 @@ impl CommandsConfig {
         self.commands.get(name)
     }
 
-    pub fn expand(template: &str, file_path: &std::path::Path) -> String {
-        let path_str = file_path.display().to_string();
-        let dir = file_path
-            .parent()
-            .map(|p| p.display().to_string())
-            .unwrap_or_default();
-        let name = file_path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-        let stem = file_path
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_default();
-        let ext = file_path
-            .extension()
-            .map(|e| e.to_string_lossy().to_string())
-            .unwrap_or_default();
-
-        template
-            .replace("$f", &path_str)
-            .replace("$d", &dir)
-            .replace("$n", &name)
-            .replace("$s", &stem)
-            .replace("$e", &ext)
-    }
-
-    /// Expand placeholders and shell-escape substituted values.
+    /// Replace placeholders with parts of `file_path`.
     ///
-    /// This is intended for command execution paths where placeholder content
-    /// can include spaces or shell metacharacters.
-    pub fn expand_shell_escaped(template: &str, file_path: &std::path::Path) -> String {
-        let path_str = file_path.display().to_string();
-        let dir = file_path
-            .parent()
-            .map(|p| p.display().to_string())
-            .unwrap_or_default();
-        let name = file_path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-        let stem = file_path
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_default();
-        let ext = file_path
-            .extension()
-            .map(|e| e.to_string_lossy().to_string())
-            .unwrap_or_default();
-
-        template
-            .replace("$f", &shell_escape(&path_str))
-            .replace("$d", &shell_escape(&dir))
-            .replace("$n", &shell_escape(&name))
-            .replace("$s", &shell_escape(&stem))
-            .replace("$e", &shell_escape(&ext))
+    /// `$f` path, `$d` directory, `$n` file name, `$s` stem, `$e` extension.
+    pub fn expand(template: &str, file_path: &std::path::Path) -> String {
+        expand_placeholders(template, file_path, &[], false)
     }
+
+    /// Like [`Self::expand`], but shell-escapes every substituted value, for
+    /// templates that a shell will run.
+    pub fn expand_shell_escaped(template: &str, file_path: &std::path::Path) -> String {
+        expand_placeholders(template, file_path, &[], true)
+    }
+
+    /// Expand a `[commands]` template for execution. Values are shell-escaped
+    /// and `$S` becomes the selected paths separated by spaces.
+    pub fn expand_command(
+        template: &str,
+        file_path: &std::path::Path,
+        selected: &[PathBuf],
+    ) -> String {
+        expand_placeholders(template, file_path, selected, true)
+    }
+}
+
+/// Expand all placeholders in one pass, so a value that contains `$S` or
+/// `$f` is never expanded again. A placeholder followed by a letter, digit, or
+/// underscore is left alone, so `$SHELL` and `$filename` stay as written.
+fn expand_placeholders(
+    template: &str,
+    file_path: &std::path::Path,
+    selected: &[PathBuf],
+    escape: bool,
+) -> String {
+    let quote = |value: String| if escape { shell_escape(&value) } else { value };
+    let lossy = |s: Option<&std::ffi::OsStr>| s.map(|s| s.to_string_lossy().into_owned());
+
+    let mut out = String::with_capacity(template.len());
+    let mut chars = template.chars().peekable();
+    while let Some(c) = chars.next() {
+        let Some(&key) = chars.peek().filter(|_| c == '$') else {
+            out.push(c);
+            continue;
+        };
+        let mut lookahead = chars.clone();
+        lookahead.next();
+        let continues_word = lookahead
+            .peek()
+            .is_some_and(|n| n.is_alphanumeric() || *n == '_');
+        let value = match key {
+            _ if continues_word => None,
+            'f' => Some(quote(file_path.display().to_string())),
+            'd' => Some(quote(
+                file_path
+                    .parent()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_default(),
+            )),
+            'n' => Some(quote(lossy(file_path.file_name()).unwrap_or_default())),
+            's' => Some(quote(lossy(file_path.file_stem()).unwrap_or_default())),
+            'e' => Some(quote(lossy(file_path.extension()).unwrap_or_default())),
+            'S' => Some(
+                selected
+                    .iter()
+                    .map(|p| quote(p.display().to_string()))
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            ),
+            _ => None,
+        };
+        match value {
+            Some(value) => {
+                out.push_str(&value);
+                chars.next();
+            }
+            None => out.push(c),
+        }
+    }
+    out
 }
 
 fn shell_escape(value: &str) -> String {
@@ -330,13 +312,7 @@ mod tests {
         assert!(!config.general.show_hidden);
         assert!(config.general.enable_icons);
         assert!(config.general.mouse_enabled);
-        assert_eq!(config.preview.hex_max_bytes, 4096);
-        assert_eq!(config.preview.max_archive_entries, 500);
-        assert_eq!(config.preview.image_protocol, "auto");
         assert_eq!(config.performance.git_poll_interval_secs, 5);
-        assert!(config.ui.show_size);
-        assert!(!config.ui.show_permissions);
-        assert_eq!(config.ui.date_format, "%Y-%m-%d %H:%M");
     }
 
     #[test]
@@ -345,18 +321,18 @@ mod tests {
 [general]
 show_hidden = true
 
-[preview]
-hex_max_bytes = 8192
+[performance]
+git_poll_interval_secs = 9
 "#;
         let config: ConfigFile = toml::from_str(toml_content).unwrap();
         assert!(config.general.show_hidden);
         assert!(config.general.enable_icons); // default
-        assert_eq!(config.preview.hex_max_bytes, 8192);
-        assert_eq!(config.preview.max_archive_entries, 500); // default
+        assert!(config.general.mouse_enabled); // default
+        assert_eq!(config.performance.git_poll_interval_secs, 9);
     }
 
     #[test]
-    fn test_parse_full_config() {
+    fn retired_keys_in_an_old_config_still_parse() {
         let toml_content = r#"
 [general]
 show_hidden = true
@@ -375,18 +351,15 @@ git_poll_interval_secs = 10
 show_size = false
 show_permissions = true
 date_format = "%d/%m/%Y"
+
+[hooks]
+on_create = "echo created"
 "#;
         let config: ConfigFile = toml::from_str(toml_content).unwrap();
         assert!(config.general.show_hidden);
         assert!(!config.general.enable_icons);
         assert!(!config.general.mouse_enabled);
-        assert_eq!(config.preview.hex_max_bytes, 8192);
-        assert_eq!(config.preview.max_archive_entries, 1000);
-        assert_eq!(config.preview.image_protocol, "kitty");
         assert_eq!(config.performance.git_poll_interval_secs, 10);
-        assert!(!config.ui.show_size);
-        assert!(config.ui.show_permissions);
-        assert_eq!(config.ui.date_format, "%d/%m/%Y");
     }
 
     #[test]
@@ -412,6 +385,26 @@ show_hidden = true
 
         let result = ConfigFile::load_from(&file.path().to_path_buf());
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn placeholders_followed_by_a_word_character_are_left_alone() {
+        let path = PathBuf::from("/p/a.rs");
+        assert_eq!(
+            CommandsConfig::expand("cd $d && $SHELL $filename $s.$e", &path),
+            "cd /p && $SHELL $filename a.rs"
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn selected_paths_replace_capital_s_once() {
+        let path = PathBuf::from("/p/x$S.txt");
+        let selected = [PathBuf::from("/p/a b"), PathBuf::from("/p/c")];
+        assert_eq!(
+            CommandsConfig::expand_command("tar cf out.tar $S; echo $f", &path, &selected),
+            "tar cf out.tar '/p/a b' '/p/c'; echo '/p/x$S.txt'"
+        );
     }
 
     #[test]

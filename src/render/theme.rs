@@ -1,4 +1,4 @@
-//! Loads theme from `~/.config/fileview/theme.toml`
+//! Loads theme from `theme.toml` in the config directory
 
 use ratatui::style::Color;
 use serde::Deserialize;
@@ -25,19 +25,11 @@ pub struct ThemeFile {
 #[derive(Debug, Deserialize)]
 #[serde(default)]
 pub struct BaseColors {
-    pub background: String,
-    pub foreground: String,
     /// Selection/focus background color
     pub selection: String,
     pub border: String,
     /// Active border color (focused panel)
     pub border_active: String,
-    /// Status bar background
-    pub status_bg: String,
-    /// Status bar foreground
-    pub status_fg: String,
-    /// Error message color
-    pub error: String,
     /// Warning message color
     pub warning: String,
     /// Info message color
@@ -51,14 +43,9 @@ pub struct BaseColors {
 impl Default for BaseColors {
     fn default() -> Self {
         Self {
-            background: "default".to_string(),
-            foreground: "white".to_string(),
             selection: "darkgray".to_string(),
             border: "default".to_string(),
             border_active: "cyan".to_string(),
-            status_bg: "default".to_string(),
-            status_fg: "white".to_string(),
-            error: "red".to_string(),
             warning: "yellow".to_string(),
             info: "blue".to_string(),
             help_key_fg: "black".to_string(),
@@ -71,31 +58,12 @@ impl Default for BaseColors {
 #[serde(default)]
 pub struct FileColors {
     pub directory: String,
-    pub executable: String,
-    pub symlink: String,
-    pub archive: String,
-    pub image: String,
-    pub video: String,
-    pub audio: String,
-    pub document: String,
-    pub source: String,
-    /// Markup file color (md, html, etc.)
-    pub markup: String,
 }
 
 impl Default for FileColors {
     fn default() -> Self {
         Self {
             directory: "blue".to_string(),
-            executable: "green".to_string(),
-            symlink: "cyan".to_string(),
-            archive: "red".to_string(),
-            image: "magenta".to_string(),
-            video: "magenta".to_string(),
-            audio: "magenta".to_string(),
-            document: "yellow".to_string(),
-            source: "green".to_string(),
-            markup: "yellow".to_string(),
         }
     }
 }
@@ -128,7 +96,6 @@ impl Default for GitColors {
 }
 
 impl ThemeFile {
-    /// Get the theme file path (~/.config/fileview/theme.toml)
     pub fn theme_path() -> Option<PathBuf> {
         ConfigFile::config_file("theme.toml")
     }
@@ -150,29 +117,15 @@ impl ThemeFile {
 /// Parsed theme with ratatui Color values
 #[derive(Debug)]
 pub struct Theme {
-    pub background: Color,
-    pub foreground: Color,
     pub selection: Color,
     pub border: Color,
     pub border_active: Color,
-    pub status_bg: Color,
-    pub status_fg: Color,
-    pub error: Color,
     pub warning: Color,
     pub info: Color,
     pub help_key_fg: Color,
     pub help_key_bg: Color,
 
     pub directory: Color,
-    pub executable: Color,
-    pub symlink: Color,
-    pub archive: Color,
-    pub image: Color,
-    pub video: Color,
-    pub audio: Color,
-    pub document: Color,
-    pub source: Color,
-    pub markup: Color,
 
     pub git_modified: Color,
     pub git_staged: Color,
@@ -199,29 +152,15 @@ impl Theme {
 
     fn from_file(file: &ThemeFile) -> Self {
         Self {
-            background: parse_color(&file.colors.background),
-            foreground: parse_color(&file.colors.foreground),
             selection: parse_color(&file.colors.selection),
             border: parse_color(&file.colors.border),
             border_active: parse_color(&file.colors.border_active),
-            status_bg: parse_color(&file.colors.status_bg),
-            status_fg: parse_color(&file.colors.status_fg),
-            error: parse_color(&file.colors.error),
             warning: parse_color(&file.colors.warning),
             info: parse_color(&file.colors.info),
             help_key_fg: parse_color(&file.colors.help_key_fg),
             help_key_bg: parse_color(&file.colors.help_key_bg),
 
             directory: parse_color(&file.file_colors.directory),
-            executable: parse_color(&file.file_colors.executable),
-            symlink: parse_color(&file.file_colors.symlink),
-            archive: parse_color(&file.file_colors.archive),
-            image: parse_color(&file.file_colors.image),
-            video: parse_color(&file.file_colors.video),
-            audio: parse_color(&file.file_colors.audio),
-            document: parse_color(&file.file_colors.document),
-            source: parse_color(&file.file_colors.source),
-            markup: parse_color(&file.file_colors.markup),
 
             git_modified: parse_color(&file.git_colors.modified),
             git_staged: parse_color(&file.git_colors.staged),
@@ -378,6 +317,8 @@ mod tests {
 
     #[test]
     fn test_theme_file_parse() {
+        // background, foreground, and the file type colors were never drawn
+        // and were removed in 3.1.2. Old theme files that set them must load.
         let toml_content = r##"
 [colors]
 background = "#1e1e1e"
@@ -386,13 +327,12 @@ selection = "blue"
 
 [file_colors]
 directory = "#569cd6"
+executable = "green"
 
 [git_colors]
 modified = "yellow"
 "##;
         let theme: ThemeFile = toml::from_str(toml_content).unwrap();
-        assert_eq!(theme.colors.background, "#1e1e1e");
-        assert_eq!(theme.colors.foreground, "#d4d4d4");
         assert_eq!(theme.colors.selection, "blue");
         assert_eq!(theme.file_colors.directory, "#569cd6");
         assert_eq!(theme.git_colors.modified, "yellow");
@@ -410,19 +350,16 @@ modified = "yellow"
     fn test_theme_from_file() {
         let file = ThemeFile {
             colors: BaseColors {
-                background: "#000000".to_string(),
-                foreground: "#ffffff".to_string(),
+                selection: "#000000".to_string(),
                 ..Default::default()
             },
             file_colors: FileColors {
                 directory: "cyan".to_string(),
-                ..Default::default()
             },
             git_colors: GitColors::default(),
         };
         let theme = Theme::from_file(&file);
-        assert_eq!(theme.background, Color::Rgb(0, 0, 0));
-        assert_eq!(theme.foreground, Color::Rgb(255, 255, 255));
+        assert_eq!(theme.selection, Color::Rgb(0, 0, 0));
         assert_eq!(theme.directory, Color::Cyan);
     }
 }

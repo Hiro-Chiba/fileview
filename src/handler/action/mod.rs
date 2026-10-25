@@ -250,11 +250,6 @@ pub fn handle_action(
             Ok(ActionResult::Continue)
         }
 
-        KeyAction::OpenSubshell => {
-            command::open_subshell(state, focused_path.as_ref());
-            Ok(ActionResult::Continue)
-        }
-
         KeyAction::StartVisualSelect => {
             state.mode = ViewMode::VisualSelect {
                 anchor: state.focus_index,
