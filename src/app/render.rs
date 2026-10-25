@@ -17,7 +17,6 @@ use crate::render::{
 };
 use crate::tree::VisibleEntry;
 
-/// Context for rendering a frame
 pub struct RenderContext<'a> {
     pub state: &'a AppState,
     pub entries: Vec<&'a VisibleEntry>,
@@ -28,7 +27,6 @@ pub struct RenderContext<'a> {
     pub tab_manager: Option<&'a TabManager>,
 }
 
-/// Render a complete frame
 pub fn render_frame(frame: &mut Frame, mut ctx: RenderContext) {
     let size = frame.area();
 
@@ -39,7 +37,6 @@ pub fn render_frame(frame: &mut Frame, mut ctx: RenderContext) {
         .map(|p| p.font_size())
         .unwrap_or(FontSize::new(10, 20));
 
-    // Check if fullscreen preview mode is active
     let is_fullscreen_preview = matches!(ctx.state.mode, ViewMode::Preview { .. });
 
     if is_fullscreen_preview {
@@ -49,7 +46,6 @@ pub fn render_frame(frame: &mut Frame, mut ctx: RenderContext) {
     }
 }
 
-/// Render fullscreen preview mode
 fn render_fullscreen_preview(
     frame: &mut Frame,
     ctx: &mut RenderContext,
@@ -96,11 +92,9 @@ fn render_fullscreen_preview(
 
 /// Render normal mode (tree with optional side preview)
 fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, font_size: FontSize) {
-    // Check if we need to render tab bar
     let has_tabs = ctx.tab_manager.is_some_and(|tm| tm.len() > 1);
     let tab_bar_height = if has_tabs { 1u16 } else { 0u16 };
 
-    // Split for tab bar if needed
     let (tab_area, main_area) = if has_tabs {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -111,7 +105,6 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
         (None, size)
     };
 
-    // Render tab bar if multiple tabs
     if let (Some(tab_area), Some(tm)) = (tab_area, ctx.tab_manager) {
         render_tab_bar(frame, tm, tab_area);
     }
@@ -139,7 +132,6 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
             .split(main_area)
     };
 
-    // Tree area with status bar
     let tree_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0), Constraint::Length(3)])
@@ -148,20 +140,15 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
     // Render tree (viewport adjustment is done in event loop)
     render_tree(frame, ctx.state, &ctx.entries, tree_chunks[0]);
 
-    // Render status bar
     render_status_bar(frame, ctx.state, ctx.focused_path, tree_chunks[1]);
 
-    // Render preview if visible (using effective visibility)
     if effective_preview && main_chunks.len() > 1 {
         render_side_preview(frame, ctx, main_chunks[1], font_size);
     }
 
-    // Render input popup if needed
     render_input_popup(frame, ctx.state);
 
-    // Render fuzzy finder if in FuzzyFinder mode
     if let ViewMode::FuzzyFinder { query, selected } = &ctx.state.mode {
-        // Bound selected index to results length
         let bounded_selected = if ctx.fuzzy_results.is_empty() {
             0
         } else {
@@ -170,19 +157,16 @@ fn render_normal_mode(frame: &mut Frame, ctx: &mut RenderContext, size: Rect, fo
         render_fuzzy_finder(frame, query, ctx.fuzzy_results, bounded_selected, size);
     }
 
-    // Render help popup if in Help mode
     render_help_popup(frame, ctx.state);
     render_ai_history_popup(frame, ctx.state);
     crate::render::render_ai_activity_popup(frame, ctx.state);
     crate::render::render_todos_popup(frame, ctx.state);
 
-    // Render bulk rename dialog if in BulkRename mode
     if matches!(ctx.state.mode, ViewMode::BulkRename { .. }) {
         render_bulk_rename_dialog(frame, ctx.state);
     }
 }
 
-/// Render side preview panel
 fn render_side_preview(
     frame: &mut Frame,
     ctx: &mut RenderContext,

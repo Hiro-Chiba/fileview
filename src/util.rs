@@ -1,5 +1,3 @@
-//! Small shared utilities.
-
 use std::io;
 use std::path::{Path, PathBuf};
 

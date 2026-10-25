@@ -37,7 +37,6 @@ impl ActivityWatcher {
         let (event_tx, event_rx) = mpsc::channel::<ActivityEvent>();
         let (tick_tx, tick_rx) = mpsc::channel::<()>();
 
-        // Position cursor at end-of-file so only future appends are delivered.
         let start_cursor = File::open(&activity_log)
             .and_then(|mut f| f.seek(SeekFrom::End(0)))
             .unwrap_or(0);
@@ -214,7 +213,6 @@ mod tests {
 
         let watcher = ActivityWatcher::start(log.clone()).unwrap();
 
-        // Nothing new appended — we should not see the historical event.
         let received = wait_for_events(&watcher, 1, 500);
         assert!(
             received.is_empty(),
@@ -235,7 +233,6 @@ mod tests {
 
         let watcher = ActivityWatcher::start(log.clone()).unwrap();
 
-        // First event lands as expected.
         let first = ActivityEvent::now("src", "first", None);
         append(
             &log,
@@ -244,14 +241,12 @@ mod tests {
         let initial = wait_for_events(&watcher, 1, 2_000);
         assert_eq!(initial.len(), 1, "first event should arrive normally");
 
-        // Externally truncate the file. The reader's cursor is now past EOF.
         OpenOptions::new()
             .write(true)
             .truncate(true)
             .open(&log)
             .unwrap();
 
-        // A new event is appended starting from byte 0 of the freshly truncated file.
         let second = ActivityEvent::now("src", "after_truncation", None);
         append(
             &log,
@@ -278,12 +273,10 @@ mod tests {
         let ev = ActivityEvent::now("src", "read_file", None);
         let line = serde_json::to_string(&ev).unwrap();
 
-        // Write without trailing newline first.
         append(&log, &line);
         thread::sleep(Duration::from_millis(200));
         assert!(watcher.drain().is_empty(), "partial line must not deliver");
 
-        // Complete the line.
         append(&log, "\n");
         let received = wait_for_events(&watcher, 1, 2_000);
         assert_eq!(received.len(), 1);

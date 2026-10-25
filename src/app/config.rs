@@ -12,7 +12,6 @@ use crate::integrate::{
     ContextPackOptions, ContextPackPreset, OutputFormat,
 };
 
-/// Session action (save, restore, clear)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SessionAction {
     /// Save current selection to session file
@@ -23,7 +22,6 @@ pub enum SessionAction {
     Clear,
 }
 
-/// Plugin command action
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PluginAction {
     /// Create plugin template
@@ -32,7 +30,6 @@ pub enum PluginAction {
     Test,
 }
 
-/// Init command action
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InitAction {
     /// Initialize Claude config with fileview MCP entry
@@ -41,7 +38,6 @@ pub enum InitAction {
     AiIgnore,
 }
 
-/// Application configuration from CLI args and config file
 pub struct Config {
     pub root: PathBuf,
     pub pick_mode: bool,
@@ -56,27 +52,16 @@ pub struct Config {
     pub selection_path_file: Option<PathBuf>,
     /// Paths read from stdin (for pipeline integration)
     pub stdin_paths: Option<Vec<PathBuf>>,
-    /// Show hidden files by default (from config file)
     pub show_hidden: bool,
-    /// Enable mouse support (from config file)
     pub mouse_enabled: bool,
-    /// Maximum bytes for hex preview (from config file)
     pub hex_max_bytes: usize,
-    /// Maximum entries for archive preview (from config file)
     pub max_archive_entries: usize,
-    /// Image protocol setting (from config file)
     pub image_protocol: String,
-    /// Git poll interval (from config file)
     pub git_poll_interval: Duration,
-    /// Show file size in tree (from config file)
     pub show_size: bool,
-    /// Show file permissions in tree (from config file)
     pub show_permissions: bool,
-    /// Date format string (from config file)
     pub date_format: String,
-    /// Custom commands configuration
     pub commands: CommandsConfig,
-    /// Custom preview configuration
     pub preview_custom: PreviewConfig,
     /// Tree output mode (non-interactive, output to stdout)
     pub tree_mode: bool,
@@ -88,19 +73,13 @@ pub struct Config {
     pub select_mode: bool,
     /// Allow multiple selection in select mode
     pub multi_select: bool,
-    /// MCP server mode
     pub mcp_server: bool,
-    /// Context generation mode
     pub context_mode: bool,
-    /// AI benchmark mode (non-interactive)
     pub benchmark_ai: bool,
     /// AI benchmark scenario (context-pack, review-pack, related, all)
     pub benchmark_scenario: String,
-    /// AI benchmark iterations
     pub benchmark_iterations: usize,
-    /// Context pack output mode with preset
     pub context_pack: Option<ContextPackPreset>,
-    /// Context pack options
     pub context_pack_options: ContextPackOptions,
     /// Related file selection output mode (non-interactive)
     pub select_related_path: Option<PathBuf>,
@@ -116,15 +95,10 @@ pub struct Config {
     pub watch_path: Option<PathBuf>,
     /// `--watch-timeout-secs <n>`: optional timeout for --watch.
     pub watch_timeout_secs: Option<u64>,
-    /// Session action (save/restore/clear) - non-interactive
     pub session_action: Option<SessionAction>,
-    /// Plugin command action
     pub plugin_action: Option<PluginAction>,
-    /// Plugin path for plugin commands
     pub plugin_path: Option<PathBuf>,
-    /// Init command action
     pub init_action: Option<InitAction>,
-    /// Optional path used by init command
     pub init_path: Option<PathBuf>,
     /// Force overwrite for init command
     pub init_force: bool,
@@ -568,14 +542,12 @@ impl Config {
             }
         }
 
-        // Handle stdin mode
         let stdin_paths = if stdin_mode {
             Some(read_stdin_paths()?)
         } else {
             None
         };
 
-        // If stdin paths are provided, determine root from common ancestor
         let root = if let Some(ref paths) = stdin_paths {
             find_common_ancestor(paths)?
         } else {
@@ -584,7 +556,6 @@ impl Config {
 
         context_pack_options.format = context_pack_format;
 
-        // Merge config file settings with CLI overrides
         // CLI arguments take precedence over config file
         Ok(Self {
             root,
@@ -652,7 +623,6 @@ impl Config {
 fn read_stdin_paths() -> anyhow::Result<Vec<PathBuf>> {
     let stdin = io::stdin();
 
-    // Check if stdin is a TTY (not piped)
     if stdin.is_terminal() {
         anyhow::bail!("--stdin requires piped input");
     }
@@ -684,7 +654,6 @@ fn read_stdin_paths() -> anyhow::Result<Vec<PathBuf>> {
     Ok(paths)
 }
 
-/// Find the common ancestor directory of all paths
 fn find_common_ancestor(paths: &[PathBuf]) -> anyhow::Result<PathBuf> {
     if paths.is_empty() {
         return env::current_dir().map_err(Into::into);
@@ -701,7 +670,6 @@ fn find_common_ancestor(paths: &[PathBuf]) -> anyhow::Result<PathBuf> {
             .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from("/")))
     };
 
-    // Find common prefix with all other paths
     for path in paths.iter().skip(1) {
         let other = if path.is_dir() {
             path.clone()
@@ -711,7 +679,6 @@ fn find_common_ancestor(paths: &[PathBuf]) -> anyhow::Result<PathBuf> {
                 .unwrap_or_else(|| ancestor.clone())
         };
 
-        // Walk up until we find a common ancestor
         while !other.starts_with(&ancestor) {
             if let Some(parent) = ancestor.parent() {
                 ancestor = parent.to_path_buf();

@@ -1,7 +1,4 @@
 //! Selection and clipboard action handlers
-//!
-//! Handles ToggleMark, ClearMarks, Copy, Cut, SelectAll, InvertSelection,
-//! SelectGitChanged, SelectTestPair, SelectByExtension, SelectRecentCommit, SelectGitStaged
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -27,7 +24,6 @@ const EXTENSION_SLOTS: [&[&str]; 9] = [
     &["css", "scss", "sass"],  // Ctrl+9: Stylesheets
 ];
 
-/// Handle selection and clipboard actions
 pub fn handle(action: KeyAction, state: &mut AppState, focused_path: &Option<PathBuf>) {
     match action {
         KeyAction::ToggleMark => {
@@ -74,7 +70,6 @@ pub fn handle(action: KeyAction, state: &mut AppState, focused_path: &Option<Pat
     }
 }
 
-/// Handle selection with entries context
 pub fn handle_with_entries(action: KeyAction, state: &mut AppState, entries: &[EntrySnapshot]) {
     match action {
         KeyAction::SelectAll => {
@@ -112,7 +107,6 @@ pub fn handle_with_entries(action: KeyAction, state: &mut AppState, entries: &[E
     }
 }
 
-/// Select range of entries (for visual select mode)
 pub fn select_range(
     state: &mut AppState,
     entries: &[EntrySnapshot],
@@ -122,7 +116,6 @@ pub fn select_range(
     let start = anchor.min(current);
     let end = anchor.max(current);
 
-    // Clear previous selection and select the range
     state.selected_paths.clear();
     for i in start..=end {
         if let Some(entry) = entries.get(i) {
@@ -131,7 +124,6 @@ pub fn select_range(
     }
 }
 
-/// Select all git changed files
 pub fn select_git_changed(state: &mut AppState, entries: &[EntrySnapshot]) {
     let git_status = match &state.git_status {
         Some(status) => status,
@@ -157,7 +149,6 @@ pub fn select_git_changed(state: &mut AppState, entries: &[EntrySnapshot]) {
     }
 }
 
-/// Select test pair for the focused file
 pub fn select_test_pair(state: &mut AppState, focused_path: &Option<PathBuf>) {
     let path = match focused_path {
         Some(p) => p,
@@ -174,7 +165,6 @@ pub fn select_test_pair(state: &mut AppState, focused_path: &Option<PathBuf>) {
         return;
     }
 
-    // Add the current file and its test pairs to selection
     state.selected_paths.insert(path.clone());
     let mut found_count = 0;
     for test_file in test_files {
@@ -188,7 +178,6 @@ pub fn select_test_pair(state: &mut AppState, focused_path: &Option<PathBuf>) {
         state.set_message(format!("Selected {} test pair(s)", found_count));
     } else {
         state.set_message("Test file not found");
-        // Remove the source file from selection if no test found
         state.selected_paths.remove(path);
     }
 }
@@ -221,9 +210,7 @@ pub fn select_by_extension(state: &mut AppState, entries: &[EntrySnapshot], inde
     }
 }
 
-/// Select files changed in the most recent git commit
 pub fn select_recent_commit(state: &mut AppState, entries: &[EntrySnapshot]) {
-    // Get files from the last commit using git
     let output = Command::new("git")
         .args(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"])
         .current_dir(&state.root)
@@ -247,7 +234,6 @@ pub fn select_recent_commit(state: &mut AppState, entries: &[EntrySnapshot]) {
 
     let mut count = 0;
     for entry in entries {
-        // Get relative path
         if let Ok(rel_path) = entry.path.strip_prefix(&state.root) {
             let rel_str = rel_path.display().to_string();
             if changed_files.contains(&rel_str) {
@@ -264,7 +250,6 @@ pub fn select_recent_commit(state: &mut AppState, entries: &[EntrySnapshot]) {
     }
 }
 
-/// Select only git staged files
 pub fn select_git_staged(state: &mut AppState, entries: &[EntrySnapshot]) {
     let git_status = match &state.git_status {
         Some(status) => status,
@@ -289,7 +274,6 @@ pub fn select_git_staged(state: &mut AppState, entries: &[EntrySnapshot]) {
     }
 }
 
-/// Find potential test file paths for a given source file
 pub(crate) fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
@@ -306,7 +290,6 @@ pub(crate) fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     let parent = path.parent();
 
-    // Detect if this is already a test file (reverse lookup)
     let is_test_file = stem.ends_with("_test")
         || stem.starts_with("test_")
         || stem.ends_with(".test")
@@ -316,7 +299,6 @@ pub(crate) fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
         || file_name.contains(".spec.");
 
     if is_test_file {
-        // Find the source file from a test file
         let source_stem = stem
             .trim_end_matches("_test")
             .trim_start_matches("test_")
@@ -324,10 +306,8 @@ pub(crate) fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
             .trim_end_matches(".spec");
 
         if let Some(p) = parent {
-            // Same directory
             candidates.push(p.join(format!("{}.{}", source_stem, ext)));
 
-            // Parent directory (for tests/ directory structure)
             if let Some(grandparent) = p.parent() {
                 if p.file_name().map(|n| n.to_str()) == Some(Some("tests")) {
                     candidates.push(grandparent.join(format!("{}.{}", source_stem, ext)));
@@ -335,38 +315,32 @@ pub(crate) fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
             }
         }
     } else {
-        // Find test files from a source file
         if let Some(p) = parent {
             match ext {
-                // Rust patterns
                 "rs" => {
                     candidates.push(p.join(format!("{}_test.rs", stem)));
                     candidates.push(p.join(format!("test_{}.rs", stem)));
                     candidates.push(p.join("tests").join(format!("{}.rs", stem)));
                     candidates.push(p.join("tests").join(format!("{}_test.rs", stem)));
                 }
-                // TypeScript/JavaScript patterns
                 "ts" | "tsx" | "js" | "jsx" => {
                     candidates.push(p.join(format!("{}.test.{}", stem, ext)));
                     candidates.push(p.join(format!("{}.spec.{}", stem, ext)));
                     candidates.push(p.join("__tests__").join(format!("{}.{}", stem, ext)));
                     candidates.push(p.join("__tests__").join(format!("{}.test.{}", stem, ext)));
                 }
-                // Python patterns
                 "py" => {
                     candidates.push(p.join(format!("test_{}.py", stem)));
                     candidates.push(p.join(format!("{}_test.py", stem)));
                     candidates.push(p.join("tests").join(format!("test_{}.py", stem)));
                     candidates.push(p.join("tests").join(format!("{}_test.py", stem)));
                 }
-                // Go patterns
                 "go" => {
                     candidates.push(p.join(format!("{}_test.go", stem)));
                 }
-                // Java/Kotlin patterns
                 "java" | "kt" => {
                     candidates.push(p.join(format!("{}Test.{}", stem, ext)));
-                    // Also check in test source tree
+                    // Maven and Gradle keep tests in a src/test tree that mirrors src/main.
                     let test_path = path
                         .to_string_lossy()
                         .replace("/main/", "/test/")
@@ -375,7 +349,6 @@ pub(crate) fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
                         candidates.push(PathBuf::from(test_path));
                     }
                 }
-                // Default: try common patterns
                 _ => {
                     candidates.push(p.join(format!("{}_test.{}", stem, ext)));
                     candidates.push(p.join(format!("test_{}.{}", stem, ext)));
@@ -388,7 +361,6 @@ pub(crate) fn find_test_pairs(path: &Path) -> Vec<PathBuf> {
     candidates
 }
 
-/// Select files related to the focused file using scored candidate discovery.
 pub fn select_related_files(
     state: &mut AppState,
     entries: &[EntrySnapshot],
@@ -418,7 +390,6 @@ pub fn select_related_files(
     }
 }
 
-/// Select error-context files (logs, traces) in current view
 pub fn select_error_context(state: &mut AppState, entries: &[EntrySnapshot]) {
     let mut count = 0;
     let keywords = ["error", "stderr", "stack", "trace", "panic", "crash"];

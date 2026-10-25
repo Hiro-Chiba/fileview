@@ -1,25 +1,16 @@
 //! Tree output mode for CLI integration
-//!
-//! Outputs directory tree structure to stdout in a format suitable for AI tools.
 
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 
-/// Output a directory tree to stdout
-///
-/// # Arguments
-/// * `root` - Root directory path
-/// * `max_depth` - Maximum depth to traverse (None = unlimited)
-/// * `show_hidden` - Whether to show hidden files
+/// Output a directory tree to stdout. A `max_depth` of `None` means unlimited.
 pub fn output_tree(root: &Path, max_depth: Option<usize>, show_hidden: bool) -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
 
-    // Print root
     writeln!(handle, "{}", root.display())?;
 
-    // Print children
     print_tree_recursive(&mut handle, root, "", max_depth, 0, show_hidden)?;
 
     handle.flush()
@@ -37,7 +28,6 @@ pub fn print_tree_recursive_pub<W: Write>(
     print_tree_recursive(out, path, prefix, max_depth, current_depth, show_hidden)
 }
 
-/// Recursively print tree structure
 fn print_tree_recursive<W: Write>(
     out: &mut W,
     path: &Path,
@@ -46,20 +36,17 @@ fn print_tree_recursive<W: Write>(
     current_depth: usize,
     show_hidden: bool,
 ) -> io::Result<()> {
-    // Check depth limit
     if let Some(max) = max_depth {
         if current_depth >= max {
             return Ok(());
         }
     }
 
-    // Read directory entries
     let entries = match fs::read_dir(path) {
         Ok(entries) => entries,
         Err(_) => return Ok(()), // Skip unreadable directories
     };
 
-    // Collect and sort entries
     let mut entries: Vec<_> = entries
         .filter_map(|e| e.ok())
         .filter(|e| {
@@ -88,17 +75,14 @@ fn print_tree_recursive<W: Write>(
         let name = entry.file_name();
         let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
 
-        // Choose connector
         let connector = if is_last { "└── " } else { "├── " };
 
-        // Print entry with trailing / for directories
         if is_dir {
             writeln!(out, "{}{}{}/", prefix, connector, name.to_string_lossy())?;
         } else {
             writeln!(out, "{}{}{}", prefix, connector, name.to_string_lossy())?;
         }
 
-        // Recurse into directories
         if is_dir {
             let new_prefix = if is_last {
                 format!("{}    ", prefix)
@@ -144,7 +128,7 @@ mod tests {
 
         assert!(output.contains("src/"));
         assert!(output.contains("Cargo.toml"));
-        assert!(!output.contains(".hidden")); // Hidden file not shown
+        assert!(!output.contains(".hidden"));
     }
 
     #[test]
@@ -165,7 +149,7 @@ mod tests {
         let output = String::from_utf8(output).unwrap();
 
         assert!(output.contains("src/"));
-        assert!(!output.contains("main.rs")); // Not shown due to depth limit
+        assert!(!output.contains("main.rs"));
     }
 
     #[test]
@@ -175,7 +159,6 @@ mod tests {
         print_tree_recursive(&mut output, temp.path(), "", None, 0, false).unwrap();
         let output = String::from_utf8(output).unwrap();
 
-        // Should contain tree connectors
         assert!(output.contains("├── ") || output.contains("└── "));
     }
 }

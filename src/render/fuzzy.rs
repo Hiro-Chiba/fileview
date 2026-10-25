@@ -1,5 +1,3 @@
-//! Fuzzy finder rendering and matching
-
 use std::path::PathBuf;
 
 use nucleo_matcher::{
@@ -16,13 +14,10 @@ use ratatui::{
 
 use super::theme::theme;
 
-/// Maximum number of results to display
 const MAX_RESULTS: usize = 15;
 
-/// Fuzzy match result
 #[derive(Debug, Clone)]
 pub struct FuzzyMatch {
-    /// Original path
     pub path: PathBuf,
     /// Display string (relative path)
     pub display: String,
@@ -32,7 +27,6 @@ pub struct FuzzyMatch {
     pub indices: Vec<usize>,
 }
 
-/// State for incremental fuzzy matching
 #[derive(Default)]
 pub struct FuzzyState {
     prev_query: String,
@@ -132,10 +126,8 @@ pub fn fuzzy_match_incremental(
     results
 }
 
-/// Perform fuzzy matching on a list of paths
 pub fn fuzzy_match(query: &str, paths: &[PathBuf], root: &PathBuf) -> Vec<FuzzyMatch> {
     if query.is_empty() {
-        // Return first MAX_RESULTS paths when no query
         return paths
             .iter()
             .take(MAX_RESULTS)
@@ -173,7 +165,6 @@ pub fn fuzzy_match(query: &str, paths: &[PathBuf], root: &PathBuf) -> Vec<FuzzyM
             let mut indices = Vec::new();
             let score = pattern.indices(haystack, &mut matcher, &mut indices)?;
 
-            // Convert indices to usize
             let indices: Vec<usize> = indices.iter().map(|&i| i as usize).collect();
 
             Some(FuzzyMatch {
@@ -185,16 +176,13 @@ pub fn fuzzy_match(query: &str, paths: &[PathBuf], root: &PathBuf) -> Vec<FuzzyM
         })
         .collect();
 
-    // Sort by score descending
     results.sort_by_key(|b| std::cmp::Reverse(b.score));
 
-    // Limit results
     results.truncate(MAX_RESULTS);
 
     results
 }
 
-/// Render the fuzzy finder popup
 pub fn render_fuzzy_finder(
     frame: &mut Frame,
     query: &str,
@@ -202,23 +190,20 @@ pub fn render_fuzzy_finder(
     selected: usize,
     area: Rect,
 ) {
-    // Calculate popup dimensions (handle very small terminals)
     let popup_width = (area.width * 70 / 100)
         .clamp(40, 80)
         .min(area.width.saturating_sub(2));
     let popup_height = (MAX_RESULTS as u16 + 4)
         .min(area.height.saturating_sub(4))
-        .max(6); // Minimum height for usability
+        .max(6);
 
     let popup_x = (area.width.saturating_sub(popup_width)) / 2;
     let popup_y = (area.height.saturating_sub(popup_height)) / 3; // Slightly above center
 
     let popup_area = Rect::new(popup_x, popup_y, popup_width, popup_height);
 
-    // Clear the popup area
     frame.render_widget(Clear, popup_area);
 
-    // Create popup block
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan))
@@ -227,7 +212,6 @@ pub fn render_fuzzy_finder(
     let inner = block.inner(popup_area);
     frame.render_widget(block, popup_area);
 
-    // Split inner area: input field + results
     let chunks = Layout::default()
         .constraints([
             Constraint::Length(1),
@@ -236,7 +220,6 @@ pub fn render_fuzzy_finder(
         ])
         .split(inner);
 
-    // Render query input
     let input_line = Line::from(vec![
         Span::styled("> ", Style::default().fg(Color::Cyan)),
         Span::raw(query),
@@ -249,14 +232,12 @@ pub fn render_fuzzy_finder(
     ]);
     frame.render_widget(Paragraph::new(input_line), chunks[0]);
 
-    // Render separator
     let separator = "Files by name · text:word searches contents";
     frame.render_widget(
         Paragraph::new(separator).style(Style::default().fg(Color::DarkGray)),
         chunks[1],
     );
 
-    // Render results
     if results.is_empty() {
         let no_results =
             Paragraph::new("  No matches found").style(Style::default().fg(Color::DarkGray));
@@ -277,7 +258,6 @@ pub fn render_fuzzy_finder(
                     Style::default()
                 };
 
-                // Create highlighted text
                 let spans = create_highlighted_spans(&m.display, &m.indices, is_selected);
                 let line = Line::from(spans);
 
@@ -290,7 +270,6 @@ pub fn render_fuzzy_finder(
     }
 }
 
-/// Create spans with matched characters highlighted
 fn create_highlighted_spans(
     text: &str,
     indices: &[usize],
@@ -308,33 +287,27 @@ fn create_highlighted_spans(
 
     let mut last_idx = 0;
     for &idx in indices {
-        // Skip out-of-bounds indices
         if idx >= chars.len() {
             continue;
         }
         if idx > last_idx {
-            // Add non-matched characters
             let s: String = chars[last_idx..idx].iter().collect();
             spans.push(Span::styled(s, normal_style));
         }
-        // Add matched character
         spans.push(Span::styled(chars[idx].to_string(), match_style));
         last_idx = idx + 1;
     }
 
-    // Add remaining characters
     if last_idx < chars.len() {
         let s: String = chars[last_idx..].iter().collect();
         spans.push(Span::styled(s, normal_style));
     }
 
-    // Add prefix space for padding
     let mut result = vec![Span::raw("  ")];
     result.extend(spans);
     result
 }
 
-/// Collect all file paths from a directory recursively
 pub fn collect_paths(root: &PathBuf, show_hidden: bool) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     collect_paths_recursive(root, &mut paths, show_hidden, 0, 10);
@@ -357,7 +330,6 @@ fn collect_paths_recursive(
             let path = entry.path();
             let name = entry.file_name().to_string_lossy().to_string();
 
-            // Skip hidden files if not showing them
             if !show_hidden && name.starts_with('.') {
                 continue;
             }
@@ -398,7 +370,6 @@ mod tests {
 
         let results = fuzzy_match("rs", &paths, &root);
         assert!(results.len() >= 2);
-        // .rs files should match
         assert!(results.iter().any(|r| r.display.ends_with(".rs")));
     }
 
@@ -421,7 +392,6 @@ mod tests {
         ];
 
         let results = fuzzy_match("ren", &paths, &root);
-        // Should match paths containing "render"
         assert!(!results.is_empty());
     }
 
@@ -444,7 +414,6 @@ mod tests {
 
         let results = fuzzy_match("mn", &paths, &root);
         if !results.is_empty() {
-            // Should have matched indices
             assert!(!results[0].indices.is_empty());
         }
     }
@@ -459,7 +428,6 @@ mod tests {
         ];
 
         let results = fuzzy_match("a", &paths, &root);
-        // Results should be sorted by score (descending)
         for i in 1..results.len() {
             assert!(results[i - 1].score >= results[i].score);
         }
@@ -492,7 +460,6 @@ mod tests {
 
         let results = fuzzy_match("", &paths, &root);
         assert!(!results.is_empty());
-        // Display should be relative to root
         assert_eq!(results[0].display, "subdir/file.txt");
     }
 
@@ -502,7 +469,6 @@ mod tests {
         let paths = vec![PathBuf::from("/test/日本語ファイル.txt")];
 
         let results = fuzzy_match("日本", &paths, &root);
-        // Should handle unicode
         assert!(!results.is_empty() || results.is_empty()); // Just don't panic
     }
 
@@ -522,7 +488,6 @@ mod tests {
 
     #[test]
     fn test_create_highlighted_spans_out_of_bounds_indices() {
-        // Indices beyond text length should be handled gracefully
         let spans = create_highlighted_spans("ab", &[0, 5, 10], false);
         assert!(!spans.is_empty());
     }
@@ -558,11 +523,9 @@ mod tests {
         fs::write(temp.path().join(".hidden"), "").unwrap();
         fs::write(temp.path().join("visible"), "").unwrap();
 
-        // Without showing hidden
         let paths_no_hidden = collect_paths(&temp.path().to_path_buf(), false);
         assert_eq!(paths_no_hidden.len(), 1);
 
-        // With showing hidden
         let paths_with_hidden = collect_paths(&temp.path().to_path_buf(), true);
         assert_eq!(paths_with_hidden.len(), 2);
     }
@@ -605,7 +568,6 @@ mod tests {
             score: 100,
             indices: vec![0, 1],
         };
-        // Debug should not panic
         let _ = format!("{:?}", fm);
     }
 
@@ -626,9 +588,8 @@ mod tests {
 
     #[test]
     fn test_max_results_constant() {
-        // Verify constant is reasonable (compile-time check)
         const { assert!(MAX_RESULTS > 0) };
-        const { assert!(MAX_RESULTS <= 100) }; // Should not be too large
+        const { assert!(MAX_RESULTS <= 100) };
     }
 
     #[test]
@@ -671,14 +632,12 @@ mod tests {
         let paths = vec![PathBuf::from("/test/foo.rs"), PathBuf::from("/test/bar.rs")];
         let mut state = FuzzyState::new();
 
-        // Type "foo" first
         fuzzy_match_incremental("foo", &paths, &root, &mut state);
         assert_eq!(state.prev_query, "foo");
 
         // Backspace to "f" - not a prefix extension, should do full scan
         let results = fuzzy_match_incremental("f", &paths, &root, &mut state);
         assert_eq!(state.prev_query, "f");
-        // "f" should match "foo.rs" at minimum
         assert!(results.iter().any(|r| r.display.contains("foo")));
     }
 

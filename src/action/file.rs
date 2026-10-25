@@ -1,5 +1,3 @@
-//! File operations (create, rename, delete, copy)
-
 use std::path::{Path, PathBuf};
 
 /// Reject create/rename names like `../escape` or `/abs/path` that would write
@@ -8,7 +6,6 @@ fn check_component(name: &str) -> anyhow::Result<()> {
     crate::mcp::security::validate_component(name).map_err(|e| anyhow::anyhow!("{}", e))
 }
 
-/// Create a new file
 pub fn create_file(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
     check_component(name)?;
     let path = parent.join(name);
@@ -20,7 +17,6 @@ pub fn create_file(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
     Ok(path)
 }
 
-/// Create a new directory
 pub fn create_dir(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
     check_component(name)?;
     let path = parent.join(name);
@@ -29,7 +25,6 @@ pub fn create_dir(parent: &Path, name: &str) -> anyhow::Result<PathBuf> {
     Ok(path)
 }
 
-/// Rename a file or directory
 pub fn rename(path: &Path, new_name: &str) -> anyhow::Result<PathBuf> {
     check_component(new_name)?;
     let parent = path
@@ -61,12 +56,11 @@ pub fn rename(path: &Path, new_name: &str) -> anyhow::Result<PathBuf> {
     Ok(new_path)
 }
 
-/// Delete a file or directory (move to trash)
+/// Moves to the trash rather than deleting permanently.
 pub fn delete(path: &Path) -> anyhow::Result<()> {
     trash::delete(path).map_err(|e| anyhow::anyhow!("Failed to move to trash: {}", e))
 }
 
-/// Copy a file to a destination directory
 pub fn copy_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
     let file_name = src
         .file_name()
@@ -100,7 +94,7 @@ pub fn move_to(src: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
     Ok(dest)
 }
 
-/// Get a unique path by appending _1, _2, etc. if needed
+/// Appends _1, _2, etc. when the path already exists.
 ///
 /// Uses a bounded counter with timestamp fallback to mitigate TOCTOU race conditions.
 fn get_unique_path(path: &Path) -> PathBuf {
@@ -135,7 +129,6 @@ fn get_unique_path(path: &Path) -> PathBuf {
     parent.join(format!("{}_{}{}", stem, timestamp, ext))
 }
 
-/// Copy directory recursively
 fn copy_dir_recursive(src: &Path, dest: &Path) -> anyhow::Result<()> {
     std::fs::create_dir_all(dest)?;
     for entry in std::fs::read_dir(src)? {
@@ -263,7 +256,7 @@ mod tests {
 
         let result = copy_to(&src, &dest_dir).unwrap();
 
-        assert!(src.exists()); // Original still exists
+        assert!(src.exists());
         assert!(result.exists());
         assert_eq!(fs::read_to_string(&result).unwrap(), "content");
     }
@@ -280,7 +273,7 @@ mod tests {
 
         let result = copy_to(&src, &dest_dir).unwrap();
 
-        assert!(src.exists()); // Original still exists
+        assert!(src.exists());
         assert!(result.exists());
         assert!(result.is_dir());
         assert!(result.join("file.txt").exists());
@@ -320,8 +313,6 @@ mod tests {
         let original = temp.path().join("file.txt");
         fs::write(&original, "content").unwrap();
 
-        // A rename target that escapes the directory must be refused, and the
-        // original must be left untouched.
         assert!(rename(&original, "../escaped.txt").is_err());
         assert!(rename(&original, "sub/nested.txt").is_err());
         assert!(original.exists());
@@ -345,12 +336,11 @@ mod tests {
 
         let dest_dir = temp.path().join("dest");
         fs::create_dir(&dest_dir).unwrap();
-        // Pre-existing file with the same name must NOT be overwritten.
         fs::write(dest_dir.join("file.txt"), "existing").unwrap();
 
         let result = move_to(&src, &dest_dir).unwrap();
 
-        assert!(!src.exists()); // moved away
+        assert!(!src.exists());
         assert_eq!(result.file_name().unwrap(), "file_1.txt");
         assert_eq!(
             fs::read_to_string(dest_dir.join("file.txt")).unwrap(),
@@ -365,12 +355,10 @@ mod tests {
         let src = temp.path().join("file.txt");
         fs::write(&src, "content").unwrap();
 
-        // Create existing file with same name in dest
         fs::write(temp.path().join("file.txt"), "existing").unwrap();
 
         let result = copy_to(&src, temp.path()).unwrap();
 
-        // Should create file_1.txt
         assert_eq!(result.file_name().unwrap(), "file_1.txt");
         assert!(result.exists());
     }

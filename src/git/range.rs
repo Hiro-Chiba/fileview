@@ -1,9 +1,4 @@
 //! Diff range computation for the diff-aware tree.
-//!
-//! Wraps `git diff --numstat -M <revspec>` and `git status --porcelain` to
-//! produce a per-path map of added and deleted line counts. The resulting
-//! map drives the diff scope filter in `tree::Scope::DiffRange` and the
-//! `+N/-M` annotation rendered next to each file in the tree.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -29,7 +24,6 @@ impl DiffRange {
         self.by_path.get(path).copied()
     }
 
-    /// Number of files included in the range.
     pub fn file_count(&self) -> usize {
         self.by_path.len()
     }

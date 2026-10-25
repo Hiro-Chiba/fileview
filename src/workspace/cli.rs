@@ -8,7 +8,6 @@ use anyhow::{bail, Context, Result};
 
 use super::WorkspaceEngine;
 
-/// Help text for file search.
 pub const HELP: &str = "Usage: fv search QUERY [PATH] [--hidden] [--json] [--limit N]
 
 Find files by name or relative path. PATH defaults to the current directory.

@@ -1,5 +1,3 @@
-//! File system watcher for real-time updates
-
 use notify::Watcher;
 use std::cell::Cell;
 use std::collections::HashSet;
@@ -26,7 +24,6 @@ const EXCLUDED_DIRS: &[&str] = &[
     "vendor",
 ];
 
-/// File watcher with debouncing for real-time file system monitoring
 pub struct FileWatcher {
     watcher: notify::RecommendedWatcher,
     dirty: Arc<AtomicBool>,
@@ -36,7 +33,7 @@ pub struct FileWatcher {
 }
 
 impl FileWatcher {
-    /// Create a new file watcher (initially watches only root)
+    /// Initially watches only the root.
     pub fn new(root: &Path) -> anyhow::Result<Self> {
         let dirty = Arc::new(AtomicBool::new(false));
         let event_dirty = dirty.clone();
@@ -62,8 +59,6 @@ impl FileWatcher {
         })
     }
 
-    /// Sync watched directories with expanded paths
-    ///
     /// Adds watches for newly expanded directories and removes watches for collapsed ones.
     pub fn sync_with_expanded(&mut self, expanded_paths: &[PathBuf]) {
         let mut new_set: HashSet<PathBuf> = expanded_paths
@@ -73,12 +68,10 @@ impl FileWatcher {
             .collect();
         new_set.insert(self.root.clone());
 
-        // Remove watches for collapsed directories
         for path in self.watched_paths.difference(&new_set) {
             let _ = self.watcher.unwatch(path);
         }
 
-        // Add watches for newly expanded directories
         for path in new_set.difference(&self.watched_paths) {
             let _ = self
                 .watcher
@@ -88,7 +81,6 @@ impl FileWatcher {
         self.watched_paths = new_set;
     }
 
-    /// Check if a path should be excluded from watching
     fn is_excluded(path: &Path) -> bool {
         path.file_name()
             .and_then(|n| n.to_str())

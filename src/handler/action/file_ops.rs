@@ -1,7 +1,3 @@
-//! File operation action handlers
-//!
-//! Handles Paste, ConfirmDelete, ExecuteDelete, StartRename, StartNewFile, StartNewDir
-
 use std::path::PathBuf;
 
 use crate::action::{file as file_ops, ClipboardContent};
@@ -11,7 +7,6 @@ use crate::tree::TreeNavigator;
 
 use super::{get_filename_str, get_target_directory, reload_tree, EntrySnapshot};
 
-/// Handle file operations
 pub fn handle(
     action: KeyAction,
     state: &mut AppState,

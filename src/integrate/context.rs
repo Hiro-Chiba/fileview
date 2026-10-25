@@ -1,6 +1,4 @@
 //! Context generation for AI tools
-//!
-//! Outputs project context in a format optimized for AI assistants.
 
 use std::collections::HashMap;
 use std::fs;
@@ -10,11 +8,9 @@ use std::process::Command;
 
 use crate::git::GitStatus;
 
-/// Build project context as a string
 pub fn build_project_context(root: &Path) -> io::Result<String> {
     let mut out = Vec::new();
 
-    // Project name (directory name)
     let project_name = root
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
@@ -23,14 +19,12 @@ pub fn build_project_context(root: &Path) -> io::Result<String> {
     writeln!(&mut out, "## Project: {}", project_name)?;
     writeln!(&mut out)?;
 
-    // Git information
     if let Some(git_status) = GitStatus::detect(root) {
         let branch = git_status.branch().unwrap_or("unknown");
         let is_clean = is_working_tree_clean(root);
         let clean_str = if is_clean { "(clean)" } else { "(dirty)" };
         writeln!(&mut out, "**Branch:** {} {}", branch, clean_str)?;
 
-        // Recent commit
         if let Some(recent_commit) = get_recent_commit(root) {
             writeln!(&mut out, "**Recent:** {}", recent_commit)?;
         }
@@ -38,18 +32,15 @@ pub fn build_project_context(root: &Path) -> io::Result<String> {
         writeln!(&mut out)?;
     }
 
-    // Project structure
     writeln!(&mut out, "### Structure:")?;
     print_structure(&mut out, root, "", 0, 3)?;
     writeln!(&mut out)?;
 
-    // File statistics
     let stats = collect_file_stats(root);
     if !stats.is_empty() {
         let total_files: usize = stats.values().map(|(count, _)| count).sum();
         let total_lines: usize = stats.values().map(|(_, lines)| lines).sum();
 
-        // Format file types
         let mut type_parts: Vec<String> = stats
             .iter()
             .filter(|(_, (count, _))| *count > 0)
@@ -75,10 +66,6 @@ pub fn build_project_context(root: &Path) -> io::Result<String> {
     Ok(String::from_utf8_lossy(&out).to_string())
 }
 
-/// Output project context to stdout
-///
-/// # Arguments
-/// * `root` - Root directory path
 pub fn output_context(root: &Path) -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
@@ -88,7 +75,6 @@ pub fn output_context(root: &Path) -> io::Result<()> {
     handle.flush()
 }
 
-/// Check if working tree is clean
 fn is_working_tree_clean(root: &Path) -> bool {
     Command::new("git")
         .args(["status", "--porcelain"])
@@ -98,7 +84,6 @@ fn is_working_tree_clean(root: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Get recent commit message with relative time
 fn get_recent_commit(root: &Path) -> Option<String> {
     let output = Command::new("git")
         .args(["log", "-1", "--format=%s (%cr)"])
@@ -115,7 +100,6 @@ fn get_recent_commit(root: &Path) -> Option<String> {
     None
 }
 
-/// Print simplified project structure
 fn print_structure<W: Write>(
     out: &mut W,
     path: &Path,
@@ -132,13 +116,11 @@ fn print_structure<W: Write>(
         Err(_) => return Ok(()),
     };
 
-    // Collect and filter entries
     let mut dirs: Vec<_> = entries
         .filter_map(|e| e.ok())
         .filter(|e| {
             let name = e.file_name();
             let name_str = name.to_string_lossy();
-            // Skip hidden and common non-essential directories
             !name_str.starts_with('.')
                 && !matches!(
                     name_str.as_ref(),
@@ -155,10 +137,8 @@ fn print_structure<W: Write>(
         .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
         .collect();
 
-    // Sort alphabetically
     dirs.sort_by_key(|a| a.file_name());
 
-    // Limit to significant directories
     if dirs.len() > 10 {
         dirs.truncate(10);
     }
@@ -198,7 +178,7 @@ fn print_structure<W: Write>(
     Ok(())
 }
 
-/// Collect file statistics by extension
+/// Returns `(file count, line count)` per language, keyed by display name.
 fn collect_file_stats(root: &Path) -> HashMap<String, (usize, usize)> {
     let mut stats: HashMap<String, (usize, usize)> = HashMap::new();
 
@@ -226,7 +206,6 @@ fn collect_stats_recursive(
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
 
-        // Skip hidden and vendor directories
         if name_str.starts_with('.') {
             continue;
         }
@@ -253,7 +232,6 @@ fn collect_stats_recursive(
     }
 }
 
-/// Normalize file extension for display
 fn normalize_extension(ext: &str) -> String {
     match ext.to_lowercase().as_str() {
         "rs" => "Rust".to_string(),
@@ -276,7 +254,6 @@ fn normalize_extension(ext: &str) -> String {
     }
 }
 
-/// Count lines in a file
 fn count_lines(path: &Path) -> io::Result<usize> {
     let content = fs::read_to_string(path)?;
     Ok(content.lines().count())

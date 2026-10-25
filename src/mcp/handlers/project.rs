@@ -1,6 +1,4 @@
 //! Project management handlers
-//!
-//! Implements run_build, run_test, run_lint, get_project_stats.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -9,7 +7,6 @@ use std::process::Command;
 use super::{error_result, success_result, ToolCallResult};
 use crate::mcp::security::{reject_option_like, validate_path};
 
-/// Detected project type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectType {
     Rust,
@@ -21,7 +18,6 @@ pub enum ProjectType {
 }
 
 impl ProjectType {
-    /// Detect project type from root directory
     pub fn detect(root: &Path) -> Self {
         if root.join("Cargo.toml").exists() {
             Self::Rust
@@ -41,7 +37,6 @@ impl ProjectType {
         }
     }
 
-    /// Get default build command
     pub fn build_command(&self) -> Option<(&str, Vec<&str>)> {
         match self {
             Self::Rust => Some(("cargo", vec!["build"])),
@@ -53,7 +48,6 @@ impl ProjectType {
         }
     }
 
-    /// Get default test command
     pub fn test_command(&self) -> Option<(&str, Vec<&str>)> {
         match self {
             Self::Rust => Some(("cargo", vec!["test"])),
@@ -65,7 +59,6 @@ impl ProjectType {
         }
     }
 
-    /// Get default lint command
     pub fn lint_command(&self) -> Option<(&str, Vec<&str>)> {
         match self {
             Self::Rust => Some(("cargo", vec!["clippy"])),
@@ -77,7 +70,6 @@ impl ProjectType {
         }
     }
 
-    /// Get display name
     pub fn display_name(&self) -> &str {
         match self {
             Self::Rust => "Rust (Cargo)",
@@ -95,10 +87,8 @@ const ALLOWED_BUILD_COMMANDS: &[&str] = &[
     "cargo", "npm", "yarn", "pnpm", "make", "cmake", "go", "mvn", "gradle", "pip", "poetry",
 ];
 
-/// Run project build
 pub fn run_build(root: &Path, custom_command: Option<&str>) -> ToolCallResult {
     if let Some(custom) = custom_command {
-        // Parse custom command with security validation
         let parts: Vec<&str> = custom.split_whitespace().collect();
         if parts.is_empty() {
             return error_result("Empty command");
@@ -128,7 +118,6 @@ pub fn run_build(root: &Path, custom_command: Option<&str>) -> ToolCallResult {
         return run_command(root, cmd, &parts[1..], "Build");
     }
 
-    // Auto-detect project type
     let project_type = ProjectType::detect(root);
     match project_type.build_command() {
         Some((cmd, args)) => run_command(root, cmd, &args, "Build"),
@@ -139,7 +128,6 @@ pub fn run_build(root: &Path, custom_command: Option<&str>) -> ToolCallResult {
     }
 }
 
-/// Run project tests
 pub fn run_test(root: &Path, path: Option<&str>, filter: Option<&str>) -> ToolCallResult {
     let project_type = ProjectType::detect(root);
 
@@ -162,7 +150,6 @@ pub fn run_test(root: &Path, path: Option<&str>, filter: Option<&str>) -> ToolCa
         }
         match project_type {
             ProjectType::Rust => {
-                // Cargo test with path
                 args.push("--".to_string());
                 args.push(p.to_string());
             }
@@ -182,7 +169,6 @@ pub fn run_test(root: &Path, path: Option<&str>, filter: Option<&str>) -> ToolCa
         }
     }
 
-    // Add name filter if specified
     if let Some(f) = filter {
         if let Err(e) = reject_option_like(f) {
             return error_result(&e.to_string());
@@ -210,7 +196,6 @@ pub fn run_test(root: &Path, path: Option<&str>, filter: Option<&str>) -> ToolCa
     run_command(root, cmd, &args_refs, "Test")
 }
 
-/// Run project linter
 pub fn run_lint(root: &Path, path: Option<&str>, fix: bool) -> ToolCallResult {
     let project_type = ProjectType::detect(root);
 
@@ -224,7 +209,6 @@ pub fn run_lint(root: &Path, path: Option<&str>, fix: bool) -> ToolCallResult {
         }
     };
 
-    // Add fix flag if requested
     if fix {
         match project_type {
             ProjectType::Rust => {
@@ -248,14 +232,12 @@ pub fn run_lint(root: &Path, path: Option<&str>, fix: bool) -> ToolCallResult {
         }
     }
 
-    // Add path filter if specified
     if let Some(p) = path {
         if let Err(e) = reject_option_like(p) {
             return error_result(&e.to_string());
         }
         match validate_path(root, p) {
             Ok(_) => {
-                // Replace "." with specific path
                 if let Some(pos) = args.iter().position(|a| a == ".") {
                     args[pos] = p.to_string();
                 } else {
@@ -270,7 +252,6 @@ pub fn run_lint(root: &Path, path: Option<&str>, fix: bool) -> ToolCallResult {
     run_command(root, cmd, &args_refs, "Lint")
 }
 
-/// Get project statistics
 pub fn get_project_stats(root: &Path, path: Option<&str>) -> ToolCallResult {
     let start_path = match path {
         Some(p) => match validate_path(root, p) {
@@ -326,7 +307,6 @@ pub fn get_project_stats(root: &Path, path: Option<&str>) -> ToolCallResult {
     success_result(result)
 }
 
-/// Run a command and return formatted result
 fn run_command(root: &Path, cmd: &str, args: &[&str], operation: &str) -> ToolCallResult {
     let output = Command::new(cmd).args(args).current_dir(root).output();
 
@@ -383,7 +363,6 @@ fn run_command(root: &Path, cmd: &str, args: &[&str], operation: &str) -> ToolCa
     }
 }
 
-/// Project statistics
 #[derive(Default)]
 struct ProjectStats {
     total_files: usize,
@@ -397,10 +376,8 @@ struct ProjectStats {
 /// Maximum recursion depth for stats collection (security: prevent DoS)
 const MAX_STATS_DEPTH: usize = 50;
 
-/// Maximum file size to read for line counting (10 MB)
 const MAX_FILE_SIZE_FOR_LINES: u64 = 10 * 1024 * 1024;
 
-/// Collect statistics recursively with depth limit
 fn collect_stats(path: &Path, stats: &mut ProjectStats, depth: usize) {
     // Security: Prevent unbounded recursion
     if depth > MAX_STATS_DEPTH {
@@ -413,7 +390,6 @@ fn collect_stats(path: &Path, stats: &mut ProjectStats, depth: usize) {
     }
 
     if path.is_dir() {
-        // Skip common non-source directories
         let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
         if matches!(
             dir_name,
@@ -462,7 +438,6 @@ fn collect_stats(path: &Path, stats: &mut ProjectStats, depth: usize) {
     }
 }
 
-/// Check if extension is a source code file
 fn is_source_extension(ext: &str) -> bool {
     matches!(
         ext,
@@ -488,7 +463,6 @@ fn is_source_extension(ext: &str) -> bool {
     )
 }
 
-/// Format byte size
 fn format_size(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;

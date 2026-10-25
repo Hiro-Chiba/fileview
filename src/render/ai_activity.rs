@@ -1,8 +1,4 @@
 //! Live AI activity reflection UI.
-//!
-//! Two surfaces:
-//! - A single status-bar line (rendered inline by `render/status.rs`).
-//! - A popup list view opened via `Alt+L`.
 
 use ratatui::{
     layout::Rect,

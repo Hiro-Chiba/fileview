@@ -20,7 +20,6 @@ pub const MIN_RENDER_WIDTH: u16 = 80;
 /// may hold a single 64 KiB line.
 const MAX_INLINE_BYTES: usize = 1024;
 
-/// Check if a path looks like a Markdown document
 pub fn is_markdown_file(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())

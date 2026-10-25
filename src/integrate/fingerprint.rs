@@ -57,7 +57,6 @@ impl Language {
     }
 }
 
-/// One repository fingerprint.
 #[derive(Debug, Clone)]
 pub struct Fingerprint {
     pub primary_language: Option<Language>,

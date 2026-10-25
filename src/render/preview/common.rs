@@ -1,5 +1,3 @@
-//! Common utilities for preview rendering
-
 use ratatui::style::{Color, Style};
 
 use crate::util::utf8_prefix;
@@ -7,19 +5,15 @@ use crate::util::utf8_prefix;
 /// Maximum depth for recursive directory size calculation (for performance)
 pub const MAX_DIR_SIZE_DEPTH: u32 = 3;
 
-/// Maximum bytes to read for hex preview
 pub const HEX_PREVIEW_MAX_BYTES: usize = 4096;
 
-/// Number of bytes per line in hex preview
 pub const HEX_BYTES_PER_LINE: usize = 16;
 
-/// Maximum entries to display in archive preview
 pub const ARCHIVE_MAX_ENTRIES: usize = 500;
 
 /// Maximum length for archive entry names (prevent DoS from malicious archives)
 pub const MAX_ENTRY_NAME_LEN: usize = 4096;
 
-/// Get border style based on focus state
 pub fn get_border_style(focused: bool) -> Style {
     if focused {
         Style::default().fg(Color::Cyan)
@@ -28,7 +22,6 @@ pub fn get_border_style(focused: bool) -> Style {
     }
 }
 
-/// Truncate archive entry name if too long
 pub fn truncate_entry_name(name: String) -> String {
     if name.len() > MAX_ENTRY_NAME_LEN {
         format!("{}...", utf8_prefix(&name, MAX_ENTRY_NAME_LEN - 3))
@@ -37,7 +30,6 @@ pub fn truncate_entry_name(name: String) -> String {
     }
 }
 
-/// Format bytes as human-readable string
 pub fn format_size(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -62,7 +54,6 @@ pub fn format_size(bytes: u64) -> String {
 /// Note: Only handles timestamps from 1970 onwards. Pre-1970 timestamps
 /// return "1970-01-01" as a fallback.
 pub fn unix_timestamp_to_date(secs: i64) -> String {
-    // Handle negative timestamps (pre-1970)
     if secs < 0 {
         return "1970-01-01".to_string();
     }
@@ -83,7 +74,6 @@ pub fn unix_timestamp_to_date(secs: i64) -> String {
         year += 1;
     }
 
-    // Find month and day
     let leap = is_leap_year(year);
     let mut month = 1u8;
     for (i, &d) in DAYS_IN_MONTH.iter().enumerate() {
@@ -94,14 +84,12 @@ pub fn unix_timestamp_to_date(secs: i64) -> String {
         days -= days_in_month;
         month += 1;
     }
-    // Clamp month to valid range (1-12)
     let month = month.min(12);
     let day = (days + 1).max(1);
 
     format!("{:04}-{:02}-{:02}", year, month, day)
 }
 
-/// Check if a year is a leap year
 fn is_leap_year(year: i64) -> bool {
     (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
 }

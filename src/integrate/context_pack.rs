@@ -11,7 +11,6 @@ use crate::mcp::token::estimate_tokens;
 
 use super::context::build_project_context;
 
-/// Built-in context pack presets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContextPackPreset {
     Minimal,
@@ -83,7 +82,6 @@ impl FromStr for ContextAgent {
     }
 }
 
-/// Output format for context-pack.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ContextPackFormat {
     #[default]
@@ -112,7 +110,6 @@ impl FromStr for ContextPackFormat {
     }
 }
 
-/// Context pack generation options.
 #[derive(Debug, Clone)]
 pub struct ContextPackOptions {
     pub token_budget: usize,
@@ -180,7 +177,6 @@ impl ContextPackOptions {
     }
 }
 
-/// Build a context pack as text with default options.
 pub fn build_context_pack(
     root: &Path,
     preset: ContextPackPreset,
@@ -189,7 +185,6 @@ pub fn build_context_pack(
     build_context_pack_with_options(root, preset, selected_paths, &ContextPackOptions::default())
 }
 
-/// Build a context pack with explicit options.
 pub fn build_context_pack_with_options(
     root: &Path,
     preset: ContextPackPreset,
@@ -276,12 +271,10 @@ pub fn build_context_pack_with_options(
     }
 }
 
-/// Output a context pack to stdout with default options.
 pub fn output_context_pack(root: &Path, preset: ContextPackPreset) -> io::Result<()> {
     output_context_pack_with_options(root, preset, &ContextPackOptions::default())
 }
 
-/// Output a context pack to stdout with explicit options.
 pub fn output_context_pack_with_options(
     root: &Path,
     preset: ContextPackPreset,

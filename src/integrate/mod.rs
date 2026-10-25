@@ -1,12 +1,4 @@
-//! Integrate module - External integration features
-//!
-//! Provides integration with external tools:
-//! - Pick mode: Use fileview as a file picker (--pick)
-//! - Callback: Run commands on file selection (--on-select)
-//! - Tree mode: Output directory tree to stdout (--tree)
-//! - Content output: Include file contents in pick output (--with-content)
-//! - Context mode: Output project context for AI tools (--context)
-//! - Session: Save/restore selection state
+//! Features that connect fileview to external tools and AI workflows.
 
 pub mod ai_ignore;
 pub mod benchmark;

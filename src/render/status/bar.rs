@@ -80,7 +80,6 @@ fn budget_segment_spans(state: &AppState, density: UiDensity) -> Vec<Span<'stati
     vec![Span::styled(text, Style::default().fg(color))]
 }
 
-/// Render the status bar with adaptive layout based on screen width
 /// Compose the status-bar message, giving AI activity precedence when a
 /// recent event is available. Returns an owned `String` because we may need
 /// to concatenate with the regular `state.message`.
@@ -100,7 +99,6 @@ pub fn render_status_bar(
     focused_path: Option<&PathBuf>,
     area: Rect,
 ) {
-    // Check if peek mode is enabled - render peek preview instead of normal status
     if state.preview_display_mode == PreviewDisplayMode::Peek {
         render_peek_status(frame, state, focused_path, area);
         return;
@@ -109,7 +107,6 @@ pub fn render_status_bar(
     let density = state.ui_density_for_width(area.width);
     let layout = LayoutEngine::from_rect_with_density(area, density);
 
-    // Adaptive layout based on UI density
     match layout.density {
         UiDensity::Ultra => render_ultra_compact_status(frame, state, area),
         UiDensity::Narrow => render_compact_status(frame, state, focused_path, area),
@@ -130,16 +127,13 @@ fn render_peek_status(
     let layout = LayoutEngine::from_rect_with_density(area, density);
     let max_preview_lines = layout.peek_preview_lines();
 
-    // Build header line with minimal info based on density
     let mut header_spans = Vec::new();
 
-    // Peek indicator
     header_spans.push(Span::styled(
         "P",
         Style::default().fg(t.info).add_modifier(Modifier::BOLD),
     ));
 
-    // Selection count
     if !state.selected_paths.is_empty() {
         header_spans.push(Span::raw(" "));
         header_spans.push(Span::styled(
@@ -148,7 +142,6 @@ fn render_peek_status(
         ));
     }
 
-    // Git branch (abbreviated based on density)
     if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
         let max_branch_len = match layout.density {
             UiDensity::Ultra => 4,
@@ -170,7 +163,6 @@ fn render_peek_status(
         ));
     }
 
-    // File name (only if enough space)
     if let Some(path) = focused_path {
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
             let separator = match layout.density {
@@ -197,7 +189,6 @@ fn render_peek_status(
         }
     }
 
-    // Read first few lines of the file for peek preview
     let preview_lines = if let Some(path) = focused_path {
         read_peek_lines(
             path,
@@ -209,7 +200,6 @@ fn render_peek_status(
 
     let mut content = vec![Line::from(header_spans)];
     for line in preview_lines {
-        // Truncate long lines
         let max_width = area.width.saturating_sub(2) as usize;
         let display = if line.len() > max_width {
             format!("{}…", utf8_prefix(&line, max_width.saturating_sub(1)))
@@ -222,7 +212,6 @@ fn render_peek_status(
         )));
     }
 
-    // Compact title for ultra mode
     let title = match layout.density {
         UiDensity::Ultra => " P ",
         _ => " Peek ",
@@ -237,7 +226,6 @@ fn render_peek_status(
     frame.render_widget(widget, area);
 }
 
-/// Read first few lines of a file for peek preview
 fn read_peek_lines(path: &PathBuf, max_lines: usize) -> Vec<String> {
     if path.is_dir() {
         return vec!["(directory)".to_string()];
@@ -254,11 +242,9 @@ fn read_peek_lines(path: &PathBuf, max_lines: usize) -> Vec<String> {
     for line in reader.lines().take(max_lines) {
         match line {
             Ok(l) => {
-                // Skip empty lines at the start
                 if lines.is_empty() && l.trim().is_empty() {
                     continue;
                 }
-                // Replace tabs with spaces
                 lines.push(l.replace('\t', "  "));
             }
             Err(_) => {
@@ -288,7 +274,6 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
     // For ultra-narrow, prioritize: selection > branch > sort > filter > message
     let selected_count = state.selected_paths.len();
 
-    // Selection count first (most important in ultra mode)
     if selected_count > 0 {
         spans.push(Span::styled(
             format!("{}*", selected_count),
@@ -296,12 +281,10 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         ));
     }
 
-    // Git branch (very abbreviated)
     if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
         if !spans.is_empty() {
             spans.push(Span::raw(" "));
         }
-        // Max 4 chars for branch in ultra mode
         let branch_abbrev = if branch.len() > 4 {
             format!("\u{e0a0}{}…", utf8_prefix(branch, 3))
         } else {
@@ -313,7 +296,6 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         ));
     }
 
-    // Sort mode indicator (single char, only if not default)
     if state.sort_mode != SortMode::Name {
         if !spans.is_empty() {
             spans.push(Span::raw(" "));
@@ -324,7 +306,6 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         ));
     }
 
-    // Filter indicator (just an icon)
     if state.filter_pattern.is_some() {
         if !spans.is_empty() {
             spans.push(Span::raw(" "));
@@ -332,7 +313,6 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         spans.push(Span::styled("\u{f0b0}", Style::default().fg(t.warning)));
     }
 
-    // Budget segment (single bracketed token count)
     let budget_spans = budget_segment_spans(state, UiDensity::Ultra);
     if !budget_spans.is_empty() {
         if !spans.is_empty() {
@@ -341,14 +321,11 @@ fn render_ultra_compact_status(frame: &mut Frame, state: &AppState, area: Rect) 
         spans.extend(budget_spans);
     }
 
-    // Help hint only if there's space
     let current_width: usize = spans.iter().map(|s| s.width()).sum();
     if current_width < inner_width.saturating_sub(2) && spans.is_empty() {
         spans.push(Span::styled("?", Style::default().fg(t.info)));
     }
 
-    // Message (only if there's significant space left). AI activity indicator
-    // takes precedence when a recent event is available.
     let message = effective_status_message(state, "");
     if !message.is_empty() {
         let used_width: usize = spans.iter().map(|s| s.width()).sum();
@@ -382,18 +359,15 @@ fn render_compact_status(
     // Build compact content: "? | 1.2KB | main | Sel:3"
     let mut spans = Vec::new();
 
-    // Help or message (highest priority)
     let message_owned = effective_status_message(state, "?");
     let message = message_owned.as_str();
     spans.push(Span::raw(format!(" {}", message)));
 
-    // File size only (no modification time)
     if let Some(size) = focused_path.and_then(|p| get_file_size_only(p.as_path())) {
         spans.push(Span::styled(" | ", Style::default().fg(t.git_ignored)));
         spans.push(Span::raw(size));
     }
 
-    // Git branch (abbreviated, medium priority)
     if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
         spans.push(Span::styled(" | ", Style::default().fg(t.git_ignored)));
         spans.push(Span::styled(
@@ -402,7 +376,6 @@ fn render_compact_status(
         ));
     }
 
-    // Selection count (abbreviated)
     let selected_count = state.selected_paths.len();
     if selected_count > 0 {
         spans.push(Span::styled(" | ", Style::default().fg(t.git_ignored)));
@@ -428,7 +401,6 @@ fn render_narrow_status(
     focused_path: Option<&PathBuf>,
     area: Rect,
 ) {
-    // Dynamic split: adjust based on content
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
@@ -436,15 +408,12 @@ fn render_narrow_status(
 
     let t = theme();
 
-    // Left panel: message/help + git branch
     let mut left_spans = Vec::new();
 
-    // Watch indicator (if enabled, keep it compact)
     if state.watch_enabled {
         left_spans.push(Span::styled("\u{f06e} ", Style::default().fg(t.info)));
     }
 
-    // Git branch (abbreviated)
     if let Some(branch) = state.git_status.as_ref().and_then(|g| g.branch()) {
         left_spans.push(Span::styled(
             format!("\u{e0a0}{} |", branch),
@@ -452,7 +421,6 @@ fn render_narrow_status(
         ));
     }
 
-    // Sort mode (abbreviated, only if non-default)
     if state.sort_mode != SortMode::Name {
         left_spans.push(Span::styled(
             format!("\u{f0dc}{}|", state.sort_mode.short_name()),
@@ -460,7 +428,6 @@ fn render_narrow_status(
         ));
     }
 
-    // Search matches (abbreviated)
     if let Some((current, total)) = state.search_matches {
         left_spans.push(Span::styled(
             format!("{}/{}|", current, total),
@@ -468,7 +435,6 @@ fn render_narrow_status(
         ));
     }
 
-    // Help or message
     let message_owned = effective_status_message(state, "? help");
     let message = message_owned.as_str();
     left_spans.push(Span::raw(format!(" {}", message)));
@@ -477,7 +443,6 @@ fn render_narrow_status(
     let left_widget = Paragraph::new(left_content).block(Block::default().borders(Borders::ALL));
     frame.render_widget(left_widget, chunks[0]);
 
-    // Right panel: file info + selection (abbreviated)
     let file_info = focused_path
         .map(|p| p.as_path())
         .and_then(get_file_info_narrow)
@@ -518,7 +483,6 @@ fn render_narrow_status(
 }
 
 /// Render full status bar for wide screens (>= 100 chars)
-/// Original implementation with full information display
 fn render_full_status(
     frame: &mut Frame,
     state: &AppState,
@@ -530,7 +494,6 @@ fn render_full_status(
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    // Left: message or help hint, with mode, git branch, watch, filter, sort, and search indicators
     let mode_indicator = if state.select_mode {
         if state.multi_select {
             "\u{f05c}\u{f05c} " // Multi-select icon
@@ -562,14 +525,12 @@ fn render_full_status(
         .map(|b| format!("\u{e0a0} {} |", b)) // Git branch icon
         .unwrap_or_default();
 
-    // Sort mode indicator (only show if not default)
     let sort_indicator = if state.sort_mode != SortMode::Name {
         format!("\u{f0dc} {} |", state.sort_mode.display_name()) // Sort icon
     } else {
         String::new()
     };
 
-    // Search match info
     let search_indicator = state
         .search_matches
         .map(|(current, total)| format!("{}/{} matches |", current, total))
@@ -590,7 +551,6 @@ fn render_full_status(
     let msg_widget = Paragraph::new(left_content).block(Block::default().borders(Borders::ALL));
     frame.render_widget(msg_widget, chunks[0]);
 
-    // Right: file info + selection stats
     let file_info = focused_path
         .map(|p| p.as_path())
         .and_then(get_file_info)

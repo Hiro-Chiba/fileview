@@ -1,7 +1,4 @@
 //! Plugin API context
-//!
-//! This module provides the context that plugins can access to interact
-//! with FileView's current state.
 
 use std::path::PathBuf;
 
@@ -32,7 +29,6 @@ impl PluginEvent {
         }
     }
 
-    /// Parse event name from string
     pub fn parse(s: &str) -> Option<Self> {
         match s {
             "file_selected" => Some(PluginEvent::FileSelected),
@@ -72,18 +68,13 @@ pub enum PluginAction {
 pub struct PluginContext {
     /// Currently focused file path (None if directory or no focus)
     current_file: Option<PathBuf>,
-    /// Current directory path
     current_dir: PathBuf,
-    /// Currently selected files (multi-select)
     selected_files: Vec<PathBuf>,
-    /// Pending notifications from plugins
     notifications: Vec<String>,
-    /// Pending actions from plugins
     actions: Vec<PluginAction>,
 }
 
 impl PluginContext {
-    /// Create a new empty context
     pub fn new() -> Self {
         Self {
             current_file: None,
@@ -94,62 +85,50 @@ impl PluginContext {
         }
     }
 
-    /// Get the currently focused file path
     pub fn current_file(&self) -> Option<&PathBuf> {
         self.current_file.as_ref()
     }
 
-    /// Set the currently focused file
     pub fn set_current_file(&mut self, path: Option<PathBuf>) {
         self.current_file = path;
     }
 
-    /// Get the current directory
     pub fn current_dir(&self) -> &PathBuf {
         &self.current_dir
     }
 
-    /// Set the current directory
     pub fn set_current_dir(&mut self, path: PathBuf) {
         self.current_dir = path;
     }
 
-    /// Get the selected files
     pub fn selected_files(&self) -> &[PathBuf] {
         &self.selected_files
     }
 
-    /// Set the selected files
     pub fn set_selected_files(&mut self, paths: Vec<PathBuf>) {
         self.selected_files = paths;
     }
 
-    /// Add a notification message
     pub fn add_notification(&mut self, msg: String) {
         self.notifications.push(msg);
     }
 
-    /// Take all pending notifications
     pub fn take_notifications(&mut self) -> Vec<String> {
         std::mem::take(&mut self.notifications)
     }
 
-    /// Check if there are pending notifications
     pub fn has_notifications(&self) -> bool {
         !self.notifications.is_empty()
     }
 
-    /// Queue an action to be executed
     pub fn queue_action(&mut self, action: PluginAction) {
         self.actions.push(action);
     }
 
-    /// Take all pending actions
     pub fn take_actions(&mut self) -> Vec<PluginAction> {
         std::mem::take(&mut self.actions)
     }
 
-    /// Check if there are pending actions
     pub fn has_actions(&self) -> bool {
         !self.actions.is_empty()
     }
@@ -208,7 +187,6 @@ mod tests {
         assert_eq!(notes[0], "Hello");
         assert_eq!(notes[1], "World");
 
-        // After take, should be empty
         assert!(!ctx.has_notifications());
         assert!(ctx.take_notifications().is_empty());
     }
@@ -230,7 +208,6 @@ mod tests {
         assert_eq!(actions[1], PluginAction::Refresh);
         assert_eq!(actions[2], PluginAction::SetClipboard("hello".to_string()));
 
-        // After take, should be empty
         assert!(!ctx.has_actions());
         assert!(ctx.take_actions().is_empty());
     }

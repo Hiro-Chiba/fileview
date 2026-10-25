@@ -1,6 +1,4 @@
 //! Dependency analysis handlers
-//!
-//! Implements get_dependency_graph, get_import_tree, find_circular_deps.
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -13,7 +11,6 @@ use petgraph::Direction;
 use super::{error_result, success_result, ToolCallResult};
 use crate::mcp::security::validate_path;
 
-/// Get dependency graph for a path
 pub fn get_dependency_graph(root: &Path, path: &str, depth: Option<usize>) -> ToolCallResult {
     let canonical = match validate_path(root, path) {
         Ok(p) => p,
@@ -22,7 +19,6 @@ pub fn get_dependency_graph(root: &Path, path: &str, depth: Option<usize>) -> To
 
     let max_depth = depth.unwrap_or(2);
 
-    // Build dependency graph
     let (graph, node_indices, _) = build_dependency_graph(root, &canonical, max_depth);
 
     if graph.node_count() == 0 {
@@ -66,7 +62,6 @@ pub fn get_dependency_graph(root: &Path, path: &str, depth: Option<usize>) -> To
     success_result(result)
 }
 
-/// Get import tree for a file
 pub fn get_import_tree(root: &Path, path: &str) -> ToolCallResult {
     let canonical = match validate_path(root, path) {
         Ok(p) => p,
@@ -95,7 +90,6 @@ pub fn get_import_tree(root: &Path, path: &str) -> ToolCallResult {
     for import in &imports {
         result.push_str(&format!("  {}\n", import));
 
-        // Try to resolve the import
         if let Some(resolved) = resolve_import(root, &canonical, import, ext) {
             let rel_path = resolved
                 .strip_prefix(root)
@@ -109,7 +103,6 @@ pub fn get_import_tree(root: &Path, path: &str) -> ToolCallResult {
     success_result(result)
 }
 
-/// Find circular dependencies
 pub fn find_circular_deps(root: &Path, path: Option<&str>) -> ToolCallResult {
     let start_path = match path {
         Some(p) => match validate_path(root, p) {
@@ -119,7 +112,6 @@ pub fn find_circular_deps(root: &Path, path: Option<&str>) -> ToolCallResult {
         None => root.to_path_buf(),
     };
 
-    // Build a comprehensive dependency graph
     let (graph, _node_indices, index_to_path) = build_comprehensive_graph(root, &start_path);
 
     if graph.node_count() == 0 {
@@ -166,7 +158,6 @@ pub fn find_circular_deps(root: &Path, path: Option<&str>) -> ToolCallResult {
     success_result(result)
 }
 
-/// Build a dependency graph starting from a path
 fn build_dependency_graph(
     root: &Path,
     start: &Path,
@@ -197,14 +188,12 @@ fn build_dependency_graph(
         }
         visited.insert(path.to_path_buf());
 
-        // Get or create node for this path
         let node_idx = *node_indices.entry(path.to_path_buf()).or_insert_with(|| {
             let idx = graph.add_node(path.to_path_buf());
             index_to_path.insert(idx, path.to_path_buf());
             idx
         });
 
-        // If it's a directory, process all source files
         if path.is_dir() {
             if let Ok(entries) = fs::read_dir(path) {
                 for entry in entries.flatten() {
@@ -226,7 +215,6 @@ fn build_dependency_graph(
             return;
         }
 
-        // Read file and extract imports
         if let Ok(content) = fs::read_to_string(path) {
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
             let imports = extract_imports(&content, ext);
@@ -240,12 +228,10 @@ fn build_dependency_graph(
                             idx
                         });
 
-                        // Add edge
                         if !graph.contains_edge(node_idx, dep_idx) {
                             graph.add_edge(node_idx, dep_idx, ());
                         }
 
-                        // Recursively process dependency
                         add_deps(
                             graph,
                             node_indices,
@@ -276,7 +262,6 @@ fn build_dependency_graph(
     (graph, node_indices, index_to_path)
 }
 
-/// Build a comprehensive graph of all source files
 fn build_comprehensive_graph(
     root: &Path,
     start: &Path,
@@ -289,7 +274,6 @@ fn build_comprehensive_graph(
     build_dependency_graph(root, start, 10)
 }
 
-/// Check if a path is a source file we should analyze
 fn is_source_file(path: &Path) -> bool {
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     matches!(
@@ -298,13 +282,11 @@ fn is_source_file(path: &Path) -> bool {
     )
 }
 
-/// Extract imports from source code
 fn extract_imports(content: &str, ext: &str) -> Vec<String> {
     let mut imports = Vec::new();
 
     match ext {
         "rs" => {
-            // Rust: use and mod statements
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("use ") || trimmed.starts_with("mod ") {
@@ -313,7 +295,6 @@ fn extract_imports(content: &str, ext: &str) -> Vec<String> {
             }
         }
         "py" => {
-            // Python: import and from statements
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("import ") || trimmed.starts_with("from ") {
@@ -322,7 +303,6 @@ fn extract_imports(content: &str, ext: &str) -> Vec<String> {
             }
         }
         "ts" | "tsx" | "js" | "jsx" => {
-            // TypeScript/JavaScript: import statements
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("import ") {
@@ -331,7 +311,6 @@ fn extract_imports(content: &str, ext: &str) -> Vec<String> {
             }
         }
         "go" => {
-            // Go: import statements
             let mut in_import_block = false;
             for line in content.lines() {
                 let trimmed = line.trim();
@@ -347,7 +326,6 @@ fn extract_imports(content: &str, ext: &str) -> Vec<String> {
             }
         }
         "java" | "kt" => {
-            // Java/Kotlin: import statements
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("import ") {
@@ -361,7 +339,6 @@ fn extract_imports(content: &str, ext: &str) -> Vec<String> {
     imports
 }
 
-/// Resolve an import statement to a file path
 fn resolve_import(root: &Path, source_file: &Path, import: &str, ext: &str) -> Option<PathBuf> {
     match ext {
         "rs" => resolve_rust_import(root, source_file, import),

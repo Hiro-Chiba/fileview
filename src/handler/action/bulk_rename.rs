@@ -1,7 +1,3 @@
-//! Bulk rename action handlers
-//!
-//! Handles bulk rename operations for multiple files.
-
 use std::path::PathBuf;
 
 use crate::action::file as file_ops;
@@ -11,7 +7,6 @@ use crate::tree::TreeNavigator;
 
 use super::reload_tree;
 
-/// Handle bulk rename actions
 pub fn handle(
     action: KeyAction,
     state: &mut AppState,
@@ -24,7 +19,6 @@ pub fn handle(
                 return Ok(());
             }
 
-            // Enter bulk rename mode
             state.mode = ViewMode::BulkRename {
                 from_pattern: String::new(),
                 to_pattern: String::new(),
@@ -70,7 +64,6 @@ pub fn handle(
     Ok(())
 }
 
-/// Execute the bulk rename operation
 fn execute_bulk_rename(
     state: &mut AppState,
     navigator: &mut TreeNavigator,
@@ -99,14 +92,11 @@ fn execute_bulk_rename(
         }
     }
 
-    // Clear selection and return to browse mode
     state.selected_paths.clear();
     state.mode = ViewMode::Browse;
 
-    // Refresh tree
     reload_tree(navigator, state)?;
 
-    // Show result message
     let message = if fail_count == 0 {
         if success_count == 0 {
             "No files matched the pattern".to_string()
@@ -123,14 +113,11 @@ fn execute_bulk_rename(
     Ok(())
 }
 
-/// Apply pattern replacement to a filename
-///
 /// Supports:
 /// - Simple string replacement: "old" -> "new"
 /// - Wildcard patterns: "*.txt" -> "*.md"
 /// - Prefix/suffix: "prefix_" -> "newprefix_", "_suffix" -> "_newsuffix"
 fn apply_pattern(filename: &str, from_pattern: &str, to_pattern: &str) -> Option<String> {
-    // Handle wildcard pattern (e.g., "*.txt" -> "*.md")
     if from_pattern.starts_with('*') && to_pattern.starts_with('*') {
         let from_suffix = &from_pattern[1..];
         let to_suffix = &to_pattern[1..];
@@ -141,7 +128,6 @@ fn apply_pattern(filename: &str, from_pattern: &str, to_pattern: &str) -> Option
         return None;
     }
 
-    // Handle prefix pattern (e.g., "old_*" -> "new_*")
     if from_pattern.ends_with('*') && to_pattern.ends_with('*') {
         let from_prefix = &from_pattern[..from_pattern.len() - 1];
         let to_prefix = &to_pattern[..to_pattern.len() - 1];
@@ -152,7 +138,6 @@ fn apply_pattern(filename: &str, from_pattern: &str, to_pattern: &str) -> Option
         return None;
     }
 
-    // Simple string replacement
     if filename.contains(from_pattern) {
         return Some(filename.replace(from_pattern, to_pattern));
     }
@@ -160,7 +145,6 @@ fn apply_pattern(filename: &str, from_pattern: &str, to_pattern: &str) -> Option
     None
 }
 
-/// Update bulk rename input buffer
 pub fn update_bulk_rename_buffer(key: crossterm::event::KeyEvent, state: &mut AppState) -> bool {
     if let ViewMode::BulkRename {
         from_pattern,
@@ -234,7 +218,6 @@ mod tests {
 
     #[test]
     fn test_apply_pattern_multiple_occurrences() {
-        // Multiple occurrences should all be replaced
         assert_eq!(
             apply_pattern("old_old_file.txt", "old", "new"),
             Some("new_new_file.txt".to_string())
@@ -243,7 +226,6 @@ mod tests {
 
     #[test]
     fn test_apply_pattern_extension_only() {
-        // Change extension only
         assert_eq!(
             apply_pattern("document.doc", "*.doc", "*.docx"),
             Some("document.docx".to_string())
@@ -252,7 +234,6 @@ mod tests {
 
     #[test]
     fn test_apply_pattern_remove_prefix() {
-        // Remove prefix entirely
         assert_eq!(
             apply_pattern("backup_file.txt", "backup_*", "*"),
             Some("file.txt".to_string())
@@ -261,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_apply_pattern_add_prefix() {
-        // Add prefix - "*" matches empty prefix, so "file.txt" -> "backup_file.txt"
+        // "*" matches an empty prefix.
         assert_eq!(
             apply_pattern("file.txt", "*", "backup_*"),
             Some("backup_file.txt".to_string())
@@ -270,7 +251,6 @@ mod tests {
 
     #[test]
     fn test_apply_pattern_case_sensitive() {
-        // Should be case sensitive
         assert_eq!(apply_pattern("TEST.txt", "*.TXT", "*.md"), None);
         assert_eq!(
             apply_pattern("TEST.TXT", "*.TXT", "*.md"),
@@ -280,7 +260,6 @@ mod tests {
 
     #[test]
     fn test_apply_pattern_empty_to_pattern() {
-        // Replace with empty string
         assert_eq!(
             apply_pattern("file_backup.txt", "_backup", ""),
             Some("file.txt".to_string())
@@ -358,7 +337,6 @@ mod tests {
             cursor: 2,
         };
 
-        // Move left
         let key = KeyEvent::new(KeyCode::Left, KeyModifiers::NONE);
         update_bulk_rename_buffer(key, &mut state);
 
@@ -366,7 +344,6 @@ mod tests {
             assert_eq!(*cursor, 1);
         }
 
-        // Move right
         let key = KeyEvent::new(KeyCode::Right, KeyModifiers::NONE);
         update_bulk_rename_buffer(key, &mut state);
 
@@ -385,7 +362,6 @@ mod tests {
             cursor: 2,
         };
 
-        // Home
         let key = KeyEvent::new(KeyCode::Home, KeyModifiers::NONE);
         update_bulk_rename_buffer(key, &mut state);
 
@@ -393,7 +369,6 @@ mod tests {
             assert_eq!(*cursor, 0);
         }
 
-        // End
         let key = KeyEvent::new(KeyCode::End, KeyModifiers::NONE);
         update_bulk_rename_buffer(key, &mut state);
 
@@ -446,8 +421,8 @@ mod tests {
             ..
         } = &state.mode
         {
-            assert_eq!(from_pattern, "from"); // Unchanged
-            assert_eq!(to_pattern, "x"); // Changed
+            assert_eq!(from_pattern, "from");
+            assert_eq!(to_pattern, "x");
         }
     }
 
@@ -480,7 +455,7 @@ mod tests {
     #[test]
     fn test_update_bulk_rename_buffer_wrong_mode() {
         let mut state = AppState::new(PathBuf::from("/tmp"));
-        state.mode = ViewMode::Browse; // Not in BulkRename mode
+        state.mode = ViewMode::Browse;
 
         let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
         let result = update_bulk_rename_buffer(key, &mut state);

@@ -1,12 +1,9 @@
 //! Git operations (stage, unstage)
-//!
-//! This module provides functions to stage and unstage files in a Git repository.
 
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-/// Cached Git availability (shared with status.rs)
 static GIT_AVAILABLE: OnceLock<bool> = OnceLock::new();
 
 /// Find Git using the operating system's normal PATH resolution.
@@ -23,19 +20,9 @@ pub(super) fn find_git_executable() -> Option<&'static Path> {
     available.then(|| Path::new("git"))
 }
 
-/// Stage a file (git add)
-///
-/// # Arguments
-/// * `repo_root` - The root directory of the git repository
-/// * `file` - The absolute path to the file to stage
-///
-/// # Returns
-/// * `Ok(())` if the file was successfully staged
-/// * `Err` with error message if staging failed
 pub fn stage(repo_root: &Path, file: &Path) -> anyhow::Result<()> {
     let git = find_git_executable().ok_or_else(|| anyhow::anyhow!("git not found"))?;
 
-    // Get relative path from repo root
     let relative = file.strip_prefix(repo_root).unwrap_or(file);
 
     let output = Command::new(git)
@@ -52,19 +39,9 @@ pub fn stage(repo_root: &Path, file: &Path) -> anyhow::Result<()> {
     }
 }
 
-/// Unstage a file (git reset HEAD)
-///
-/// # Arguments
-/// * `repo_root` - The root directory of the git repository
-/// * `file` - The absolute path to the file to unstage
-///
-/// # Returns
-/// * `Ok(())` if the file was successfully unstaged
-/// * `Err` with error message if unstaging failed
 pub fn unstage(repo_root: &Path, file: &Path) -> anyhow::Result<()> {
     let git = find_git_executable().ok_or_else(|| anyhow::anyhow!("git not found"))?;
 
-    // Get relative path from repo root
     let relative = file.strip_prefix(repo_root).unwrap_or(file);
 
     let output = Command::new(git)
@@ -81,25 +58,15 @@ pub fn unstage(repo_root: &Path, file: &Path) -> anyhow::Result<()> {
     }
 }
 
-/// Check if a file is staged (has changes in the index)
-///
-/// # Arguments
-/// * `repo_root` - The root directory of the git repository
-/// * `file` - The absolute path to the file to check
-///
-/// # Returns
-/// * `true` if the file has staged changes
-/// * `false` if the file is not staged or not in a git repo
+/// Returns false when the file is not staged or not in a git repo.
 pub fn is_staged(repo_root: &Path, file: &Path) -> bool {
     let git = match find_git_executable() {
         Some(g) => g,
         None => return false,
     };
 
-    // Get relative path from repo root
     let relative = file.strip_prefix(repo_root).unwrap_or(file);
 
-    // Use git diff --cached to check if file has staged changes
     let output = Command::new(git)
         .args(["diff", "--cached", "--name-only", "--"])
         .arg(relative)
@@ -109,7 +76,6 @@ pub fn is_staged(repo_root: &Path, file: &Path) -> bool {
     match output {
         Ok(o) => {
             if o.status.success() {
-                // If the file name appears in the output, it's staged
                 let stdout = String::from_utf8_lossy(&o.stdout);
                 !stdout.trim().is_empty()
             } else {
@@ -127,7 +93,6 @@ mod tests {
     use std::process::Command as StdCommand;
     use tempfile::TempDir;
 
-    /// Initialize a git repository in the given directory
     fn init_git_repo(dir: &TempDir) -> bool {
         StdCommand::new("git")
             .args(["init"])
@@ -137,7 +102,6 @@ mod tests {
             .unwrap_or(false)
     }
 
-    /// Configure git user for commits
     fn configure_git_user(dir: &TempDir) -> bool {
         let config_name = StdCommand::new("git")
             .args(["config", "user.name", "Test User"])
@@ -200,7 +164,6 @@ mod tests {
         let file = temp.path().join("test.txt");
         fs::write(&file, "content").unwrap();
 
-        // Not a git repo, should return false
         assert!(!is_staged(temp.path(), &file));
     }
 
@@ -216,15 +179,12 @@ mod tests {
             return; // Skip if git init fails
         }
 
-        // Create a file
         let file = temp.path().join("test.txt");
         fs::write(&file, "content").unwrap();
 
-        // Stage the file
         let result = stage(temp.path(), &file);
         assert!(result.is_ok());
 
-        // Verify it's staged
         assert!(is_staged(temp.path(), &file));
     }
 
@@ -240,18 +200,15 @@ mod tests {
             return;
         }
 
-        // Create and stage a file
         let file = temp.path().join("test.txt");
         fs::write(&file, "content").unwrap();
 
         stage(temp.path(), &file).unwrap();
         assert!(is_staged(temp.path(), &file));
 
-        // Unstage the file
         let result = unstage(temp.path(), &file);
         assert!(result.is_ok());
 
-        // Verify it's no longer staged
         assert!(!is_staged(temp.path(), &file));
     }
 
@@ -267,13 +224,11 @@ mod tests {
             return;
         }
 
-        // Create a file in subdirectory
         let subdir = temp.path().join("subdir");
         fs::create_dir(&subdir).unwrap();
         let file = subdir.join("test.txt");
         fs::write(&file, "content").unwrap();
 
-        // Stage should work with absolute path
         let result = stage(temp.path(), &file);
         assert!(result.is_ok());
         assert!(is_staged(temp.path(), &file));
@@ -291,11 +246,9 @@ mod tests {
             return;
         }
 
-        // Create but don't stage a file
         let file = temp.path().join("untracked.txt");
         fs::write(&file, "content").unwrap();
 
-        // Should not be staged
         assert!(!is_staged(temp.path(), &file));
     }
 }

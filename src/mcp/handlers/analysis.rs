@@ -1,6 +1,4 @@
 //! Code analysis handlers
-//!
-//! Implements get_file_symbols, get_definitions, get_references, get_diagnostics.
 
 use std::fs;
 use std::path::Path;
@@ -11,7 +9,6 @@ use regex::Regex;
 use super::{error_result, success_result, ToolCallResult};
 use crate::mcp::security::validate_path;
 
-/// Code symbol type
 #[derive(Debug, Clone, Copy)]
 pub enum SymbolKind {
     Function,
@@ -43,7 +40,6 @@ impl SymbolKind {
     }
 }
 
-/// Extracted code symbol
 #[derive(Debug)]
 pub struct CodeSymbol {
     pub kind: SymbolKind,
@@ -52,7 +48,6 @@ pub struct CodeSymbol {
     pub signature: Option<String>,
 }
 
-/// Get file symbols (functions, classes, etc.)
 pub fn get_file_symbols(root: &Path, path: &str) -> ToolCallResult {
     let canonical = match validate_path(root, path) {
         Ok(p) => p,
@@ -104,7 +99,6 @@ pub fn get_file_symbols(root: &Path, path: &str) -> ToolCallResult {
     success_result(result)
 }
 
-/// Get definitions from a file
 pub fn get_definitions(
     root: &Path,
     path: &str,
@@ -128,17 +122,15 @@ pub fn get_definitions(
     let ext = canonical.extension().and_then(|e| e.to_str()).unwrap_or("");
     let all_symbols = extract_symbols(&content, ext);
 
-    // If a specific line is requested, filter to symbols at or near that line
     let symbols: Vec<_> = if let Some(target_line) = line {
         all_symbols
             .into_iter()
             .filter(|s| {
                 let diff = (s.line as i64 - target_line as i64).abs();
-                diff <= 3 // Within 3 lines
+                diff <= 3
             })
             .collect()
     } else {
-        // Return all definitions (functions, classes, etc.)
         all_symbols
             .into_iter()
             .filter(|s| {
@@ -162,7 +154,6 @@ pub fn get_definitions(
     result.push_str(&format!("Definitions in {}:\n\n", path));
 
     for symbol in symbols {
-        // Get the line content for context
         if let Some(line_content) = content.lines().nth(symbol.line.saturating_sub(1)) {
             result.push_str(&format!(
                 "L{}: {} {}\n",
@@ -177,9 +168,7 @@ pub fn get_definitions(
     success_result(result)
 }
 
-/// Find references to a symbol
 pub fn get_references(root: &Path, path: &str, symbol: &str) -> ToolCallResult {
-    // Validate the starting file
     let canonical = match validate_path(root, path) {
         Ok(p) => p,
         Err(e) => return error_result(&e.to_string()),
@@ -231,9 +220,7 @@ pub fn get_references(root: &Path, path: &str, symbol: &str) -> ToolCallResult {
     }
 }
 
-/// Get diagnostics (errors/warnings) for a file
-///
-/// This is a best-effort implementation that tries to use language-specific tools.
+/// Best-effort diagnostics that try a language-specific tool for the file type.
 pub fn get_diagnostics(root: &Path, path: &str) -> ToolCallResult {
     let canonical = match validate_path(root, path) {
         Ok(p) => p,
@@ -246,15 +233,11 @@ pub fn get_diagnostics(root: &Path, path: &str) -> ToolCallResult {
 
     let ext = canonical.extension().and_then(|e| e.to_str()).unwrap_or("");
 
-    // Try language-specific diagnostic tools
     let output = match ext {
-        "rs" => {
-            // Rust: use cargo check
-            Command::new("cargo")
-                .args(["check", "--message-format=short"])
-                .current_dir(root)
-                .output()
-        }
+        "rs" => Command::new("cargo")
+            .args(["check", "--message-format=short"])
+            .current_dir(root)
+            .output(),
         "py" => {
             // Pass the canonical (absolute) path so a `-`-prefixed name cannot
             // be parsed as a flag.
@@ -275,16 +258,12 @@ pub fn get_diagnostics(root: &Path, path: &str) -> ToolCallResult {
                 );
             }
         }
-        "ts" | "tsx" => {
-            // TypeScript: use tsc
-            Command::new("npx")
-                .args(["tsc", "--noEmit"])
-                .arg(&canonical)
-                .current_dir(root)
-                .output()
-        }
+        "ts" | "tsx" => Command::new("npx")
+            .args(["tsc", "--noEmit"])
+            .arg(&canonical)
+            .current_dir(root)
+            .output(),
         "js" | "jsx" => {
-            // JavaScript: try eslint
             if Command::new("npx")
                 .arg("eslint")
                 .arg("--version")
@@ -329,7 +308,6 @@ pub fn get_diagnostics(root: &Path, path: &str) -> ToolCallResult {
     }
 }
 
-/// Extract symbols from code based on file extension
 pub fn extract_symbols(content: &str, ext: &str) -> Vec<CodeSymbol> {
     match ext {
         "rs" => extract_rust_symbols(content),
@@ -341,13 +319,11 @@ pub fn extract_symbols(content: &str, ext: &str) -> Vec<CodeSymbol> {
     }
 }
 
-/// Generic symbol extraction with pre-compiled regexes
 fn extract_symbols_with_patterns(
     content: &str,
     patterns: &[(&str, SymbolKind)],
     skip_dunder: bool,
 ) -> Vec<CodeSymbol> {
-    // Pre-compile regexes once
     let compiled: Vec<_> = patterns
         .iter()
         .filter_map(|(pattern, kind)| Regex::new(pattern).ok().map(|re| (re, *kind)))
@@ -360,7 +336,6 @@ fn extract_symbols_with_patterns(
             if let Some(caps) = re.captures(line) {
                 if let Some(name) = caps.get(1) {
                     let name_str = name.as_str();
-                    // Skip dunder methods if requested
                     if skip_dunder && name_str.starts_with("__") && name_str.ends_with("__") {
                         continue;
                     }
@@ -379,7 +354,6 @@ fn extract_symbols_with_patterns(
     symbols
 }
 
-/// Extract symbols from Rust code
 fn extract_rust_symbols(content: &str) -> Vec<CodeSymbol> {
     let patterns: &[(&str, SymbolKind)] = &[
         (r"^\s*(?:pub\s+)?fn\s+(\w+)", SymbolKind::Function),
@@ -393,7 +367,6 @@ fn extract_rust_symbols(content: &str) -> Vec<CodeSymbol> {
     extract_symbols_with_patterns(content, patterns, false)
 }
 
-/// Extract symbols from Python code
 fn extract_python_symbols(content: &str) -> Vec<CodeSymbol> {
     let patterns: &[(&str, SymbolKind)] = &[
         (r"^def\s+(\w+)", SymbolKind::Function),
@@ -404,7 +377,6 @@ fn extract_python_symbols(content: &str) -> Vec<CodeSymbol> {
     extract_symbols_with_patterns(content, patterns, true) // skip dunder
 }
 
-/// Extract symbols from TypeScript/JavaScript code
 fn extract_typescript_symbols(content: &str) -> Vec<CodeSymbol> {
     let patterns: &[(&str, SymbolKind)] = &[
         (r"^\s*(?:export\s+)?function\s+(\w+)", SymbolKind::Function),
@@ -423,7 +395,6 @@ fn extract_typescript_symbols(content: &str) -> Vec<CodeSymbol> {
     extract_symbols_with_patterns(content, patterns, false)
 }
 
-/// Extract symbols from Go code
 fn extract_go_symbols(content: &str) -> Vec<CodeSymbol> {
     let patterns: &[(&str, SymbolKind)] = &[
         (r"^func\s+(?:\([^)]+\)\s+)?(\w+)", SymbolKind::Function),
@@ -435,7 +406,6 @@ fn extract_go_symbols(content: &str) -> Vec<CodeSymbol> {
     extract_symbols_with_patterns(content, patterns, false)
 }
 
-/// Extract symbols from Java/Kotlin code
 fn extract_java_symbols(content: &str) -> Vec<CodeSymbol> {
     let patterns: &[(&str, SymbolKind)] = &[
         (
@@ -458,7 +428,6 @@ fn extract_java_symbols(content: &str) -> Vec<CodeSymbol> {
     extract_symbols_with_patterns(content, patterns, false)
 }
 
-/// Extract symbols from generic code (fallback)
 fn extract_generic_symbols(content: &str) -> Vec<CodeSymbol> {
     let patterns: &[(&str, SymbolKind)] = &[
         (

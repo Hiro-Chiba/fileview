@@ -14,16 +14,13 @@ use super::common::{format_size, get_border_style};
 #[cfg(feature = "archive")]
 use super::common::{truncate_entry_name, unix_timestamp_to_date, ARCHIVE_MAX_ENTRIES};
 
-/// Archive entry information
 #[derive(Debug, Clone)]
 pub struct ArchiveEntry {
     /// File/directory name (full path within archive)
     pub name: String,
     /// Size in bytes (0 for directories)
     pub size: u64,
-    /// Whether this is a directory
     pub is_dir: bool,
-    /// Last modified time (optional)
     pub modified: Option<String>,
 }
 
@@ -38,21 +35,17 @@ impl ArchiveEntry {
     }
 }
 
-/// Archive preview content
 #[derive(Clone)]
 pub struct ArchivePreview {
-    /// Archive entries
     pub entries: Vec<ArchiveEntry>,
     /// Total uncompressed size
     pub total_size: u64,
     /// Number of files (not directories)
     pub file_count: usize,
-    /// Scroll position
     pub scroll: usize,
 }
 
 impl ArchivePreview {
-    /// Load archive preview from zip file
     #[cfg(feature = "archive")]
     pub fn load_zip(path: &Path) -> anyhow::Result<Self> {
         let file = std::fs::File::open(path)?;
@@ -68,7 +61,6 @@ impl ArchivePreview {
             let size = entry.size();
             let name = truncate_entry_name(entry.name()?.to_string());
 
-            // Format modified time if available
             let modified = entry
                 .last_modified()
                 .map(|dt| format!("{:04}-{:02}-{:02}", dt.year(), dt.month(), dt.day()));
@@ -86,7 +78,6 @@ impl ArchivePreview {
             });
         }
 
-        // Sort entries: directories first, then files, both alphabetically
         ArchiveEntry::sort_entries(&mut entries);
 
         Ok(Self {
@@ -97,13 +88,11 @@ impl ArchivePreview {
         })
     }
 
-    /// Stub when the `archive` feature is off.
     #[cfg(not(feature = "archive"))]
     pub fn load_zip(_path: &Path) -> anyhow::Result<Self> {
         anyhow::bail!("archive support disabled (rebuild with --features archive)")
     }
 
-    /// Load archive preview from tar.gz file
     #[cfg(feature = "archive")]
     pub fn load_tar_gz(path: &Path) -> anyhow::Result<Self> {
         let file = std::fs::File::open(path)?;
@@ -125,7 +114,6 @@ impl ArchivePreview {
             let size = header.size().unwrap_or(0);
             let name = truncate_entry_name(entry.path()?.to_string_lossy().to_string());
 
-            // Format modified time if available
             let modified = header
                 .mtime()
                 .ok()
@@ -144,7 +132,6 @@ impl ArchivePreview {
             });
         }
 
-        // Sort entries: directories first, then files, both alphabetically
         ArchiveEntry::sort_entries(&mut entries);
 
         Ok(Self {
@@ -155,19 +142,16 @@ impl ArchivePreview {
         })
     }
 
-    /// Stub when the `archive` feature is off.
     #[cfg(not(feature = "archive"))]
     pub fn load_tar_gz(_path: &Path) -> anyhow::Result<Self> {
         anyhow::bail!("archive support disabled (rebuild with --features archive)")
     }
 
-    /// Get visible line count
     pub fn line_count(&self) -> usize {
         self.entries.len() + 2 // +2 for header lines
     }
 }
 
-/// Render archive preview
 pub fn render_archive_preview(
     frame: &mut Frame,
     preview: &ArchivePreview,
@@ -180,7 +164,6 @@ pub fn render_archive_preview(
 
     let mut lines: Vec<Line> = Vec::new();
 
-    // Header: archive info
     lines.push(Line::from(vec![Span::styled(
         format!(
             "  {} files, {}",
@@ -199,7 +182,6 @@ pub fn render_archive_preview(
     let header_lines = 2;
     let content_start = preview.scroll.saturating_sub(header_lines);
 
-    // Entry list
     for entry in preview
         .entries
         .iter()
@@ -255,7 +237,6 @@ pub fn is_tar_gz_file(path: &std::path::Path) -> bool {
     path_str.ends_with(".tar.gz") || path_str.ends_with(".tgz")
 }
 
-/// Check if a file is an archive (zip or tar.gz)
 pub fn is_archive_file(path: &std::path::Path) -> bool {
     // Check tar.gz first (has double extension)
     if is_tar_gz_file(path) {

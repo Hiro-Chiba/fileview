@@ -1,5 +1,3 @@
-//! MCP server implementation
-//!
 //! JSON-RPC server communicating over stdin/stdout.
 
 use std::io::{self, BufRead, Write};
@@ -12,7 +10,6 @@ use super::registry;
 use super::types::*;
 use crate::ai_activity::ActivityEmitter;
 
-/// Run the MCP server
 pub fn run_server(root: &Path) -> anyhow::Result<()> {
     let stdin = io::stdin();
     let stdout = io::stdout();
@@ -48,7 +45,6 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Handle a single JSON-RPC request
 fn handle_request(
     root: &Path,
     request_str: &str,
@@ -80,7 +76,6 @@ fn handle_request(
     }
 }
 
-/// Handle initialize request
 fn handle_initialize(id: Option<serde_json::Value>) -> JsonRpcResponse {
     let result = InitializeResult {
         protocol_version: "2024-11-05".to_string(),
@@ -101,9 +96,7 @@ fn handle_initialize(id: Option<serde_json::Value>) -> JsonRpcResponse {
     }
 }
 
-/// Handle tools/list request
 fn handle_tools_list(id: Option<serde_json::Value>) -> JsonRpcResponse {
-    // Use registry to get all tools
     let tools = registry::to_mcp_tools();
     let result = ToolListResult { tools };
     match serde_json::to_value(result) {
@@ -112,7 +105,6 @@ fn handle_tools_list(id: Option<serde_json::Value>) -> JsonRpcResponse {
     }
 }
 
-/// Handle tools/call request
 fn handle_tools_call(
     root: &Path,
     id: Option<serde_json::Value>,
@@ -208,7 +200,6 @@ pub fn extract_primary_paths(params: &ToolCallParams, root: &Path) -> Vec<PathBu
         .collect()
 }
 
-/// Dispatch tool call to appropriate handler
 fn dispatch_tool_call(root: &Path, params: &ToolCallParams) -> ToolCallResult {
     let args = &params.arguments;
 
@@ -439,7 +430,6 @@ fn dispatch_tool_call(root: &Path, params: &ToolCallParams) -> ToolCallResult {
             project::get_project_stats(root, path)
         }
 
-        // Unknown tool
         _ => ToolCallResult {
             content: vec![ToolContent::text(format!("Unknown tool: {}", params.name))],
             is_error: Some(true),
@@ -447,7 +437,6 @@ fn dispatch_tool_call(root: &Path, params: &ToolCallParams) -> ToolCallResult {
     }
 }
 
-/// Create error result for missing parameter
 fn missing_param(param: &str) -> ToolCallResult {
     ToolCallResult {
         content: vec![ToolContent::text(format!(

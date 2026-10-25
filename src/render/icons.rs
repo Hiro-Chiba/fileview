@@ -3,7 +3,6 @@
 
 use std::path::Path;
 
-/// Get the appropriate icon for a file or directory
 pub fn get_icon(path: &Path, is_dir: bool, expanded: bool) -> &'static str {
     if is_dir {
         get_directory_icon(path, expanded)
@@ -12,7 +11,6 @@ pub fn get_icon(path: &Path, is_dir: bool, expanded: bool) -> &'static str {
     }
 }
 
-/// Get icon for a directory
 fn get_directory_icon(path: &Path, expanded: bool) -> &'static str {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
@@ -68,21 +66,17 @@ fn get_directory_icon(path: &Path, expanded: bool) -> &'static str {
     }
 }
 
-/// Get icon for a file based on extension or filename
 fn get_file_icon(path: &Path) -> &'static str {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     let name_lower = name.to_lowercase();
 
-    // Check special filenames first (exact match)
     if let Some(icon) = get_special_file_icon(&name_lower, name) {
         return icon;
     }
 
-    // Then check by extension
     get_icon_by_extension(path)
 }
 
-/// Get icon for special filenames
 fn get_special_file_icon(name_lower: &str, _name: &str) -> Option<&'static str> {
     Some(match name_lower {
         // Build & Package
@@ -177,7 +171,6 @@ fn get_special_file_icon(name_lower: &str, _name: &str) -> Option<&'static str> 
     })
 }
 
-/// Get icon based on file extension
 fn get_icon_by_extension(path: &Path) -> &'static str {
     let ext = path
         .extension()
@@ -478,10 +471,6 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    // ==========================================================================
-    // Directory Tests
-    // ==========================================================================
-
     #[test]
     fn test_special_directories() {
         assert_eq!(get_icon(&PathBuf::from(".git"), true, false), "\u{f1d3}");
@@ -502,10 +491,6 @@ mod tests {
         assert_eq!(get_icon(&PathBuf::from("mydir"), true, false), "\u{f07b}");
         assert_eq!(get_icon(&PathBuf::from("mydir"), true, true), "\u{f07c}");
     }
-
-    // ==========================================================================
-    // File Extension Tests
-    // ==========================================================================
 
     #[test]
     fn test_programming_languages() {
@@ -569,10 +554,6 @@ mod tests {
         );
     }
 
-    // ==========================================================================
-    // Special File Tests
-    // ==========================================================================
-
     #[test]
     fn test_special_files() {
         assert_eq!(
@@ -605,10 +586,6 @@ mod tests {
         );
         assert_eq!(get_icon(&PathBuf::from(".zshrc"), false, false), "\u{e795}");
     }
-
-    // ==========================================================================
-    // Media File Tests
-    // ==========================================================================
 
     #[test]
     fn test_image_files() {
@@ -649,10 +626,6 @@ mod tests {
             "\u{f1c6}"
         );
     }
-
-    // ==========================================================================
-    // Edge Cases
-    // ==========================================================================
 
     #[test]
     fn test_case_insensitivity() {

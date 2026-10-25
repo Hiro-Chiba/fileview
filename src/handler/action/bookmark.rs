@@ -1,14 +1,9 @@
-//! Bookmark action handlers
-//!
-//! Handles bookmark set and jump operations
-
 use std::path::PathBuf;
 
 use crate::core::{AppState, ViewMode, BOOKMARK_SLOTS};
 use crate::handler::key::KeyAction;
 use crate::tree::TreeNavigator;
 
-/// Handle bookmark-related actions
 pub fn handle(
     action: KeyAction,
     state: &mut AppState,
@@ -37,11 +32,9 @@ pub fn handle(
             if idx < BOOKMARK_SLOTS {
                 if let Some(ref path) = state.bookmarks[idx] {
                     let target = path.clone();
-                    // Reveal the path in the tree
                     if let Err(e) = navigator.reveal_path(&target) {
                         state.set_message(format!("Failed: jump to bookmark - {}", e));
                     } else {
-                        // Find and focus the target
                         navigator.ensure_cache();
                         let entries = navigator.visible_entries();
                         if let Some(idx) = entries.iter().position(|e| e.path == target) {
@@ -123,7 +116,6 @@ mod tests {
         let mut navigator = create_test_navigator(temp.path());
         let focused = Some(file_path.clone());
 
-        // Set bookmark at slot 1
         handle(
             KeyAction::SetBookmark { slot: 1 },
             &mut state,
@@ -132,9 +124,7 @@ mod tests {
         )
         .unwrap();
 
-        // Verify bookmark is stored
         assert_eq!(state.bookmarks[0], Some(file_path));
-        // Verify mode returns to Browse
         assert_eq!(state.mode, ViewMode::Browse);
     }
 
@@ -148,7 +138,7 @@ mod tests {
         let mut navigator = create_test_navigator(temp.path());
         let focused = Some(file_path);
 
-        // Try to set bookmark at invalid slot (10 > BOOKMARK_SLOTS)
+        // Slot 10 is beyond BOOKMARK_SLOTS.
         handle(
             KeyAction::SetBookmark { slot: 10 },
             &mut state,
@@ -157,11 +147,9 @@ mod tests {
         )
         .unwrap();
 
-        // Verify all bookmarks are still None
         for bookmark in &state.bookmarks {
             assert!(bookmark.is_none());
         }
-        // Mode should still return to Browse
         assert_eq!(state.mode, ViewMode::Browse);
     }
 
@@ -172,7 +160,6 @@ mod tests {
         let mut navigator = create_test_navigator(temp.path());
         let focused: Option<PathBuf> = None;
 
-        // Jump to unset bookmark
         handle(
             KeyAction::JumpToBookmark { slot: 1 },
             &mut state,
@@ -181,10 +168,8 @@ mod tests {
         )
         .unwrap();
 
-        // Verify error message is set
         assert!(state.message.is_some());
         assert!(state.message.as_ref().unwrap().contains("not set"));
-        // Mode should return to Browse
         assert_eq!(state.mode, ViewMode::Browse);
     }
 
@@ -200,10 +185,8 @@ mod tests {
         let mut navigator = create_test_navigator(temp.path());
         let focused: Option<PathBuf> = None;
 
-        // Pre-set bookmark at slot 3
         state.bookmarks[2] = Some(file_path.clone());
 
-        // Jump to bookmark
         handle(
             KeyAction::JumpToBookmark { slot: 3 },
             &mut state,
@@ -212,10 +195,7 @@ mod tests {
         )
         .unwrap();
 
-        // Mode should return to Browse
         assert_eq!(state.mode, ViewMode::Browse);
-        // Focus should have moved (reveal_path expands the tree)
-        // Check that subdir is now expanded in the navigator
         navigator.ensure_cache();
         let entries = navigator.visible_entries();
         let target_visible = entries.iter().any(|e| e.path == file_path);
@@ -237,9 +217,7 @@ mod tests {
         )
         .unwrap();
 
-        // Bookmark should not be set
         assert!(state.bookmarks[0].is_none());
-        // Mode should still return to Browse
         assert_eq!(state.mode, ViewMode::Browse);
     }
 
@@ -250,13 +228,10 @@ mod tests {
         let mut navigator = create_test_navigator(temp.path());
         let focused: Option<PathBuf> = None;
 
-        // Set initial mode
         state.mode = ViewMode::BookmarkSet;
 
-        // Pass an unrelated action
         handle(KeyAction::MoveUp, &mut state, &mut navigator, &focused).unwrap();
 
-        // Mode should remain unchanged
         assert_eq!(state.mode, ViewMode::BookmarkSet);
     }
 }

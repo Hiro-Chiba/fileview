@@ -1,10 +1,7 @@
-//! MCP type definitions
-//!
 //! JSON-RPC and MCP protocol types.
 
 use serde::{Deserialize, Serialize};
 
-/// JSON-RPC request
 #[derive(Debug, Deserialize)]
 pub struct JsonRpcRequest {
     #[allow(dead_code)]
@@ -15,7 +12,6 @@ pub struct JsonRpcRequest {
     pub params: serde_json::Value,
 }
 
-/// JSON-RPC response
 #[derive(Debug, Serialize)]
 pub struct JsonRpcResponse {
     pub jsonrpc: String,
@@ -51,7 +47,6 @@ impl JsonRpcResponse {
     }
 }
 
-/// JSON-RPC error
 #[derive(Debug, Serialize)]
 pub struct JsonRpcError {
     pub code: i32,
@@ -60,14 +55,12 @@ pub struct JsonRpcError {
     pub data: Option<serde_json::Value>,
 }
 
-/// MCP server info
 #[derive(Debug, Serialize)]
 pub struct ServerInfo {
     pub name: String,
     pub version: String,
 }
 
-/// MCP initialize result
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitializeResult {
@@ -76,20 +69,17 @@ pub struct InitializeResult {
     pub server_info: ServerInfo,
 }
 
-/// Server capabilities
 #[derive(Debug, Serialize)]
 pub struct ServerCapabilities {
     pub tools: ToolsCapability,
 }
 
-/// Tools capability
 #[derive(Debug, Serialize)]
 pub struct ToolsCapability {
     #[serde(rename = "listChanged")]
     pub list_changed: bool,
 }
 
-/// Tool definition
 #[derive(Debug, Serialize)]
 pub struct Tool {
     pub name: String,
@@ -98,13 +88,11 @@ pub struct Tool {
     pub input_schema: serde_json::Value,
 }
 
-/// Tool list result
 #[derive(Debug, Serialize)]
 pub struct ToolListResult {
     pub tools: Vec<Tool>,
 }
 
-/// Tool call parameters
 #[derive(Debug, Deserialize)]
 pub struct ToolCallParams {
     pub name: String,
@@ -112,7 +100,6 @@ pub struct ToolCallParams {
     pub arguments: serde_json::Value,
 }
 
-/// Tool call result
 #[derive(Debug, Serialize)]
 pub struct ToolCallResult {
     pub content: Vec<ToolContent>,
@@ -120,7 +107,6 @@ pub struct ToolCallResult {
     pub is_error: Option<bool>,
 }
 
-/// Tool content
 #[derive(Debug, Serialize)]
 pub struct ToolContent {
     #[serde(rename = "type")]
@@ -137,7 +123,7 @@ impl ToolContent {
     }
 }
 
-/// Error codes
+/// Standard JSON-RPC 2.0 error codes.
 #[allow(dead_code)]
 pub mod error_codes {
     pub const PARSE_ERROR: i32 = -32700;

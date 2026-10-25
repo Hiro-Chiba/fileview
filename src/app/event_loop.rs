@@ -28,7 +28,6 @@ use crate::watcher::FileWatcher;
 
 use super::render::{render_frame, RenderContext};
 
-/// Result of running the app
 pub struct AppResult {
     pub exit_code: i32,
     pub choosedir_path: Option<PathBuf>,
@@ -59,7 +58,7 @@ fn flush_path_buffer(
     Ok(())
 }
 
-/// Handle file drop operation - copy files to target directory.
+/// Copy dropped files into the target directory.
 /// Returns the number of files successfully processed.
 fn handle_file_drop(
     paths: &[PathBuf],
@@ -72,7 +71,6 @@ fn handle_file_drop(
         return Ok(0);
     }
 
-    // Disable file drop in stdin mode
     if state.stdin_mode {
         state.set_message("File operations disabled in stdin mode");
         return Ok(0);
@@ -131,7 +129,6 @@ fn restore_active_tab(
     state.sort_mode = tab.sort_mode;
 }
 
-/// Main event loop
 pub fn run_app(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     config: Config,
@@ -186,7 +183,6 @@ pub fn run_app(
         };
     let mut fingerprint_shown = false;
 
-    // Apply config file settings
     state.show_hidden = config.show_hidden;
     if let Some(icons) = config.icons_enabled {
         state.icons_enabled = icons;
@@ -201,7 +197,6 @@ pub fn run_app(
         // Note: config file icons setting is already applied in AppState::new via env var check
     }
 
-    // Create navigator based on stdin mode
     let mut navigator = if let Some(paths) = config.stdin_paths.clone() {
         state.stdin_mode = true;
         TreeNavigator::from_paths(&config.root, paths, state.show_hidden)?
@@ -214,17 +209,14 @@ pub fn run_app(
     let mut click_detector = ClickDetector::new();
     let mut path_buffer = PathBuffer::new();
 
-    // Create action context from config
     let action_context = ActionContext {
         callback: config.callback.clone(),
         output_format: config.output_format,
         commands: config.commands.clone(),
     };
 
-    // Preview state
     let mut preview = PreviewState::new();
 
-    // Fuzzy finder state
     let mut fuzzy_paths: Vec<PathBuf> = Vec::new();
     let mut fuzzy_results: Vec<FuzzyMatch> = Vec::new();
     let mut fuzzy_state = FuzzyState::new();
@@ -240,7 +232,6 @@ pub fn run_app(
     // to improve perceived startup time (first frame renders faster)
     let mut skip_git_init_once = true;
 
-    // Initialize file watcher (disabled in stdin mode)
     let mut file_watcher = if !state.stdin_mode {
         match FileWatcher::new(&config.root) {
             Ok(watcher) => {
@@ -279,28 +270,23 @@ pub fn run_app(
     let mut last_git_poll = Instant::now();
     let git_poll_interval = config.git_poll_interval;
 
-    // Initialize plugin manager
     let mut plugin_manager = PluginManager::new().ok();
     if let Some(ref mut pm) = plugin_manager {
         // Load plugins from ~/.config/fileview/plugins/init.lua
         if let Err(e) = pm.load_plugins() {
             state.set_message(format!("Plugin error: {}", e));
         } else {
-            // Update context with initial state
             let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();
             pm.update_context(None, config.root.clone(), selected);
 
-            // Fire Start event
             let _ = pm.fire_event(PluginEvent::Start, None);
 
-            // Process any startup notifications
             for msg in pm.take_notifications() {
                 state.set_message(msg);
             }
         }
     }
 
-    // Track previous state for plugin events
     let mut prev_focused_path: Option<PathBuf> = None;
     let mut prev_root = config.root.clone();
     let mut prev_selection_count = state.selected_paths.len();
@@ -465,7 +451,6 @@ pub fn run_app(
         let frame_needs_redraw = needs_redraw;
         needs_redraw = false;
 
-        // Get visible entries and apply filter if set
         if frame_needs_redraw {
             navigator.ensure_cache();
             let all_entries = navigator.visible_entries();
@@ -491,12 +476,10 @@ pub fn run_app(
                 })
                 .collect();
 
-            // Ensure focus is within bounds
             if state.focus_index >= total_entries && total_entries > 0 {
                 state.focus_index = total_entries - 1;
             }
 
-            // Get focused entry path
             focused_path = snapshots.get(state.focus_index).map(|e| e.path.clone());
 
             // Update preview if needed (side panel or fullscreen mode)
@@ -511,8 +494,6 @@ pub fn run_app(
                 );
             }
 
-            // Adjust viewport before rendering
-            // Get terminal size to calculate visible height
             let term_size = terminal.size()?;
             let tree_height = if state.preview_visible {
                 term_size.width / 2
@@ -528,7 +509,6 @@ pub fn run_app(
             });
             state.adjust_viewport(vis_height);
 
-            // Render
             let render_context = RenderContext {
                 state: &state,
                 entries,
@@ -550,18 +530,16 @@ pub fn run_app(
             }
         }
 
-        // Check file watcher events (auto-refresh on file changes)
         if let Some(ref watcher) = file_watcher {
             if watcher.poll() {
                 reload_tree(&mut navigator, &mut state)?;
                 preview.invalidate();
                 crate::render::invalidate_file_info_cache();
-                last_git_poll = Instant::now(); // Reset git poll timer
+                last_git_poll = Instant::now();
                 needs_redraw = true;
             }
         }
 
-        // Drain AI activity events and apply them to state.
         if let Some(watcher) = ai_watcher.as_ref() {
             let events = watcher.drain();
             if !events.is_empty() {
@@ -620,7 +598,6 @@ pub fn run_app(
             needs_redraw = true;
         }
 
-        // Git status polling (configurable interval)
         if last_git_poll.elapsed() >= git_poll_interval {
             if state.refresh_git_status() {
                 needs_redraw = true;
@@ -628,7 +605,6 @@ pub fn run_app(
             last_git_poll = Instant::now();
         }
 
-        // Poll for completed async preview loads (worker + image loader)
         if preview.poll_preview_result(image_picker, &mut state) {
             needs_redraw = true;
         }
@@ -692,7 +668,6 @@ pub fn run_app(
                         }
                     }
 
-                    // Handle fuzzy finder text input
                     if let ViewMode::FuzzyFinder { query, .. } = &state.mode {
                         if let Some((new_buf, _)) =
                             update_input_buffer(key, query, query.chars().count())
@@ -710,13 +685,12 @@ pub fn run_app(
                             }
                             state.mode = ViewMode::FuzzyFinder {
                                 query: new_buf,
-                                selected: 0, // Reset selection on query change
+                                selected: 0,
                             };
                             continue;
                         }
                     }
 
-                    // Handle filter text input
                     if let ViewMode::Filter { query } = &state.mode {
                         if let Some((new_buf, _)) =
                             update_input_buffer(key, query, query.chars().count())
@@ -726,7 +700,6 @@ pub fn run_app(
                         }
                     }
 
-                    // Handle bulk rename text input
                     if matches!(state.mode, ViewMode::BulkRename { .. })
                         && update_bulk_rename_buffer(key, &mut state)
                     {
@@ -743,7 +716,6 @@ pub fn run_app(
                                 continue;
                             }
 
-                            // Continue buffering if we already have content
                             if !path_buffer.is_empty() {
                                 path_buffer.push(c);
                                 continue;
@@ -753,10 +725,8 @@ pub fn run_app(
 
                     let mut action = handle_key_event(&state, key);
 
-                    // Handle tab operations
                     match &action {
                         KeyAction::NewTab => {
-                            // Create new tab with current directory
                             let current_dir = focused_path
                                 .as_ref()
                                 .and_then(|p| {
@@ -819,7 +789,6 @@ pub fn run_app(
                         _ => {}
                     }
 
-                    // Handle fuzzy finder special actions
                     if matches!(action, KeyAction::OpenFuzzyFinder) {
                         fuzzy_results.clear();
                         workspace_query = None;
@@ -880,7 +849,6 @@ pub fn run_app(
                     )? {
                         ActionResult::Continue => {}
                         ActionResult::Quit(code) => {
-                            // Fire BeforeQuit event
                             if let Some(ref mut pm) = plugin_manager {
                                 let _ = pm.fire_event(PluginEvent::BeforeQuit, None);
                             }
@@ -891,7 +859,6 @@ pub fn run_app(
                         }
                     }
 
-                    // Clamp fuzzy finder selected index to valid range
                     if let ViewMode::FuzzyFinder { selected, .. } = &mut state.mode {
                         if fuzzy_results.is_empty() {
                             *selected = 0;
@@ -900,16 +867,13 @@ pub fn run_app(
                         }
                     }
 
-                    // Handle fuzzy finder jump target
                     if let Some(target) = state.fuzzy_jump_target.take() {
                         // A workspace result can be outside the current tree filter.
                         // Tree focus indices must use the same unfiltered entries below.
                         state.filter_pattern = None;
-                        // Expand parent directories to make the target visible
                         if let Err(e) = navigator.reveal_path(&target) {
                             state.set_message(format!("Failed: reveal path - {}", e));
                         } else {
-                            // Find the target in visible entries and set focus
                             navigator.ensure_cache();
                             let entries = navigator.visible_entries();
                             if let Some(idx) = entries.iter().position(|e| e.path == target) {
@@ -937,7 +901,6 @@ pub fn run_app(
                     let tree_top = 0; // Assuming tree starts at row 0
                     let action = handle_mouse_event(mouse, &mut click_detector, tree_top);
 
-                    // Calculate preview boundary for focus switching
                     let preview_boundary = if state.preview_visible {
                         crossterm::terminal::size()
                             .map(|(w, _)| w / 2)
@@ -948,7 +911,6 @@ pub fn run_app(
 
                     match action {
                         MouseAction::Click { row, col } => {
-                            // Set focus based on click position
                             if state.preview_visible {
                                 if col >= preview_boundary {
                                     state.set_focus(FocusTarget::Preview);
@@ -968,7 +930,6 @@ pub fn run_app(
                             }
                         }
                         MouseAction::DoubleClick { row, col } => {
-                            // Double-click on tree area
                             if col < preview_boundary {
                                 state.set_focus(FocusTarget::Tree);
                                 let idx = state.viewport_top + row as usize;
@@ -1002,7 +963,6 @@ pub fn run_app(
                                     ap.scroll = ap.scroll.saturating_sub(amount);
                                 }
                             } else {
-                                // Scroll file list
                                 state.focus_index = state.focus_index.saturating_sub(amount);
                             }
                         }
@@ -1029,7 +989,6 @@ pub fn run_app(
                                     ap.scroll += amount;
                                 }
                             } else {
-                                // Scroll file list
                                 state.focus_index = (state.focus_index + amount)
                                     .min(snapshots.len().saturating_sub(1));
                             }
@@ -1072,16 +1031,13 @@ pub fn run_app(
             }
         }
 
-        // === Plugin event handling ===
         // Only process plugin events when we have fresh snapshots to avoid
         // spurious FileSelected events from stale focused_path values.
         if frame_needs_redraw {
             if let Some(ref mut pm) = plugin_manager {
-                // Update plugin context with current state
                 let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();
                 pm.update_context(focused_path.clone(), state.root.clone(), selected);
 
-                // Fire FileSelected event when focus changes
                 if focused_path != prev_focused_path {
                     if let Some(ref path) = focused_path {
                         let _ =
@@ -1090,7 +1046,6 @@ pub fn run_app(
                     prev_focused_path = focused_path.clone();
                 }
 
-                // Fire DirectoryChanged event when root changes
                 if state.root != prev_root {
                     let _ = pm.fire_event(
                         PluginEvent::DirectoryChanged,
@@ -1099,18 +1054,15 @@ pub fn run_app(
                     prev_root = state.root.clone();
                 }
 
-                // Fire SelectionChanged event when selection count changes
                 if state.selected_paths.len() != prev_selection_count {
                     let _ = pm.fire_event(PluginEvent::SelectionChanged, None);
                     prev_selection_count = state.selected_paths.len();
                 }
 
-                // Process plugin notifications
                 for msg in pm.take_notifications() {
                     state.set_message(msg);
                 }
 
-                // Process plugin actions
                 for action in pm.take_actions() {
                     match action {
                         PluginAction::Navigate(path) => {
@@ -1155,11 +1107,9 @@ pub fn run_app(
                             }
                         }
                         PluginAction::Focus(path) => {
-                            // Expand parent directories to make the target visible
                             if let Err(e) = navigator.reveal_path(&path) {
                                 state.set_message(format!("Focus failed: {}", e));
                             } else {
-                                // Find the target in visible entries and set focus
                                 navigator.ensure_cache();
                                 let entries = navigator.visible_entries();
                                 if let Some(idx) = entries.iter().position(|e| e.path == path) {
@@ -1172,9 +1122,7 @@ pub fn run_app(
             }
         } // end if frame_needs_redraw (plugin events)
 
-        // Check quit flag
         if state.should_quit {
-            // Fire BeforeQuit event
             if let Some(ref mut pm) = plugin_manager {
                 let _ = pm.fire_event(PluginEvent::BeforeQuit, None);
             }

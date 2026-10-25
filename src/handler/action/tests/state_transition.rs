@@ -4,7 +4,6 @@ use tempfile::TempDir;
 
 use super::*;
 
-/// Test: ToggleExpand with file + side preview visible -> closes side preview
 /// This was the bug in v0.6.1 where Enter opened fullscreen instead of closing
 #[test]
 fn test_toggle_expand_file_with_side_preview_closes_panel() {
@@ -20,7 +19,6 @@ fn test_toggle_expand_file_with_side_preview_closes_panel() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    // Side preview is visible
     state.preview_visible = true;
     let focused = Some(file_path);
 
@@ -37,7 +35,6 @@ fn test_toggle_expand_file_with_side_preview_closes_panel() {
     )
     .unwrap();
 
-    // Side preview should be closed, NOT fullscreen opened
     assert!(!state.preview_visible, "Side preview should be closed");
     assert!(
         matches!(state.mode, ViewMode::Browse),
@@ -45,7 +42,6 @@ fn test_toggle_expand_file_with_side_preview_closes_panel() {
     );
 }
 
-/// Test: ToggleExpand with file + side preview NOT visible -> opens fullscreen
 #[test]
 fn test_toggle_expand_file_without_preview_opens_fullscreen() {
     let temp = TempDir::new().unwrap();
@@ -60,7 +56,6 @@ fn test_toggle_expand_file_without_preview_opens_fullscreen() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    // Side preview is NOT visible
     state.preview_visible = false;
     let focused = Some(file_path);
 
@@ -77,14 +72,12 @@ fn test_toggle_expand_file_without_preview_opens_fullscreen() {
     )
     .unwrap();
 
-    // Fullscreen preview should be opened
     assert!(
         matches!(state.mode, ViewMode::Preview { scroll: 0 }),
         "Should open fullscreen preview for file"
     );
 }
 
-/// Test: ToggleExpand with directory -> toggles expand
 #[test]
 fn test_toggle_expand_directory_toggles_expand() {
     let temp = TempDir::new().unwrap();
@@ -104,7 +97,6 @@ fn test_toggle_expand_directory_toggles_expand() {
     navigator.ensure_cache();
     let initial_count = navigator.visible_count();
 
-    // Expand
     call_handle_action!(
         KeyAction::ToggleExpand,
         &mut state,
@@ -124,7 +116,6 @@ fn test_toggle_expand_directory_toggles_expand() {
         "Directory should be expanded"
     );
 
-    // Collapse
     call_handle_action!(
         KeyAction::ToggleExpand,
         &mut state,
@@ -146,7 +137,6 @@ fn test_toggle_expand_directory_toggles_expand() {
     );
 }
 
-/// Test: Cancel in Preview mode -> returns to Browse mode
 #[test]
 fn test_cancel_in_preview_mode_returns_to_browse() {
     let temp = TempDir::new().unwrap();
@@ -158,7 +148,6 @@ fn test_cancel_in_preview_mode_returns_to_browse() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    // Start in Preview mode
     state.mode = ViewMode::Preview { scroll: 5 };
 
     call_handle_action!(
@@ -180,7 +169,6 @@ fn test_cancel_in_preview_mode_returns_to_browse() {
     );
 }
 
-/// Test: Cancel in Browse mode with pick_mode -> returns Quit(CANCELLED)
 #[test]
 fn test_cancel_in_browse_pick_mode_returns_cancelled() {
     let temp = TempDir::new().unwrap();
@@ -214,7 +202,6 @@ fn test_cancel_in_browse_pick_mode_returns_cancelled() {
     );
 }
 
-/// Test: Cancel in Browse mode without pick_mode -> sets should_quit
 #[test]
 fn test_cancel_in_browse_normal_mode_sets_quit() {
     let temp = TempDir::new().unwrap();
@@ -244,7 +231,6 @@ fn test_cancel_in_browse_normal_mode_sets_quit() {
     assert!(state.should_quit, "Should set should_quit flag");
 }
 
-/// Test: Cancel in Input mode -> returns to Browse mode and clears message
 #[test]
 fn test_cancel_in_input_mode_returns_to_browse() {
     let temp = TempDir::new().unwrap();
@@ -283,7 +269,6 @@ fn test_cancel_in_input_mode_returns_to_browse() {
     assert!(state.message.is_none(), "Message should be cleared");
 }
 
-/// Test: Preview scroll maintains state within text_preview
 #[test]
 fn test_preview_scroll_updates_text_preview() {
     let temp = TempDir::new().unwrap();
@@ -292,13 +277,11 @@ fn test_preview_scroll_updates_text_preview() {
     let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
 
-    // Create a text preview with some lines
     let mut text_preview = Some(TextPreview::new("line1\nline2\nline3\nline4\nline5"));
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 0;
 
-    // Scroll down
     call_handle_action!(
         KeyAction::PreviewScrollDown,
         &mut state,
@@ -318,7 +301,6 @@ fn test_preview_scroll_updates_text_preview() {
         "Scroll should increase by 1"
     );
 
-    // Scroll up
     call_handle_action!(
         KeyAction::PreviewScrollUp,
         &mut state,
@@ -339,7 +321,6 @@ fn test_preview_scroll_updates_text_preview() {
     );
 }
 
-/// Test: Preview scroll at zero doesn't go negative (saturating)
 #[test]
 fn test_preview_scroll_saturates_at_zero() {
     let temp = TempDir::new().unwrap();
@@ -353,7 +334,6 @@ fn test_preview_scroll_saturates_at_zero() {
     let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 0;
 
-    // Try to scroll up when already at 0
     call_handle_action!(
         KeyAction::PreviewScrollUp,
         &mut state,
@@ -374,7 +354,6 @@ fn test_preview_scroll_saturates_at_zero() {
     );
 }
 
-/// Test: Preview page up/down moves by 20 lines
 #[test]
 fn test_preview_page_scroll() {
     let temp = TempDir::new().unwrap();
@@ -388,7 +367,6 @@ fn test_preview_page_scroll() {
     let mut archive_preview: Option<ArchivePreview> = None;
     text_preview.as_mut().unwrap().scroll = 0;
 
-    // Page down
     call_handle_action!(
         KeyAction::PreviewPageDown,
         &mut state,
@@ -408,7 +386,6 @@ fn test_preview_page_scroll() {
         "Page down should move by 20"
     );
 
-    // Page up
     call_handle_action!(
         KeyAction::PreviewPageUp,
         &mut state,
@@ -429,7 +406,6 @@ fn test_preview_page_scroll() {
     );
 }
 
-/// Test: Preview scroll in fullscreen mode updates ViewMode scroll
 #[test]
 fn test_preview_scroll_updates_viewmode_scroll() {
     let temp = TempDir::new().unwrap();
@@ -441,7 +417,6 @@ fn test_preview_scroll_updates_viewmode_scroll() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    // Start in Preview mode with scroll at 0
     state.mode = ViewMode::Preview { scroll: 0 };
 
     call_handle_action!(
@@ -464,7 +439,6 @@ fn test_preview_scroll_updates_viewmode_scroll() {
     }
 }
 
-/// Test: MoveToTop sets focus_index to 0
 #[test]
 fn test_move_to_top() {
     let temp = TempDir::new().unwrap();
@@ -498,7 +472,6 @@ fn test_move_to_top() {
     assert_eq!(state.focus_index, 0);
 }
 
-/// Test: MoveToBottom sets focus_index to last entry
 #[test]
 fn test_move_to_bottom() {
     let temp = TempDir::new().unwrap();
@@ -532,7 +505,6 @@ fn test_move_to_bottom() {
     assert_eq!(state.focus_index, last_index);
 }
 
-/// Test: ClearMarks clears all selected paths
 #[test]
 fn test_clear_marks() {
     let temp = TempDir::new().unwrap();
@@ -569,7 +541,6 @@ fn test_clear_marks() {
     assert!(state.selected_paths.is_empty());
 }
 
-/// Test: StartSearch enters Search mode
 #[test]
 fn test_start_search() {
     let temp = TempDir::new().unwrap();
@@ -597,7 +568,6 @@ fn test_start_search() {
     assert!(matches!(state.mode, ViewMode::Search { query } if query.is_empty()));
 }
 
-/// Test: StartNewFile enters Input mode for CreateFile
 #[test]
 fn test_start_new_file() {
     let temp = TempDir::new().unwrap();
@@ -631,7 +601,6 @@ fn test_start_new_file() {
     ));
 }
 
-/// Test: StartNewDir enters Input mode for CreateDir
 #[test]
 fn test_start_new_dir() {
     let temp = TempDir::new().unwrap();

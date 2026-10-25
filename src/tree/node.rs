@@ -1,37 +1,27 @@
-//! Tree entry (node) definition
-
 use std::path::PathBuf;
 use std::time::SystemTime;
 
 use crate::core::SortMode;
 
-/// A single entry in the file tree
 #[derive(Debug, Clone)]
 pub struct TreeEntry {
-    /// Full path to the entry
     pub path: PathBuf,
-    /// Display name
     pub name: String,
-    /// Whether this is a directory
     pub is_dir: bool,
     /// Depth in the tree (0 = root)
     pub depth: usize,
-    /// Whether directory is expanded
     pub expanded: bool,
-    /// Child entries (directories only)
+    /// Populated only for directories.
     children: Vec<TreeEntry>,
 }
 
 impl TreeEntry {
-    /// Create a new tree entry
     pub fn new(path: PathBuf, depth: usize) -> Self {
         let is_dir = path.is_dir();
         Self::new_with_type(path, depth, is_dir)
     }
 
-    /// Create a new tree entry with pre-computed is_dir value
-    ///
-    /// This avoids an extra stat() call when is_dir is already known
+    /// Avoids an extra stat() call when is_dir is already known
     /// (e.g., from DirEntry::file_type()).
     pub fn new_with_type(path: PathBuf, depth: usize, is_dir: bool) -> Self {
         let name = path
@@ -49,45 +39,34 @@ impl TreeEntry {
         }
     }
 
-    /// Check if this entry is expanded
     pub fn is_expanded(&self) -> bool {
         self.expanded
     }
 
-    /// Get children (immutable)
     pub fn children(&self) -> &[TreeEntry] {
         &self.children
     }
 
-    /// Get children (mutable)
     pub fn children_mut(&mut self) -> &mut Vec<TreeEntry> {
         &mut self.children
     }
 
-    /// Toggle expanded state
     pub fn toggle_expanded(&mut self) {
         if self.is_dir {
             self.expanded = !self.expanded;
         }
     }
 
-    /// Set expanded state
     pub fn set_expanded(&mut self, expanded: bool) {
         if self.is_dir {
             self.expanded = expanded;
         }
     }
 
-    /// Load children from filesystem
-    ///
-    /// Uses `DirEntry::file_type()` to avoid extra stat() calls for better performance.
-    /// For symlinks, falls back to `path.is_dir()` to follow the link.
     pub fn load_children(&mut self, show_hidden: bool) -> anyhow::Result<()> {
         self.load_children_with_sort(show_hidden, SortMode::Name)
     }
 
-    /// Load children from filesystem with specified sort mode
-    ///
     /// Uses `DirEntry::file_type()` to avoid extra stat() calls for better performance.
     /// For symlinks, falls back to `path.is_dir()` to follow the link.
     pub fn load_children_with_sort(
@@ -110,13 +89,10 @@ impl TreeEntry {
                 }
             })
             .map(|e| {
-                // Use file_type() from DirEntry to avoid extra stat() call
-                // For symlinks, follow the link to determine if it points to a directory
                 let is_dir = e
                     .file_type()
                     .map(|t| {
                         if t.is_symlink() {
-                            // Follow symlink to check if target is directory
                             e.path().is_dir()
                         } else {
                             t.is_dir()
@@ -127,7 +103,6 @@ impl TreeEntry {
             })
             .collect();
 
-        // Sort: directories first, then by sort mode
         sort_entries(&mut entries, sort_mode);
 
         self.children = entries;
@@ -191,7 +166,6 @@ pub fn sort_entries(entries: &mut [TreeEntry], sort_mode: SortMode) {
     }
 }
 
-/// Reorder elements in-place according to the given index permutation.
 fn apply_index_permutation<T>(entries: &mut [T], mut indices: Vec<usize>) {
     let mut target_positions = vec![0; indices.len()];
     for (new_index, &old_index) in indices.iter().enumerate() {
@@ -268,7 +242,7 @@ mod tests {
         let mut entry = TreeEntry::new(file_path, 0);
 
         assert!(!entry.is_expanded());
-        entry.toggle_expanded(); // Should have no effect on files
+        entry.toggle_expanded();
         assert!(!entry.is_expanded());
     }
 
@@ -279,10 +253,8 @@ mod tests {
 
         entry.load_children(false).unwrap();
 
-        // Should have 2 children (subdir and file.txt, not .hidden)
         assert_eq!(entry.children().len(), 2);
 
-        // Directories should come first
         assert!(entry.children()[0].is_dir);
         assert_eq!(entry.children()[0].name, "subdir");
         assert!(!entry.children()[1].is_dir);
@@ -296,7 +268,6 @@ mod tests {
 
         entry.load_children(true).unwrap();
 
-        // Should have 3 children (subdir, file.txt, and .hidden)
         assert_eq!(entry.children().len(), 3);
     }
 

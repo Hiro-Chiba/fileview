@@ -1,10 +1,3 @@
-//! E2E tests for configuration CLI options
-//!
-//! Tests for the new CLI options added with the config file system:
-//! - --hidden / -a: Show hidden files
-//! - --no-hidden: Hide hidden files
-//! - Config file documentation in help
-
 use assert_cmd::cargo::cargo_bin_cmd;
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -97,7 +90,6 @@ fn help_shows_hidden_option() {
 
 #[test]
 fn config_file_syntax_error_does_not_crash() {
-    // Create a temporary config directory with invalid TOML
     let temp_dir = TempDir::new().unwrap();
     let config_dir = temp_dir.path().join(".config").join("fileview");
     fs::create_dir_all(&config_dir).unwrap();
@@ -294,7 +286,6 @@ fn keymap_with_command_binding_does_not_crash() {
     let config_dir = temp_dir.path().join(".config").join("fileview");
     fs::create_dir_all(&config_dir).unwrap();
 
-    // Create config with commands
     let config_path = config_dir.join("config.toml");
     let mut file = fs::File::create(&config_path).unwrap();
     writeln!(
@@ -307,7 +298,6 @@ edit = "nvim $f"
     )
     .unwrap();
 
-    // Create keymap that binds to commands
     let keymap_path = config_dir.join("keymap.toml");
     let mut file = fs::File::create(&keymap_path).unwrap();
     writeln!(
@@ -417,7 +407,6 @@ fn full_config_with_all_features_does_not_crash() {
     let config_dir = temp_dir.path().join(".config").join("fileview");
     fs::create_dir_all(&config_dir).unwrap();
 
-    // Full config with all Phase 1-5 features
     let config_path = config_dir.join("config.toml");
     let mut file = fs::File::create(&config_path).unwrap();
     writeln!(
@@ -453,7 +442,6 @@ terminal = "cd $d && $SHELL"
     )
     .unwrap();
 
-    // Keymap with command bindings
     let keymap_path = config_dir.join("keymap.toml");
     let mut file = fs::File::create(&keymap_path).unwrap();
     writeln!(
@@ -471,7 +459,6 @@ terminal = "cd $d && $SHELL"
     )
     .unwrap();
 
-    // Theme
     let theme_path = config_dir.join("theme.toml");
     let mut file = fs::File::create(&theme_path).unwrap();
     writeln!(

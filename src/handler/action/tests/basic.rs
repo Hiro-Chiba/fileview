@@ -154,7 +154,6 @@ fn test_toggle_mark_action() {
     let mut archive_preview: Option<ArchivePreview> = None;
     let focused = Some(file_path.clone());
 
-    // Mark
     call_handle_action!(
         KeyAction::ToggleMark,
         &mut state,
@@ -169,7 +168,6 @@ fn test_toggle_mark_action() {
     .unwrap();
     assert!(state.selected_paths.contains(&file_path));
 
-    // Unmark
     call_handle_action!(
         KeyAction::ToggleMark,
         &mut state,
@@ -225,7 +223,6 @@ fn test_open_preview_action() {
     let mut hex_preview: Option<HexPreview> = None;
     let mut archive_preview: Option<ArchivePreview> = None;
 
-    // Open preview
     call_handle_action!(
         KeyAction::OpenPreview,
         &mut state,
@@ -240,7 +237,6 @@ fn test_open_preview_action() {
     .unwrap();
     assert!(matches!(state.mode, ViewMode::Preview { .. }));
 
-    // Close preview
     call_handle_action!(
         KeyAction::OpenPreview,
         &mut state,

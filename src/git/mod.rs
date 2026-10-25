@@ -1,5 +1,3 @@
-//! Git integration module
-
 mod diff;
 mod operations;
 pub mod range;

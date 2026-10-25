@@ -126,7 +126,6 @@ pub struct BudgetWorker {
 }
 
 impl BudgetWorker {
-    /// Spawn the worker thread.
     pub fn spawn() -> Self {
         let (req_tx, req_rx) = mpsc::channel::<BudgetMessage>();
         let (res_tx, res_rx) = mpsc::channel::<BudgetResult>();

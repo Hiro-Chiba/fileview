@@ -1,7 +1,4 @@
 //! Video preview support using ffmpeg/ffprobe
-//!
-//! This module provides video thumbnail generation and metadata extraction
-//! using external ffmpeg/ffprobe commands.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,27 +19,22 @@ fn safe_input_arg(path: &Path) -> PathBuf {
     }
 }
 
-/// Cached ffmpeg path detection
 static FFMPEG_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
-/// Cached ffprobe path detection
 static FFPROBE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
-/// Find ffmpeg executable path (lazy detection with caching)
 pub fn find_ffmpeg() -> Option<&'static PathBuf> {
     FFMPEG_PATH
         .get_or_init(|| crate::util::find_preview_tool("ffmpeg"))
         .as_ref()
 }
 
-/// Find ffprobe executable path (lazy detection with caching)
 pub fn find_ffprobe() -> Option<&'static PathBuf> {
     FFPROBE_PATH
         .get_or_init(|| crate::util::find_preview_tool("ffprobe"))
         .as_ref()
 }
 
-/// Check if a file is a video file
 pub fn is_video_file(path: &Path) -> bool {
     let ext = path
         .extension()
@@ -68,16 +60,12 @@ pub fn is_video_file(path: &Path) -> bool {
     )
 }
 
-/// Video metadata extracted from ffprobe
 #[derive(Debug, Clone)]
 pub struct VideoMetadata {
-    /// Video duration
     pub duration: Duration,
     /// Video resolution (width, height)
     pub resolution: (u32, u32),
-    /// Video codec name
     pub codec: String,
-    /// Audio codec name (if present)
     pub audio_codec: Option<String>,
     /// File size in bytes
     pub file_size: u64,
@@ -107,7 +95,6 @@ impl VideoMetadata {
         format!("{}x{}", self.resolution.0, self.resolution.1)
     }
 
-    /// Format bitrate as human-readable string
     pub fn format_bitrate(&self) -> Option<String> {
         self.bitrate.map(|b| {
             if b >= 1_000_000 {
@@ -120,7 +107,6 @@ impl VideoMetadata {
         })
     }
 
-    /// Format file size as human-readable string
     pub fn format_size(&self) -> String {
         const KB: u64 = 1024;
         const MB: u64 = KB * 1024;
@@ -138,16 +124,12 @@ impl VideoMetadata {
     }
 }
 
-/// Extract video metadata using ffprobe
-///
 /// Uses ffprobe with JSON output for reliable parsing.
 pub fn get_metadata(path: &Path) -> anyhow::Result<VideoMetadata> {
     let ffprobe = find_ffprobe().ok_or_else(|| anyhow::anyhow!("ffprobe not found"))?;
 
-    // Get file size
     let file_size = std::fs::metadata(path)?.len();
 
-    // Run ffprobe with JSON output
     // ffprobe -v quiet -print_format json -show_format -show_streams <input>
     let output = Command::new(ffprobe)
         .args(["-v", "quiet"])
@@ -164,7 +146,6 @@ pub fn get_metadata(path: &Path) -> anyhow::Result<VideoMetadata> {
     parse_ffprobe_json(&json_str, file_size)
 }
 
-/// Parse ffprobe JSON output
 fn parse_ffprobe_json(json_str: &str, file_size: u64) -> anyhow::Result<VideoMetadata> {
     let root: serde_json::Value = serde_json::from_str(json_str)?;
     let format = &root["format"];
@@ -238,13 +219,9 @@ fn parse_frame_rate(fps_str: &str) -> Option<f32> {
 }
 
 /// Extract a thumbnail frame from a video at 1 second
-///
-/// Uses ffmpeg to extract a single frame.
-/// Returns the path to the generated thumbnail.
 pub fn extract_thumbnail(path: &Path) -> anyhow::Result<PathBuf> {
     let ffmpeg = find_ffmpeg().ok_or_else(|| anyhow::anyhow!("ffmpeg not found"))?;
 
-    // Create unique temp file for this video
     let temp_dir = std::env::temp_dir();
     let hash = simple_hash(path.to_string_lossy().as_bytes());
     let temp_path = temp_dir.join(format!("fv_thumb_{:x}.png", hash));
@@ -263,7 +240,6 @@ pub fn extract_thumbnail(path: &Path) -> anyhow::Result<PathBuf> {
         }
     }
 
-    // Extract thumbnail using ffmpeg
     // ffmpeg -y -i <input> -vframes 1 -ss 00:00:01 <output.png>
     // Use -ss before -i for faster seeking
     let status = Command::new(ffmpeg)
@@ -308,7 +284,6 @@ pub fn extract_thumbnail(path: &Path) -> anyhow::Result<PathBuf> {
     Ok(temp_path)
 }
 
-/// Simple hash function for path-based caching
 fn simple_hash(bytes: &[u8]) -> u64 {
     let mut hash: u64 = 5381;
     for byte in bytes {

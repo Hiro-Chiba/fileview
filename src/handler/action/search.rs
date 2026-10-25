@@ -1,7 +1,3 @@
-//! Search action handlers
-//!
-//! Handles StartSearch, SearchNext, SearchPrev, and fuzzy finder actions
-
 use std::path::PathBuf;
 
 use crate::core::{AppState, ViewMode};
@@ -9,7 +5,6 @@ use crate::handler::key::KeyAction;
 
 use super::EntrySnapshot;
 
-/// Handle search actions
 pub fn handle(action: KeyAction, state: &mut AppState, entries: &[EntrySnapshot]) {
     match action {
         KeyAction::StartSearch => {
@@ -35,13 +30,11 @@ pub fn handle(action: KeyAction, state: &mut AppState, entries: &[EntrySnapshot]
     }
 }
 
-/// Search direction
 enum SearchDirection {
     Forward,
     Backward,
 }
 
-/// Search in specified direction and update match info
 fn search_direction(state: &mut AppState, entries: &[EntrySnapshot], direction: SearchDirection) {
     let query = match &state.mode {
         ViewMode::Search { query } => Some(query.clone()),
@@ -55,7 +48,6 @@ fn search_direction(state: &mut AppState, entries: &[EntrySnapshot], direction: 
 
         let query_lower = query.to_lowercase();
 
-        // Collect all matching indices
         let matches: Vec<usize> = entries
             .iter()
             .enumerate()
@@ -69,17 +61,14 @@ fn search_direction(state: &mut AppState, entries: &[EntrySnapshot], direction: 
             return;
         }
 
-        // Calculate next match index based on direction
         let next_match_idx = match direction {
             SearchDirection::Forward => {
-                // Find next match after current focus
                 matches
                     .iter()
                     .position(|&i| i > state.focus_index)
                     .unwrap_or(0) // Wrap to first
             }
             SearchDirection::Backward => {
-                // Find previous match before current focus
                 matches
                     .iter()
                     .rev()
@@ -94,7 +83,6 @@ fn search_direction(state: &mut AppState, entries: &[EntrySnapshot], direction: 
     }
 }
 
-/// Handle fuzzy finder actions
 pub fn handle_fuzzy(action: KeyAction, state: &mut AppState) {
     match action {
         KeyAction::OpenFuzzyFinder => {
@@ -118,10 +106,8 @@ pub fn handle_fuzzy(action: KeyAction, state: &mut AppState) {
     }
 }
 
-/// Handle fuzzy finder confirm action
 pub fn handle_fuzzy_confirm(path: PathBuf, state: &mut AppState) {
     if !path.as_os_str().is_empty() {
-        // Jump to the selected path in the tree
         state.fuzzy_jump_target = Some(path);
     }
     state.mode = ViewMode::Browse;

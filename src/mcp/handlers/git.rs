@@ -1,6 +1,4 @@
 //! Git operation handlers
-//!
-//! Implements git_status, git_diff, git_log, stage_files, create_commit.
 
 use std::path::Path;
 use std::process::Command;
@@ -9,7 +7,6 @@ use super::{error_result, success_result, ToolCallResult};
 use crate::git::{get_diff, DiffLine, GitStatus};
 use crate::mcp::security::{validate_new_path, validate_path};
 
-/// Get git status for the repository
 pub fn get_git_status(root: &Path) -> ToolCallResult {
     let git_status = match GitStatus::detect(root) {
         Some(status) => status,
@@ -18,12 +15,10 @@ pub fn get_git_status(root: &Path) -> ToolCallResult {
 
     let mut output = String::new();
 
-    // Add branch info
     if let Some(branch) = git_status.branch() {
         output.push_str(&format!("Branch: {}\n\n", branch));
     }
 
-    // Get status output using git command
     let git_output = Command::new("git")
         .args(["status", "--porcelain=v1", "-uall"])
         .current_dir(root)
@@ -73,7 +68,6 @@ pub fn get_git_status(root: &Path) -> ToolCallResult {
     success_result(output)
 }
 
-/// Get git diff for a file
 pub fn get_git_diff(root: &Path, path: &str, staged: bool) -> ToolCallResult {
     // Validate existing paths and safely allow new-file paths.
     let canonical = match validate_path(root, path).or_else(|_| validate_new_path(root, path)) {
@@ -110,7 +104,6 @@ pub fn get_git_diff(root: &Path, path: &str, staged: bool) -> ToolCallResult {
     }
 }
 
-/// Get git commit log
 pub fn git_log(root: &Path, limit: Option<usize>, path: Option<&str>) -> ToolCallResult {
     // Security: Limit to reasonable number of commits
     let limit = limit.unwrap_or(10).min(1000);
@@ -162,7 +155,6 @@ pub fn git_log(root: &Path, limit: Option<usize>, path: Option<&str>) -> ToolCal
     }
 }
 
-/// Stage files for git commit
 pub fn stage_files(root: &Path, paths: &[&str]) -> ToolCallResult {
     // Security: Validate all paths before staging
     for p in paths {
@@ -198,7 +190,6 @@ pub fn stage_files(root: &Path, paths: &[&str]) -> ToolCallResult {
     }
 }
 
-/// Create a git commit
 pub fn create_commit(root: &Path, message: &str) -> ToolCallResult {
     if message.trim().is_empty() {
         return error_result("Commit message cannot be empty");

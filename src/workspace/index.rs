@@ -37,7 +37,6 @@ pub struct WorkspaceMatch {
     pub score: u32,
     /// Character positions to highlight.
     pub indices: Vec<usize>,
-    /// Whether the entry is a directory.
     pub is_dir: bool,
     /// Metadata size in bytes.
     pub size: u64,
@@ -94,7 +93,6 @@ impl WorkspaceIndex {
     pub fn len(&self) -> usize {
         self.entries.len()
     }
-    /// Whether there are no indexed paths.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
