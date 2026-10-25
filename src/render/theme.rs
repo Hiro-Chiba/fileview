@@ -130,7 +130,7 @@ impl Default for GitColors {
 impl ThemeFile {
     /// Get the theme file path (~/.config/fileview/theme.toml)
     pub fn theme_path() -> Option<PathBuf> {
-        ConfigFile::config_dir().map(|p| p.join("theme.toml"))
+        ConfigFile::config_file("theme.toml")
     }
 
     pub fn load() -> Self {

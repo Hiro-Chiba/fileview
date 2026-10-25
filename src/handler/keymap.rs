@@ -23,7 +23,7 @@ pub struct KeymapFile {
 
 impl KeymapFile {
     pub fn keymap_path() -> Option<PathBuf> {
-        ConfigFile::config_dir().map(|p| p.join("keymap.toml"))
+        ConfigFile::config_file("keymap.toml")
     }
 
     pub fn load() -> Self {

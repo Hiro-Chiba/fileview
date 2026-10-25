@@ -186,16 +186,30 @@ fn shell_escape(value: &str) -> String {
     }
 }
 
-fn resolve_config_dir(
+/// The directory new config files go to, ignoring the legacy location.
+fn preferred_config_dir(
+    xdg_config_home: Option<PathBuf>,
+    home: Option<PathBuf>,
+) -> Option<PathBuf> {
+    match xdg_config_home.filter(|p| p.is_absolute()) {
+        Some(xdg) => Some(xdg.join("fileview")),
+        None => home.map(|h| h.join(".config").join("fileview")),
+    }
+}
+
+/// Pick the file to read for `relative`, one file at a time.
+///
+/// The check is per file rather than per directory, because `fv plugin init`
+/// used to create `~/.config/fileview/plugins` on every platform, and a
+/// directory check would then hide a config.toml kept in the old location.
+fn resolve_config_file(
     xdg_config_home: Option<PathBuf>,
     home: Option<PathBuf>,
     platform_config: Option<PathBuf>,
+    relative: &str,
 ) -> Option<PathBuf> {
-    if let Some(xdg) = xdg_config_home.filter(|p| p.is_absolute()) {
-        return Some(xdg.join("fileview"));
-    }
-    let preferred = home.map(|h| h.join(".config").join("fileview"));
-    let legacy = platform_config.map(|p| p.join("fileview"));
+    let preferred = preferred_config_dir(xdg_config_home, home).map(|d| d.join(relative));
+    let legacy = platform_config.map(|p| p.join("fileview").join(relative));
     match (preferred, legacy) {
         (Some(preferred), Some(legacy)) if !preferred.exists() && legacy.exists() => Some(legacy),
         (Some(preferred), _) => Some(preferred),
@@ -204,22 +218,33 @@ fn resolve_config_dir(
 }
 
 impl ConfigFile {
-    /// Directory that holds config.toml, keymap.toml, theme.toml, and plugins.
+    /// Directory where new config files are created.
     ///
-    /// `$XDG_CONFIG_HOME/fileview` wins when it is set, then
-    /// `~/.config/fileview`, which the docs promise on every platform. The
-    /// platform directory (Application Support on macOS, AppData on Windows)
-    /// is still read when only it exists, because earlier versions used it.
+    /// `$XDG_CONFIG_HOME/fileview` when it is set, otherwise
+    /// `~/.config/fileview`, which the docs promise on every platform.
     pub fn config_dir() -> Option<PathBuf> {
-        resolve_config_dir(
+        preferred_config_dir(
+            std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from),
+            dirs::home_dir(),
+        )
+    }
+
+    /// The file to read for a path relative to the config directory.
+    ///
+    /// A file in [`Self::config_dir`] wins. When it is missing, the same file
+    /// in the platform directory (Application Support on macOS, AppData on
+    /// Windows) is used, because versions before 3.1.2 read only that one.
+    pub fn config_file(relative: &str) -> Option<PathBuf> {
+        resolve_config_file(
             std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from),
             dirs::home_dir(),
             dirs::config_dir(),
+            relative,
         )
     }
 
     pub fn config_path() -> Option<PathBuf> {
-        Self::config_dir().map(|p| p.join("config.toml"))
+        Self::config_file("config.toml")
     }
 
     /// Returns default config if file doesn't exist or can't be parsed
@@ -255,38 +280,48 @@ mod tests {
     fn xdg_config_home_wins_when_absolute() {
         // temp_dir is absolute on every platform, unlike "/xdg" on Windows.
         let xdg = std::env::temp_dir().join("xdg");
-        let dir = resolve_config_dir(
-            Some(xdg.clone()),
-            Some(PathBuf::from("/home/u")),
-            Some(PathBuf::from("/platform")),
-        );
+        let dir = preferred_config_dir(Some(xdg.clone()), Some(PathBuf::from("/home/u")));
         assert_eq!(dir, Some(xdg.join("fileview")));
     }
 
     #[test]
     fn relative_xdg_config_home_is_ignored() {
-        let dir = resolve_config_dir(
-            Some(PathBuf::from("rel")),
-            Some(PathBuf::from("/home/u")),
-            None,
-        );
+        let dir = preferred_config_dir(Some(PathBuf::from("rel")), Some(PathBuf::from("/home/u")));
         assert_eq!(dir, Some(PathBuf::from("/home/u/.config/fileview")));
     }
 
     #[test]
-    fn dot_config_is_preferred_and_platform_dir_is_a_fallback() {
+    fn each_file_prefers_dot_config_and_falls_back_to_the_platform_dir() {
         let temp = tempfile::tempdir().unwrap();
         let home = temp.path().join("home");
         let platform = temp.path().join("platform");
+        let resolve = |name: &str| {
+            resolve_config_file(None, Some(home.clone()), Some(platform.clone()), name)
+        };
 
-        let resolve = || resolve_config_dir(None, Some(home.clone()), Some(platform.clone()));
-        assert_eq!(resolve(), Some(home.join(".config/fileview")));
+        assert_eq!(
+            resolve("config.toml"),
+            Some(home.join(".config/fileview/config.toml"))
+        );
 
         std::fs::create_dir_all(platform.join("fileview")).unwrap();
-        assert_eq!(resolve(), Some(platform.join("fileview")));
+        std::fs::write(platform.join("fileview/config.toml"), "").unwrap();
+        // A plugins folder made by an older `fv plugin init` must not hide it.
+        std::fs::create_dir_all(home.join(".config/fileview/plugins")).unwrap();
+        assert_eq!(
+            resolve("config.toml"),
+            Some(platform.join("fileview/config.toml"))
+        );
+        assert_eq!(
+            resolve("theme.toml"),
+            Some(home.join(".config/fileview/theme.toml"))
+        );
 
-        std::fs::create_dir_all(home.join(".config/fileview")).unwrap();
-        assert_eq!(resolve(), Some(home.join(".config/fileview")));
+        std::fs::write(home.join(".config/fileview/config.toml"), "").unwrap();
+        assert_eq!(
+            resolve("config.toml"),
+            Some(home.join(".config/fileview/config.toml"))
+        );
     }
 
     #[test]

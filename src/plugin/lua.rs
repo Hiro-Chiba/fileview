@@ -324,11 +324,11 @@ impl PluginManager {
     }
 
     pub fn plugin_dir() -> Option<PathBuf> {
-        crate::app::ConfigFile::config_dir().map(|p| p.join("plugins"))
+        Self::init_lua_path().and_then(|p| p.parent().map(PathBuf::from))
     }
 
     pub fn init_lua_path() -> Option<PathBuf> {
-        Self::plugin_dir().map(|p| p.join("init.lua"))
+        crate::app::ConfigFile::config_file("plugins/init.lua")
     }
 
     pub fn load_plugins(&mut self) -> Result<(), PluginError> {
