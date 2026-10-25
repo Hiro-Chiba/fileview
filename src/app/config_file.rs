@@ -253,12 +253,14 @@ mod tests {
 
     #[test]
     fn xdg_config_home_wins_when_absolute() {
+        // temp_dir is absolute on every platform, unlike "/xdg" on Windows.
+        let xdg = std::env::temp_dir().join("xdg");
         let dir = resolve_config_dir(
-            Some(PathBuf::from("/xdg")),
+            Some(xdg.clone()),
             Some(PathBuf::from("/home/u")),
             Some(PathBuf::from("/platform")),
         );
-        assert_eq!(dir, Some(PathBuf::from("/xdg/fileview")));
+        assert_eq!(dir, Some(xdg.join("fileview")));
     }
 
     #[test]
