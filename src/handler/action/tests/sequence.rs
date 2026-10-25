@@ -156,12 +156,16 @@ fn test_sequence_side_preview_toggle_enter() {
 #[test]
 fn test_sequence_search_workflow() {
     let temp = TempDir::new().unwrap();
-    std::fs::write(temp.path().join("apple.txt"), "").unwrap();
-    std::fs::write(temp.path().join("banana.txt"), "").unwrap();
-    std::fs::write(temp.path().join("apricot.txt"), "").unwrap();
+    // The root entry is searched too, and a random temp dir name can contain
+    // the query, so the root gets a fixed name.
+    let root = temp.path().join("fruits");
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(root.join("apple.txt"), "").unwrap();
+    std::fs::write(root.join("banana.txt"), "").unwrap();
+    std::fs::write(root.join("apricot.txt"), "").unwrap();
 
-    let mut state = create_test_state(temp.path());
-    let mut navigator = create_test_navigator(temp.path());
+    let mut state = create_test_state(&root);
+    let mut navigator = create_test_navigator(&root);
     let entries = create_test_entries(&mut navigator);
     let context = ActionContext::default();
     let mut text_preview: Option<TextPreview> = None;
