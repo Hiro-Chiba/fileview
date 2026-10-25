@@ -262,19 +262,31 @@ pub fn is_sensitive_target(root: &Path, target: &Path) -> bool {
 /// trailing dots and spaces and treats `name:stream` as `name`, so `.git.` and
 /// `.git::$INDEX_ALLOCATION` open `.git`, and `GIT~1` is its 8.3 short name.
 pub fn is_sensitive_path(path: &Path) -> bool {
-    let components: Vec<String> = path
+    let raw: Vec<String> = path
         .components()
         .filter_map(|c| match c {
             std::path::Component::Normal(s) => Some(s.to_string_lossy().to_lowercase()),
             _ => None,
         })
         .flat_map(|s| s.split('\\').map(str::to_owned).collect::<Vec<_>>())
+        .filter(|s| !s.is_empty() && s != ".")
+        .collect();
+    // Both forms are checked, because `:` is an ordinary character on Unix
+    // and cutting at it there would hide a name such as `notes:.env`.
+    let reduced: Vec<String> = raw
+        .iter()
         .map(|s| {
             let name = s.split(':').next().unwrap_or_default();
             name.trim_end_matches(['.', ' ']).to_owned()
         })
         .filter(|s| !s.is_empty())
         .collect();
+    [raw, reduced]
+        .iter()
+        .any(|components| matches_sensitive(components))
+}
+
+fn matches_sensitive(components: &[String]) -> bool {
     if components
         .iter()
         .any(|c| c == ".git" || is_git_short_name(c))
@@ -298,13 +310,9 @@ pub fn is_sensitive_path(path: &Path) -> bool {
         ".aws/credentials",
     ];
 
-    for pattern in &sensitive_patterns {
-        if path_str.contains(pattern) {
-            return true;
-        }
-    }
-
-    false
+    sensitive_patterns
+        .iter()
+        .any(|pattern| path_str.contains(pattern))
 }
 
 fn is_git_short_name(name: &str) -> bool {
@@ -433,6 +441,8 @@ mod tests {
         ] {
             assert!(is_sensitive_path(Path::new(path)), "{path}");
         }
+        assert!(is_sensitive_path(Path::new("notes:.env")));
+        assert!(is_sensitive_path(Path::new("keys/backup:id_rsa")));
         assert!(!is_sensitive_path(Path::new("notes/git~backup.md")));
         assert!(!is_sensitive_path(Path::new("docs/git-guide.md")));
         assert!(!is_sensitive_path(Path::new(".github/workflows/ci.yml")));
