@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-10-25
+
+FileView 3.1.2 fixes settings and keys that did not work, and removes features that were documented but never worked, so FileView stays a small, fast viewer. Config and theme files written for older versions still load.
+
 ### Fixed
 
 - Configuration is read from `~/.config/fileview` on every platform, as documented, or from `$XDG_CONFIG_HOME/fileview` when that is set. macOS and Windows used to read only Application Support or AppData, so config, theme, and plugin files placed in `~/.config/fileview` were ignored. Each file is still read from the old location when the same file is not in `~/.config/fileview`, so existing setups keep working. `fv plugin init` now writes the template where plugins are loaded from.
@@ -26,6 +30,11 @@ These were documented but never worked, so removing them changes no behavior. Co
 - `[commands]` in `config.toml`. Commands could only be bound through `keymap.toml`, so none of them ever ran.
 - `image_protocol` in `config.toml`. It was never applied. `FILEVIEW_IMAGE_PROTOCOL` still selects the image protocol.
 - The `Alt+S` subshell binding. It only showed a message and never started a shell. `Alt+S` now does nothing instead of staging the file.
+
+### Changed
+
+- Every guide, the examples, and the CLI and in-app help were checked against the code and corrected. The three example plugins relied on commands that never ran, so they are replaced by one that uses events.
+- With the unused code gone, a local release build is about 50 KB smaller (6.81 MB instead of 6.86 MB on macOS ARM64), and the crate is about 9 KB smaller.
 
 ## [3.1.1] - 2026-10-25
 
