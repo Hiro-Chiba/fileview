@@ -35,7 +35,8 @@ intended for a local AI client.
   as well as `.env` and credential files such as `.ssh` keys. The check uses the
   normalized path relative to `<root>` after resolving symlinked parent
   directories, so spellings such as `.git//hooks` or a symlink into `.git` are
-  refused too. Versions before 3.1.1 checked the raw argument and could be
+  refused too. Windows name forms that resolve to `.git`, such as `.git.` or
+  `GIT~1`, are treated the same way. Versions before 3.1.1 checked the raw argument and could be
   bypassed this way.
 - `run_build`, `run_test`, `run_lint`, and `get_diagnostics` execute the
   project's own toolchain (build scripts, test code, lint plugins). Exposing

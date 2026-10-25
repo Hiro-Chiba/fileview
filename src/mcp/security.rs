@@ -257,6 +257,10 @@ pub fn is_sensitive_target(root: &Path, target: &Path) -> bool {
 /// or attributes file runs code on the next git command. The path is rebuilt
 /// from its components first, so spellings such as `.git//hooks` or
 /// `.git/./config` match like the plain form.
+///
+/// Each component is also reduced the way Windows resolves names. Windows drops
+/// trailing dots and spaces and treats `name:stream` as `name`, so `.git.` and
+/// `.git::$INDEX_ALLOCATION` open `.git`, and `GIT~1` is its 8.3 short name.
 pub fn is_sensitive_path(path: &Path) -> bool {
     let components: Vec<String> = path
         .components()
@@ -265,9 +269,16 @@ pub fn is_sensitive_path(path: &Path) -> bool {
             _ => None,
         })
         .flat_map(|s| s.split('\\').map(str::to_owned).collect::<Vec<_>>())
-        .filter(|s| !s.is_empty() && s != ".")
+        .map(|s| {
+            let name = s.split(':').next().unwrap_or_default();
+            name.trim_end_matches(['.', ' ']).to_owned()
+        })
+        .filter(|s| !s.is_empty())
         .collect();
-    if components.iter().any(|c| c == ".git") {
+    if components
+        .iter()
+        .any(|c| c == ".git" || is_git_short_name(c))
+    {
         return true;
     }
     let path_str = components.join("/");
@@ -294,6 +305,11 @@ pub fn is_sensitive_path(path: &Path) -> bool {
     }
 
     false
+}
+
+fn is_git_short_name(name: &str) -> bool {
+    name.strip_prefix("git~")
+        .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
 }
 
 /// Sanitize a filename to remove potentially dangerous characters.
@@ -407,6 +423,17 @@ mod tests {
         ] {
             assert!(is_sensitive_path(Path::new(path)), "{path}");
         }
+        for path in [
+            ".git./hooks/pre-commit",
+            ".git /config",
+            ".git. . ./hooks/x",
+            ".git::$INDEX_ALLOCATION/hooks/x",
+            "GIT~1/hooks/pre-commit",
+            ".env.",
+        ] {
+            assert!(is_sensitive_path(Path::new(path)), "{path}");
+        }
+        assert!(!is_sensitive_path(Path::new("notes/git~backup.md")));
         assert!(!is_sensitive_path(Path::new("docs/git-guide.md")));
         assert!(!is_sensitive_path(Path::new(".github/workflows/ci.yml")));
     }
