@@ -618,7 +618,7 @@ fn handle_search_mode(key: KeyEvent, current_query: &str) -> KeyAction {
             value: current_query.to_string(),
         },
         // Same key to cancel (toggle behavior)
-        KeyCode::Char('/') | KeyCode::Esc => KeyAction::Cancel,
+        KeyCode::Esc => KeyAction::Cancel,
         _ => KeyAction::None, // Buffer updates handled separately
     }
 }
@@ -724,8 +724,12 @@ pub fn update_input_buffer(key: KeyEvent, buffer: &str, cursor: usize) -> Option
         return None;
     }
 
+    // Ctrl or Alt alone makes a command key, such as Ctrl+J in the fuzzy
+    // finder. Both together are AltGr on Windows, which types characters.
+    let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+    let alt = key.modifiers.contains(KeyModifiers::ALT);
     match key.code {
-        KeyCode::Char(c) => {
+        KeyCode::Char(c) if ctrl == alt => {
             chars.insert(cursor, c);
             Some((chars.into_iter().collect(), cursor + 1))
         }
@@ -821,7 +825,7 @@ fn handle_filter_mode(key: KeyEvent, current_query: &str) -> KeyAction {
             }
         }
         // Same key to cancel (toggle behavior)
-        KeyCode::Char('F') | KeyCode::Esc => KeyAction::Cancel,
+        KeyCode::Esc => KeyAction::Cancel,
         _ => KeyAction::None, // Text input handled separately
     }
 }
@@ -882,9 +886,39 @@ mod tests {
     }
 
     #[test]
-    fn test_search_mode_slash_cancels() {
-        let action = handle_search_mode(key_event(KeyCode::Char('/')), "query");
-        assert!(matches!(action, KeyAction::Cancel));
+    fn command_keys_are_not_typed_into_text_input() {
+        let ctrl_j = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL);
+        let alt_p = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::ALT);
+        let alt_gr_at = KeyEvent::new(
+            KeyCode::Char('@'),
+            KeyModifiers::CONTROL | KeyModifiers::ALT,
+        );
+        let shift_f = KeyEvent::new(KeyCode::Char('F'), KeyModifiers::SHIFT);
+
+        assert_eq!(update_input_buffer(ctrl_j, "ab", 2), None);
+        assert_eq!(update_input_buffer(alt_p, "ab", 2), None);
+        assert_eq!(
+            update_input_buffer(alt_gr_at, "a", 1),
+            Some(("a@".into(), 2))
+        );
+        assert_eq!(update_input_buffer(shift_f, "", 0), Some(("F".into(), 1)));
+    }
+
+    #[test]
+    fn fuzzy_finder_ctrl_keys_move_and_close() {
+        let ctrl = |c| KeyEvent::new(KeyCode::Char(c), KeyModifiers::CONTROL);
+        assert!(matches!(
+            handle_fuzzy_finder_mode(ctrl('j')),
+            KeyAction::FuzzyDown
+        ));
+        assert!(matches!(
+            handle_fuzzy_finder_mode(ctrl('k')),
+            KeyAction::FuzzyUp
+        ));
+        assert!(matches!(
+            handle_fuzzy_finder_mode(ctrl('p')),
+            KeyAction::Cancel
+        ));
     }
 
     #[test]
@@ -927,12 +961,6 @@ mod tests {
     fn test_bookmark_jump_mode_digit_jumps() {
         let action = handle_bookmark_jump_mode(key_event(KeyCode::Char('3')));
         assert!(matches!(action, KeyAction::JumpToBookmark { slot: 3 }));
-    }
-
-    #[test]
-    fn test_filter_mode_f_cancels() {
-        let action = handle_filter_mode(key_event(KeyCode::Char('F')), "*.rs");
-        assert!(matches!(action, KeyAction::Cancel));
     }
 
     #[test]

@@ -14,12 +14,10 @@ end)
 "#;
 
 fn default_plugin_path() -> anyhow::Result<PathBuf> {
-    let home = std::env::var("HOME").map_err(|_| anyhow::anyhow!("HOME is not set"))?;
-    Ok(PathBuf::from(home)
-        .join(".config")
-        .join("fileview")
-        .join("plugins")
-        .join("init.lua"))
+    // The Lua loader reads plugins/init.lua under the same directory.
+    crate::app::ConfigFile::config_dir()
+        .map(|dir| dir.join("plugins").join("init.lua"))
+        .ok_or_else(|| anyhow::anyhow!("cannot determine the config directory"))
 }
 
 /// Initialize plugin file with a starter template.

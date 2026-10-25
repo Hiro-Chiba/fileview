@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Configuration is read from `~/.config/fileview` on every platform, as documented, or from `$XDG_CONFIG_HOME/fileview` when that is set. macOS and Windows used to read only Application Support or AppData, so config, theme, keymap, and plugin files placed in `~/.config/fileview` were ignored. Each file is still read from the old location when the same file is not in `~/.config/fileview`, so existing setups keep working. `fv plugin init` now writes the template where plugins are loaded from.
+- `Ctrl+J`, `Ctrl+K`, and `Ctrl+P` in the fuzzy finder move the selection and close it again instead of typing `j`, `k`, or `p` into the query. Other `Ctrl` and `Alt` keys are no longer typed into text prompts either, while `AltGr` characters on Windows still are.
+- `\` opens the TODO list again. It was taken as the start of a dropped path.
+- The MCP server no longer replies to JSON-RPC notifications such as `notifications/initialized`, which the protocol forbids.
+
 ## [3.1.1] - 2026-10-25
 
 FileView 3.1.1 is a security release for the MCP server. Update if you run `fv --mcp-server` for an AI client.

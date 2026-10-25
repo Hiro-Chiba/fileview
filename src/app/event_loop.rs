@@ -710,8 +710,11 @@ pub fn run_app(
                     // Only in Browse mode to avoid interfering with text input
                     if matches!(state.mode, ViewMode::Browse) {
                         if let crossterm::event::KeyCode::Char(c) = key.code {
-                            // Start buffering on path-like characters
-                            if matches!(c, '/' | '\'' | '"' | '\\') {
+                            // Start buffering on path-like characters. A
+                            // backslash is left out so `\` opens the TODO list.
+                            // Only Unix terminals send drops as keystrokes, and
+                            // their paths never start with one.
+                            if matches!(c, '/' | '\'' | '"') {
                                 path_buffer.push(c);
                                 continue;
                             }

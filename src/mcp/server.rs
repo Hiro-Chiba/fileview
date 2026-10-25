@@ -36,7 +36,9 @@ pub fn run_server(root: &Path) -> anyhow::Result<()> {
             continue;
         }
 
-        let response = handle_request(root, &line, &emitter, &mut workspace);
+        let Some(response) = handle_request(root, &line, &emitter, &mut workspace) else {
+            continue;
+        };
         let response_json = serde_json::to_string(&response)?;
         writeln!(writer, "{}", response_json)?;
         writer.flush()?;
@@ -50,19 +52,22 @@ fn handle_request(
     request_str: &str,
     emitter: &ActivityEmitter,
     workspace: &mut Option<crate::workspace::WorkspaceEngine>,
-) -> JsonRpcResponse {
+) -> Option<JsonRpcResponse> {
     let request: JsonRpcRequest = match serde_json::from_str(request_str) {
         Ok(r) => r,
         Err(e) => {
-            return JsonRpcResponse::error(
+            return Some(JsonRpcResponse::error(
                 None,
                 error_codes::PARSE_ERROR,
                 format!("Parse error: {}", e),
-            );
+            ));
         }
     };
+    // JSON-RPC forbids replying to a notification, which is a request without
+    // an id, such as notifications/initialized.
+    let is_notification = request.id.is_none();
 
-    match request.method.as_str() {
+    let response = match request.method.as_str() {
         "initialize" => handle_initialize(request.id),
         "initialized" => JsonRpcResponse::success(request.id, json!({})),
         "tools/list" => handle_tools_list(request.id),
@@ -73,7 +78,8 @@ fn handle_request(
             error_codes::METHOD_NOT_FOUND,
             format!("Method not found: {}", request.method),
         ),
-    }
+    };
+    (!is_notification).then_some(response)
 }
 
 fn handle_initialize(id: Option<serde_json::Value>) -> JsonRpcResponse {
@@ -457,6 +463,26 @@ mod tests {
             name: name.to_string(),
             arguments: args,
         }
+    }
+
+    fn send(line: &str) -> Option<JsonRpcResponse> {
+        let root = tempfile::tempdir().unwrap();
+        handle_request(root.path(), line, &ActivityEmitter::new(), &mut None)
+    }
+
+    #[test]
+    fn notifications_get_no_response() {
+        let initialized = r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#;
+        let cancelled = r#"{"jsonrpc":"2.0","method":"notifications/cancelled","params":{}}"#;
+        assert!(send(initialized).is_none());
+        assert!(send(cancelled).is_none());
+    }
+
+    #[test]
+    fn requests_and_parse_errors_still_get_responses() {
+        assert!(send(r#"{"jsonrpc":"2.0","id":1,"method":"ping"}"#).is_some());
+        assert!(send(r#"{"jsonrpc":"2.0","id":2,"method":"nope"}"#).is_some());
+        assert!(send("not json").is_some());
     }
 
     #[test]
