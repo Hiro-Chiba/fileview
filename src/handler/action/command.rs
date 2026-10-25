@@ -105,10 +105,11 @@ pub fn execute_interactive(
     }
 }
 
-/// Open a subshell in the current directory
+/// Report the shell and directory that `Alt+S` is meant to open.
 ///
-/// This spawns the user's default shell in the current directory.
-/// The fileview UI will be suspended until the subshell exits.
+/// The shell is not spawned yet. Running it interactively needs the event
+/// loop to suspend the terminal UI, wait for the shell to exit, and restore
+/// the UI, and that is not implemented.
 pub fn open_subshell(state: &mut AppState, focused_path: Option<&PathBuf>) {
     let dir = focused_path
         .and_then(|p| {
@@ -130,16 +131,6 @@ pub fn open_subshell(state: &mut AppState, focused_path: Option<&PathBuf>) {
 
     state.set_message(format!("Opening subshell in {}...", dir.display()));
 
-    // Note: Actually spawning an interactive shell requires terminal handling
-    // that goes beyond this simple implementation. The real implementation would
-    // need to:
-    // 1. Suspend the terminal UI
-    // 2. Spawn the shell interactively
-    // 3. Wait for the shell to exit
-    // 4. Restore the terminal UI
-    //
-    // For now, we just show a message about how to use this feature
-    // A full implementation would be handled in the event loop.
     state.set_message(format!(
         "Shell: {} (press Enter to spawn in {})",
         shell,
