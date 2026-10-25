@@ -2,63 +2,25 @@
 # Copy this file to ~/.config/fileview/config.toml
 
 [general]
-# Show hidden files by default
+# Show hidden files on start
 show_hidden = false
 
-# Enable Nerd Font icons (requires Nerd Font installed)
+# Show Nerd Font icons next to file names (needs a Nerd Font)
 enable_icons = true
 
-# Enable mouse support
+# Capture the mouse for clicks, scrolling, and drops
 mouse_enabled = true
 
-[preview]
-# Maximum bytes to show in hex preview
-hex_max_bytes = 4096
-
-# Maximum entries to show in archive preview
-max_archive_entries = 500
-
-# Image protocol: auto, sixel, kitty, iterm2, halfblocks, chafa
-image_protocol = "auto"
-
-# Custom preview commands (extension -> command)
-# Use $f as placeholder for the file path
+# Shell commands that replace the built-in preview for an extension.
+# $f is replaced with the shell-escaped file path. Output is shown as plain text.
 [preview.custom]
-# Markdown with glow (requires: brew install glow)
-# md = "glow -s dark $f"
-
-# JSON with jq (requires: brew install jq)
-# json = "jq -C . $f"
-
-# CSV as table
 # csv = "column -s, -t $f | head -50"
+# log = "tail -n 200 $f"
 
 [performance]
-# Git status polling interval in seconds
+# Git status refresh interval in seconds
 git_poll_interval_secs = 5
 
-[ui]
-# Show file sizes in tree view
-show_size = true
-
-# Show file permissions in tree view
-show_permissions = false
-
-# Date format (strftime-style)
-date_format = "%Y-%m-%d %H:%M"
-
-[commands]
-# Custom commands that can be bound to keys
-# Placeholders: $f (file path), $d (directory), $n (filename), $s (stem), $e (extension), $S (selected files)
-
-# Open with default application
-open = "open $f"
-
-# Edit with editor
-edit = "nvim $f"
-
-# Open terminal in directory
-terminal = "cd $d && $SHELL"
-
-# Create archive from selected files
-compress = "zip -r archive.zip $S"
+[budget]
+# Model for the token budget bar: sonnet, sonnet-1m, opus, haiku
+# default_model = "sonnet"

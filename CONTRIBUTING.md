@@ -66,16 +66,18 @@ cargo test --locked
 use std::path::PathBuf;
 
 use ratatui::Frame;
-use tokio::sync::mpsc;
 
-use crate::app::AppState;
-use crate::event::Event;
+use crate::core::AppState;
+use crate::render::theme::theme;
 ```
 
 ### Documentation
 
-- Public APIs (`pub`) must carry doc comments (`///`).
-- Complex logic gets inline comments (`//`).
+- Code shows how, test names and assertions show what, and commit messages
+  explain why. Comments are for why not, such as a rejected alternative or a
+  constraint the code cannot show.
+- Doc comments (`///`) state what the signature does not, such as units, error
+  cases, or invariants. Do not add one that only repeats the item name.
 - TODO comments follow the form `// TODO(username): description`.
 
 ### Error Handling
@@ -248,8 +250,11 @@ Closes #123
 ## Testing Requirements
 
 Run the following with the current stable Rust toolchain before opening a PR.
-These match the main lint and test checks in CI, including builds without the
-default features. The optional `chafa` feature requires a system library, so these
+These match the lint and test steps in CI, including builds without the default
+features. CI also installs ripgrep when it is missing, so install `rg` locally or
+some content search tests are skipped, and on Linux and macOS it runs
+`scripts/workspace_pty_smoke.py` and `scripts/content_pty_smoke.py` against the
+built binary. The optional `chafa` feature requires a system library, so these
 checks do not enable all features.
 
 ```bash
@@ -273,8 +278,8 @@ Rules when adding or changing features:
 
 2. **When keybindings change:**
    - Update the keybinding tables in `README.md` and `docs/KEYBINDINGS.md`.
-   - Update `print_help()` in `src/main.rs`.
-   - Update the help text in `src/handler/action.rs`.
+   - Update `print_help()` in `src/app/config.rs`.
+   - Update the help popup in `src/render/status/help.rs`.
 
 ---
 

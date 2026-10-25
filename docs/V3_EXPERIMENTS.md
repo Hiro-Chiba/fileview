@@ -1,7 +1,7 @@
 # FileView 3.0 capability experiments
 
-This report records the isolated feasibility experiments. A subsequent local
-implementation is described in [WORKSPACE_ENGINE.md](WORKSPACE_ENGINE.md#content-navigation-and-bounded-previews-2026-10-05).
+This report records the isolated feasibility experiments. The implementation that
+followed shipped in FileView 3.0.0 and is described in [WORKSPACE_ENGINE.md](WORKSPACE_ENGINE.md#content-navigation-and-bounded-previews-2026-10-05).
 The measurements below remain historical prototype results, not production
 performance claims.
 
@@ -49,7 +49,12 @@ copy-on-write, so it is not an equal physical-byte throughput comparison. Inject
 write failures in tests instead of filling the user's disk. Temporary input and
 output data must be removed after measurement.
 
-## Current implementation gaps
+## Implementation gaps before 3.0
+
+This section describes the code as it was when the experiments ran, before 3.0.0.
+Text previews have since moved to bounded, cancellable windows, and content search
+results now open at their matching line. Paste is still synchronous, and MCP still
+has `search_code`.
 
 The existing preview worker already runs several formats in the background and
 discards queued obsolete requests. It still reads and highlights entire text

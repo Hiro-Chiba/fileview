@@ -103,7 +103,6 @@ fn build_narrow_help() -> Vec<Line<'static>> {
         help_section("Selection"),
         Line::from(vec![help_key(" Space "), help_desc(" Mark")]),
         Line::from(vec![help_key(" ^G "), help_desc(" Git changed")]),
-        Line::from(vec![help_key(" ^T "), help_desc(" Test pair")]),
         Line::from(""),
         help_section("File"),
         Line::from(vec![

@@ -65,6 +65,10 @@ fv init claude
 fv init claude --path ~/.claude.json
 ```
 
+The entry points the server at the current directory, or at the path you pass.
+If an entry for another directory already exists, it is left unchanged unless you
+add `--force`.
+
 ## MCP Server Setup (Manual)
 
 Make sure `fv` is on your `PATH` so the client can start it.
@@ -93,7 +97,8 @@ server root and returns relative paths plus index freshness. See
 
 For literal content search, pass `{"query":"text:TODO"}` to `search_workspace`.
 This requires ripgrep (`rg`) on your `PATH` and returns `path`, one-based `line`,
-zero-based `byte_offset`, and a bounded `text` snippet. The same query works in Ctrl+P and
+`byte_offset` counted from the start of the file, and a bounded `text` snippet,
+plus `limit_reached` and `changed_results` flags for the whole search. The same query works in Ctrl+P and
 `fv search`. Content search does not build the filename index.
 
 **Git**: `get_git_status`, `get_git_diff`, `git_log`, `stage_files`, `create_commit`
@@ -146,8 +151,13 @@ follow-mode that auto-focuses the tree on the file the AI just touched.
    reading `src/auth.rs`), the interactive fileview shows:
 
    ```
-   [AI*] claude: read_file src/auth.rs
+   [AI*] mcp: read_file src/auth.rs
    ```
+
+   The label comes from the `FILEVIEW_AI_SOURCE` environment variable of the
+   MCP server process, up to the first `-`. Without it the source is
+   `mcp-pid-<pid>`, shown as `mcp`. Set `FILEVIEW_AI_SOURCE=claude` in the MCP
+   server entry to show `claude` instead.
 
    and, with follow-mode on, reveals and focuses that path in the tree.
 
@@ -168,11 +178,15 @@ The MCP server and the interactive TUI are independent OS processes. They
 share state through a file-based protocol in your user cache directory:
 
 - The interactive process registers a directory at
-  `~/.cache/fileview/sessions/<pid>/` containing a `session.json`
+  `sessions/<pid>/` in the user cache directory, which is
+  `~/.cache/fileview` on Linux and `~/Library/Caches/fileview` on macOS. It
+  contains a `session.json`
   (pid + root + started_at) and an append-only `activity.jsonl`
   (permissions `0600` on unix).
 - On every tool call, `fv --mcp-server` appends a JSONL line to each alive
-  session whose root is an ancestor of the path being acted on.
+  session whose root is an ancestor of the path being acted on. Tools that
+  take no path, such as `get_git_status`, `run_build`, `create_commit`, or
+  `search_workspace`, are reported to every alive session.
 - The interactive process watches the log via the `notify` crate and
   drains events per frame.
 
@@ -180,13 +194,13 @@ share state through a file-based protocol in your user cache directory:
 
 - **Nothing shows up in the status bar.** Confirm the interactive `fv` is
   rooted at the same directory you passed to `fv --mcp-server`, or one of
-  its ancestors. Events are scoped by path so that unrelated projects do
-  not see each other's activity.
-- **`--follow-ai` printed "activity registry unavailable".** The cache
-  directory could not be created (for example a read-only home). Live
-  reflection will still try to deliver events; only follow-mode is
-  disabled.
+  its ancestors. Events with a path are scoped to sessions whose root
+  contains it, while events without a path reach every session.
+- **The status bar says "AI follow requested but activity registry
+  unavailable".** The cache directory could not be created (for example a
+  read-only home). No session is registered, so neither live reflection nor
+  follow-mode works until the directory can be created.
 - **Stale session directories.** The MCP server prunes sessions whose PID
-  is no longer alive on the next emit. You can also remove
-  `~/.cache/fileview/sessions/*` by hand. The interactive fileview will
+  is no longer alive on the next emit. You can also remove the
+  `sessions` folder in the cache directory by hand. The interactive fileview will
   recreate its own entry on startup.

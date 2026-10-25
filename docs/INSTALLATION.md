@@ -107,6 +107,7 @@ Your terminal is auto-detected:
 | Kitty / Ghostty / Konsole | Kitty Graphics |
 | iTerm2 / WezTerm / Warp | iTerm2 Inline |
 | Foot / Windows Terminal | Sixel |
-| VS Code / Alacritty | Halfblocks |
+| VS Code / Alacritty | Halfblocks, or Chafa in a build with the `chafa` feature |
 
-See the [configuration guide](CONFIGURATION.md) to choose a preview protocol manually.
+Set `FILEVIEW_IMAGE_PROTOCOL` to `halfblocks`, `chafa`, `sixel`, `kitty`, or `iterm2`
+to choose a protocol manually.

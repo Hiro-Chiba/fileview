@@ -1,27 +1,24 @@
 # Stability Policy
 
-This project uses release channels:
+FileView ships stable releases only. The last alpha was 2.0.4-alpha, and every
+release since 2.0 follows [Semantic Versioning](https://semver.org/).
 
-- `*-alpha`: Fast iteration, features may evolve quickly.
-- Stable (`x.y.z`): Recommended for general use.
+- **Patch** (`x.y.Z`) fixes bugs and security issues. A setting or binding that
+  was documented but never worked may be removed in a patch release, because no
+  one can depend on it. Files that still mention it keep loading.
+- **Minor** (`x.Y.0`) adds features without breaking existing flags, keys, or
+  configuration.
+- **Major** (`X.0.0`) may change or remove behavior that worked before, and the
+  changelog explains how to upgrade.
 
-## Alpha Exit Criteria
+Only the latest release receives fixes, including security fixes.
 
-FileView can move from alpha to stable when all conditions are met:
+## Release Gate
 
-1. CI remains green for at least 2 consecutive release cycles.
-2. No critical incidents in those cycles:
-   - crash loops
-   - data-loss/corruption bugs
-   - security fixes requiring emergency release
-3. `cargo audit` is green under committed policy (`.cargo/audit.toml`), and any temporary ignores are documented.
-4. CLI behavior is compatibility-focused (no unannounced breaking changes in existing flags/actions).
+A release is tagged only from a commit on `main` where:
 
-## Current Assessment (2026-04-19)
-
-- CI: green
-- Local quality gates: `cargo check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` all pass
-- Security: `cargo audit -q` passes with documented policy
-- Critical bug scan: no active critical bug identified
-
-Based on this, the project is eligible for stable release.
+- the required `CI Success` check passed, covering formatting, clippy with and
+  without default features, rustdoc, and tests on Ubuntu, macOS, and Windows
+- the post-merge Security Audit passed under the policy in `.cargo/audit.toml`,
+  where each ignored advisory is documented
+- the minimum supported Rust version, 1.90.0, still builds every target

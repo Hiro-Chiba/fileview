@@ -17,8 +17,9 @@ fileview (fv) is a file browser that runs with the user's permissions.
 ## Lua Plugins
 
 Plugins are trusted user code and are **not** sandboxed. A loaded plugin has
-the full Lua standard library (`os.execute`, `io.*`, `require`, …) and can run
-commands, touch any accessible file, and use the network. `init.lua` autoloads
+the Lua standard libraries except `debug`, including `os.execute`, `io.popen`,
+and `require` for Lua files, and can run commands, touch any accessible file,
+and use the network through those commands. `init.lua` autoloads
 on startup, so only install plugin code you trust. See `docs/PLUGINS.md` for
 details and how to disable the plugin runtime at build time.
 
@@ -39,32 +40,39 @@ intended for a local AI client.
   `GIT~1`, are treated the same way. Versions before 3.1.1 checked the raw argument and could be
   bypassed this way.
 - `run_build`, `run_test`, `run_lint`, and `get_diagnostics` execute the
-  project's own toolchain (build scripts, test code, lint plugins). Exposing
-  these to an AI client is equivalent to allowing local code execution within
-  the project, so only point the server at repositories you trust.
+  project's own toolchain (build scripts, test code, lint plugins), and
+  `run_build` also accepts a command from a fixed allowlist that includes `npm`,
+  `make`, and `pip`. `stage_files` and `create_commit` run `git add` and
+  `git commit`, which run the repository's Git hooks and filters. Exposing these
+  tools to an AI client is equivalent to allowing local code execution within the
+  project, so only point the server at repositories you trust.
 
 ## --on-select Callback
 
 The `--on-select` option executes shell commands. Security considerations:
 
-- Commands run with your shell and permissions
-- Paths are escaped using single-quote wrapping
+- Commands run through `sh -c` with your permissions
+- `{path}`, `{dir}`, `{name}`, `{stem}`, and `{ext}` are replaced with values
+  escaped using single-quote wrapping
 - Do NOT use with untrusted command strings
 - Equivalent to running commands manually in terminal
 
 ### Safe Usage
 
 ```bash
-fv --pick --on-select "code {}"      # Open in editor
-fv --pick --on-select "cat {}"       # Display file
+fv --pick --on-select "code {path}"  # Open in editor
+fv --pick --on-select "cat {path}"   # Display file
 ```
 
 ### Unsafe (Avoid)
 
 ```bash
-fv --on-select "$UNTRUSTED_VAR {}"   # Never use untrusted input
+fv --on-select "$UNTRUSTED_VAR {path}"   # Never use untrusted input
 ```
 
 ## Reporting Vulnerabilities
 
-Report security issues via GitHub Security Advisories or email.
+Report security issues privately through
+[GitHub Security Advisories](https://github.com/Hiro-Chiba/fileview/security/advisories/new).
+Fixes are released for the latest version only, so please update before
+reporting.
