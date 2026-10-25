@@ -324,7 +324,7 @@ impl PluginManager {
     }
 
     pub fn plugin_dir() -> Option<PathBuf> {
-        dirs::config_dir().map(|p| p.join("fileview").join("plugins"))
+        crate::app::ConfigFile::config_dir().map(|p| p.join("plugins"))
     }
 
     pub fn init_lua_path() -> Option<PathBuf> {

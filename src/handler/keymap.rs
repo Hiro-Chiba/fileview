@@ -76,8 +76,35 @@ impl KeyBindingRegistry {
     /// Load registry from keymap file, merging with defaults
     pub fn from_file() -> Self {
         let mut registry = Self::new();
-        let keymap = KeymapFile::load();
+        registry.merge(KeymapFile::load());
+        registry
+    }
 
+    /// Only the bindings from keymap.toml, with no defaults.
+    ///
+    /// The event loop consults this before the built-in key handlers, so keys
+    /// the user did not rebind keep the built-in behavior exactly, including
+    /// context rules the default table does not model.
+    pub fn user_bindings() -> Self {
+        Self::only(KeymapFile::load())
+    }
+
+    fn only(keymap: KeymapFile) -> Self {
+        let mut registry = Self {
+            browse: HashMap::new(),
+            preview: HashMap::new(),
+            search: HashMap::new(),
+            confirm: HashMap::new(),
+            fuzzy: HashMap::new(),
+            help: HashMap::new(),
+            filter: HashMap::new(),
+        };
+        registry.merge(keymap);
+        registry
+    }
+
+    fn merge(&mut self, keymap: KeymapFile) {
+        let registry = self;
         for (key, action) in keymap.browse {
             registry.browse.insert(key, action);
         }
@@ -99,8 +126,6 @@ impl KeyBindingRegistry {
         for (key, action) in keymap.filter {
             registry.filter.insert(key, action);
         }
-
-        registry
     }
 
     fn load_defaults(&mut self) {
@@ -438,6 +463,19 @@ fn parse_preview_action(action: &str) -> Option<KeyAction> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_bindings_hold_only_what_keymap_toml_rebinds() {
+        let keymap: KeymapFile = toml::from_str("[browse]\nx = \"quit\"\n").unwrap();
+        let registry = KeyBindingRegistry::only(keymap);
+        let key = |c| KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE);
+
+        assert!(matches!(
+            registry.lookup_browse(&key('x')),
+            Some(KeyAction::Quit)
+        ));
+        assert!(registry.lookup_browse(&key('q')).is_none());
+    }
 
     #[test]
     fn test_key_event_to_string_simple() {

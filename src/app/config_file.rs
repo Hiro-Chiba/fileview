@@ -1,4 +1,4 @@
-//! Loads configuration from `~/.config/fileview/config.toml`
+//! Loads configuration from `config.toml` in [`ConfigFile::config_dir`]
 
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -186,13 +186,38 @@ fn shell_escape(value: &str) -> String {
     }
 }
 
+fn resolve_config_dir(
+    xdg_config_home: Option<PathBuf>,
+    home: Option<PathBuf>,
+    platform_config: Option<PathBuf>,
+) -> Option<PathBuf> {
+    if let Some(xdg) = xdg_config_home.filter(|p| p.is_absolute()) {
+        return Some(xdg.join("fileview"));
+    }
+    let preferred = home.map(|h| h.join(".config").join("fileview"));
+    let legacy = platform_config.map(|p| p.join("fileview"));
+    match (preferred, legacy) {
+        (Some(preferred), Some(legacy)) if !preferred.exists() && legacy.exists() => Some(legacy),
+        (Some(preferred), _) => Some(preferred),
+        (None, legacy) => legacy,
+    }
+}
+
 impl ConfigFile {
-    /// Get the config directory path (~/.config/fileview)
+    /// Directory that holds config.toml, keymap.toml, theme.toml, and plugins.
+    ///
+    /// `$XDG_CONFIG_HOME/fileview` wins when it is set, then
+    /// `~/.config/fileview`, which the docs promise on every platform. The
+    /// platform directory (Application Support on macOS, AppData on Windows)
+    /// is still read when only it exists, because earlier versions used it.
     pub fn config_dir() -> Option<PathBuf> {
-        dirs::config_dir().map(|p| p.join("fileview"))
+        resolve_config_dir(
+            std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from),
+            dirs::home_dir(),
+            dirs::config_dir(),
+        )
     }
 
-    /// Get the config file path (~/.config/fileview/config.toml)
     pub fn config_path() -> Option<PathBuf> {
         Self::config_dir().map(|p| p.join("config.toml"))
     }
@@ -225,6 +250,42 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
+
+    #[test]
+    fn xdg_config_home_wins_when_absolute() {
+        let dir = resolve_config_dir(
+            Some(PathBuf::from("/xdg")),
+            Some(PathBuf::from("/home/u")),
+            Some(PathBuf::from("/platform")),
+        );
+        assert_eq!(dir, Some(PathBuf::from("/xdg/fileview")));
+    }
+
+    #[test]
+    fn relative_xdg_config_home_is_ignored() {
+        let dir = resolve_config_dir(
+            Some(PathBuf::from("rel")),
+            Some(PathBuf::from("/home/u")),
+            None,
+        );
+        assert_eq!(dir, Some(PathBuf::from("/home/u/.config/fileview")));
+    }
+
+    #[test]
+    fn dot_config_is_preferred_and_platform_dir_is_a_fallback() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().join("home");
+        let platform = temp.path().join("platform");
+
+        let resolve = || resolve_config_dir(None, Some(home.clone()), Some(platform.clone()));
+        assert_eq!(resolve(), Some(home.join(".config/fileview")));
+
+        std::fs::create_dir_all(platform.join("fileview")).unwrap();
+        assert_eq!(resolve(), Some(platform.join("fileview")));
+
+        std::fs::create_dir_all(home.join(".config/fileview")).unwrap();
+        assert_eq!(resolve(), Some(home.join(".config/fileview")));
+    }
 
     #[test]
     fn test_default_config() {

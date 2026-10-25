@@ -18,7 +18,8 @@ use crate::handler::{
         display::reveal_path_in_tree, get_target_directory, handle_action, reload_tree,
         update_bulk_rename_buffer, ActionContext, ActionResult, EntrySnapshot,
     },
-    key::{handle_key_event, update_input_buffer, KeyAction},
+    key::{handle_key_event_with_registry, update_input_buffer, KeyAction},
+    keymap::KeyBindingRegistry,
     mouse::{handle_mouse_event, BufferedInput, ClickDetector, MouseAction, PathBuffer},
 };
 use crate::plugin::{PluginAction, PluginEvent, PluginManager};
@@ -208,6 +209,7 @@ pub fn run_app(
         TabManager::with_navigator(config.root.clone(), state.show_hidden, navigator.clone());
     let mut click_detector = ClickDetector::new();
     let mut path_buffer = PathBuffer::new();
+    let key_bindings = KeyBindingRegistry::user_bindings();
 
     let action_context = ActionContext {
         callback: config.callback.clone(),
@@ -710,8 +712,11 @@ pub fn run_app(
                     // Only in Browse mode to avoid interfering with text input
                     if matches!(state.mode, ViewMode::Browse) {
                         if let crossterm::event::KeyCode::Char(c) = key.code {
-                            // Start buffering on path-like characters
-                            if matches!(c, '/' | '\'' | '"' | '\\') {
+                            // Start buffering on path-like characters. A
+                            // backslash is left out so `\` opens the TODO list.
+                            // Only Unix terminals send drops as keystrokes, and
+                            // their paths never start with one.
+                            if matches!(c, '/' | '\'' | '"') {
                                 path_buffer.push(c);
                                 continue;
                             }
@@ -723,7 +728,7 @@ pub fn run_app(
                         }
                     }
 
-                    let mut action = handle_key_event(&state, key);
+                    let mut action = handle_key_event_with_registry(&state, key, &key_bindings);
 
                     match &action {
                         KeyAction::NewTab => {
