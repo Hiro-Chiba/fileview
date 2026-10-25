@@ -109,10 +109,6 @@ pub enum KeyAction {
     CloseTab,
     NextTab,
     PrevTab,
-    /// Run a custom command
-    RunCommand {
-        name: String,
-    },
     StartVisualSelect,
     SelectAll,
     InvertSelection,

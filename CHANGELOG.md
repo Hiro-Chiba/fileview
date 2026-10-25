@@ -9,12 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Configuration is read from `~/.config/fileview` on every platform, as documented, or from `$XDG_CONFIG_HOME/fileview` when that is set. macOS and Windows used to read only Application Support or AppData, so config, theme, keymap, and plugin files placed in `~/.config/fileview` were ignored. Each file is still read from the old location when the same file is not in `~/.config/fileview`, so existing setups keep working. `fv plugin init` now writes the template where plugins are loaded from.
+- Configuration is read from `~/.config/fileview` on every platform, as documented, or from `$XDG_CONFIG_HOME/fileview` when that is set. macOS and Windows used to read only Application Support or AppData, so config, theme, and plugin files placed in `~/.config/fileview` were ignored. Each file is still read from the old location when the same file is not in `~/.config/fileview`, so existing setups keep working. `fv plugin init` now writes the template where plugins are loaded from.
 - `Ctrl+J`, `Ctrl+K`, and `Ctrl+P` in the fuzzy finder move the selection and close it again instead of typing `j`, `k`, or `p` into the query. Other `Ctrl` and `Alt` keys are no longer typed into text prompts either, while `AltGr` characters on Windows still are.
 - `\` opens the TODO list again. It was taken as the start of a dropped path.
 - The MCP server no longer replies to JSON-RPC notifications such as `notifications/initialized`, which the protocol forbids.
 - `enable_icons` and `mouse_enabled` in `config.toml` take effect. They were read but never applied. Both stay on by default, and `--icons`, `--no-icons`, and `FILEVIEW_ICONS` still win over the file.
-- Custom command placeholders no longer match the start of a longer name, so `$SHELL` stays `$SHELL` instead of turning `$S` into the selected paths. All placeholders are expanded in one pass, so a file name that contains `$S` is not expanded twice.
 
 ### Removed
 
@@ -24,6 +23,7 @@ These were documented but never worked, so removing them changes no behavior. Co
 - `hex_max_bytes`, `max_archive_entries`, and the `[ui]` section (`show_size`, `show_permissions`, `date_format`) in `config.toml`. Nothing read them.
 - `background`, `foreground`, `status_bg`, `status_fg`, and `error`, and the file type colors other than `directory`, in `theme.toml`. Nothing drew them.
 - `keymap.toml`. The file was never loaded, so custom key bindings never applied.
+- `[commands]` in `config.toml`. Commands could only be bound through `keymap.toml`, so none of them ever ran.
 - `image_protocol` in `config.toml`. It was never applied. `FILEVIEW_IMAGE_PROTOCOL` still selects the image protocol.
 - The `Alt+S` subshell binding. It only showed a message and never started a shell. `Alt+S` now does nothing instead of staging the file.
 
