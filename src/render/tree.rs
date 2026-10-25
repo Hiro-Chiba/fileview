@@ -165,7 +165,8 @@ fn render_entry(
 
     let stage_indicator = match density {
         UiDensity::Ultra => {
-            // In ultra mode, combine mark and stage into one char
+            // Ultra mode puts this after the name and drops the blank column
+            // for clean files, so names get one more column on narrow panes.
             if is_staged {
                 Span::styled("✓", Style::default().fg(t.git_staged))
             } else if git_status == FileStatus::Modified {

@@ -10,13 +10,13 @@ use crate::mcp::token::{
     truncate_to_tokens, TokenBudget,
 };
 
-/// Get AI-optimized context for a file
+/// Build an AI context for a file within a token budget of 4,000 tokens by
+/// default.
 ///
-/// Includes:
-/// 1. Main file content
-/// 2. Import/dependency content (type definitions)
-/// 3. Related test files
-/// 4. Parent module public API
+/// The output holds the focus file, up to five of the files it imports when
+/// `include_deps` is set, and one related test file when `include_tests` is
+/// set. The focus file and the test are truncated to their share of the
+/// budget, and imported files that do not fit their share are skipped.
 pub fn get_smart_context(
     root: &Path,
     focus_file: &str,
