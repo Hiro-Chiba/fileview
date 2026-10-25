@@ -29,6 +29,7 @@ FileView 3.1 renders Markdown and SVG files in the preview, and fixes tree searc
 - The published crate contains only the sources, tests, README, license, and manifest. Docs, demos, and their GIFs stay in the repository, so the crate that `cargo install` downloads is about 330 KB instead of about 1 MB for 3.0.0.
 - Dependencies are refreshed. This includes the fix for RUSTSEC-2026-0385 in `ctutils`, which `zip` pulls in, and replaces the yanked `clipboard-win` 5.4.1 used on Windows.
 - Release binaries are built with Rust 1.99.1. The minimum supported Rust version stays at 1.90.0.
+- The README and the keybinding guide show new demo recordings for previews, Markdown, search, Git, file operations, and navigation, recorded with a larger sample project.
 
 ## [3.0.0] - 2026-10-05
 
