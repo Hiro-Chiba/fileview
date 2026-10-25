@@ -56,7 +56,6 @@ pub struct Config {
     pub mouse_enabled: bool,
     /// `general.enable_icons`, used when neither a flag nor FILEVIEW_ICONS decides
     pub icons_from_config: bool,
-    pub image_protocol: String,
     pub git_poll_interval: Duration,
     pub commands: CommandsConfig,
     pub preview_custom: PreviewConfig,
@@ -568,7 +567,6 @@ impl Config {
             show_hidden: show_hidden.unwrap_or(config_file.general.show_hidden),
             mouse_enabled: config_file.general.mouse_enabled,
             icons_from_config: config_file.general.enable_icons,
-            image_protocol: config_file.preview.image_protocol.clone(),
             git_poll_interval: Duration::from_secs(config_file.performance.git_poll_interval_secs),
             commands: config_file.commands,
             preview_custom: config_file.preview,

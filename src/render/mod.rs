@@ -40,8 +40,7 @@ pub use tree::{render_tree, visible_height};
 /// This should be called BEFORE entering alternate screen mode.
 ///
 /// Detection priority:
-/// 1. `FILEVIEW_IMAGE_PROTOCOL` environment variable, then `preview.image_protocol`
-///    in config.toml
+/// 1. `FILEVIEW_IMAGE_PROTOCOL` environment variable (explicit override)
 /// 2. Terminal brand detection → recommended protocol
 /// 3. Query terminal capabilities via escape sequences
 /// 4. Chafa → Halfblocks fallback (Chafa requires `chafa` feature)
@@ -51,11 +50,10 @@ pub use tree::{render_tree, visible_height};
 /// - `halfblocks`: Force halfblock rendering (most compatible)
 /// - `chafa`: Force Chafa rendering (requires `chafa` feature and libchafa)
 /// - `sixel`, `kitty`, `iterm2`: Force specific protocol
-pub fn create_image_picker(configured: &str) -> Option<Picker> {
+pub fn create_image_picker() -> Option<Picker> {
     use ratatui_image::picker::ProtocolType;
 
-    let protocol =
-        std::env::var("FILEVIEW_IMAGE_PROTOCOL").unwrap_or_else(|_| configured.to_owned());
+    let protocol = std::env::var("FILEVIEW_IMAGE_PROTOCOL").unwrap_or_default();
     match protocol.to_lowercase().as_str() {
         "halfblocks" | "half" => return Some(Picker::halfblocks()),
         "chafa" => {

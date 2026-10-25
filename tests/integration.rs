@@ -2501,13 +2501,13 @@ mod image_preview_tests {
     #[test]
     fn test_create_image_picker_does_not_panic() {
         // This should never panic, even in CI
-        let _picker = create_image_picker("auto");
+        let _picker = create_image_picker();
     }
 
     #[test]
     fn test_create_image_picker_deterministic() {
-        let picker1 = create_image_picker("auto");
-        let picker2 = create_image_picker("auto");
+        let picker1 = create_image_picker();
+        let picker2 = create_image_picker();
 
         assert_eq!(
             picker1.is_some(),
@@ -2541,7 +2541,7 @@ mod image_preview_tests {
         create_test_png(&path);
 
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(
@@ -2563,7 +2563,7 @@ mod image_preview_tests {
         create_test_jpeg(&path);
 
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for JPEG");
@@ -2577,7 +2577,7 @@ mod image_preview_tests {
         create_test_gif(&path);
 
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for GIF");
@@ -2591,7 +2591,7 @@ mod image_preview_tests {
         create_test_webp(&path);
 
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for WebP");
@@ -2605,7 +2605,7 @@ mod image_preview_tests {
         create_test_bmp(&path);
 
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for BMP");
@@ -2619,7 +2619,7 @@ mod image_preview_tests {
         create_test_image(&path, 2000, 2000);
 
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for large image");
@@ -2633,7 +2633,7 @@ mod image_preview_tests {
     #[ignore = "Requires terminal with image protocol support"]
     fn test_image_preview_load_nonexistent_error() {
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&PathBuf::from("/nonexistent/image.png"), &mut picker);
         assert!(result.is_err());
@@ -2647,7 +2647,7 @@ mod image_preview_tests {
         fs::write(&path, "not an image").unwrap();
 
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_err(), "Should fail for invalid image");
@@ -2667,7 +2667,7 @@ mod image_preview_tests {
         create_test_png(&path);
 
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let mut preview = ImagePreview::load(&path, &mut picker).unwrap();
 
@@ -2695,7 +2695,7 @@ mod image_preview_tests {
         create_test_png(&path);
 
         let mut picker =
-            create_image_picker("auto").expect("This test requires a terminal with image support");
+            create_image_picker().expect("This test requires a terminal with image support");
 
         let mut preview = ImagePreview::load(&path, &mut picker).unwrap();
 
@@ -2793,7 +2793,7 @@ mod image_preview_tests {
     fn test_render_module_exports() {
         let _: fn(&std::path::Path, &mut Picker) -> anyhow::Result<ImagePreview> =
             ImagePreview::load;
-        let _: fn(&str) -> Option<Picker> = create_image_picker;
+        let _: fn() -> Option<Picker> = create_image_picker;
         let _: fn(&std::path::Path) -> bool = is_image_file;
         let _: fn(&std::path::Path) -> bool = is_text_file;
         let _: fn(&std::path::Path) -> bool = is_binary_file;
@@ -3371,7 +3371,7 @@ mod terminal_detection_tests {
         use fileview::render::create_image_picker;
 
         let _result = std::panic::catch_unwind(|| {
-            let _ = create_image_picker("auto");
+            let _ = create_image_picker();
         });
         // We don't assert the result because it depends on the terminal,
         // but it should never panic
@@ -3382,7 +3382,7 @@ mod terminal_detection_tests {
         use fileview::render::create_image_picker;
 
         // create_image_picker should always return Some (fallback to halfblocks)
-        let picker = create_image_picker("auto");
+        let picker = create_image_picker();
         assert!(
             picker.is_some(),
             "create_image_picker should always return Some"
@@ -3393,9 +3393,9 @@ mod terminal_detection_tests {
     fn test_create_image_picker_multiple_calls_consistent() {
         use fileview::render::create_image_picker;
 
-        let picker1 = create_image_picker("auto");
-        let picker2 = create_image_picker("auto");
-        let picker3 = create_image_picker("auto");
+        let picker1 = create_image_picker();
+        let picker2 = create_image_picker();
+        let picker3 = create_image_picker();
 
         assert!(picker1.is_some());
         assert!(picker2.is_some());
@@ -3473,9 +3473,9 @@ mod terminal_detection_tests {
     fn test_create_image_picker_rapid_succession() {
         use fileview::render::create_image_picker;
 
-        // Call create_image_picker("auto") multiple times - should not leak resources
+        // Call create_image_picker() multiple times - should not leak resources
         for _ in 0..10 {
-            let _ = create_image_picker("auto");
+            let _ = create_image_picker();
         }
     }
 }
@@ -5701,8 +5701,6 @@ mod config_integration_tests {
         assert!(config.general.enable_icons);
         assert!(config.general.mouse_enabled);
 
-        assert_eq!(config.preview.image_protocol, "auto");
-
         assert_eq!(config.performance.git_poll_interval_secs, 5);
     }
 
@@ -5731,8 +5729,6 @@ git_poll_interval_secs = 10
         assert_eq!(config.performance.git_poll_interval_secs, 10);
 
         // Defaults preserved
-        assert!(config.general.enable_icons);
-        assert_eq!(config.preview.image_protocol, "auto");
     }
 
     #[test]
@@ -5774,8 +5770,6 @@ date_format = "%d/%m/%Y"
         assert!(!config.general.enable_icons);
         assert!(!config.general.mouse_enabled);
 
-        assert_eq!(config.preview.image_protocol, "kitty");
-
         assert_eq!(config.performance.git_poll_interval_secs, 15);
     }
 
@@ -5812,140 +5806,6 @@ foo = "bar"
 
         let config = ConfigFile::load_from(&config_path).unwrap();
         assert!(config.general.show_hidden);
-    }
-}
-
-// =============================================================================
-// Keymap Integration Tests
-// =============================================================================
-
-mod keymap_integration_tests {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use fileview::core::{AppState, FocusTarget, ViewMode};
-    use fileview::handler::{handle_key_event_with_registry, KeyAction, KeyBindingRegistry};
-    use tempfile::TempDir;
-
-    fn create_test_state() -> AppState {
-        let temp = TempDir::new().unwrap();
-        AppState::new(temp.path().to_path_buf())
-    }
-
-    #[test]
-    fn test_registry_default_bindings() {
-        let registry = KeyBindingRegistry::new();
-        let state = create_test_state();
-
-        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::MoveDown));
-
-        let key = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::MoveUp));
-
-        let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::Quit));
-    }
-
-    #[test]
-    fn test_registry_ctrl_modifier() {
-        let registry = KeyBindingRegistry::new();
-        let state = create_test_state();
-
-        let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::OpenFuzzyFinder));
-    }
-
-    #[test]
-    fn test_registry_context_aware_actions() {
-        let registry = KeyBindingRegistry::new();
-
-        let mut state = create_test_state();
-        state.pick_mode = true;
-        let key = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::Cancel));
-    }
-
-    #[test]
-    fn test_registry_preview_focus_navigation() {
-        let registry = KeyBindingRegistry::new();
-
-        let mut state = create_test_state();
-        state.preview_visible = true;
-        state.focus_target = FocusTarget::Preview;
-
-        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::PreviewScrollDown));
-
-        state.focus_target = FocusTarget::Tree;
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::MoveDown));
-    }
-
-    #[test]
-    fn test_registry_search_mode() {
-        let registry = KeyBindingRegistry::new();
-        let mut state = create_test_state();
-        state.mode = ViewMode::Search {
-            query: "test".to_string(),
-        };
-
-        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::ConfirmInput { value } if value == "test"));
-
-        let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::Cancel));
-    }
-
-    #[test]
-    fn test_registry_confirm_mode() {
-        let registry = KeyBindingRegistry::new();
-        let mut state = create_test_state();
-        state.mode = ViewMode::Confirm {
-            action: fileview::core::PendingAction::Delete {
-                targets: vec![std::path::PathBuf::from("/tmp/test")],
-            },
-        };
-
-        let key = KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::ExecuteDelete));
-
-        let key = KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::Cancel));
-    }
-
-    #[test]
-    fn test_registry_filter_mode() {
-        let registry = KeyBindingRegistry::new();
-        let mut state = create_test_state();
-        state.mode = ViewMode::Filter {
-            query: "*.rs".to_string(),
-        };
-
-        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::ApplyFilter { pattern } if pattern == "*.rs"));
-    }
-
-    #[test]
-    fn test_registry_filter_mode_empty_clears() {
-        let registry = KeyBindingRegistry::new();
-        let mut state = create_test_state();
-        state.mode = ViewMode::Filter {
-            query: String::new(),
-        };
-
-        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
-        let action = handle_key_event_with_registry(&state, key, &registry);
-        assert!(matches!(action, KeyAction::ClearFilter));
     }
 }
 

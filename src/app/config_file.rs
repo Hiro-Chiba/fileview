@@ -28,7 +28,6 @@ pub struct BudgetConfig {
 #[serde(default)]
 pub struct GeneralConfig {
     pub show_hidden: bool,
-    /// Enable Nerd Font icons
     pub enable_icons: bool,
     pub mouse_enabled: bool,
 }
@@ -43,23 +42,12 @@ impl Default for GeneralConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct PreviewConfig {
-    /// Image protocol: "auto", "sixel", "kitty", "iterm2", "halfblocks"
-    pub image_protocol: String,
     /// Custom preview scripts: extension -> command
     /// The command can use $f for the file path
     pub custom: HashMap<String, String>,
-}
-
-impl Default for PreviewConfig {
-    fn default() -> Self {
-        Self {
-            image_protocol: "auto".to_string(),
-            custom: HashMap::new(),
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -324,7 +312,6 @@ mod tests {
         assert!(!config.general.show_hidden);
         assert!(config.general.enable_icons);
         assert!(config.general.mouse_enabled);
-        assert_eq!(config.preview.image_protocol, "auto");
         assert_eq!(config.performance.git_poll_interval_secs, 5);
     }
 
@@ -334,13 +321,14 @@ mod tests {
 [general]
 show_hidden = true
 
-[preview]
-image_protocol = "sixel"
+[performance]
+git_poll_interval_secs = 9
 "#;
         let config: ConfigFile = toml::from_str(toml_content).unwrap();
         assert!(config.general.show_hidden);
         assert!(config.general.enable_icons); // default
-        assert_eq!(config.preview.image_protocol, "sixel");
+        assert!(config.general.mouse_enabled); // default
+        assert_eq!(config.performance.git_poll_interval_secs, 9);
     }
 
     #[test]
@@ -371,7 +359,6 @@ on_create = "echo created"
         assert!(config.general.show_hidden);
         assert!(!config.general.enable_icons);
         assert!(!config.general.mouse_enabled);
-        assert_eq!(config.preview.image_protocol, "kitty");
         assert_eq!(config.performance.git_poll_interval_secs, 10);
     }
 

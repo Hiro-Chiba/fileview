@@ -451,7 +451,7 @@ fn run_plugin_action(config: &Config, action: PluginAction) -> ExitCode {
 fn run_with_config(config: Config) -> anyhow::Result<i32> {
     // Initialize image picker BEFORE entering alternate screen
     // (terminal capability detection requires normal screen mode)
-    let mut image_picker = create_image_picker(&config.image_protocol);
+    let mut image_picker = create_image_picker();
 
     terminal::enable_raw_mode()?;
     let mut stdout = stdout();
