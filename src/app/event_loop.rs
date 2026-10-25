@@ -208,7 +208,6 @@ pub fn run_app(
     let action_context = ActionContext {
         callback: config.callback.clone(),
         output_format: config.output_format,
-        commands: config.commands.clone(),
     };
 
     let mut preview = PreviewState::new();

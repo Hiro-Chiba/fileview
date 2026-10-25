@@ -2,7 +2,6 @@
 
 mod bookmark;
 mod bulk_rename;
-pub mod command;
 pub mod display;
 mod file_ops;
 mod filter;
@@ -14,12 +13,10 @@ mod selection;
 mod tree_ops;
 
 pub use bulk_rename::update_bulk_rename_buffer;
-pub use command::{execute_command, CommandResult};
 pub use filter::matches_filter;
 
 use std::path::{Path, PathBuf};
 
-use crate::app::CommandsConfig;
 use crate::core::{AppState, ViewMode};
 use crate::handler::key::KeyAction;
 use crate::integrate::{Callback, OutputFormat};
@@ -50,7 +47,6 @@ pub struct ActionContext {
     pub callback: Option<Callback>,
     /// Output format for pick mode
     pub output_format: OutputFormat,
-    pub commands: CommandsConfig,
 }
 
 /// If the focused path is a directory, use it directly.
@@ -321,32 +317,6 @@ pub fn handle_action(
         | KeyAction::TodosDown
         | KeyAction::TodosSelect => {
             display::handle(action, state, navigator, focused_path)?;
-            Ok(ActionResult::Continue)
-        }
-
-        KeyAction::RunCommand { name } => {
-            let selected: Vec<PathBuf> = state.selected_paths.iter().cloned().collect();
-            match command::execute_command(
-                &name,
-                &context.commands,
-                focused_path.as_ref().map(|p| p.as_path()),
-                &selected,
-            ) {
-                CommandResult::Success(output) => {
-                    if output.is_empty() {
-                        state.set_message(format!("Command '{}' executed", name));
-                    } else {
-                        let first_line = output.lines().next().unwrap_or("Done");
-                        state.set_message(first_line.to_string());
-                    }
-                }
-                CommandResult::Error(err) => {
-                    state.set_message(format!("Error: {}", err));
-                }
-                CommandResult::NotFound => {
-                    state.set_message(format!("Command '{}' not found", name));
-                }
-            }
             Ok(ActionResult::Continue)
         }
     }

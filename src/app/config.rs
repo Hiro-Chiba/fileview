@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use super::config_file::{CommandsConfig, ConfigFile, PreviewConfig};
+use super::config_file::{ConfigFile, PreviewConfig};
 use crate::integrate::{
     exit_code, AiIgnoreAgent, BudgetModel, Callback, ContextAgent, ContextPackFormat,
     ContextPackOptions, ContextPackPreset, OutputFormat,
@@ -57,7 +57,6 @@ pub struct Config {
     /// `general.enable_icons`, used when neither a flag nor FILEVIEW_ICONS decides
     pub icons_from_config: bool,
     pub git_poll_interval: Duration,
-    pub commands: CommandsConfig,
     pub preview_custom: PreviewConfig,
     /// Tree output mode (non-interactive, output to stdout)
     pub tree_mode: bool,
@@ -568,7 +567,6 @@ impl Config {
             mouse_enabled: config_file.general.mouse_enabled,
             icons_from_config: config_file.general.enable_icons,
             git_poll_interval: Duration::from_secs(config_file.performance.git_poll_interval_secs),
-            commands: config_file.commands,
             preview_custom: config_file.preview,
             tree_mode,
             tree_depth,
