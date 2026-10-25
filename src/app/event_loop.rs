@@ -18,8 +18,7 @@ use crate::handler::{
         display::reveal_path_in_tree, get_target_directory, handle_action, reload_tree,
         update_bulk_rename_buffer, ActionContext, ActionResult, EntrySnapshot,
     },
-    key::{handle_key_event_with_registry, update_input_buffer, KeyAction},
-    keymap::KeyBindingRegistry,
+    key::{handle_key_event, update_input_buffer, KeyAction},
     mouse::{handle_mouse_event, BufferedInput, ClickDetector, MouseAction, PathBuffer},
 };
 use crate::plugin::{PluginAction, PluginEvent, PluginManager};
@@ -209,7 +208,6 @@ pub fn run_app(
         TabManager::with_navigator(config.root.clone(), state.show_hidden, navigator.clone());
     let mut click_detector = ClickDetector::new();
     let mut path_buffer = PathBuffer::new();
-    let key_bindings = KeyBindingRegistry::user_bindings();
 
     let action_context = ActionContext {
         callback: config.callback.clone(),
@@ -728,7 +726,7 @@ pub fn run_app(
                         }
                     }
 
-                    let mut action = handle_key_event_with_registry(&state, key, &key_bindings);
+                    let mut action = handle_key_event(&state, key);
 
                     match &action {
                         KeyAction::NewTab => {
