@@ -60,11 +60,11 @@ fn help_shows_config_toml_path() {
 }
 
 #[test]
-fn help_shows_keymap_toml_path() {
+fn help_no_longer_lists_keymap_toml() {
     fv().arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("keymap.toml"));
+        .stdout(predicate::str::contains("keymap.toml").not());
 }
 
 #[test]

@@ -30,7 +30,7 @@ are ordered by relative path, which can differ from the old traversal order.
 The selected candidate stores paths and types in a BTreeMap. It reads size and
 modification time only for the highest-ranked matches. The initial eager-metadata
 candidate required a filesystem metadata call for every indexed path. Neither
-candidate stores file contents. Local `.gitignore` and `.ignore` rules apply, `.git` is excluded, and
+candidate stores file contents. Local `.gitignore`, `.ignore`, and `.git/info/exclude` rules apply, `.git` is excluded, and
 directory symlinks are not traversed. Hidden metadata is indexed but only shown
 when requested. Git predicates use current Git status independently of file
 metadata.
@@ -209,7 +209,7 @@ tests and confirms that the process retains and updates its workspace engine.
 
 ## Content navigation and bounded previews, 2026-10-05
 
-The local implementation now accepts `text:LITERAL` in Ctrl+P, `fv search`, and
+FileView 3.0.0 accepts `text:LITERAL` in Ctrl+P, `fv search`, and
 `search_workspace`. It is literal and case-sensitive; everything after the
 prefix is the search text, including spaces and filter-looking words. Filename
 queries and their filters remain unchanged. No additional shortcut or command
@@ -280,8 +280,8 @@ text requests, including cache-hit and non-text selections.
 
 This change does not make blocking OS calls interruptible or retrofit every
 PDF, custom preview, archive, or Git operation with cancellation. Native copying
-is unchanged. The version and release workflow remain unchanged. This is local,
-unreleased implementation; no PR or push accompanies it.
+is unchanged. This section was written before the 3.0.0 release, and the work it
+describes shipped in that release.
 
 Implementation validation is recorded in
 [v3-integration-2026-10-05](benchmarks/v3-integration-2026-10-05/README.md).
@@ -294,8 +294,8 @@ ripgrep child and is not a peak-memory guarantee.
 
 ## Follow-up hardening, 2026-10-05
 
-Distant-page syntax reconstruction and bounded long-line result framing are now
-implemented locally. Regression tests compare styles against whole-file
+Distant-page syntax reconstruction and bounded long-line result framing shipped
+in 3.0.0. Regression tests compare styles against whole-file
 highlighting for multiline Rust comments, Python strings, Unicode matches,
 CRLF, and partially visible final lines. Real TUI coverage includes a 16MiB
 single-line search result opened at its matching column.
@@ -309,9 +309,9 @@ verifies that repeated reads do not refresh while a subsequent write does.
 
 The CI test matrix now provisions ripgrep when missing and tests default and
 minimal features on all three operating systems. Unix runners also execute
-both terminal smoke tests for each feature configuration. These are local CI
-configuration changes; no remote workflow was started and no source was pushed.
-Windows native runtime validation still requires a Windows runner. Compile-only
+both terminal smoke tests for each feature configuration. That configuration now
+lives in `.github/workflows/ci-test.yml` and runs on every pull request that
+changes the build, including on a Windows runner. Compile-only
 checks, where available, are reported separately from actual execution.
 
 Final evidence is in

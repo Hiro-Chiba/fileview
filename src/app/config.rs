@@ -745,8 +745,9 @@ CLAUDE CODE INTEGRATION:
 
 CONFIG FILE:
     ~/.config/fileview/config.toml    Main configuration file
-    ~/.config/fileview/keymap.toml    Key bindings (customizable)
     ~/.config/fileview/theme.toml     Color theme
+    ($XDG_CONFIG_HOME/fileview when set. Files from older versions in
+    Application Support on macOS or AppData on Windows are still read.)
 
 ENVIRONMENT:
     FILEVIEW_ICONS=0            Disable icons
@@ -758,12 +759,13 @@ KEYBINDINGS:
     k/↑         Move up
     g           Go to top
     G           Go to bottom
-    l/→/Tab     Expand / Toggle
+    l/→/Tab     Expand / Toggle (→ and Tab move focus when the preview is open)
     h/←/BS      Collapse
     H           Collapse all
     L           Expand all
     Space       Toggle mark
-    Enter       Toggle expand (or select in pick mode)
+    Enter       Toggle directory, open file preview, or close the side preview
+                (selects in pick mode)
     y           Copy to clipboard
     d           Cut to clipboard
     D/Del       Delete (with confirmation)

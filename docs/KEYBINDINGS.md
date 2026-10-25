@@ -19,9 +19,9 @@ Complete keybinding reference for FileView (fv).
 | `h` / `Backspace` | Collapse directory |
 | `→` | Expand directory (or switch focus to preview when visible) |
 | `←` | Collapse directory (or switch focus to tree when visible) |
-| `Enter` | Toggle expand/collapse |
+| `Enter` | Expand or collapse a directory, open a file in fullscreen preview, or close the side preview when it is open |
 | `H` | Collapse all |
-| `L` | Expand all (depth limit: 5) |
+| `L` | Expand the visible directories one more level, down to depth 5 |
 
 ## Selection
 
@@ -52,8 +52,9 @@ Complete keybinding reference for FileView (fv).
 
 | Key | Action |
 |-----|--------|
-| `/` | Start search (press again to cancel) |
-| `Enter` | Jump to the first match and return to browsing |
+| `/` | Start search |
+| `Enter` | Jump to the next match after the cursor and return to browsing |
+| `Esc` | Cancel search |
 | `n` | Next search result |
 | `N` | Previous search result |
 | `Ctrl+P` | Open fuzzy finder |
@@ -105,10 +106,11 @@ Press `Ctrl+P` to open the built-in fuzzy finder:
 |-----|--------|
 | `P` | Toggle side preview panel |
 | `o` | Open fullscreen preview |
-| `Tab` | Close side preview / toggle expand directory / open file preview |
+| `Tab` | Switch focus between tree and preview when the side preview is open, otherwise the same as `Enter` |
 | `←` / `→` | Collapse / expand (switch focus when preview visible) |
 | `[` | Previous PDF page |
 | `]` | Next PDF page |
+| `PageUp` / `PageDown` | Page through the preview when it has focus |
 
 SVG files are shown as images, without any text they contain. Markdown files
 are shown rendered when the preview pane is at least 80 columns wide, such as in
@@ -130,7 +132,7 @@ When the side preview panel is open:
 | Preview | Scroll content | Top/Bottom of preview | Page scroll |
 
 - Click on a panel to switch focus
-- Scroll wheel works on the focused panel
+- The scroll wheel scrolls the panel under the pointer
 - `Esc` returns focus to tree (when preview is focused)
 - Focused panel has cyan border highlight
 
@@ -183,7 +185,14 @@ PDF files are rendered as images using `pdftoppm` from poppler-utils:
 | `Alt+P` | Toggle peek mode (mini preview in status bar) |
 | `Ctrl+R` | Select related files |
 | `Ctrl+E` | Select error context files |
-| `Ctrl+1`-`Ctrl+9` | Select by extension (1:rs, 2:ts/tsx, 3:js/jsx, 4:py, 5:go, 6:java/kt, 7:md, 8:json/yaml/toml, 9:css/scss) |
+| `Ctrl+1`-`Ctrl+9` | Select by extension (1:rs, 2:ts/tsx, 3:js/jsx, 4:py, 5:go, 6:java/kt, 7:md/mdx, 8:json/yaml/toml, 9:css/scss/sass) |
+| `Alt+M` | Cycle the model used for the token budget |
+
+FileView reads keys in the traditional terminal encoding, which cannot tell
+`Ctrl+Shift` apart from `Ctrl`. In practice `Ctrl+Shift+T` acts as `Ctrl+T`,
+`Ctrl+Shift+Y` as `Ctrl+Y`, `Ctrl+Shift+P` as `Ctrl+P`, and `Ctrl+Shift+Enter` as
+`Enter`. `Ctrl` with a digit is not delivered reliably either. Many terminals send
+`Ctrl+3` as `Esc` and `Ctrl+8` as `Backspace`.
 
 ## Tabs
 
@@ -191,8 +200,8 @@ PDF files are rendered as images using `pdftoppm` from poppler-utils:
 |-----|--------|
 | `Ctrl+T` | New tab |
 | `Ctrl+W` | Close tab |
-| `Alt+T` | Next tab |
-| `Alt+Shift+T` | Previous tab |
+| `Alt+t` | Next tab |
+| `Alt+T` (`Alt+Shift+t`) | Previous tab |
 
 ## Bookmarks
 
@@ -218,7 +227,7 @@ Press `F` to set or clear a file filter:
 |-----|--------|
 | `F` | Open filter input / clear filter |
 | `Enter` | Apply filter |
-| `Esc` / `F` | Cancel |
+| `Esc` | Cancel |
 
 - Supports glob patterns: `*` (any chars), `?` (single char)
 - Examples: `*.rs`, `test*`, `*_test.py`
@@ -232,9 +241,10 @@ Press `F` to set or clear a file filter:
 |-----|--------|
 | `.` | Toggle hidden files |
 | `F5` | Refresh |
-| `Alt+S` | Open subshell in current directory |
+| `\` | Open the TODO and FIXME list for the workspace |
 | `?` | Show help |
 | `q` | Quit |
+| `Esc` | Quit, after it has cleared marks and returned focus to the tree |
 | `Q` | Quit and cd to current directory (with `--choosedir`) |
 
 ## Mouse Support
@@ -242,9 +252,11 @@ Press `F` to set or clear a file filter:
 | Action | Effect |
 |--------|--------|
 | Click | Select item |
-| Double-click | Expand/collapse directory or open preview |
-| Scroll | Navigate list or scroll preview |
-| Drag | Move files (experimental) |
+| Double-click | Expand or collapse a directory |
+| Scroll | Navigate the list or scroll the preview, whichever is under the pointer |
+| Drop | Copy files dropped from another app into the focused directory, or into the folder of the focused file |
+
+Set `mouse_enabled = false` in `config.toml` to turn mouse capture off.
 
 Text previews load at most 64KiB or 256 lines per window. Existing scroll, page,
 `g`, and `G` controls continue across windows. `G` scans line counts in the

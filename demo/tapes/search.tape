@@ -30,7 +30,7 @@ Sleep 500ms
 Enter
 Sleep 2.5s
 
-# Only files with Git changes
+# Files and folders with Git changes
 Ctrl+P
 Sleep 500ms
 Type "git:changed"

@@ -10,7 +10,7 @@ Sleep 1.5s
 Type "P"
 Sleep 1.5s
 
-# assets: images, SVG source, and a video with its thumbnail
+# assets: images, an SVG icon, and a video with its thumbnail
 Type "j"
 Sleep 1.2s
 Type "l"

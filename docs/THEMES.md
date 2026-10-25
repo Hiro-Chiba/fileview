@@ -1,35 +1,23 @@
 # Theme Customization
 
-FileView supports custom color themes via `~/.config/fileview/theme.toml`.
+FileView reads colors from `theme.toml` in the
+[configuration directory](CONFIGURATION.md), usually
+`~/.config/fileview/theme.toml`. Every key is optional.
 
 ## Theme File Structure
 
 ```toml
 [colors]
-background = "default"    # Main background
-foreground = "white"      # Default text color
-selection = "darkgray"    # Selection highlight
-border = "default"        # Border color
-border_active = "cyan"    # Active border (focused panel)
-status_bg = "default"     # Status bar background
-status_fg = "white"       # Status bar foreground
-error = "red"             # Error message color
-warning = "yellow"        # Warning message color
-info = "blue"             # Info message color
-help_key_fg = "black"     # Help popup key text color
-help_key_bg = "cyan"      # Help popup key background color
+selection = "darkgray"    # Background of the focused row
+border = "default"        # Panel borders
+border_active = "cyan"    # Border of the focused panel
+warning = "yellow"        # Warning messages
+info = "blue"             # Info messages
+help_key_fg = "black"     # Key labels in the help popup
+help_key_bg = "cyan"      # Background of those key labels
 
 [file_colors]
-directory = "blue"        # Directory color
-executable = "green"      # Executable file color
-symlink = "cyan"          # Symbolic link color
-archive = "red"           # Archive file color (.zip, .tar, etc.)
-image = "magenta"         # Image file color
-video = "magenta"         # Video file color
-audio = "magenta"         # Audio file color
-document = "yellow"       # Document file color (.pdf, .doc, etc.)
-source = "green"          # Source code file color
-markup = "yellow"         # Markup file color (.md, .html, etc.)
+directory = "blue"        # Directory names
 
 [git_colors]
 modified = "yellow"       # Modified file
@@ -41,34 +29,29 @@ conflict = "magenta"      # Conflict file
 ignored = "darkgray"      # Ignored file
 ```
 
-## Color Formats
+These are all the colors FileView draws with. Theme files written for versions
+before 3.1.2 may also set `background`, `foreground`, `status_bg`, `status_fg`,
+`error`, or file type colors such as `executable`. Those keys were never drawn and
+are now ignored.
 
-FileView supports multiple color formats:
+If the file cannot be parsed, FileView ignores it and uses the default colors.
+
+## Color Formats
 
 ### Named Colors
 
-```toml
-foreground = "white"
-directory = "blue"
-modified = "yellow"
-```
-
-Available named colors:
-- `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`
-- `gray`, `grey` (dark gray)
+- `black`, `red`, `green`, `yellow`, `blue`, `magenta` (also `purple`), `cyan`, `white`
+- `gray` or `grey`, which is light gray, and `darkgray` or `darkgrey`
 - `lightred`, `lightgreen`, `lightyellow`, `lightblue`, `lightmagenta`, `lightcyan`
-- `darkgray`, `darkgrey`
-- `default` (terminal default)
-- `reset` (reset to default)
+- `default` or `reset`, which keep the terminal color
+
+An unknown name also falls back to the terminal color.
 
 ### Hex Colors
 
 ```toml
-# Short form (#RGB)
-background = "#123"
-
-# Long form (#RRGGBB)
-foreground = "#ff5733"
+selection = "#123"        # Short form, #RGB
+directory = "#ff5733"     # Long form, #RRGGBB
 ```
 
 ### RGB Function
@@ -80,80 +63,32 @@ selection = "rgb(255, 87, 51)"
 ### 256-Color Palette
 
 ```toml
-# Using color<N> or colorN syntax
-border = "color240"
-accent = "color33"
-
-# Or just the number
-dim = "245"
+border = "color240"       # color followed by a number
+ignored = "245"           # or just the number
 ```
 
-## Example Themes
+## Example Theme
 
-### Dark Theme
+### Nord
 
 ```toml
 [colors]
-background = "default"
-foreground = "white"
-selection = "blue"
-border = "gray"
-
-[file_colors]
-directory = "blue"
-executable = "green"
-symlink = "cyan"
-
-[git_colors]
-modified = "yellow"
-staged = "green"
-untracked = "red"
-```
-
-### Light Theme
-
-```toml
-[colors]
-background = "#ffffff"
-foreground = "#1a1a1a"
-selection = "#0066cc"
-border = "#cccccc"
-
-[file_colors]
-directory = "#0066cc"
-executable = "#008800"
-symlink = "#008888"
-
-[git_colors]
-modified = "#cc6600"
-staged = "#008800"
-untracked = "#cc0000"
-```
-
-### Nord Theme
-
-```toml
-[colors]
-background = "#2e3440"
-foreground = "#eceff4"
-selection = "#5e81ac"
+selection = "#434c5e"
 border = "#4c566a"
+border_active = "#88c0d0"
 
 [file_colors]
 directory = "#81a1c1"
-executable = "#a3be8c"
-symlink = "#88c0d0"
 
 [git_colors]
 modified = "#ebcb8b"
 staged = "#a3be8c"
-untracked = "#bf616a"
+untracked = "#a3be8c"
+deleted = "#bf616a"
 ```
 
 ## Tips
 
-- Use `default` for background to inherit terminal background
-- Use 256-color palette (`color0`-`color255`) for precise control
-- Hex colors provide the most flexibility
-- Test your theme in different terminal emulators for consistency
-- Help key highlight style can be switched with `FILEVIEW_HELP_KEY_STYLE=solid|outline|plain`
+- Leave `border` as `default` to inherit the terminal color
+- Hex colors need a terminal with true color support
+- The help key style can be switched with `FILEVIEW_HELP_KEY_STYLE=solid|outline|plain`

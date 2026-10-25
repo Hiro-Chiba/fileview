@@ -446,7 +446,6 @@ fn handle_search_mode(key: KeyEvent, current_query: &str) -> KeyAction {
         KeyCode::Enter => KeyAction::ConfirmInput {
             value: current_query.to_string(),
         },
-        // Same key to cancel (toggle behavior)
         KeyCode::Esc => KeyAction::Cancel,
         _ => KeyAction::None, // Buffer updates handled separately
     }
@@ -653,7 +652,6 @@ fn handle_filter_mode(key: KeyEvent, current_query: &str) -> KeyAction {
                 }
             }
         }
-        // Same key to cancel (toggle behavior)
         KeyCode::Esc => KeyAction::Cancel,
         _ => KeyAction::None, // Text input handled separately
     }

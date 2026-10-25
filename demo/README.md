@@ -1,11 +1,12 @@
 # Demo recordings
 
-The GIFs in `assets/` are recorded with [VHS](https://github.com/charmbracelet/vhs)
+The GIFs in the repository's top-level `assets/` folder are recorded with [VHS](https://github.com/charmbracelet/vhs)
 from the tapes in `tapes/`. Each tape runs `setup.sh`, which copies
 `sample-project/` to `/tmp/nebula`, generates the binary assets (images, a
 video, a PDF, and archives), and leaves a few Git changes behind.
 
-You need VHS, ffmpeg, python3, and the FiraCode Nerd Font. Build the release
+You need VHS, git, python3, the FiraCode Nerd Font, and ffmpeg built with
+`libx264` and `aac`. Build the release
 binary first, then run a tape from the repository root:
 
 ```sh

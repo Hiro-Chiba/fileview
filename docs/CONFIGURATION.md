@@ -1,14 +1,25 @@
 # Configuration Guide
 
-FileView supports configuration through TOML files located in `~/.config/fileview/`.
+FileView works without any configuration. Optional settings live in TOML files in
+`~/.config/fileview/`, or in `$XDG_CONFIG_HOME/fileview/` when that variable is
+set.
+
+Versions before 3.1.2 read these files from the platform folder instead, which is
+`~/Library/Application Support/fileview/` on macOS and `%APPDATA%\fileview\` on
+Windows. A file there is still read when the same file is missing from
+`~/.config/fileview/`, so you do not need to move anything.
 
 ## Configuration Files
 
 | File | Description |
 |------|-------------|
-| `config.toml` | Main settings (general, preview, UI, performance) |
-| `keymap.toml` | Custom key bindings |
-| `theme.toml` | Color theme customization |
+| `config.toml` | Main settings |
+| `theme.toml` | Colors, see the [theme guide](THEMES.md) |
+| `plugins/init.lua` | Lua plugin, see the [plugin guide](PLUGINS.md) |
+
+If a file cannot be parsed, FileView ignores the whole file and uses the defaults,
+without an error message. Keys that FileView does not know are ignored, so a file
+written for an older version still loads.
 
 ## Main Configuration (`config.toml`)
 
@@ -16,80 +27,64 @@ FileView supports configuration through TOML files located in `~/.config/filevie
 
 ```toml
 [general]
-show_hidden = false       # Show hidden files by default
-enable_icons = true       # Enable Nerd Font icons
-mouse_enabled = true      # Enable mouse support
+show_hidden = false       # Show hidden files on start
+enable_icons = true       # Show Nerd Font icons next to file names
+mouse_enabled = true      # Capture the mouse for clicks, scrolling, and drops
 ```
 
-### Preview Settings
+### Custom Previews
 
 ```toml
-[preview]
-hex_max_bytes = 4096         # Maximum bytes for hex preview
-max_archive_entries = 500    # Maximum entries for archive preview
-image_protocol = "auto"      # Image protocol: auto, sixel, kitty, iterm2, halfblocks, chafa
-
-# Custom preview commands (extension -> command)
 [preview.custom]
-md = "glow -s dark $f"       # Markdown with glow
-json = "jq -C . $f"          # JSON with jq
 csv = "column -s, -t $f | head -50"
+log = "tail -n 200 $f"
 ```
+
+Each entry maps a file extension to a shell command whose output replaces the
+built-in preview. `$f` is replaced with the shell-escaped file path. No other
+placeholder is supported here. The extension match is case-sensitive, so `csv`
+does not match `DATA.CSV`. The output is shown as plain text, so color codes from
+tools such as `jq -C` or `glow` are not drawn as colors.
 
 ### Performance Settings
 
 ```toml
 [performance]
-git_poll_interval_secs = 5   # Git status polling interval
+git_poll_interval_secs = 5   # How often Git status is refreshed, in seconds
 ```
 
-### UI Settings
+### Token Budget
 
 ```toml
-[ui]
-show_size = true                    # Show file sizes in tree view
-show_permissions = false            # Show file permissions
-date_format = "%Y-%m-%d %H:%M"      # Date format (strftime-style)
+[budget]
+default_model = "sonnet"     # sonnet, sonnet-1m, opus, haiku, or a full name
 ```
 
-### Custom Commands
-
-```toml
-[commands]
-# Define commands that can be bound to keys
-# Placeholders: $f (full path), $d (directory), $n (filename), $s (stem), $e (extension), $S (selected files)
-open = "open $f"
-edit = "nvim $f"
-terminal = "cd $d && $SHELL"
-compress = "zip -r archive.zip $S"
-```
+This picks the model whose context window the token budget bar measures against.
+`Alt+M` cycles through the models while FileView is running.
 
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `FILEVIEW_ICONS=0` | Disable icons |
-| `FILEVIEW_IMAGE_PROTOCOL` | Force image protocol |
-| `FILEVIEW_HELP_KEY_STYLE` | Help key style: `solid`, `outline`, `plain` |
+| `FILEVIEW_ICONS=0` | Hide icons |
+| `FILEVIEW_IMAGE_PROTOCOL` | Image protocol: `auto`, `halfblocks`, `chafa`, `sixel`, `kitty`, or `iterm2` |
+| `FILEVIEW_HELP_KEY_STYLE` | Help key style: `solid`, `outline`, or `plain` |
 
 ## CLI Arguments
-
-CLI arguments override config file settings:
 
 ```
 --hidden, -a     Show hidden files
 --no-hidden      Hide hidden files
---icons, -i      Enable icons
---no-icons       Disable icons
+--icons, -i      Show icons
+--no-icons       Hide icons
 ```
 
-## Configuration Priority
+## Priority
 
-1. CLI arguments (highest priority)
-2. Configuration file (`~/.config/fileview/config.toml`)
-3. Default values (lowest priority)
-
-Environment variables (`FILEVIEW_ICONS`, `FILEVIEW_IMAGE_PROTOCOL`, `FILEVIEW_HELP_KEY_STYLE`) are evaluated independently at runtime.
+For hidden files, an argument wins over `config.toml`, which wins over the
+default. For icons, an argument wins over `FILEVIEW_ICONS`, which wins over
+`config.toml`, which wins over the default.
 
 ## Example Configuration
 
