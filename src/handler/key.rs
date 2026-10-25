@@ -114,7 +114,6 @@ pub enum KeyAction {
     RunCommand {
         name: String,
     },
-    OpenSubshell,
     StartVisualSelect,
     SelectAll,
     InvertSelection,
@@ -585,8 +584,8 @@ fn handle_browse_mode(state: &AppState, key: KeyEvent) -> KeyAction {
             }
         }
 
-        // Alt+S must come before plain 's'.
-        KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::OpenSubshell,
+        // Alt+S is unbound. It must not fall through to plain 's', which stages.
+        KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::ALT) => KeyAction::None,
 
         KeyCode::Char('s') => KeyAction::GitStage,
         KeyCode::Char('u') => KeyAction::GitUnstage,

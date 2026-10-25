@@ -54,13 +54,10 @@ pub struct Config {
     pub stdin_paths: Option<Vec<PathBuf>>,
     pub show_hidden: bool,
     pub mouse_enabled: bool,
-    pub hex_max_bytes: usize,
-    pub max_archive_entries: usize,
+    /// `general.enable_icons`, used when neither a flag nor FILEVIEW_ICONS decides
+    pub icons_from_config: bool,
     pub image_protocol: String,
     pub git_poll_interval: Duration,
-    pub show_size: bool,
-    pub show_permissions: bool,
-    pub date_format: String,
     pub commands: CommandsConfig,
     pub preview_custom: PreviewConfig,
     /// Tree output mode (non-interactive, output to stdout)
@@ -570,13 +567,9 @@ impl Config {
             // Settings from config file (CLI can override some)
             show_hidden: show_hidden.unwrap_or(config_file.general.show_hidden),
             mouse_enabled: config_file.general.mouse_enabled,
-            hex_max_bytes: config_file.preview.hex_max_bytes,
-            max_archive_entries: config_file.preview.max_archive_entries,
+            icons_from_config: config_file.general.enable_icons,
             image_protocol: config_file.preview.image_protocol.clone(),
             git_poll_interval: Duration::from_secs(config_file.performance.git_poll_interval_secs),
-            show_size: config_file.ui.show_size,
-            show_permissions: config_file.ui.show_permissions,
-            date_format: config_file.ui.date_format,
             commands: config_file.commands,
             preview_custom: config_file.preview,
             tree_mode,
@@ -791,7 +784,6 @@ KEYBINDINGS:
     P           Toggle quick preview panel
     c           Copy path to system clipboard
     C           Copy filename to system clipboard
-    Alt+S       Open subshell in current directory
     q/Esc       Quit (or cancel in pick mode)
     Q           Quit and cd to current directory (with --choosedir)
     ?           Show help

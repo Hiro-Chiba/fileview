@@ -1,10 +1,9 @@
 //! Custom command execution
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use crate::app::CommandsConfig;
-use crate::core::AppState;
 
 #[derive(Debug)]
 pub enum CommandResult {
@@ -27,17 +26,7 @@ pub fn execute_command(
     };
 
     let cmd = if let Some(path) = file_path {
-        let mut expanded = CommandsConfig::expand_shell_escaped(template, path);
-
-        if expanded.contains("$S") {
-            let selected: Vec<String> = selected_paths
-                .iter()
-                .map(|p| shell_escape(&p.display().to_string()))
-                .collect();
-            expanded = expanded.replace("$S", &selected.join(" "));
-        }
-
-        expanded
+        CommandsConfig::expand_command(template, path, selected_paths)
     } else {
         template.clone()
     };
@@ -63,88 +52,6 @@ pub fn execute_command(
             }
         }
         Err(e) => CommandResult::Error(format!("Failed to execute command: {}", e)),
-    }
-}
-
-/// Execute a command and wait for it to complete (for TUI restoration)
-///
-/// This spawns the command in a way that allows it to take over the terminal,
-/// useful for commands like editors or pagers.
-pub fn execute_interactive(
-    name: &str,
-    config: &CommandsConfig,
-    file_path: Option<&Path>,
-) -> CommandResult {
-    let template = match config.get(name) {
-        Some(t) => t,
-        None => return CommandResult::NotFound,
-    };
-
-    let cmd = if let Some(path) = file_path {
-        CommandsConfig::expand_shell_escaped(template, path)
-    } else {
-        template.clone()
-    };
-
-    // status() instead of output() so the command inherits the terminal.
-    let status = if cfg!(target_os = "windows") {
-        Command::new("cmd").args(["/C", &cmd]).status()
-    } else {
-        Command::new("sh").args(["-c", &cmd]).status()
-    };
-
-    match status {
-        Ok(status) => {
-            if status.success() {
-                CommandResult::Success(String::new())
-            } else {
-                CommandResult::Error(format!("Command exited with: {:?}", status.code()))
-            }
-        }
-        Err(e) => CommandResult::Error(format!("Failed to execute command: {}", e)),
-    }
-}
-
-/// Report the shell and directory that `Alt+S` is meant to open.
-///
-/// The shell is not spawned yet. Running it interactively needs the event
-/// loop to suspend the terminal UI, wait for the shell to exit, and restore
-/// the UI, and that is not implemented.
-pub fn open_subshell(state: &mut AppState, focused_path: Option<&PathBuf>) {
-    let dir = focused_path
-        .and_then(|p| {
-            if p.is_dir() {
-                Some(p.clone())
-            } else {
-                p.parent().map(|pp| pp.to_path_buf())
-            }
-        })
-        .unwrap_or_else(|| state.root.clone());
-
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| {
-        if cfg!(target_os = "windows") {
-            "cmd".to_string()
-        } else {
-            "/bin/sh".to_string()
-        }
-    });
-
-    state.set_message(format!("Opening subshell in {}...", dir.display()));
-
-    state.set_message(format!(
-        "Shell: {} (press Enter to spawn in {})",
-        shell,
-        dir.display()
-    ));
-}
-
-fn shell_escape(value: &str) -> String {
-    if cfg!(target_os = "windows") {
-        format!("\"{}\"", value.replace('"', "\"\""))
-    } else if value.contains('\'') {
-        format!("'{}'", value.replace('\'', "'\\''"))
-    } else {
-        format!("'{}'", value)
     }
 }
 

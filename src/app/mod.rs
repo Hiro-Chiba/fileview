@@ -9,7 +9,7 @@ pub mod replay;
 mod video;
 
 pub use config::{Config, InitAction, PluginAction, SessionAction};
-pub use config_file::{CommandsConfig, ConfigFile, HooksConfig, PreviewConfig};
+pub use config_file::{CommandsConfig, ConfigFile, PreviewConfig};
 pub use event_loop::{run_app, AppResult};
 pub use image_loader::ImageLoader;
 pub use preview::PreviewState;

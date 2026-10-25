@@ -2501,13 +2501,13 @@ mod image_preview_tests {
     #[test]
     fn test_create_image_picker_does_not_panic() {
         // This should never panic, even in CI
-        let _picker = create_image_picker();
+        let _picker = create_image_picker("auto");
     }
 
     #[test]
     fn test_create_image_picker_deterministic() {
-        let picker1 = create_image_picker();
-        let picker2 = create_image_picker();
+        let picker1 = create_image_picker("auto");
+        let picker2 = create_image_picker("auto");
 
         assert_eq!(
             picker1.is_some(),
@@ -2541,7 +2541,7 @@ mod image_preview_tests {
         create_test_png(&path);
 
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(
@@ -2563,7 +2563,7 @@ mod image_preview_tests {
         create_test_jpeg(&path);
 
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for JPEG");
@@ -2577,7 +2577,7 @@ mod image_preview_tests {
         create_test_gif(&path);
 
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for GIF");
@@ -2591,7 +2591,7 @@ mod image_preview_tests {
         create_test_webp(&path);
 
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for WebP");
@@ -2605,7 +2605,7 @@ mod image_preview_tests {
         create_test_bmp(&path);
 
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for BMP");
@@ -2619,7 +2619,7 @@ mod image_preview_tests {
         create_test_image(&path, 2000, 2000);
 
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_ok(), "ImagePreview::load failed for large image");
@@ -2633,7 +2633,7 @@ mod image_preview_tests {
     #[ignore = "Requires terminal with image protocol support"]
     fn test_image_preview_load_nonexistent_error() {
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&PathBuf::from("/nonexistent/image.png"), &mut picker);
         assert!(result.is_err());
@@ -2647,7 +2647,7 @@ mod image_preview_tests {
         fs::write(&path, "not an image").unwrap();
 
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let result = ImagePreview::load(&path, &mut picker);
         assert!(result.is_err(), "Should fail for invalid image");
@@ -2667,7 +2667,7 @@ mod image_preview_tests {
         create_test_png(&path);
 
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let mut preview = ImagePreview::load(&path, &mut picker).unwrap();
 
@@ -2695,7 +2695,7 @@ mod image_preview_tests {
         create_test_png(&path);
 
         let mut picker =
-            create_image_picker().expect("This test requires a terminal with image support");
+            create_image_picker("auto").expect("This test requires a terminal with image support");
 
         let mut preview = ImagePreview::load(&path, &mut picker).unwrap();
 
@@ -2793,7 +2793,7 @@ mod image_preview_tests {
     fn test_render_module_exports() {
         let _: fn(&std::path::Path, &mut Picker) -> anyhow::Result<ImagePreview> =
             ImagePreview::load;
-        let _: fn() -> Option<Picker> = create_image_picker;
+        let _: fn(&str) -> Option<Picker> = create_image_picker;
         let _: fn(&std::path::Path) -> bool = is_image_file;
         let _: fn(&std::path::Path) -> bool = is_text_file;
         let _: fn(&std::path::Path) -> bool = is_binary_file;
@@ -3371,7 +3371,7 @@ mod terminal_detection_tests {
         use fileview::render::create_image_picker;
 
         let _result = std::panic::catch_unwind(|| {
-            let _ = create_image_picker();
+            let _ = create_image_picker("auto");
         });
         // We don't assert the result because it depends on the terminal,
         // but it should never panic
@@ -3382,7 +3382,7 @@ mod terminal_detection_tests {
         use fileview::render::create_image_picker;
 
         // create_image_picker should always return Some (fallback to halfblocks)
-        let picker = create_image_picker();
+        let picker = create_image_picker("auto");
         assert!(
             picker.is_some(),
             "create_image_picker should always return Some"
@@ -3393,9 +3393,9 @@ mod terminal_detection_tests {
     fn test_create_image_picker_multiple_calls_consistent() {
         use fileview::render::create_image_picker;
 
-        let picker1 = create_image_picker();
-        let picker2 = create_image_picker();
-        let picker3 = create_image_picker();
+        let picker1 = create_image_picker("auto");
+        let picker2 = create_image_picker("auto");
+        let picker3 = create_image_picker("auto");
 
         assert!(picker1.is_some());
         assert!(picker2.is_some());
@@ -3473,9 +3473,9 @@ mod terminal_detection_tests {
     fn test_create_image_picker_rapid_succession() {
         use fileview::render::create_image_picker;
 
-        // Call create_image_picker() multiple times - should not leak resources
+        // Call create_image_picker("auto") multiple times - should not leak resources
         for _ in 0..10 {
-            let _ = create_image_picker();
+            let _ = create_image_picker("auto");
         }
     }
 }
@@ -5701,15 +5701,9 @@ mod config_integration_tests {
         assert!(config.general.enable_icons);
         assert!(config.general.mouse_enabled);
 
-        assert_eq!(config.preview.hex_max_bytes, 4096);
-        assert_eq!(config.preview.max_archive_entries, 500);
         assert_eq!(config.preview.image_protocol, "auto");
 
         assert_eq!(config.performance.git_poll_interval_secs, 5);
-
-        assert!(config.ui.show_size);
-        assert!(!config.ui.show_permissions);
-        assert_eq!(config.ui.date_format, "%Y-%m-%d %H:%M");
     }
 
     #[test]
@@ -5738,11 +5732,14 @@ git_poll_interval_secs = 10
 
         // Defaults preserved
         assert!(config.general.enable_icons);
-        assert_eq!(config.preview.hex_max_bytes, 4096);
+        assert_eq!(config.preview.image_protocol, "auto");
     }
 
     #[test]
-    fn test_config_file_all_sections() {
+    fn test_config_file_with_retired_keys_still_loads() {
+        // hex_max_bytes, max_archive_entries, and [ui] were documented but never
+        // used, and were removed in 3.1.2. Old files that set them must still
+        // load, so these keys stay in the fixture.
         let temp = TempDir::new().unwrap();
         let config_path = temp.path().join("config.toml");
 
@@ -5777,15 +5774,9 @@ date_format = "%d/%m/%Y"
         assert!(!config.general.enable_icons);
         assert!(!config.general.mouse_enabled);
 
-        assert_eq!(config.preview.hex_max_bytes, 8192);
-        assert_eq!(config.preview.max_archive_entries, 1000);
         assert_eq!(config.preview.image_protocol, "kitty");
 
         assert_eq!(config.performance.git_poll_interval_secs, 15);
-
-        assert!(!config.ui.show_size);
-        assert!(config.ui.show_permissions);
-        assert_eq!(config.ui.date_format, "%d/%m/%Y");
     }
 
     #[test]
@@ -5981,10 +5972,6 @@ mod theme_integration_tests {
         assert_eq!(theme.border_active, Color::Cyan);
 
         assert_eq!(theme.directory, Color::Blue);
-        assert_eq!(theme.executable, Color::Green);
-        assert_eq!(theme.symlink, Color::Cyan);
-        assert_eq!(theme.archive, Color::Red);
-        assert_eq!(theme.image, Color::Magenta);
 
         assert_eq!(theme.git_modified, Color::Yellow);
         assert_eq!(theme.git_staged, Color::Green);
@@ -6067,13 +6054,10 @@ mod theme_integration_tests {
     fn test_theme_file_defaults() {
         let file = ThemeFile::default();
 
-        assert_eq!(file.colors.background, "default");
-        assert_eq!(file.colors.foreground, "white");
         assert_eq!(file.colors.selection, "darkgray");
         assert_eq!(file.colors.border_active, "cyan");
 
         assert_eq!(file.file_colors.directory, "blue");
-        assert_eq!(file.file_colors.executable, "green");
 
         assert_eq!(file.git_colors.modified, "yellow");
         assert_eq!(file.git_colors.staged, "green");

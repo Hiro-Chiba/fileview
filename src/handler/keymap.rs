@@ -397,7 +397,6 @@ fn parse_browse_action(action: &str) -> Option<KeyAction> {
         "close_tab" => Some(KeyAction::CloseTab),
         "next_tab" => Some(KeyAction::NextTab),
         "prev_tab" => Some(KeyAction::PrevTab),
-        "open_subshell" => Some(KeyAction::OpenSubshell),
         "pick_select" | "pick_or_toggle" => Some(KeyAction::PickSelect),
         "select_confirm" => Some(KeyAction::SelectConfirm),
         "preview_scroll_up" => Some(KeyAction::PreviewScrollUp),

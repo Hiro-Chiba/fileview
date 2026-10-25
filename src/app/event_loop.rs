@@ -187,14 +187,10 @@ pub fn run_app(
     if let Some(icons) = config.icons_enabled {
         state.icons_enabled = icons;
     } else {
-        // Check environment variable, then fall back to config file setting
         let env_icons = std::env::var("FILEVIEW_ICONS")
             .map(|v| v != "0" && v.to_lowercase() != "false")
             .ok();
-        if let Some(icons) = env_icons {
-            state.icons_enabled = icons;
-        }
-        // Note: config file icons setting is already applied in AppState::new via env var check
+        state.icons_enabled = env_icons.unwrap_or(config.icons_from_config);
     }
 
     let mut navigator = if let Some(paths) = config.stdin_paths.clone() {
