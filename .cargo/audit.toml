@@ -10,5 +10,4 @@
 ignore = [
   "RUSTSEC-2025-0141", # bincode (via syntect)
   "RUSTSEC-2024-0320", # yaml-rust (via syntect)
-  "RUSTSEC-2026-0097", # rand unsoundness, conditions not reachable from fileview
 ]
